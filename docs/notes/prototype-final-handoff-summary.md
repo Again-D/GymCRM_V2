@@ -171,3 +171,5 @@ See:
 - 리뷰 기반 보강사항(`V5`, 환불 정책/UI 가드)은 이미 테스트/브라우저 검증 및 로그 문서화 완료
 - Git 커밋 정리가 필요하면 아래 전략 문서 참고:
   - `/Users/abc/projects/GymCRM_V2/docs/notes/prototype-commit-strategy.md`
+- PR 생성 전 본문 초안 참고:
+  - `/Users/abc/projects/GymCRM_V2/docs/notes/prototype-pr-body-draft.md`
