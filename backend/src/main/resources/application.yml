@@ -1,0 +1,49 @@
+spring:
+  application:
+    name: gymcrm-backend
+  jackson:
+    time-zone: UTC
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/gymcrm_dev}
+    username: ${DB_USERNAME:gymcrm}
+    password: ${DB_PASSWORD:gymcrm}
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+server:
+  port: ${PORT:8080}
+
+app:
+  prototype:
+    no-auth-enabled: ${APP_PROTOTYPE_NO_AUTH_ENABLED:false}
+    allowed-origins: ${APP_PROTOTYPE_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+    default-admin-user-id: ${APP_PROTOTYPE_DEFAULT_ADMIN_USER_ID:1}
+    default-admin-username: ${APP_PROTOTYPE_DEFAULT_ADMIN_USERNAME:prototype-admin}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+app:
+  prototype:
+    no-auth-enabled: ${APP_PROTOTYPE_NO_AUTH_ENABLED:true}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: staging
+app:
+  prototype:
+    no-auth-enabled: ${APP_PROTOTYPE_NO_AUTH_ENABLED:true}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+app:
+  prototype:
+    no-auth-enabled: false

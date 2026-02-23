@@ -1,0 +1,27 @@
+package com.gymcrm.common.config;
+
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.stereotype.Component;
+
+@Component
+public class PrototypeModeGuard implements ApplicationRunner {
+    private final PrototypeModeSettings settings;
+
+    public PrototypeModeGuard(PrototypeModeSettings settings) {
+        this.settings = settings;
+    }
+
+    @Override
+    public void run(ApplicationArguments args) {
+        if (!settings.isNoAuthEnabled()) {
+            return;
+        }
+
+        if (!settings.isNoAuthAllowedProfileActive()) {
+            throw new IllegalStateException(
+                    "Prototype no-auth mode is only allowed in dev/staging profiles."
+            );
+        }
+    }
+}
