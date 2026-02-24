@@ -1,5 +1,7 @@
 package com.gymcrm.common.api;
 
+import com.gymcrm.common.logging.TraceIdFilter;
+
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 
@@ -8,14 +10,29 @@ public record ApiResponse<T>(
         T data,
         String message,
         OffsetDateTime timestamp,
+        String traceId,
         ApiError error
 ) {
     public static <T> ApiResponse<T> success(T data, String message) {
-        return new ApiResponse<>(true, data, message, OffsetDateTime.now(ZoneOffset.UTC), null);
+        return new ApiResponse<>(
+                true,
+                data,
+                message,
+                OffsetDateTime.now(ZoneOffset.UTC),
+                TraceIdFilter.currentTraceIdOrGenerate(),
+                null
+        );
     }
 
     public static <T> ApiResponse<T> error(String message, ApiError error) {
-        return new ApiResponse<>(false, null, message, OffsetDateTime.now(ZoneOffset.UTC), error);
+        return new ApiResponse<>(
+                false,
+                null,
+                message,
+                OffsetDateTime.now(ZoneOffset.UTC),
+                TraceIdFilter.currentTraceIdOrGenerate(),
+                error
+        );
     }
 
     public record ApiError(

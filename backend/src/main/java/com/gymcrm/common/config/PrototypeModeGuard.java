@@ -7,13 +7,19 @@ import org.springframework.stereotype.Component;
 @Component
 public class PrototypeModeGuard implements ApplicationRunner {
     private final PrototypeModeSettings settings;
+    private final SecurityModeSettings securityModeSettings;
 
-    public PrototypeModeGuard(PrototypeModeSettings settings) {
+    public PrototypeModeGuard(PrototypeModeSettings settings, SecurityModeSettings securityModeSettings) {
         this.settings = settings;
+        this.securityModeSettings = securityModeSettings;
     }
 
     @Override
     public void run(ApplicationArguments args) {
+        if (!securityModeSettings.isPrototypeMode()) {
+            return;
+        }
+
         if (!settings.isNoAuthEnabled()) {
             return;
         }

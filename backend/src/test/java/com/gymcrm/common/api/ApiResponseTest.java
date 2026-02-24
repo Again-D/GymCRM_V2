@@ -6,6 +6,7 @@ import java.time.ZoneOffset;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ApiResponseTest {
@@ -16,6 +17,8 @@ class ApiResponseTest {
 
         assertTrue(response.success());
         assertEquals(ZoneOffset.UTC, response.timestamp().getOffset());
+        assertNotNull(response.traceId());
+        assertTrue(!response.traceId().isBlank());
     }
 
     @Test
@@ -27,5 +30,7 @@ class ApiResponseTest {
 
         assertFalse(response.success());
         assertEquals(ZoneOffset.UTC, response.timestamp().getOffset());
+        assertNotNull(response.traceId());
+        assertTrue(!response.traceId().isBlank());
     }
 }

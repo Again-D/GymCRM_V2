@@ -1,11 +1,13 @@
 package com.gymcrm.membership;
 
 import com.gymcrm.common.api.ApiResponse;
+import com.gymcrm.common.security.AccessPolicies;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -27,6 +29,7 @@ public class MembershipPurchaseController {
     }
 
     @PostMapping
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
     public ApiResponse<PurchaseMembershipResponse> purchase(
             @PathVariable Long memberId,
             @Valid @RequestBody PurchaseMembershipRequest request

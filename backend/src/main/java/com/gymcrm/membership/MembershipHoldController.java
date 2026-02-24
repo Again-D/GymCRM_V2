@@ -3,7 +3,9 @@ package com.gymcrm.membership;
 import com.gymcrm.common.api.ApiResponse;
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
+import com.gymcrm.common.security.AccessPolicies;
 import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,6 +32,7 @@ public class MembershipHoldController {
     }
 
     @PostMapping("/hold")
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
     public ApiResponse<HoldMembershipResponse> hold(
             @PathVariable Long memberId,
             @PathVariable Long membershipId,
@@ -48,6 +51,7 @@ public class MembershipHoldController {
     }
 
     @PostMapping("/resume")
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
     public ApiResponse<ResumeMembershipResponse> resume(
             @PathVariable Long memberId,
             @PathVariable Long membershipId,

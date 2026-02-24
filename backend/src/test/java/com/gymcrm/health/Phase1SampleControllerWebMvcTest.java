@@ -1,10 +1,16 @@
 package com.gymcrm.health;
 
+import com.gymcrm.auth.JwtAuthenticationFilter;
+import com.gymcrm.auth.RestAccessDeniedHandler;
+import com.gymcrm.auth.RestAuthenticationEntryPoint;
 import com.gymcrm.common.config.PrototypeModeSettings;
+import com.gymcrm.common.config.SecurityModeSettings;
 import com.gymcrm.common.error.GlobalExceptionHandler;
 import com.gymcrm.common.security.CurrentUserProvider;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -18,6 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = {HealthController.class, Phase1SampleController.class})
+@AutoConfigureMockMvc(addFilters = false)
 @Import(GlobalExceptionHandler.class)
 class Phase1SampleControllerWebMvcTest {
 
@@ -28,7 +35,26 @@ class Phase1SampleControllerWebMvcTest {
     private PrototypeModeSettings prototypeModeSettings;
 
     @MockBean
+    private SecurityModeSettings securityModeSettings;
+
+    @MockBean
     private CurrentUserProvider currentUserProvider;
+
+    @MockBean
+    private JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    @MockBean
+    private RestAuthenticationEntryPoint restAuthenticationEntryPoint;
+
+    @MockBean
+    private RestAccessDeniedHandler restAccessDeniedHandler;
+
+    @BeforeEach
+    void setUpSecurityModeDefaults() {
+        given(securityModeSettings.mode()).willReturn("prototype");
+        given(securityModeSettings.isPrototypeMode()).willReturn(true);
+        given(securityModeSettings.isJwtMode()).willReturn(false);
+    }
 
     @Test
     void healthReturnsSuccessEnvelope() throws Exception {
@@ -39,6 +65,7 @@ class Phase1SampleControllerWebMvcTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.status").value("UP"))
+                .andExpect(jsonPath("$.data.securityMode").value("prototype"))
                 .andExpect(jsonPath("$.data.prototypeNoAuth").value(true))
                 .andExpect(jsonPath("$.data.currentUserId").value(1))
                 .andExpect(jsonPath("$.error").doesNotExist());

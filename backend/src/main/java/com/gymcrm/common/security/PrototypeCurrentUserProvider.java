@@ -1,11 +1,11 @@
 package com.gymcrm.common.security;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Primary;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Component;
 
 @Component
-@Primary
+@ConditionalOnExpression("'${app.security.mode:prototype}'.trim().equalsIgnoreCase('prototype')")
 public class PrototypeCurrentUserProvider implements CurrentUserProvider {
     private final Long defaultUserId;
     private final String defaultUsername;
@@ -28,4 +28,3 @@ public class PrototypeCurrentUserProvider implements CurrentUserProvider {
         return defaultUsername;
     }
 }
-

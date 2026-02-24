@@ -3,8 +3,10 @@ package com.gymcrm.membership;
 import com.gymcrm.common.api.ApiResponse;
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
+import com.gymcrm.common.security.AccessPolicies;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -31,6 +33,7 @@ public class MembershipRefundController {
     }
 
     @PostMapping("/preview")
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
     public ApiResponse<RefundPreviewResponse> preview(
             @PathVariable Long memberId,
             @PathVariable Long membershipId,
@@ -45,6 +48,7 @@ public class MembershipRefundController {
     }
 
     @PostMapping
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
     public ApiResponse<RefundMembershipResponse> refund(
             @PathVariable Long memberId,
             @PathVariable Long membershipId,

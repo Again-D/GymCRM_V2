@@ -2,6 +2,8 @@ package com.gymcrm.common.error;
 
 import com.gymcrm.common.api.ApiResponse;
 import jakarta.validation.ConstraintViolationException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -43,6 +45,19 @@ public class GlobalExceptionHandler {
                 ErrorCode.VALIDATION_ERROR.defaultMessage(),
                 new ApiResponse.ApiError(ErrorCode.VALIDATION_ERROR.name(), 400, ex.getMessage())
         ));
+    }
+
+    @ExceptionHandler({AccessDeniedException.class, AuthorizationDeniedException.class})
+    public ResponseEntity<ApiResponse<Void>> handleAccessDenied(Exception ex) {
+        return ResponseEntity.status(ErrorCode.ACCESS_DENIED.status())
+                .body(ApiResponse.error(
+                        ErrorCode.ACCESS_DENIED.defaultMessage(),
+                        new ApiResponse.ApiError(
+                                ErrorCode.ACCESS_DENIED.name(),
+                                ErrorCode.ACCESS_DENIED.status().value(),
+                                "접근 권한이 없습니다."
+                        )
+                ));
     }
 
     @ExceptionHandler(Exception.class)

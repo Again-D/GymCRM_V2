@@ -1,8 +1,31 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { routes } from "./app/routes";
-import { ApiClientError, apiGet, apiPatch, apiPost } from "./shared/api/client";
+import { ApiClientError, apiGet, apiPatch, apiPost, configureApiAuth } from "./shared/api/client";
 
 type TabKey = "members" | "products";
+type SecurityMode = "unknown" | "prototype" | "jwt";
+
+type HealthPayload = {
+  status: string;
+  securityMode: string;
+  prototypeNoAuth: boolean;
+  currentUserId: number | null;
+};
+
+type AuthUserSession = {
+  userId: number;
+  centerId: number;
+  loginId: string;
+  displayName: string;
+  roleCode: "ROLE_CENTER_ADMIN" | "ROLE_DESK";
+};
+
+type AuthTokenResponse = {
+  accessToken: string;
+  accessTokenExpiresInSeconds: number;
+  accessTokenExpiresAt: string;
+  user: AuthUserSession;
+};
 
 type MemberSummary = {
   memberId: number;
@@ -344,7 +367,8 @@ function formatCurrency(amount: number): string {
 
 function errorMessage(error: unknown): string {
   if (error instanceof ApiClientError) {
-    return [error.message, error.detail].filter(Boolean).join(" / ");
+    const message = [error.message, error.detail].filter(Boolean).join(" / ");
+    return error.traceId ? `${message} [traceId: ${error.traceId}]` : message;
   }
   if (error instanceof Error) {
     return error.message;
@@ -504,6 +528,16 @@ function buildResumePreview(membership: PurchasedMembership, draft: MembershipAc
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabKey>("members");
+  const [securityMode, setSecurityMode] = useState<SecurityMode>("unknown");
+  const [prototypeNoAuth, setPrototypeNoAuth] = useState(false);
+  const [authBootstrapping, setAuthBootstrapping] = useState(true);
+  const [authAccessToken, setAuthAccessToken] = useState<string | null>(null);
+  const [authUser, setAuthUser] = useState<AuthUserSession | null>(null);
+  const [authStatusMessage, setAuthStatusMessage] = useState<string | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [loginIdInput, setLoginIdInput] = useState("center-admin");
+  const [loginPasswordInput, setLoginPasswordInput] = useState("dev-admin-1234!");
+  const [loginSubmitting, setLoginSubmitting] = useState(false);
 
   const [memberSearchName, setMemberSearchName] = useState("");
   const [memberSearchPhone, setMemberSearchPhone] = useState("");
@@ -545,6 +579,9 @@ export default function App() {
   const [productPanelError, setProductPanelError] = useState<string | null>(null);
 
   const routePreview = useMemo(() => routes.slice(0, 4), []);
+  const isPrototypeMode = securityMode === "prototype";
+  const isJwtMode = securityMode === "jwt";
+  const isAuthenticated = isPrototypeMode || (isJwtMode && authUser != null && authAccessToken != null);
   const activeProductsForPurchase = useMemo(
     () => products.filter((product) => product.productStatus === "ACTIVE"),
     [products]
@@ -553,6 +590,37 @@ export default function App() {
     () => buildPurchasePreview(purchaseProductDetail, purchaseForm),
     [purchaseProductDetail, purchaseForm]
   );
+
+  function clearProtectedUiState() {
+    setMembers([]);
+    setSelectedMemberId(null);
+    setSelectedMember(null);
+    setMemberForm({ ...EMPTY_MEMBER_FORM, joinDate: new Date().toISOString().slice(0, 10) });
+    setMemberFormMode("create");
+    setMemberPanelMessage(null);
+    setMemberPanelError(null);
+    setMemberSearchName("");
+    setMemberSearchPhone("");
+    setPurchaseForm({ ...EMPTY_PURCHASE_FORM, startDate: new Date().toISOString().slice(0, 10) });
+    setPurchaseProductDetail(null);
+    setMemberPurchaseError(null);
+    setMemberPurchaseMessage(null);
+    setMemberMembershipsByMemberId({});
+    setMemberPaymentsByMemberId({});
+    setMembershipActionDrafts({});
+    setMembershipActionMessageById({});
+    setMembershipActionErrorById({});
+    setMembershipRefundPreviewById({});
+
+    setProducts([]);
+    setSelectedProductId(null);
+    setSelectedProduct(null);
+    setProductForm({ ...EMPTY_PRODUCT_FORM });
+    setProductFormMode("create");
+    setProductPanelMessage(null);
+    setProductPanelError(null);
+    setProductFilters({ category: "", status: "" });
+  }
 
   async function loadMembers(filters?: { name?: string; phone?: string }) {
     setMembersLoading(true);
@@ -654,9 +722,127 @@ export default function App() {
   }
 
   useEffect(() => {
+    if (!isJwtMode) {
+      configureApiAuth(null);
+      return;
+    }
+    configureApiAuth({
+      getAccessToken: () => authAccessToken,
+      refreshAccessToken: async () => {
+        const response = await apiPost<AuthTokenResponse>("/api/v1/auth/refresh");
+        setAuthAccessToken(response.data.accessToken);
+        setAuthUser(response.data.user);
+        return response.data.accessToken;
+      },
+      onUnauthorized: () => {
+        setAuthAccessToken(null);
+        setAuthUser(null);
+        setAuthStatusMessage("세션이 만료되어 다시 로그인해야 합니다.");
+      }
+    });
+    return () => configureApiAuth(null);
+  }, [isJwtMode, authAccessToken]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function bootstrapAuthMode() {
+      setAuthBootstrapping(true);
+      setAuthError(null);
+      try {
+        const health = await apiGet<HealthPayload>("/api/v1/health");
+        if (cancelled) {
+          return;
+        }
+        const mode = health.data.securityMode === "jwt" ? "jwt" : "prototype";
+        setSecurityMode(mode);
+        setPrototypeNoAuth(Boolean(health.data.prototypeNoAuth));
+
+        if (mode === "prototype") {
+          setAuthAccessToken(null);
+          setAuthUser(null);
+          setAuthStatusMessage(null);
+          return;
+        }
+
+        try {
+          const refreshResponse = await apiPost<AuthTokenResponse>("/api/v1/auth/refresh");
+          if (cancelled) {
+            return;
+          }
+          setAuthAccessToken(refreshResponse.data.accessToken);
+          setAuthUser(refreshResponse.data.user);
+          setAuthStatusMessage("기존 세션을 복구했습니다.");
+        } catch (refreshError) {
+          if (cancelled) {
+            return;
+          }
+          setAuthAccessToken(null);
+          setAuthUser(null);
+          if (!(refreshError instanceof ApiClientError && refreshError.status === 401)) {
+            setAuthError(errorMessage(refreshError));
+          }
+        }
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+        setSecurityMode("unknown");
+        setAuthError(errorMessage(error));
+      } finally {
+        if (!cancelled) {
+          setAuthBootstrapping(false);
+        }
+      }
+    }
+
+    void bootstrapAuthMode();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
     void loadMembers();
     void loadProducts();
-  }, []);
+  }, [isAuthenticated]);
+
+  async function handleLoginSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setLoginSubmitting(true);
+    setAuthError(null);
+    setAuthStatusMessage(null);
+    try {
+      const response = await apiPost<AuthTokenResponse>("/api/v1/auth/login", {
+        loginId: loginIdInput,
+        password: loginPasswordInput
+      });
+      setAuthAccessToken(response.data.accessToken);
+      setAuthUser(response.data.user);
+      setAuthStatusMessage(response.message);
+    } catch (error) {
+      setAuthError(errorMessage(error));
+    } finally {
+      setLoginSubmitting(false);
+    }
+  }
+
+  async function handleLogout() {
+    setAuthError(null);
+    try {
+      await apiPost<void>("/api/v1/auth/logout");
+    } catch {
+      // Logout is best-effort; clear local session even if request fails.
+    } finally {
+      setAuthAccessToken(null);
+      setAuthUser(null);
+      setAuthStatusMessage("로그아웃되었습니다.");
+      clearProtectedUiState();
+    }
+  }
 
   async function handleMemberSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1010,24 +1196,130 @@ export default function App() {
     setProductPanelMessage("신규 상품 등록 모드입니다.");
   }
 
+  const appSubtitle = isJwtMode ? "Admin Portal · Phase 5 JWT/RBAC" : "Admin Portal Prototype · Phase 5";
+  const modeBadgeText = isJwtMode
+    ? authUser
+      ? `JWT Mode · ${authUser.roleCode} · ${authUser.displayName}`
+      : "JWT Mode · 로그인 필요"
+    : prototypeNoAuth
+      ? "Prototype Mode (No Auth)"
+      : "Prototype Mode";
+
+  if (authBootstrapping) {
+    return (
+      <main className="app-shell">
+        <section className="hero-card auth-card" aria-live="polite">
+          <div>
+            <h2>초기 환경 확인 중</h2>
+            <p>서버 보안 모드와 세션 상태를 확인하고 있습니다.</p>
+          </div>
+          <div className="auth-card-side">
+            <div className="prototype-badge">Bootstrapping...</div>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  if (isJwtMode && !isAuthenticated) {
+    return (
+      <main className="app-shell">
+        <header className="topbar">
+          <div className="brand">
+            <h1>GYM CRM</h1>
+            <p>{appSubtitle}</p>
+          </div>
+          <div className="prototype-badge" role="status" aria-live="polite">
+            {modeBadgeText}
+          </div>
+        </header>
+
+        <section className="hero-card auth-card" aria-label="관리자 로그인">
+          <div>
+            <h2>관리자 로그인</h2>
+            <p>JWT 모드에서는 로그인 후에만 회원/상품/회원권 기능 화면에 접근할 수 있습니다.</p>
+            {authStatusMessage ? <p className="notice success">{authStatusMessage}</p> : null}
+            {authError ? <p className="notice error">{authError}</p> : null}
+          </div>
+          <form className="auth-form" onSubmit={handleLoginSubmit}>
+            <label>
+              로그인 ID
+              <input
+                value={loginIdInput}
+                onChange={(event) => setLoginIdInput(event.target.value)}
+                autoComplete="username"
+              />
+            </label>
+            <label>
+              비밀번호
+              <input
+                type="password"
+                value={loginPasswordInput}
+                onChange={(event) => setLoginPasswordInput(event.target.value)}
+                autoComplete="current-password"
+              />
+            </label>
+            <button type="submit" className="primary-button" disabled={loginSubmitting}>
+              {loginSubmitting ? "로그인 중..." : "로그인"}
+            </button>
+            <p className="muted-text">
+              개발 기본 계정: <code>center-admin</code> / <code>dev-admin-1234!</code>
+            </p>
+          </form>
+        </section>
+      </main>
+    );
+  }
+
+  if (securityMode === "unknown") {
+    return (
+      <main className="app-shell">
+        <section className="hero-card auth-card" aria-live="polite">
+          <div>
+            <h2>연결 상태 확인 필요</h2>
+            <p>서버 보안 모드를 확인하지 못했습니다. 백엔드 서버/프록시 설정을 확인한 뒤 다시 시도해주세요.</p>
+            {authError ? <p className="notice error">{authError}</p> : null}
+          </div>
+          <div className="auth-form">
+            <button type="button" className="primary-button" onClick={() => window.location.reload()}>
+              새로고침
+            </button>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="app-shell">
       <header className="topbar">
         <div className="brand">
           <h1>GYM CRM</h1>
-          <p>Admin Portal Prototype · Phase 2 Core CRUD</p>
+          <p>{appSubtitle}</p>
         </div>
-        <div className="prototype-badge" role="status" aria-live="polite">
-          Prototype Mode (No Auth)
+        <div className="topbar-actions">
+          {authStatusMessage ? (
+            <div className="inline-status-text" role="status" aria-live="polite">
+              {authStatusMessage}
+            </div>
+          ) : null}
+          <div className="prototype-badge" role="status" aria-live="polite">
+            {modeBadgeText}
+          </div>
+          {isJwtMode && authUser ? (
+            <button type="button" className="secondary-button" onClick={handleLogout}>
+              로그아웃
+            </button>
+          ) : null}
         </div>
       </header>
 
       <section className="hero-card">
         <div>
-          <h2>회원 / 상품 핵심 CRUD 데모</h2>
+          <h2>회원 / 상품 / 회원권 핵심 업무 데모</h2>
           <p>
-            관리자 포털 단일 화면에서 회원/상품 조회, 등록, 수정을 수행할 수 있습니다. 회원 상세에는 다음 Phase의
-            회원권 구매/홀딩/환불 영역 placeholder를 표시합니다.
+            관리자 포털 단일 화면에서 회원/상품 CRUD와 회원권 구매/홀딩/해제/환불을 수행할 수 있습니다.
+            {isJwtMode ? " 현재는 JWT 로그인 기반 세션으로 동작합니다." : " 현재는 프로토타입(no-auth) 모드입니다."}
           </p>
         </div>
         <ul className="inline-route-list" aria-label="prototype routes">
