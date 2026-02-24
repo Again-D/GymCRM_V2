@@ -1,10 +1,12 @@
 package com.gymcrm.member;
 
 import com.gymcrm.common.api.ApiResponse;
+import com.gymcrm.common.security.AccessPolicies;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,6 +30,7 @@ public class MemberController {
     }
 
     @PostMapping
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
     public ApiResponse<MemberResponse> create(@Valid @RequestBody CreateMemberRequest request) {
         Member member = memberService.create(new MemberService.MemberCreateRequest(
                 request.memberName(),
@@ -45,6 +48,7 @@ public class MemberController {
     }
 
     @GetMapping
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
     public ApiResponse<List<MemberSummaryResponse>> list(
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String phone
@@ -56,11 +60,13 @@ public class MemberController {
     }
 
     @GetMapping("/{memberId}")
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
     public ApiResponse<MemberResponse> detail(@PathVariable Long memberId) {
         return ApiResponse.success(MemberResponse.from(memberService.get(memberId)), "회원 상세 조회 성공");
     }
 
     @PatchMapping("/{memberId}")
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
     public ApiResponse<MemberResponse> update(
             @PathVariable Long memberId,
             @Valid @RequestBody UpdateMemberRequest request

@@ -31,6 +31,9 @@ public class PrototypeModeSettings {
     }
 
     public boolean isNoAuthAllowedProfileActive() {
+        if (isProdProfileActive()) {
+            return false;
+        }
         return Arrays.stream(environment.getActiveProfiles())
                 .map(String::toLowerCase)
                 .anyMatch(NO_AUTH_ALLOWED_PROFILES::contains);

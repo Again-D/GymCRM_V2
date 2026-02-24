@@ -148,7 +148,25 @@
 - 프로토타입 표준 규칙:
   - `/Users/abc/projects/GymCRM_V2/docs/notes/prototype-canonical-rules.md`
 
-## 11) Conclusion
+## 11) Phase 5 Note (JWT/RBAC Baseline Added)
+
+프로토타입 범위(업무 기능) 자체는 유지되지만, 이후 단계에서 운영 기본기가 추가될 수 있다.
+
+- `Phase 5`에서는 `JWT + Refresh Token + RBAC`를 도입해 운영 준비도를 보강
+- `jwt` 모드에서 로그인 포함 핵심 업무 플로우(회원/상품/회원권 구매·홀딩·해제·환불) 재검증 완료
+- `prototype` no-auth 모드는 여전히 `dev/staging` 개발 옵션으로 유지되고 `prod` 차단 정책 유지
+- Phase 5 기본 인증 정책(현재 구현 기본값):
+  - Access Token `15분`
+  - Refresh Token `7일`
+  - 환경변수로 조정 가능 (`APP_SECURITY_ACCESS_TOKEN_MINUTES`, `APP_SECURITY_REFRESH_TOKEN_DAYS`)
+- Phase 5 최소 역할 구현 범위:
+  - `ROLE_CENTER_ADMIN`, `ROLE_DESK`
+- 문서 정합성 기준 용어:
+  - 테넌트 용어는 `center` / `centerId`를 canonical로 사용 (`gym`, `gymId`는 레거시 문서 표현)
+
+이 문서는 “프로토타입 업무 범위” 기준 차이를 설명하는 문서이며, 인증/운영 기본기 도입 여부는 별도 Phase 문서/검증 로그와 함께 해석해야 한다.
+
+## 12) Conclusion
 
 현재 구현은 설계 문서의 “전체 목표” 중 일부를 고품질로 검증한 프로토타입이다.
 

@@ -51,6 +51,23 @@ textarea {
   margin-bottom: 14px;
 }
 
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.inline-status-text {
+  font-size: 12px;
+  color: var(--muted);
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(255, 250, 241, 0.9);
+  border: 1px solid var(--line);
+}
+
 .brand h1 {
   margin: 0;
   font-size: 30px;
@@ -92,6 +109,24 @@ textarea {
   margin: 0;
   color: var(--muted);
   line-height: 1.5;
+}
+
+.auth-card {
+  align-items: start;
+}
+
+.auth-card-side {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.auth-form {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  background: #fffdf8;
 }
 
 .inline-route-list {

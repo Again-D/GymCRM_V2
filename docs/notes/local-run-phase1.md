@@ -1,5 +1,7 @@
 # Phase 1 Local Run Notes
 
+> Note (2026-02-24): 이 문서는 Phase 1 시작 문서로 생성되었지만, 현재는 Phase 5(jwt/rbac) 로컬 실행 참고도 함께 포함한다.
+
 ## Development DB (Recommended: Docker)
 
 기본 표준은 Docker PostgreSQL 컨테이너다.
@@ -61,6 +63,33 @@ SPRING_PROFILES_ACTIVE=dev ./gradlew bootRun
 참고:
 - `dev` 또는 `staging` 프로필에서 no-auth를 허용한다 (기본값은 안전하게 `false`)
 
+### Backend (JWT Mode - Phase 5)
+
+권장 실행(인증/RBAC 검증용):
+
+```bash
+cd /Users/abc/projects/GymCRM_V2/backend
+SPRING_PROFILES_ACTIVE=dev \
+APP_SECURITY_MODE=jwt \
+DB_URL=jdbc:postgresql://localhost:5433/gymcrm_dev \
+DB_USERNAME=gymcrm \
+DB_PASSWORD=gymcrm \
+./gradlew bootRun
+```
+
+dev/staging JWT seed 계정:
+- `center-admin / dev-admin-1234!`
+
+JWT 기본 만료 정책 (환경변수 override 가능):
+- Access Token: `15분` (`APP_SECURITY_ACCESS_TOKEN_MINUTES`, 기본값 `15`)
+- Refresh Token: `7일` (`APP_SECURITY_REFRESH_TOKEN_DAYS`, 기본값 `7`)
+
+JWT 관련 주요 설정값:
+- `APP_SECURITY_MODE=jwt|prototype`
+- `APP_SECURITY_JWT_ISSUER` (기본 `gymcrm`)
+- `APP_SECURITY_JWT_AUDIENCE` (기본 `gymcrm-admin`)
+- `APP_SECURITY_JWT_SECRET` (개발 기본값은 예시값이므로 운영에서 반드시 교체)
+
 샘플 API:
 
 - `GET /api/v1/health`
@@ -73,12 +102,27 @@ npm install
 npm run dev
 ```
 
+JWT 모드 프론트 실행 시 참고:
+- 기본 API 경로는 `/api/v1/...`를 사용하며, Vite dev proxy(`/api`)로 백엔드에 연결한다.
+- refresh token은 `HttpOnly` cookie로 처리되므로 프론트 JS에서 직접 읽지 않는다.
+
 ## Known Gaps (Phase 1 start point)
 
 - Docker 미설치 환경에서는 로컬 PostgreSQL fallback 설정이 필요함
 - `psql` CLI 미설치 환경일 수 있음 (필수 아님)
 - 실제 도메인 CRUD는 Phase 2부터 추가
 - DB 마이그레이션 실제 적용 검증(`P1-2`)은 Docker/로컬 DB 기동 후 수행 필요
+
+## Terminology / Naming (Phase 5 Doc Alignment)
+
+- 테넌트 표준 용어는 `center` / `centerId`를 사용한다.
+- 과거 문서의 `gym`, `gymId` 표기는 레거시 표현으로 간주한다.
+- Phase 5 최소 역할 표준(실구현):
+  - `ROLE_CENTER_ADMIN`
+  - `ROLE_DESK`
+- 장기 역할 표준(문서 기준)은 유지:
+  - `ROLE_SUPER_ADMIN`, `ROLE_CENTER_ADMIN`, `ROLE_CENTER_MANAGER`, `ROLE_TRAINER`, `ROLE_DESK`
+
 
 ## Local PostgreSQL Fallback (Allowed, Not Default)
 

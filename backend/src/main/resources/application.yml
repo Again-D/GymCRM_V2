@@ -14,7 +14,25 @@ spring:
 server:
   port: ${PORT:8080}
 
+logging:
+  pattern:
+    level: "%5p [traceId:%X{traceId:-none}]"
+
 app:
+  security:
+    mode: ${APP_SECURITY_MODE:prototype}
+    jwt:
+      issuer: ${APP_SECURITY_JWT_ISSUER:gymcrm}
+      audience: ${APP_SECURITY_JWT_AUDIENCE:gymcrm-admin}
+      access-token-minutes: ${APP_SECURITY_ACCESS_TOKEN_MINUTES:15}
+      refresh-token-days: ${APP_SECURITY_REFRESH_TOKEN_DAYS:7}
+      secret: ${APP_SECURITY_JWT_SECRET:dev-only-change-me-before-prod}
+    dev-admin:
+      seed-enabled: ${APP_SECURITY_DEV_ADMIN_SEED_ENABLED:true}
+      center-id: ${APP_SECURITY_DEV_ADMIN_CENTER_ID:1}
+      login-id: ${APP_SECURITY_DEV_ADMIN_LOGIN_ID:center-admin}
+      display-name: ${APP_SECURITY_DEV_ADMIN_DISPLAY_NAME:Center Admin}
+      initial-password: ${APP_SECURITY_DEV_ADMIN_INITIAL_PASSWORD:dev-admin-1234!}
   prototype:
     no-auth-enabled: ${APP_PROTOTYPE_NO_AUTH_ENABLED:false}
     allowed-origins: ${APP_PROTOTYPE_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}

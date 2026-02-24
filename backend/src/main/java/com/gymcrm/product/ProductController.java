@@ -1,11 +1,13 @@
 package com.gymcrm.product;
 
 import com.gymcrm.common.api.ApiResponse;
+import com.gymcrm.common.security.AccessPolicies;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,6 +31,7 @@ public class ProductController {
     }
 
     @PostMapping
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN)
     public ApiResponse<ProductResponse> create(@Valid @RequestBody CreateProductRequest request) {
         Product product = productService.create(new ProductService.ProductCreateRequest(
                 request.productName(),
@@ -48,6 +51,7 @@ public class ProductController {
     }
 
     @GetMapping
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
     public ApiResponse<List<ProductSummaryResponse>> list(
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String status
@@ -59,11 +63,13 @@ public class ProductController {
     }
 
     @GetMapping("/{productId}")
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
     public ApiResponse<ProductResponse> detail(@PathVariable Long productId) {
         return ApiResponse.success(ProductResponse.from(productService.get(productId)), "상품 상세 조회 성공");
     }
 
     @PatchMapping("/{productId}")
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN)
     public ApiResponse<ProductResponse> update(
             @PathVariable Long productId,
             @Valid @RequestBody UpdateProductRequest request
@@ -86,6 +92,7 @@ public class ProductController {
     }
 
     @PatchMapping("/{productId}/status")
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN)
     public ApiResponse<ProductResponse> updateStatus(
             @PathVariable Long productId,
             @Valid @RequestBody UpdateProductStatusRequest request
