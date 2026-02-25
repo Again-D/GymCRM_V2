@@ -701,13 +701,37 @@ tbody tr.is-selected {
   align-content: start;
 }
 
+.membership-action-group {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 6px 8px;
+}
+
+.membership-action-group summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.membership-action-group[open] summary {
+  margin-bottom: 6px;
+}
+
+.membership-action-group-body {
+  display: grid;
+  gap: 6px;
+}
+
 .membership-action-cell label {
   gap: 4px;
   font-size: 12px;
   font-weight: 600;
 }
 
-.membership-action-cell input {
+.membership-action-cell input,
+.membership-action-cell select {
   padding: 7px 8px;
 }
 
@@ -875,6 +899,20 @@ code {
     grid-template-columns: 1fr;
   }
 
+  .membership-action-cell {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .membership-action-buttons {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .membership-action-buttons .secondary-button {
+    width: 100%;
+  }
+
   .hero-card {
     grid-template-columns: 1fr;
   }
@@ -937,6 +975,14 @@ code {
 
   .sidebar-tab {
     padding: 10px;
+  }
+
+  .membership-action-group {
+    padding: 6px 7px;
+  }
+
+  .membership-action-group summary {
+    font-size: 11px;
   }
 
   th,

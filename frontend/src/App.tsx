@@ -551,6 +551,8 @@ export default function App() {
   const [memberFormSubmitting, setMemberFormSubmitting] = useState(false);
   const [memberPanelMessage, setMemberPanelMessage] = useState<string | null>(null);
   const [memberPanelError, setMemberPanelError] = useState<string | null>(null);
+  const [memberFormMessage, setMemberFormMessage] = useState<string | null>(null);
+  const [memberFormError, setMemberFormError] = useState<string | null>(null);
   const [purchaseForm, setPurchaseForm] = useState<PurchaseFormState>(EMPTY_PURCHASE_FORM);
   const [purchaseProductDetail, setPurchaseProductDetail] = useState<ProductDetail | null>(null);
   const [purchaseProductLoading, setPurchaseProductLoading] = useState(false);
@@ -577,6 +579,8 @@ export default function App() {
   const [productFormSubmitting, setProductFormSubmitting] = useState(false);
   const [productPanelMessage, setProductPanelMessage] = useState<string | null>(null);
   const [productPanelError, setProductPanelError] = useState<string | null>(null);
+  const [productFormMessage, setProductFormMessage] = useState<string | null>(null);
+  const [productFormError, setProductFormError] = useState<string | null>(null);
 
   const routePreview = useMemo(() => routes.slice(0, 4), []);
   const isPrototypeMode = securityMode === "prototype";
@@ -599,6 +603,8 @@ export default function App() {
     setMemberFormMode("create");
     setMemberPanelMessage(null);
     setMemberPanelError(null);
+    setMemberFormMessage(null);
+    setMemberFormError(null);
     setMemberSearchName("");
     setMemberSearchPhone("");
     setPurchaseForm({ ...EMPTY_PURCHASE_FORM, startDate: new Date().toISOString().slice(0, 10) });
@@ -619,6 +625,8 @@ export default function App() {
     setProductFormMode("create");
     setProductPanelMessage(null);
     setProductPanelError(null);
+    setProductFormMessage(null);
+    setProductFormError(null);
     setProductFilters({ category: "", status: "" });
   }
 
@@ -847,12 +855,12 @@ export default function App() {
   async function handleMemberSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMemberFormSubmitting(true);
-    setMemberPanelError(null);
-    setMemberPanelMessage(null);
+    setMemberFormError(null);
+    setMemberFormMessage(null);
     try {
       if (memberFormMode === "create") {
         const response = await apiPost<MemberDetail>("/api/v1/members", buildMemberPayload(memberForm));
-        setMemberPanelMessage(response.message);
+        setMemberFormMessage(response.message);
         await loadMembers();
         await loadMemberDetail(response.data.memberId);
       } else if (selectedMemberId != null) {
@@ -860,13 +868,13 @@ export default function App() {
           `/api/v1/members/${selectedMemberId}`,
           buildMemberPayload(memberForm)
         );
-        setMemberPanelMessage(response.message);
+        setMemberFormMessage(response.message);
         await loadMembers();
         setSelectedMember(response.data);
         setMemberForm(memberFormFromDetail(response.data));
       }
     } catch (error) {
-      setMemberPanelError(errorMessage(error));
+      setMemberFormError(errorMessage(error));
     } finally {
       setMemberFormSubmitting(false);
     }
@@ -876,17 +884,17 @@ export default function App() {
     event.preventDefault();
     const validationMessage = validateProductForm(productForm);
     if (validationMessage) {
-      setProductPanelError(validationMessage);
+      setProductFormError(validationMessage);
       return;
     }
 
     setProductFormSubmitting(true);
-    setProductPanelError(null);
-    setProductPanelMessage(null);
+    setProductFormError(null);
+    setProductFormMessage(null);
     try {
       if (productFormMode === "create") {
         const response = await apiPost<ProductDetail>("/api/v1/products", buildProductPayload(productForm));
-        setProductPanelMessage(response.message);
+        setProductFormMessage(response.message);
         await loadProducts();
         await loadProductDetail(response.data.productId);
       } else if (selectedProductId != null) {
@@ -894,13 +902,13 @@ export default function App() {
           `/api/v1/products/${selectedProductId}`,
           buildProductPayload(productForm)
         );
-        setProductPanelMessage(response.message);
+        setProductFormMessage(response.message);
         await loadProducts();
         setSelectedProduct(response.data);
         setProductForm(productFormFromDetail(response.data));
       }
     } catch (error) {
-      setProductPanelError(errorMessage(error));
+      setProductFormError(errorMessage(error));
     } finally {
       setProductFormSubmitting(false);
     }
@@ -910,8 +918,8 @@ export default function App() {
     if (!selectedProduct) {
       return;
     }
-    setProductPanelError(null);
-    setProductPanelMessage(null);
+    setProductFormError(null);
+    setProductFormMessage(null);
     setProductFormSubmitting(true);
     try {
       const nextStatus = selectedProduct.productStatus === "ACTIVE" ? "INACTIVE" : "ACTIVE";
@@ -920,10 +928,10 @@ export default function App() {
       });
       setSelectedProduct(response.data);
       setProductForm(productFormFromDetail(response.data));
-      setProductPanelMessage(response.message);
+      setProductFormMessage(response.message);
       await loadProducts();
     } catch (error) {
-      setProductPanelError(errorMessage(error));
+      setProductFormError(errorMessage(error));
     } finally {
       setProductFormSubmitting(false);
     }
@@ -1184,7 +1192,9 @@ export default function App() {
     setSelectedMember(null);
     setMemberForm({ ...EMPTY_MEMBER_FORM, joinDate: new Date().toISOString().slice(0, 10) });
     setMemberPanelError(null);
-    setMemberPanelMessage("신규 회원 등록 모드입니다.");
+    setMemberPanelMessage(null);
+    setMemberFormError(null);
+    setMemberFormMessage("신규 회원 등록 모드입니다.");
   }
 
   function startCreateProduct() {
@@ -1193,7 +1203,9 @@ export default function App() {
     setSelectedProduct(null);
     setProductForm({ ...EMPTY_PRODUCT_FORM });
     setProductPanelError(null);
-    setProductPanelMessage("신규 상품 등록 모드입니다.");
+    setProductPanelMessage(null);
+    setProductFormError(null);
+    setProductFormMessage("신규 상품 등록 모드입니다.");
   }
 
   function renderMembershipOperationsPanels() {
@@ -1382,7 +1394,9 @@ export default function App() {
                           return (
                             <div className="membership-action-cell">
                               {membership.membershipStatus === "ACTIVE" ? (
-                                <>
+                                <details className="membership-action-group" open>
+                                  <summary>홀딩 처리</summary>
+                                  <div className="membership-action-group-body">
                                   <label>
                                     홀딩 시작일
                                     <input
@@ -1442,9 +1456,12 @@ export default function App() {
                                   >
                                     {isSubmitting ? "처리 중..." : "홀딩"}
                                   </button>
-                                </>
+                                  </div>
+                                </details>
                               ) : membership.membershipStatus === "HOLDING" ? (
-                                <>
+                                <details className="membership-action-group" open>
+                                  <summary>홀딩 해제</summary>
+                                  <div className="membership-action-group-body">
                                   <label>
                                     해제일
                                     <input
@@ -1476,7 +1493,8 @@ export default function App() {
                                   >
                                     {isSubmitting ? "처리 중..." : "홀딩 해제"}
                                   </button>
-                                </>
+                                  </div>
+                                </details>
                               ) : (
                                 <span className="muted-text">상태상 액션 없음</span>
                               )}
@@ -1484,7 +1502,9 @@ export default function App() {
                               <div className="membership-action-divider" aria-hidden="true" />
 
                               {canRefund ? (
-                                <>
+                                <details className="membership-action-group">
+                                  <summary>환불 처리</summary>
+                                  <div className="membership-action-group-body">
                                   <label>
                                     환불 기준일
                                     <input
@@ -1586,7 +1606,8 @@ export default function App() {
                                       {isSubmitting ? "처리 중..." : "환불 확정"}
                                     </button>
                                   </div>
-                                </>
+                                  </div>
+                                </details>
                               ) : (
                                 <p className="muted-text">
                                   {membership.membershipStatus === "HOLDING"
@@ -1812,6 +1833,8 @@ export default function App() {
                 key={item.key}
                 type="button"
                 className={activeNavSection === item.key ? "sidebar-tab is-active" : "sidebar-tab"}
+                aria-pressed={activeNavSection === item.key}
+                aria-current={activeNavSection === item.key ? "page" : undefined}
                 onClick={() => setActiveNavSection(item.key)}
               >
                 <span className="sidebar-tab-label">{item.label}</span>
@@ -2087,6 +2110,8 @@ export default function App() {
             </div>
 
             <form className="form-grid" onSubmit={handleMemberSubmit}>
+              {memberFormMessage ? <p className="notice success full-row">{memberFormMessage}</p> : null}
+              {memberFormError ? <p className="notice error full-row">{memberFormError}</p> : null}
               <label>
                 회원명 *
                 <input
@@ -2408,6 +2433,8 @@ export default function App() {
             ) : null}
 
             <form className="form-grid" onSubmit={handleProductSubmit}>
+              {productFormMessage ? <p className="notice success full-row">{productFormMessage}</p> : null}
+              {productFormError ? <p className="notice error full-row">{productFormError}</p> : null}
               <fieldset className="form-fieldset" disabled={!canManageProducts || productFormSubmitting}>
               <label className="full-row">
                 상품명 *
