@@ -131,11 +131,48 @@ public class ReservationRepository {
                 .optional();
     }
 
+    public Optional<Reservation> markCheckedInIfEligible(ReservationCheckInCommand command) {
+        return jdbcClient.sql("""
+                UPDATE reservations
+                SET
+                    checked_in_at = :checkedInAt,
+                    updated_at = CURRENT_TIMESTAMP,
+                    updated_by = :actorUserId
+                WHERE reservation_id = :reservationId
+                  AND center_id = :centerId
+                  AND reservation_status = :expectedStatus
+                  AND checked_in_at IS NULL
+                  AND is_deleted = FALSE
+                """ + returningClause())
+                .paramSource(command)
+                .query(Reservation.class)
+                .optional();
+    }
+
+    public Optional<Reservation> markNoShowIfCurrent(ReservationNoShowCommand command) {
+        return jdbcClient.sql("""
+                UPDATE reservations
+                SET
+                    reservation_status = 'NO_SHOW',
+                    no_show_at = :noShowAt,
+                    updated_at = CURRENT_TIMESTAMP,
+                    updated_by = :actorUserId
+                WHERE reservation_id = :reservationId
+                  AND center_id = :centerId
+                  AND reservation_status = :expectedStatus
+                  AND checked_in_at IS NULL
+                  AND is_deleted = FALSE
+                """ + returningClause())
+                .paramSource(command)
+                .query(Reservation.class)
+                .optional();
+    }
+
     private String baseSelect() {
         return """
                 SELECT
                     reservation_id, center_id, member_id, membership_id, schedule_id,
-                    reservation_status, reserved_at, cancelled_at, completed_at,
+                    reservation_status, reserved_at, cancelled_at, completed_at, no_show_at, checked_in_at,
                     cancel_reason, memo,
                     created_at, created_by, updated_at, updated_by
                 FROM reservations
@@ -146,7 +183,7 @@ public class ReservationRepository {
         return """
                 RETURNING
                     reservation_id, center_id, member_id, membership_id, schedule_id,
-                    reservation_status, reserved_at, cancelled_at, completed_at,
+                    reservation_status, reserved_at, cancelled_at, completed_at, no_show_at, checked_in_at,
                     cancel_reason, memo,
                     created_at, created_by, updated_at, updated_by
                 """;
@@ -177,6 +214,22 @@ public class ReservationRepository {
             Long centerId,
             String expectedStatus,
             OffsetDateTime completedAt,
+            Long actorUserId
+    ) {}
+
+    public record ReservationCheckInCommand(
+            Long reservationId,
+            Long centerId,
+            String expectedStatus,
+            OffsetDateTime checkedInAt,
+            Long actorUserId
+    ) {}
+
+    public record ReservationNoShowCommand(
+            Long reservationId,
+            Long centerId,
+            String expectedStatus,
+            OffsetDateTime noShowAt,
             Long actorUserId
     ) {}
 }

@@ -7,6 +7,7 @@ import com.gymcrm.member.Member;
 import com.gymcrm.member.MemberService;
 import com.gymcrm.membership.MemberMembership;
 import com.gymcrm.membership.MemberMembershipRepository;
+import com.gymcrm.membership.MembershipUsageEventRepository;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +27,7 @@ public class ReservationService {
     private final ReservationRepository reservationRepository;
     private final ReservationStatusTransitionService reservationStatusTransitionService;
     private final CurrentUserProvider currentUserProvider;
+    private final MembershipUsageEventRepository membershipUsageEventRepository;
 
     public ReservationService(
             MemberService memberService,
@@ -33,7 +35,8 @@ public class ReservationService {
             TrainerScheduleRepository trainerScheduleRepository,
             ReservationRepository reservationRepository,
             ReservationStatusTransitionService reservationStatusTransitionService,
-            CurrentUserProvider currentUserProvider
+            CurrentUserProvider currentUserProvider,
+            MembershipUsageEventRepository membershipUsageEventRepository
     ) {
         this.memberService = memberService;
         this.memberMembershipRepository = memberMembershipRepository;
@@ -41,6 +44,7 @@ public class ReservationService {
         this.reservationRepository = reservationRepository;
         this.reservationStatusTransitionService = reservationStatusTransitionService;
         this.currentUserProvider = currentUserProvider;
+        this.membershipUsageEventRepository = membershipUsageEventRepository;
     }
 
     @Transactional
@@ -174,10 +178,82 @@ public class ReservationService {
         if ("COUNT".equals(membership.productTypeSnapshot())) {
             updatedMembership = memberMembershipRepository.consumeOneCountIfEligible(membership.membershipId(), actorUserId)
                     .orElseThrow(() -> new ApiException(ErrorCode.CONFLICT, "차감 가능한 횟수제 회원권이 없습니다."));
+            membershipUsageEventRepository.insert(new MembershipUsageEventRepository.InsertCommand(
+                    reservation.centerId(),
+                    membership.membershipId(),
+                    reservation.reservationId(),
+                    "RESERVATION_COMPLETE",
+                    -1,
+                    now,
+                    actorUserId,
+                    "예약 완료에 따른 횟수 차감"
+            ));
             countDeducted = true;
         }
 
         return new CompleteResult(updatedReservation, updatedMembership, countDeducted);
+    }
+
+    @Transactional
+    public Reservation checkIn(CheckInRequest request) {
+        if (request.reservationId() == null) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "reservationId is required");
+        }
+
+        Reservation reservation = getReservation(request.reservationId());
+        ReservationStatus currentStatus = ReservationStatus.valueOf(reservation.reservationStatus());
+        if (currentStatus != ReservationStatus.CONFIRMED) {
+            throw new ApiException(ErrorCode.BUSINESS_RULE, "CONFIRMED 상태 예약만 체크인할 수 있습니다.");
+        }
+        if (reservation.checkedInAt() != null) {
+            throw new ApiException(ErrorCode.CONFLICT, "이미 체크인 처리된 예약입니다.");
+        }
+
+        Long actorUserId = currentUserProvider.currentUserId();
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        return reservationRepository.markCheckedInIfEligible(new ReservationRepository.ReservationCheckInCommand(
+                reservation.reservationId(),
+                reservation.centerId(),
+                reservation.reservationStatus(),
+                now,
+                actorUserId
+        )).orElseThrow(() -> new ApiException(ErrorCode.CONFLICT, "예약 상태가 변경되었거나 이미 체크인 처리되었습니다."));
+    }
+
+    @Transactional
+    public Reservation noShow(NoShowRequest request) {
+        if (request.reservationId() == null) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "reservationId is required");
+        }
+
+        Reservation reservation = getReservation(request.reservationId());
+        reservationStatusTransitionService.assertTransitionAllowed(
+                ReservationStatus.valueOf(reservation.reservationStatus()),
+                ReservationStatus.NO_SHOW
+        );
+        if (reservation.checkedInAt() != null) {
+            throw new ApiException(ErrorCode.BUSINESS_RULE, "체크인된 예약은 노쇼 처리할 수 없습니다.");
+        }
+
+        TrainerSchedule schedule = getSchedule(reservation.scheduleId());
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        if (schedule.endAt() == null || now.isBefore(schedule.endAt())) {
+            throw new ApiException(ErrorCode.BUSINESS_RULE, "노쇼 처리는 수업 종료 시간 이후에만 가능합니다.");
+        }
+
+        Long actorUserId = currentUserProvider.currentUserId();
+        Reservation updated = reservationRepository.markNoShowIfCurrent(new ReservationRepository.ReservationNoShowCommand(
+                reservation.reservationId(),
+                reservation.centerId(),
+                reservation.reservationStatus(),
+                now,
+                actorUserId
+        )).orElseThrow(() -> new ApiException(ErrorCode.CONFLICT, "예약 상태가 변경되어 노쇼 처리를 할 수 없습니다."));
+
+        trainerScheduleRepository.decrementCurrentCountIfPositive(reservation.scheduleId(), actorUserId)
+                .orElseThrow(() -> new ApiException(ErrorCode.CONFLICT, "스케줄 정원 카운트 상태가 일치하지 않습니다."));
+
+        return updated;
     }
 
     private void validateCreateRequest(CreateRequest request) {
@@ -265,6 +341,10 @@ public class ReservationService {
     public record CancelRequest(Long reservationId, String cancelReason) {}
 
     public record CompleteRequest(Long reservationId) {}
+
+    public record CheckInRequest(Long reservationId) {}
+
+    public record NoShowRequest(Long reservationId) {}
 
     public record CompleteResult(Reservation reservation, MemberMembership membership, boolean countDeducted) {}
 }

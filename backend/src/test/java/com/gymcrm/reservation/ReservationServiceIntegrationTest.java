@@ -5,6 +5,7 @@ import com.gymcrm.member.Member;
 import com.gymcrm.member.MemberService;
 import com.gymcrm.membership.MemberMembership;
 import com.gymcrm.membership.MemberMembershipRepository;
+import com.gymcrm.membership.MembershipUsageEventRepository;
 import com.gymcrm.membership.MembershipPurchaseService;
 import com.gymcrm.product.Product;
 import com.gymcrm.product.ProductService;
@@ -48,6 +49,9 @@ class ReservationServiceIntegrationTest {
 
     @Autowired
     private MembershipPurchaseService membershipPurchaseService;
+
+    @Autowired
+    private MembershipUsageEventRepository membershipUsageEventRepository;
 
     @Autowired
     private MemberService memberService;
@@ -150,6 +154,11 @@ class ReservationServiceIntegrationTest {
         assertTrue(completeResult.countDeducted());
         assertEquals(remainingBefore - 1, completeResult.membership().remainingCount());
         assertEquals(1, completeResult.membership().usedCount());
+        assertEquals(1, membershipUsageEventRepository.findByReservationId(created.reservationId()).size());
+        assertEquals("RESERVATION_COMPLETE",
+                membershipUsageEventRepository.findByReservationId(created.reservationId()).getFirst().usageEventType());
+        assertEquals(-1,
+                membershipUsageEventRepository.findByReservationId(created.reservationId()).getFirst().deltaCount());
 
         TrainerSchedule reloadedSchedule = trainerScheduleRepository.findById(schedule.scheduleId()).orElseThrow();
         assertEquals(0, reloadedSchedule.currentCount());
@@ -183,6 +192,71 @@ class ReservationServiceIntegrationTest {
 
         assertFalse(completeResult.countDeducted());
         assertEquals(membership.remainingCount(), completeResult.membership().remainingCount());
+        assertTrue(membershipUsageEventRepository.findByReservationId(created.reservationId()).isEmpty());
+    }
+
+    @Test
+    @Transactional
+    void checkInRecordsTimestampAndRejectsRepeatCheckIn() {
+        Member member = createActiveMember();
+        MemberMembership membership = purchaseCountMembership(member);
+        TrainerSchedule schedule = createFutureSchedule("PT", 2);
+        Reservation created = reservationService.create(new ReservationService.CreateRequest(
+                member.memberId(), membership.membershipId(), schedule.scheduleId(), null
+        ));
+
+        Reservation checkedIn = reservationService.checkIn(new ReservationService.CheckInRequest(created.reservationId()));
+        assertEquals("CONFIRMED", checkedIn.reservationStatus());
+        assertTrue(checkedIn.checkedInAt() != null);
+
+        ApiException exception = assertThrows(ApiException.class,
+                () -> reservationService.checkIn(new ReservationService.CheckInRequest(created.reservationId())));
+        assertEquals(com.gymcrm.common.error.ErrorCode.CONFLICT, exception.getErrorCode());
+    }
+
+    @Test
+    @Transactional
+    void noShowIsBlockedBeforeScheduleEndAndAllowedAfterEndWithoutCountDeduction() {
+        Member member = createActiveMember();
+        MemberMembership membership = purchaseCountMembership(member);
+        Integer remainingBefore = membership.remainingCount();
+        TrainerSchedule schedule = createFutureSchedule("GX", 5);
+        Reservation created = reservationService.create(new ReservationService.CreateRequest(
+                member.memberId(), membership.membershipId(), schedule.scheduleId(), null
+        ));
+
+        ApiException beforeEnd = assertThrows(ApiException.class,
+                () -> reservationService.noShow(new ReservationService.NoShowRequest(created.reservationId())));
+        assertEquals(com.gymcrm.common.error.ErrorCode.BUSINESS_RULE, beforeEnd.getErrorCode());
+
+        forceScheduleEnded(schedule.scheduleId());
+        Reservation noShow = reservationService.noShow(new ReservationService.NoShowRequest(created.reservationId()));
+        assertEquals("NO_SHOW", noShow.reservationStatus());
+        assertTrue(noShow.noShowAt() != null);
+        assertTrue(noShow.checkedInAt() == null);
+
+        TrainerSchedule reloadedSchedule = trainerScheduleRepository.findById(schedule.scheduleId()).orElseThrow();
+        assertEquals(0, reloadedSchedule.currentCount());
+        MemberMembership reloadedMembership = memberMembershipRepository.findById(membership.membershipId()).orElseThrow();
+        assertEquals(remainingBefore, reloadedMembership.remainingCount());
+        assertTrue(membershipUsageEventRepository.findByReservationId(created.reservationId()).isEmpty());
+    }
+
+    @Test
+    @Transactional
+    void noShowIsRejectedAfterCheckIn() {
+        Member member = createActiveMember();
+        MemberMembership membership = purchaseCountMembership(member);
+        TrainerSchedule schedule = createFutureSchedule("PT", 2);
+        Reservation created = reservationService.create(new ReservationService.CreateRequest(
+                member.memberId(), membership.membershipId(), schedule.scheduleId(), null
+        ));
+        reservationService.checkIn(new ReservationService.CheckInRequest(created.reservationId()));
+        forceScheduleEnded(schedule.scheduleId());
+
+        ApiException exception = assertThrows(ApiException.class,
+                () -> reservationService.noShow(new ReservationService.NoShowRequest(created.reservationId())));
+        assertEquals(com.gymcrm.common.error.ErrorCode.BUSINESS_RULE, exception.getErrorCode());
     }
 
     @Test
@@ -242,6 +316,22 @@ class ReservationServiceIntegrationTest {
                 "test fixture",
                 1L
         ));
+    }
+
+    private void forceScheduleEnded(Long scheduleId) {
+        OffsetDateTime now = OffsetDateTime.now();
+        jdbcClient.sql("""
+                UPDATE trainer_schedules
+                SET start_at = :startAt,
+                    end_at = :endAt,
+                    updated_at = CURRENT_TIMESTAMP,
+                    updated_by = 1
+                WHERE schedule_id = :scheduleId
+                """)
+                .param("scheduleId", scheduleId)
+                .param("startAt", now.minusHours(2))
+                .param("endAt", now.minusMinutes(10))
+                .update();
     }
 
     private Member createActiveMember() {

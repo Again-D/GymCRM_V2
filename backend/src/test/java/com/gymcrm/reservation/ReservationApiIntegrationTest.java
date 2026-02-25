@@ -130,6 +130,68 @@ class ReservationApiIntegrationTest {
     }
 
     @Test
+    void deskRoleCanCheckInAndNoShowWithPhase8Policies() throws Exception {
+        ensureDeskUser();
+        String deskToken = loginAndGetAccessToken(DESK_LOGIN_ID, DESK_PASSWORD);
+
+        long memberId = insertMemberFixture("P8API회원");
+        long productId = insertProductFixture("PT", "COUNT");
+        long membershipId = insertMembershipFixture(memberId, productId, "PT", "COUNT", 5, 5, 0);
+
+        TrainerSchedule checkInSchedule = createFutureSchedule("PT", 2);
+        long checkInReservationId = jsonLong(mockMvc.perform(post("/api/v1/reservations")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + deskToken)
+                        .contentType("application/json")
+                        .content("""
+                                {"memberId": %d, "membershipId": %d, "scheduleId": %d}
+                                """.formatted(memberId, membershipId, checkInSchedule.scheduleId())))
+                .andExpect(status().isOk())
+                .andReturn(), "/data/reservationId");
+
+        mockMvc.perform(post("/api/v1/reservations/{reservationId}/check-in", checkInReservationId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + deskToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.reservationStatus").value("CONFIRMED"))
+                .andExpect(jsonPath("$.data.checkedInAt").exists());
+
+        mockMvc.perform(post("/api/v1/reservations/{reservationId}/check-in", checkInReservationId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + deskToken))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("CONFLICT"));
+
+        TrainerSchedule noShowSchedule = createFutureSchedule("GX", 10);
+        long noShowReservationId = jsonLong(mockMvc.perform(post("/api/v1/reservations")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + deskToken)
+                        .contentType("application/json")
+                        .content("""
+                                {"memberId": %d, "membershipId": %d, "scheduleId": %d}
+                                """.formatted(memberId, membershipId, noShowSchedule.scheduleId())))
+                .andExpect(status().isOk())
+                .andReturn(), "/data/reservationId");
+
+        mockMvc.perform(post("/api/v1/reservations/{reservationId}/no-show", noShowReservationId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + deskToken))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error.code").value("BUSINESS_RULE"));
+
+        forceScheduleEnded(noShowSchedule.scheduleId());
+
+        mockMvc.perform(post("/api/v1/reservations/{reservationId}/no-show", noShowReservationId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + deskToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.reservationStatus").value("NO_SHOW"))
+                .andExpect(jsonPath("$.data.noShowAt").exists());
+
+        Integer currentCount = jdbcClient.sql("""
+                SELECT current_count FROM trainer_schedules WHERE schedule_id = :scheduleId
+                """)
+                .param("scheduleId", noShowSchedule.scheduleId())
+                .query(Integer.class)
+                .single();
+        org.junit.jupiter.api.Assertions.assertEquals(0, currentCount);
+    }
+
+    @Test
     void unauthenticatedReservationMutationReturns401() throws Exception {
         mockMvc.perform(post("/api/v1/reservations")
                         .contentType("application/json")
@@ -412,5 +474,21 @@ class ReservationApiIntegrationTest {
                 .param("scheduleId", scheduleId)
                 .query(Long.class)
                 .single();
+    }
+
+    private void forceScheduleEnded(Long scheduleId) {
+        OffsetDateTime now = OffsetDateTime.now();
+        jdbcClient.sql("""
+                UPDATE trainer_schedules
+                SET start_at = :startAt,
+                    end_at = :endAt,
+                    updated_at = CURRENT_TIMESTAMP,
+                    updated_by = 1
+                WHERE schedule_id = :scheduleId
+                """)
+                .param("scheduleId", scheduleId)
+                .param("startAt", now.minusHours(2))
+                .param("endAt", now.minusMinutes(10))
+                .update();
     }
 }
