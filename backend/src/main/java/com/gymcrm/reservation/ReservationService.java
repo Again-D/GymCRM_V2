@@ -19,7 +19,6 @@ import java.util.List;
 @Service
 public class ReservationService {
     private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Seoul");
-    private static final long DEFAULT_CENTER_ID = 1L;
 
     private final MemberService memberService;
     private final MemberMembershipRepository memberMembershipRepository;
@@ -48,10 +47,11 @@ public class ReservationService {
     public Reservation create(CreateRequest request) {
         validateCreateRequest(request);
 
+        Long actorCenterId = currentUserProvider.currentCenterId();
         Member member = memberService.get(request.memberId());
         MemberMembership membership = getMembership(request.membershipId());
         TrainerSchedule schedule = getSchedule(request.scheduleId());
-        validateCreateEligibility(member, membership, schedule);
+        validateCreateEligibility(member, membership, schedule, actorCenterId);
         if (reservationRepository.existsConfirmedByMemberAndSchedule(member.memberId(), schedule.scheduleId())) {
             throw new ApiException(ErrorCode.CONFLICT, "동일 회원의 동일 슬롯 중복 예약은 허용되지 않습니다.");
         }
@@ -69,7 +69,7 @@ public class ReservationService {
             }
 
             return reservationRepository.insert(new ReservationRepository.ReservationCreateCommand(
-                    member.centerId(),
+                    actorCenterId,
                     member.memberId(),
                     membership.membershipId(),
                     schedule.scheduleId(),
@@ -85,6 +85,7 @@ public class ReservationService {
 
     @Transactional(readOnly = true)
     public List<Reservation> list(Long memberId, Long scheduleId, String status) {
+        Long actorCenterId = currentUserProvider.currentCenterId();
         String normalizedStatus = status == null || status.isBlank() ? null : status.trim().toUpperCase();
         if (normalizedStatus != null) {
             try {
@@ -93,7 +94,7 @@ public class ReservationService {
                 throw new ApiException(ErrorCode.VALIDATION_ERROR, "status filter is invalid");
             }
         }
-        return reservationRepository.findAll(DEFAULT_CENTER_ID, memberId, scheduleId, normalizedStatus);
+        return reservationRepository.findAll(actorCenterId, memberId, scheduleId, normalizedStatus);
     }
 
     @Transactional(readOnly = true)
@@ -106,7 +107,7 @@ public class ReservationService {
 
     @Transactional(readOnly = true)
     public List<TrainerSchedule> listSchedules() {
-        return trainerScheduleRepository.findAll(DEFAULT_CENTER_ID);
+        return trainerScheduleRepository.findAll(currentUserProvider.currentCenterId());
     }
 
     @Transactional
@@ -126,6 +127,7 @@ public class ReservationService {
 
         Reservation updated = reservationRepository.markCancelledIfCurrent(new ReservationRepository.ReservationCancelCommand(
                 reservation.reservationId(),
+                reservation.centerId(),
                 reservation.reservationStatus(),
                 now,
                 trimToNull(request.cancelReason()),
@@ -158,6 +160,7 @@ public class ReservationService {
 
         Reservation updatedReservation = reservationRepository.markCompletedIfCurrent(new ReservationRepository.ReservationCompleteCommand(
                 reservation.reservationId(),
+                reservation.centerId(),
                 reservation.reservationStatus(),
                 now,
                 actorUserId
@@ -189,9 +192,12 @@ public class ReservationService {
         }
     }
 
-    private void validateCreateEligibility(Member member, MemberMembership membership, TrainerSchedule schedule) {
+    private void validateCreateEligibility(Member member, MemberMembership membership, TrainerSchedule schedule, Long actorCenterId) {
         if (!"ACTIVE".equals(member.memberStatus())) {
             throw new ApiException(ErrorCode.BUSINESS_RULE, "비활성 회원은 예약할 수 없습니다.");
+        }
+        if (!member.centerId().equals(actorCenterId)) {
+            throw new ApiException(ErrorCode.BUSINESS_RULE, "현재 사용자 센터에서만 예약을 생성할 수 있습니다.");
         }
         if (!member.memberId().equals(membership.memberId())) {
             throw new ApiException(ErrorCode.BUSINESS_RULE, "회원과 회원권이 일치하지 않습니다.");
@@ -201,6 +207,9 @@ public class ReservationService {
         }
         if (!"ACTIVE".equals(membership.membershipStatus())) {
             throw new ApiException(ErrorCode.BUSINESS_RULE, "ACTIVE 상태 회원권만 예약에 사용할 수 있습니다.");
+        }
+        if ("COUNT".equals(membership.productTypeSnapshot()) && (membership.remainingCount() == null || membership.remainingCount() <= 0)) {
+            throw new ApiException(ErrorCode.BUSINESS_RULE, "잔여 횟수가 없는 횟수제 회원권은 예약에 사용할 수 없습니다.");
         }
 
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
@@ -221,7 +230,7 @@ public class ReservationService {
     }
 
     private Reservation getReservation(Long reservationId) {
-        return reservationRepository.findById(reservationId)
+        return reservationRepository.findById(reservationId, currentUserProvider.currentCenterId())
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "예약을 찾을 수 없습니다. reservationId=" + reservationId));
     }
 

@@ -720,6 +720,10 @@ export default function App() {
     setMemberPanelError(null);
     setMemberPurchaseError(null);
     setMemberPurchaseMessage(null);
+    setReservationPanelError(null);
+    setReservationPanelMessage(null);
+    setReservationActionSubmittingId(null);
+    setReservationCreateForm({ ...EMPTY_RESERVATION_CREATE_FORM });
     setPurchaseForm({ ...EMPTY_PURCHASE_FORM, startDate: new Date().toISOString().slice(0, 10) });
     setPurchaseProductDetail(null);
     try {

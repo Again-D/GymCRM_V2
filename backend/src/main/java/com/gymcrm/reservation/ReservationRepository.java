@@ -33,12 +33,14 @@ public class ReservationRepository {
                 .single();
     }
 
-    public Optional<Reservation> findById(Long reservationId) {
+    public Optional<Reservation> findById(Long reservationId, Long centerId) {
         return jdbcClient.sql(baseSelect() + """
                 WHERE reservation_id = :reservationId
+                  AND center_id = :centerId
                   AND is_deleted = FALSE
                 """)
                 .param("reservationId", reservationId)
+                .param("centerId", centerId)
                 .query(Reservation.class)
                 .optional();
     }
@@ -102,6 +104,7 @@ public class ReservationRepository {
                     updated_at = CURRENT_TIMESTAMP,
                     updated_by = :actorUserId
                 WHERE reservation_id = :reservationId
+                  AND center_id = :centerId
                   AND reservation_status = :expectedStatus
                   AND is_deleted = FALSE
                 """ + returningClause())
@@ -119,6 +122,7 @@ public class ReservationRepository {
                     updated_at = CURRENT_TIMESTAMP,
                     updated_by = :actorUserId
                 WHERE reservation_id = :reservationId
+                  AND center_id = :centerId
                   AND reservation_status = :expectedStatus
                   AND is_deleted = FALSE
                 """ + returningClause())
@@ -161,6 +165,7 @@ public class ReservationRepository {
 
     public record ReservationCancelCommand(
             Long reservationId,
+            Long centerId,
             String expectedStatus,
             OffsetDateTime cancelledAt,
             String cancelReason,
@@ -169,6 +174,7 @@ public class ReservationRepository {
 
     public record ReservationCompleteCommand(
             Long reservationId,
+            Long centerId,
             String expectedStatus,
             OffsetDateTime completedAt,
             Long actorUserId

@@ -185,6 +185,47 @@ class ReservationServiceIntegrationTest {
         assertEquals(membership.remainingCount(), completeResult.membership().remainingCount());
     }
 
+    @Test
+    @Transactional
+    void createReservationRejectsCountMembershipWithNoRemainingCount() {
+        Member member = createActiveMember();
+        MemberMembership membership = purchaseCountMembership(member);
+        TrainerSchedule schedule = createFutureSchedule("PT", 2);
+
+        MemberMembership exhausted = jdbcClient.sql("""
+                UPDATE member_memberships
+                SET remaining_count = 0,
+                    used_count = COALESCE(total_count, 0),
+                    updated_at = CURRENT_TIMESTAMP,
+                    updated_by = 1
+                WHERE membership_id = :membershipId
+                RETURNING
+                    membership_id, center_id, member_id, product_id, membership_status,
+                    product_name_snapshot, product_category_snapshot, product_type_snapshot,
+                    price_amount_snapshot, purchased_at, start_date, end_date,
+                    total_count, remaining_count, used_count,
+                    hold_days_used, hold_count_used, memo,
+                    created_at, created_by, updated_at, updated_by
+                """)
+                .param("membershipId", membership.membershipId())
+                .query(MemberMembership.class)
+                .single();
+        assertEquals(0, exhausted.remainingCount());
+
+        ApiException exception = assertThrows(ApiException.class, () -> reservationService.create(
+                new ReservationService.CreateRequest(
+                        member.memberId(),
+                        exhausted.membershipId(),
+                        schedule.scheduleId(),
+                        null
+                )
+        ));
+        assertEquals(com.gymcrm.common.error.ErrorCode.BUSINESS_RULE, exception.getErrorCode());
+
+        TrainerSchedule reloadedSchedule = trainerScheduleRepository.findById(schedule.scheduleId()).orElseThrow();
+        assertEquals(0, reloadedSchedule.currentCount());
+    }
+
     private TrainerSchedule createFutureSchedule(String type, int capacity) {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
         OffsetDateTime startAt = OffsetDateTime.now().plusDays(1).withNano(0);

@@ -47,7 +47,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     .filter(AuthUser::isActive)
                     .orElseThrow(() -> new ApiException(com.gymcrm.common.error.ErrorCode.AUTHENTICATION_FAILED, "활성 사용자 정보를 찾을 수 없습니다."));
 
-            AuthenticatedUserPrincipal principal = new AuthenticatedUserPrincipal(user.userId(), user.loginId(), user.roleCode());
+            AuthenticatedUserPrincipal principal = new AuthenticatedUserPrincipal(
+                    user.userId(),
+                    user.centerId(),
+                    user.loginId(),
+                    user.roleCode()
+            );
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                     principal,
                     null,

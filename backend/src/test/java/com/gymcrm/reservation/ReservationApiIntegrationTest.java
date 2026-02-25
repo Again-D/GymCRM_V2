@@ -153,6 +153,36 @@ class ReservationApiIntegrationTest {
                 .andExpect(jsonPath("$.success").value(true));
     }
 
+    @Test
+    void deskRoleCannotReadOrMutateReservationFromAnotherCenter() throws Exception {
+        ensureDeskUser();
+        String deskToken = loginAndGetAccessToken(DESK_LOGIN_ID, DESK_PASSWORD);
+
+        long otherCenterId = insertCenterFixture();
+        long otherMemberId = insertMemberFixture(otherCenterId, "P7API타센터회원");
+        long otherProductId = insertProductFixture(otherCenterId, "PT", "COUNT");
+        long otherMembershipId = insertMembershipFixture(otherCenterId, otherMemberId, otherProductId, "PT", "COUNT", 5, 5, 0);
+        TrainerSchedule otherSchedule = createFutureSchedule(otherCenterId, "PT", 2);
+        long otherReservationId = insertReservationFixture(otherCenterId, otherMemberId, otherMembershipId, otherSchedule.scheduleId());
+
+        mockMvc.perform(get("/api/v1/reservations/{reservationId}", otherReservationId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + deskToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
+
+        mockMvc.perform(post("/api/v1/reservations/{reservationId}/cancel", otherReservationId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + deskToken)
+                        .contentType("application/json")
+                        .content("{\"cancelReason\":\"cross center\"}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
+
+        mockMvc.perform(post("/api/v1/reservations/{reservationId}/complete", otherReservationId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + deskToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
+    }
+
     private void ensureDeskUser() {
         int updated = jdbcClient.sql("""
                 UPDATE users
@@ -218,11 +248,15 @@ class ReservationApiIntegrationTest {
     }
 
     private TrainerSchedule createFutureSchedule(String type, int capacity) {
+        return createFutureSchedule(CENTER_ID, type, capacity);
+    }
+
+    private TrainerSchedule createFutureSchedule(long centerId, String type, int capacity) {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
         OffsetDateTime startAt = OffsetDateTime.now().plusDays(1).withNano(0);
         OffsetDateTime endAt = startAt.plusMinutes("PT".equals(type) ? 50 : 60);
         return trainerScheduleRepository.insert(new TrainerScheduleRepository.TrainerScheduleCreateCommand(
-                CENTER_ID,
+                centerId,
                 type,
                 "P7API트레이너-" + suffix,
                 "P7API슬롯-" + suffix,
@@ -236,6 +270,10 @@ class ReservationApiIntegrationTest {
     }
 
     private long insertMemberFixture(String prefix) {
+        return insertMemberFixture(CENTER_ID, prefix);
+    }
+
+    private long insertMemberFixture(long centerId, String prefix) {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
         return jdbcClient.sql("""
                 INSERT INTO members (
@@ -248,7 +286,7 @@ class ReservationApiIntegrationTest {
                 )
                 RETURNING member_id
                 """)
-                .param("centerId", CENTER_ID)
+                .param("centerId", centerId)
                 .param("memberName", prefix + "-" + suffix)
                 .param("phone", "0105" + suffix.substring(0, 6))
                 .query(Long.class)
@@ -256,6 +294,10 @@ class ReservationApiIntegrationTest {
     }
 
     private long insertProductFixture(String productCategory, String productType) {
+        return insertProductFixture(CENTER_ID, productCategory, productType);
+    }
+
+    private long insertProductFixture(long centerId, String productCategory, String productType) {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
         return jdbcClient.sql("""
                 INSERT INTO products (
@@ -270,7 +312,7 @@ class ReservationApiIntegrationTest {
                 )
                 RETURNING product_id
                 """)
-                .param("centerId", CENTER_ID)
+                .param("centerId", centerId)
                 .param("productName", "P7API상품-" + suffix)
                 .param("productCategory", productCategory)
                 .param("productType", productType)
@@ -282,6 +324,7 @@ class ReservationApiIntegrationTest {
     }
 
     private long insertMembershipFixture(
+            long centerId,
             long memberId,
             long productId,
             String productCategory,
@@ -309,7 +352,7 @@ class ReservationApiIntegrationTest {
                 )
                 RETURNING membership_id
                 """)
-                .param("centerId", CENTER_ID)
+                .param("centerId", centerId)
                 .param("memberId", memberId)
                 .param("productId", productId)
                 .param("productNameSnapshot", "P7API회원권")
@@ -319,6 +362,54 @@ class ReservationApiIntegrationTest {
                 .param("totalCount", totalCount)
                 .param("remainingCount", remainingCount)
                 .param("usedCount", usedCount)
+                .query(Long.class)
+                .single();
+    }
+
+    private long insertMembershipFixture(
+            long memberId,
+            long productId,
+            String productCategory,
+            String productType,
+            Integer totalCount,
+            Integer remainingCount,
+            int usedCount
+    ) {
+        return insertMembershipFixture(CENTER_ID, memberId, productId, productCategory, productType, totalCount, remainingCount, usedCount);
+    }
+
+    private long insertCenterFixture() {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        return jdbcClient.sql("""
+                INSERT INTO centers (
+                    center_name, is_active, created_by, updated_by
+                )
+                VALUES (
+                    :centerName, TRUE, 1, 1
+                )
+                RETURNING center_id
+                """)
+                .param("centerName", "P7API타센터-" + suffix)
+                .query(Long.class)
+                .single();
+    }
+
+    private long insertReservationFixture(long centerId, long memberId, long membershipId, long scheduleId) {
+        return jdbcClient.sql("""
+                INSERT INTO reservations (
+                    center_id, member_id, membership_id, schedule_id,
+                    reservation_status, reserved_at, created_by, updated_by
+                )
+                VALUES (
+                    :centerId, :memberId, :membershipId, :scheduleId,
+                    'CONFIRMED', CURRENT_TIMESTAMP, 1, 1
+                )
+                RETURNING reservation_id
+                """)
+                .param("centerId", centerId)
+                .param("memberId", memberId)
+                .param("membershipId", membershipId)
+                .param("scheduleId", scheduleId)
                 .query(Long.class)
                 .single();
     }
