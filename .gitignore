@@ -28,3 +28,4 @@ frontend/vite.config.d.ts
 
 # Etc
 .tooling/
+.worktrees
