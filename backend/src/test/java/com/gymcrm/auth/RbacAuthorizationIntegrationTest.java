@@ -246,18 +246,26 @@ class RbacAuthorizationIntegrationTest {
     }
 
     private void ensureDeskUser() {
-        Integer count = jdbcClient.sql("""
-                SELECT COUNT(*)
-                FROM users
+        int updated = jdbcClient.sql("""
+                UPDATE users
+                SET password_hash = :passwordHash,
+                    display_name = :displayName,
+                    role_code = 'ROLE_DESK',
+                    user_status = 'ACTIVE',
+                    is_deleted = FALSE,
+                    deleted_at = NULL,
+                    deleted_by = NULL,
+                    updated_at = CURRENT_TIMESTAMP,
+                    updated_by = 0
                 WHERE center_id = :centerId
                   AND login_id = :loginId
-                  AND is_deleted = FALSE
                 """)
                 .param("centerId", CENTER_ID)
                 .param("loginId", DESK_LOGIN_ID)
-                .query(Integer.class)
-                .single();
-        if (count != null && count > 0) {
+                .param("passwordHash", passwordEncoder.encode(DESK_PASSWORD))
+                .param("displayName", "Desk User")
+                .update();
+        if (updated > 0) {
             return;
         }
 
