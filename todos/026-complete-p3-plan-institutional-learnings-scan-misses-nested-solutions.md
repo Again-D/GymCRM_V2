@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p3
 issue_id: "026"
 tags: [code-review, planning, documentation, process]
@@ -57,7 +57,7 @@ dependencies: []
 
 ## Recommended Action
 
-**To be filled during triage.** 우선 Option 1로 현재 계획 문서의 조사 범위 한계를 정정하고, 필요하면 Option 2로 워크플로우 수준 개선을 진행한다.
+Option 1 적용 완료. Institutional Learnings 섹션에 `docs/solutions/` 하위 디렉터리 문서 존재 및 초기 top-level glob 누락 사실을 반영했다.
 
 ## Technical Details
 
@@ -77,9 +77,9 @@ dependencies: []
 
 ## Acceptance Criteria
 
-- [ ] 계획 문서의 Institutional Learnings 섹션 문구가 사실과 일치하도록 수정된다
-- [ ] `docs/solutions` 탐색 방식이 재귀 디렉터리 구조를 고려하도록 보정된다 (문서 또는 워크플로우 수준)
-- [ ] 관련 학습 문서가 실제로 무관하면 그 판단 근거가 간단히 기록된다
+- [x] 계획 문서의 Institutional Learnings 섹션 문구가 사실과 일치하도록 수정된다
+- [x] `docs/solutions` 탐색 방식이 재귀 디렉터리 구조를 고려하도록 보정된다 (문서 또는 워크플로우 수준)
+- [x] 관련 학습 문서가 실제로 무관하면 그 판단 근거가 간단히 기록된다
 
 ## Work Log
 
@@ -95,3 +95,11 @@ dependencies: []
 **Learnings:**
 - top-level glob만 사용하면 `docs/solutions/<category>/*.md` 구조를 놓칠 수 있음
 
+### 2026-02-25 - Completed
+
+**By:** Codex
+
+**Actions:**
+- 계획 문서 Institutional Learnings 섹션을 재확인
+- 하위 디렉터리 솔루션 문서 존재 및 초기 탐색 누락 설명 문구 반영 상태 확인
+- todo 상태를 `complete`로 전환

@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p2
 issue_id: "025"
 tags: [code-review, planning, frontend, quality, reservation]
@@ -61,7 +61,7 @@ dependencies: []
 
 ## Recommended Action
 
-**To be filled during triage.** 우선 Option 1로 계획 문서에 `check-in/no-show`를 즉시 반영하고, 필요 시 Option 2를 보강한다.
+Option 1 적용 완료. 계획 문서에 예약 액션 parity 범위를 `생성/체크인/완료/취소/노쇼`로 명시 반영했다.
 
 ## Technical Details
 
@@ -81,9 +81,9 @@ dependencies: []
 
 ## Acceptance Criteria
 
-- [ ] 계획 문서의 예약 관련 플로우/회귀 시나리오에 `체크인`과 `노쇼`가 명시된다
-- [ ] 수동 회귀 테스트 항목이 `예약 생성/체크인/완료/취소/노쇼` 수준으로 구체화된다
-- [ ] “기능 변경 없음” 기준에서 예약 액션 버튼 정책/메시지 parity가 검증 범위에 포함된다
+- [x] 계획 문서의 예약 관련 플로우/회귀 시나리오에 `체크인`과 `노쇼`가 명시된다
+- [x] 수동 회귀 테스트 항목이 `예약 생성/체크인/완료/취소/노쇼` 수준으로 구체화된다
+- [x] “기능 변경 없음” 기준에서 예약 액션 버튼 정책/메시지 parity가 검증 범위에 포함된다
 
 ## Work Log
 
@@ -99,3 +99,11 @@ dependencies: []
 **Learnings:**
 - 리팩터링 계획은 기능 동등성 목표가 강한 만큼, 최근 추가된 액션의 명시 누락이 곧 테스트 누락으로 이어질 가능성이 높음
 
+### 2026-02-25 - Completed
+
+**By:** Codex
+
+**Actions:**
+- 계획 문서의 Interaction Graph / Integration Test Scenarios / Primary Flows / Quality Gates를 확인
+- 예약 액션 parity 범위에 `체크인`, `노쇼`가 포함된 상태임을 검증
+- todo 상태를 `complete`로 전환
