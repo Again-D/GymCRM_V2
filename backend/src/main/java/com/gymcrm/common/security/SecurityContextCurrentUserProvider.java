@@ -29,6 +29,16 @@ public class SecurityContextCurrentUserProvider implements CurrentUserProvider {
         return authentication.getName();
     }
 
+    @Override
+    public Long currentCenterId() {
+        Authentication authentication = requireAuthentication();
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof AuthenticatedUserPrincipal p) {
+            return p.centerId();
+        }
+        throw new IllegalStateException("Authenticated principal does not expose centerId");
+    }
+
     private Authentication requireAuthentication() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated() || authentication instanceof AnonymousAuthenticationToken) {
@@ -37,5 +47,5 @@ public class SecurityContextCurrentUserProvider implements CurrentUserProvider {
         return authentication;
     }
 
-    public record AuthenticatedUserPrincipal(Long userId, String username, String roleCode) {}
+    public record AuthenticatedUserPrincipal(Long userId, Long centerId, String username, String roleCode) {}
 }

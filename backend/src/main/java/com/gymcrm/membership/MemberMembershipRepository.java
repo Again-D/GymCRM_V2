@@ -143,6 +143,34 @@ public class MemberMembershipRepository {
                 .single();
     }
 
+    public Optional<MemberMembership> consumeOneCountIfEligible(Long membershipId, Long actorUserId) {
+        return jdbcClient.sql("""
+                UPDATE member_memberships
+                SET
+                    remaining_count = remaining_count - 1,
+                    used_count = used_count + 1,
+                    updated_at = CURRENT_TIMESTAMP,
+                    updated_by = :actorUserId
+                WHERE membership_id = :membershipId
+                  AND membership_status = 'ACTIVE'
+                  AND product_type_snapshot = 'COUNT'
+                  AND remaining_count IS NOT NULL
+                  AND remaining_count > 0
+                  AND is_deleted = FALSE
+                RETURNING
+                    membership_id, center_id, member_id, product_id, membership_status,
+                    product_name_snapshot, product_category_snapshot, product_type_snapshot,
+                    price_amount_snapshot, purchased_at, start_date, end_date,
+                    total_count, remaining_count, used_count,
+                    hold_days_used, hold_count_used, memo,
+                    created_at, created_by, updated_at, updated_by
+                """)
+                .param("membershipId", membershipId)
+                .param("actorUserId", actorUserId)
+                .query(MemberMembership.class)
+                .optional();
+    }
+
     public record MemberMembershipCreateCommand(
             Long centerId,
             Long memberId,
