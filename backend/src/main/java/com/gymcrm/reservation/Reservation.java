@@ -12,6 +12,8 @@ public record Reservation(
         OffsetDateTime reservedAt,
         OffsetDateTime cancelledAt,
         OffsetDateTime completedAt,
+        OffsetDateTime noShowAt,
+        OffsetDateTime checkedInAt,
         String cancelReason,
         String memo,
         OffsetDateTime createdAt,

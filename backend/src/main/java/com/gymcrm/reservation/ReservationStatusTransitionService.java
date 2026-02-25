@@ -41,9 +41,14 @@ public class ReservationStatusTransitionService {
 
     private static Map<ReservationStatus, Set<ReservationStatus>> buildAllowedTransitions() {
         Map<ReservationStatus, Set<ReservationStatus>> transitions = new EnumMap<>(ReservationStatus.class);
-        transitions.put(ReservationStatus.CONFIRMED, EnumSet.of(ReservationStatus.CANCELLED, ReservationStatus.COMPLETED));
+        transitions.put(ReservationStatus.CONFIRMED, EnumSet.of(
+                ReservationStatus.CANCELLED,
+                ReservationStatus.COMPLETED,
+                ReservationStatus.NO_SHOW
+        ));
         transitions.put(ReservationStatus.CANCELLED, EnumSet.noneOf(ReservationStatus.class));
         transitions.put(ReservationStatus.COMPLETED, EnumSet.noneOf(ReservationStatus.class));
+        transitions.put(ReservationStatus.NO_SHOW, EnumSet.noneOf(ReservationStatus.class));
         return transitions;
     }
 }

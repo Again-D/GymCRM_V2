@@ -3,5 +3,6 @@ package com.gymcrm.reservation;
 public enum ReservationStatus {
     CONFIRMED,
     CANCELLED,
-    COMPLETED
+    COMPLETED,
+    NO_SHOW
 }

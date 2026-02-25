@@ -88,6 +88,20 @@ public class ReservationController {
         return ApiResponse.success(CompleteReservationResponse.from(result), "예약 완료 처리되었습니다.");
     }
 
+    @PostMapping("/{reservationId}/check-in")
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    public ApiResponse<ReservationResponse> checkIn(@PathVariable Long reservationId) {
+        Reservation reservation = reservationService.checkIn(new ReservationService.CheckInRequest(reservationId));
+        return ApiResponse.success(ReservationResponse.from(reservation), "체크인 처리되었습니다.");
+    }
+
+    @PostMapping("/{reservationId}/no-show")
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    public ApiResponse<ReservationResponse> noShow(@PathVariable Long reservationId) {
+        Reservation reservation = reservationService.noShow(new ReservationService.NoShowRequest(reservationId));
+        return ApiResponse.success(ReservationResponse.from(reservation), "노쇼 처리되었습니다.");
+    }
+
     public record CreateReservationRequest(
             @NotNull(message = "memberId is required") Long memberId,
             @NotNull(message = "membershipId is required") Long membershipId,
@@ -107,6 +121,8 @@ public class ReservationController {
             OffsetDateTime reservedAt,
             OffsetDateTime cancelledAt,
             OffsetDateTime completedAt,
+            OffsetDateTime noShowAt,
+            OffsetDateTime checkedInAt,
             String cancelReason,
             String memo
     ) {
@@ -121,6 +137,8 @@ public class ReservationController {
                     reservation.reservedAt(),
                     reservation.cancelledAt(),
                     reservation.completedAt(),
+                    reservation.noShowAt(),
+                    reservation.checkedInAt(),
                     reservation.cancelReason(),
                     reservation.memo()
             );

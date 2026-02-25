@@ -17,6 +17,7 @@ class ReservationStatusTransitionServiceTest {
     void allowsConfiguredTransitions() {
         assertTrue(service.canTransition(ReservationStatus.CONFIRMED, ReservationStatus.CANCELLED));
         assertTrue(service.canTransition(ReservationStatus.CONFIRMED, ReservationStatus.COMPLETED));
+        assertTrue(service.canTransition(ReservationStatus.CONFIRMED, ReservationStatus.NO_SHOW));
     }
 
     @Test
@@ -24,6 +25,7 @@ class ReservationStatusTransitionServiceTest {
         assertFalse(service.canTransition(ReservationStatus.CONFIRMED, ReservationStatus.CONFIRMED));
         assertFalse(service.canTransition(ReservationStatus.CANCELLED, ReservationStatus.CONFIRMED));
         assertFalse(service.canTransition(ReservationStatus.COMPLETED, ReservationStatus.CONFIRMED));
+        assertFalse(service.canTransition(ReservationStatus.NO_SHOW, ReservationStatus.CONFIRMED));
     }
 
     @Test

@@ -266,10 +266,12 @@ type ReservationRecord = {
   memberId: number;
   membershipId: number;
   scheduleId: number;
-  reservationStatus: "CONFIRMED" | "CANCELLED" | "COMPLETED";
+  reservationStatus: "CONFIRMED" | "CANCELLED" | "COMPLETED" | "NO_SHOW";
   reservedAt: string;
   cancelledAt: string | null;
   completedAt: string | null;
+  noShowAt: string | null;
+  checkedInAt: string | null;
   cancelReason: string | null;
   memo: string | null;
 };
@@ -1380,6 +1382,43 @@ export default function App() {
     }
   }
 
+  async function handleReservationCheckIn(reservationId: number) {
+    if (!selectedMember) {
+      return;
+    }
+    setReservationActionSubmittingId(reservationId);
+    setReservationPanelError(null);
+    setReservationPanelMessage(null);
+    try {
+      const response = await apiPost<ReservationRecord>(`/api/v1/reservations/${reservationId}/check-in`);
+      setReservationPanelMessage(response.message);
+      await loadReservationsForMember(selectedMember.memberId);
+    } catch (error) {
+      setReservationPanelError(errorMessage(error));
+    } finally {
+      setReservationActionSubmittingId(null);
+    }
+  }
+
+  async function handleReservationNoShow(reservationId: number) {
+    if (!selectedMember) {
+      return;
+    }
+    setReservationActionSubmittingId(reservationId);
+    setReservationPanelError(null);
+    setReservationPanelMessage(null);
+    try {
+      const response = await apiPost<ReservationRecord>(`/api/v1/reservations/${reservationId}/no-show`);
+      setReservationPanelMessage(response.message);
+      await loadReservationsForMember(selectedMember.memberId);
+      await loadReservationSchedules();
+    } catch (error) {
+      setReservationPanelError(errorMessage(error));
+    } finally {
+      setReservationActionSubmittingId(null);
+    }
+  }
+
   function startCreateMember() {
     setMemberFormMode("create");
     setSelectedMemberId(null);
@@ -2415,15 +2454,17 @@ export default function App() {
                             <th>회원권ID</th>
                             <th>상태</th>
                             <th>예약시각</th>
+                            <th>체크인시각</th>
                             <th>취소시각</th>
                             <th>완료시각</th>
+                            <th>노쇼시각</th>
                             <th>액션</th>
                           </tr>
                         </thead>
                         <tbody>
                           {selectedMemberReservations.length === 0 ? (
                             <tr>
-                              <td colSpan={8} className="empty-cell">
+                              <td colSpan={10} className="empty-cell">
                                 선택 회원의 예약 이력이 없습니다.
                               </td>
                             </tr>
@@ -2431,6 +2472,12 @@ export default function App() {
                             selectedMemberReservations.map((reservation) => {
                               const isPendingAction = reservationActionSubmittingId === reservation.reservationId;
                               const canMutate = reservation.reservationStatus === "CONFIRMED";
+                              const schedule = reservationSchedules.find((item) => item.scheduleId === reservation.scheduleId);
+                              const nowMs = Date.now();
+                              const scheduleEndMs = schedule ? Date.parse(schedule.endAt) : Number.NaN;
+                              const canNoShowByTime = Number.isFinite(scheduleEndMs) && scheduleEndMs <= nowMs;
+                              const canCheckIn = canMutate && !reservation.checkedInAt;
+                              const canNoShow = canMutate && !reservation.checkedInAt && canNoShowByTime;
                               return (
                                 <tr key={reservation.reservationId}>
                                   <td>{reservation.reservationId}</td>
@@ -2438,10 +2485,27 @@ export default function App() {
                                   <td>{reservation.membershipId}</td>
                                   <td>{reservation.reservationStatus}</td>
                                   <td>{formatDateTime(reservation.reservedAt)}</td>
+                                  <td>{formatDateTime(reservation.checkedInAt)}</td>
                                   <td>{formatDateTime(reservation.cancelledAt)}</td>
                                   <td>{formatDateTime(reservation.completedAt)}</td>
+                                  <td>{formatDateTime(reservation.noShowAt)}</td>
                                   <td>
                                     <div className="inline-actions">
+                                      <button
+                                        type="button"
+                                        className="secondary-button"
+                                        disabled={!canCheckIn || isPendingAction}
+                                        onClick={() => void handleReservationCheckIn(reservation.reservationId)}
+                                        title={
+                                          reservation.checkedInAt
+                                            ? "이미 체크인 처리됨"
+                                            : reservation.reservationStatus !== "CONFIRMED"
+                                              ? "CONFIRMED 예약만 체크인 가능"
+                                              : undefined
+                                        }
+                                      >
+                                        {isPendingAction ? "처리 중..." : "체크인"}
+                                      </button>
                                       <button
                                         type="button"
                                         className="secondary-button"
@@ -2458,7 +2522,34 @@ export default function App() {
                                       >
                                         취소
                                       </button>
+                                      <button
+                                        type="button"
+                                        className="secondary-button"
+                                        disabled={!canNoShow || isPendingAction}
+                                        onClick={() => void handleReservationNoShow(reservation.reservationId)}
+                                        title={
+                                          reservation.checkedInAt
+                                            ? "체크인된 예약은 노쇼 처리 불가"
+                                            : reservation.reservationStatus !== "CONFIRMED"
+                                              ? "CONFIRMED 예약만 노쇼 처리 가능"
+                                              : !canNoShowByTime
+                                                ? "수업 종료 시간 이후에만 노쇼 처리 가능"
+                                                : undefined
+                                        }
+                                      >
+                                        {isPendingAction ? "처리 중..." : "노쇼"}
+                                      </button>
                                     </div>
+                                    {reservation.checkedInAt ? (
+                                      <p className="muted-text compact-inline-help">
+                                        체크인됨: 노쇼 처리 불가
+                                      </p>
+                                    ) : null}
+                                    {canMutate && !canNoShowByTime ? (
+                                      <p className="muted-text compact-inline-help">
+                                        노쇼는 종료 후 가능
+                                      </p>
+                                    ) : null}
                                   </td>
                                 </tr>
                               );
