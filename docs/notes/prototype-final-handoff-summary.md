@@ -173,3 +173,5 @@ See:
   - `/Users/abc/projects/GymCRM_V2/docs/notes/prototype-commit-strategy.md`
 - PR 생성 전 본문 초안 참고:
   - `/Users/abc/projects/GymCRM_V2/docs/notes/prototype-pr-body-draft.md`
+- `main` 최신 통합 상태(Phase 5~8, PR #6/#7 반영) 요약:
+  - `/Users/abc/projects/GymCRM_V2/docs/notes/main-branch-release-change-summary-2026-02-25.md`
