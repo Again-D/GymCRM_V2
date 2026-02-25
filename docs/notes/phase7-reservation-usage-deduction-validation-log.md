@@ -103,13 +103,48 @@ Confirmed via SQL ✅
 - Schedule counts restored:
   - `trainer_schedules.schedule_id IN (1,33)` → `current_count=0`
 
+### 6) Manual API error-path validation (`P7-5`)
+Runtime:
+- backend `dev + jwt`, `8084`
+- helper scripts (local only, not committed): `/tmp/p7_manual_api_checks.sh`, `/tmp/p7_capacity_conflict_check.sh`
+
+Validated cases ✅
+- `membershipId` 누락 요청 차단
+  - `POST /api/v1/reservations` with `{memberId, scheduleId}` only
+  - `400 VALIDATION_ERROR`
+  - 응답 헤더 `X-Trace-Id`와 본문 `traceId` 동시 확인
+- 회원-회원권 소유 불일치 차단
+  - `memberId=263`, `membershipId=261` (타 회원 소유)
+  - `422 BUSINESS_RULE`
+- 동일 회원 동일 슬롯 중복 예약 차단
+  - 동일 payload 재호출
+  - `409 CONFLICT`
+- 정원 초과 슬롯 예약 차단 (`capacity=1`)
+  - `schedule_id=1`을 먼저 점유 후 타 회원으로 재시도
+  - `409 CONFLICT`, detail=`예약 가능한 정원이 없습니다.`
+
+Traceability ✅
+- 위 4개 에러 응답 모두 `X-Trace-Id` 헤더 + 본문 `traceId` 필드 확인
+
+### 7) Frontend DESK UX consistency check (`P7-5`)
+Browser validation (`agent-browser`) ✅
+- `desk-user` 로그인 성공
+- 사이드바 `예약 관리` 탭 접근 가능 (백엔드 RBAC의 DESK 허용과 정렬)
+- `상품 관리` 탭에서 변경 UX 제한 유지 확인:
+  - `신규 등록` disabled
+  - 상품 폼/저장 버튼 disabled
+
+Result:
+- 프론트 UX와 백엔드 RBAC 정책이 모순되지 않음 (상품 변경 제한 유지 + 예약 업무 허용)
+
 ## Current Status
 - `P7-1`: done 수준 (schema + dev seed + Flyway/SQL 검증 완료)
 - `P7-2`: done 수준 (상태전이 + create/cancel/complete 서비스 + COUNT 차감 트랜잭션 구현/테스트)
 - `P7-3`: done 수준 (백엔드 Controller/DTO/RBAC + 자동 통합검증 완료)
-- `P7-4`: in progress (프론트 예약 탭 구현 + 브라우저/SQL 핵심 흐름 검증 완료, 문서/체크리스트 반영 중)
+- `P7-4`: done 수준 (프론트 예약 탭 구현 + 브라우저/SQL 핵심 흐름 검증 완료)
+- `P7-5`: done 수준 (수동 에러 케이스/traceId/DESK UX 검증 + 문서 반영 완료)
 
 ## Next Recommended Step
-1. Phase 7 계획서 acceptance/quality gate 체크 반영
-2. `P7-4` 변경분 커밋 정리
-3. `P7-5` 문서/QA 마무리 (필요 시 추가 E2E/스크린샷/solution note)
+1. Phase 7 브랜치 최종 리뷰 및 PR 준비
+2. 필요 시 예약 탭 스크린샷/데모 아티팩트 추가
+3. Phase 7 학습 문서(`docs/solutions/`) 추가 여부 결정

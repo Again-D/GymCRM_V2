@@ -1,7 +1,7 @@
 ---
 title: feat: Phase 7 예약(PT/GX) 및 횟수제 사용 차감 기반 구현
 type: feat
-status: active
+status: completed
 date: 2026-02-25
 origin: docs/brainstorms/2026-02-23-gym-crm-product-brainstorm.md
 ---
@@ -416,9 +416,9 @@ Deliverables:
 
 - [x] 관리자 포털(`jwt` 모드)에서 `예약 관리` 탭으로 예약 생성/조회/취소/완료가 가능하다
 - [x] `ROLE_CENTER_ADMIN`, `ROLE_DESK`는 예약 생성/취소/완료를 수행할 수 있다 (Phase 7 최소 정책)
-- [ ] 예약 생성 요청은 `membershipId`를 필수로 포함하며, 회원-회원권 소유 불일치 요청은 차단된다 (`409` 또는 `400`)
-- [ ] 동일 회원 동일 슬롯 중복 예약이 차단된다 (`409`)
-- [ ] 정원 초과 슬롯 예약이 차단된다 (`409`)
+- [x] 예약 생성 요청은 `membershipId`를 필수로 포함하며, 회원-회원권 소유 불일치 요청은 차단된다 (`400 VALIDATION_ERROR` / `422 BUSINESS_RULE`)
+- [x] 동일 회원 동일 슬롯 중복 예약이 차단된다 (`409`)
+- [x] 정원 초과 슬롯 예약이 차단된다 (`409`)
 - [x] 예약 완료 시 COUNT 회원권 잔여횟수가 정확히 1 감소한다
 - [x] 예약 취소/완료 상태 전이가 비정상 요청에서 차단된다 (`409`)
 
@@ -426,8 +426,8 @@ Deliverables:
 
 - [x] 예약 완료 + 횟수 차감은 단일 트랜잭션으로 처리된다 (부분 실패 롤백)
 - [x] `trainer_schedules.current_count`가 `CONFIRMED` 예약 수와 일관되게 유지된다 (create/cancel/complete)
-- [ ] 에러 응답은 기존 표준(`traceId` 포함)과 일관된다
-- [ ] 프론트 `ROLE_DESK` UX가 백엔드 RBAC와 모순되지 않는다
+- [x] 에러 응답은 기존 표준(`traceId` 포함)과 일관된다
+- [x] 프론트 `ROLE_DESK` UX가 백엔드 RBAC와 모순되지 않는다
 
 ### Quality Gates
 
