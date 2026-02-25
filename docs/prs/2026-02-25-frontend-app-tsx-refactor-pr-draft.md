@@ -47,6 +47,16 @@
 
 - No additional operational monitoring required: frontend-only UI structure refactor with no backend/API contract changes.
 
+## Screenshots
+
+### Center Admin (JWT)
+
+![Center Admin Member Tab](https://raw.githubusercontent.com/Again-D/GymCRM_V2/codex/refactor-frontend-app-tsx-component-extraction/docs/prs/assets/2026-02-25-center-admin-member-tab.png)
+
+### Desk Role Restriction (JWT)
+
+![Desk Product Restrictions](https://raw.githubusercontent.com/Again-D/GymCRM_V2/codex/refactor-frontend-app-tsx-component-extraction/docs/prs/assets/2026-02-25-desk-product-restrictions.png)
+
 ## Commits
 
 - `5f0053a` `refactor(frontend): extract app tabs into feature components`
