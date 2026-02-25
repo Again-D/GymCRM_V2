@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { routes } from "./app/routes";
 import { ApiClientError, apiGet, apiPatch, apiPost, configureApiAuth } from "./shared/api/client";
 
-type NavSectionKey = "dashboard" | "members" | "memberships" | "products";
+type NavSectionKey = "dashboard" | "members" | "memberships" | "reservations" | "products";
 type SecurityMode = "unknown" | "prototype" | "jwt";
 
 type HealthPayload = {
@@ -247,6 +247,48 @@ type MembershipActionDraft = {
   refundPaymentMemo: string;
 };
 
+type ReservationScheduleSummary = {
+  scheduleId: number;
+  centerId: number;
+  scheduleType: "PT" | "GX";
+  trainerName: string;
+  slotTitle: string;
+  startAt: string;
+  endAt: string;
+  capacity: number;
+  currentCount: number;
+  memo: string | null;
+};
+
+type ReservationRecord = {
+  reservationId: number;
+  centerId: number;
+  memberId: number;
+  membershipId: number;
+  scheduleId: number;
+  reservationStatus: "CONFIRMED" | "CANCELLED" | "COMPLETED";
+  reservedAt: string;
+  cancelledAt: string | null;
+  completedAt: string | null;
+  cancelReason: string | null;
+  memo: string | null;
+};
+
+type ReservationCompleteResponse = {
+  reservation: ReservationRecord;
+  membershipId: number;
+  membershipStatus: string;
+  remainingCount: number | null;
+  usedCount: number;
+  countDeducted: boolean;
+};
+
+type ReservationCreateFormState = {
+  scheduleId: string;
+  membershipId: string;
+  memo: string;
+};
+
 const EMPTY_MEMBER_FORM: MemberFormState = {
   memberName: "",
   phone: "",
@@ -282,6 +324,12 @@ const EMPTY_PURCHASE_FORM: PurchaseFormState = {
   paymentMethod: "CASH",
   membershipMemo: "",
   paymentMemo: ""
+};
+
+const EMPTY_RESERVATION_CREATE_FORM: ReservationCreateFormState = {
+  scheduleId: "",
+  membershipId: "",
+  memo: ""
 };
 
 function createDefaultMembershipActionDraft(): MembershipActionDraft {
@@ -363,6 +411,13 @@ function formatCurrency(amount: number): string {
     currency: "KRW",
     maximumFractionDigits: 0
   }).format(amount);
+}
+
+function formatDateTime(dateTimeText: string | null): string {
+  if (!dateTimeText) {
+    return "-";
+  }
+  return dateTimeText.replace("T", " ").replace("Z", " UTC");
 }
 
 function errorMessage(error: unknown): string {
@@ -565,6 +620,15 @@ export default function App() {
   const [membershipActionErrorById, setMembershipActionErrorById] = useState<Record<number, string>>({});
   const [membershipRefundPreviewById, setMembershipRefundPreviewById] = useState<Record<number, RefundCalculationApi>>({});
   const [membershipRefundPreviewLoadingId, setMembershipRefundPreviewLoadingId] = useState<number | null>(null);
+  const [reservationSchedules, setReservationSchedules] = useState<ReservationScheduleSummary[]>([]);
+  const [reservationSchedulesLoading, setReservationSchedulesLoading] = useState(false);
+  const [reservationRowsByMemberId, setReservationRowsByMemberId] = useState<Record<number, ReservationRecord[]>>({});
+  const [reservationLoading, setReservationLoading] = useState(false);
+  const [reservationCreateForm, setReservationCreateForm] = useState<ReservationCreateFormState>(EMPTY_RESERVATION_CREATE_FORM);
+  const [reservationCreateSubmitting, setReservationCreateSubmitting] = useState(false);
+  const [reservationActionSubmittingId, setReservationActionSubmittingId] = useState<number | null>(null);
+  const [reservationPanelMessage, setReservationPanelMessage] = useState<string | null>(null);
+  const [reservationPanelError, setReservationPanelError] = useState<string | null>(null);
 
   const [productFilters, setProductFilters] = useState<ProductFilters>({ category: "", status: "" });
   const [products, setProducts] = useState<ProductSummary[]>([]);
@@ -611,6 +675,11 @@ export default function App() {
     setMembershipActionMessageById({});
     setMembershipActionErrorById({});
     setMembershipRefundPreviewById({});
+    setReservationSchedules([]);
+    setReservationRowsByMemberId({});
+    setReservationCreateForm({ ...EMPTY_RESERVATION_CREATE_FORM });
+    setReservationPanelMessage(null);
+    setReservationPanelError(null);
 
     setProducts([]);
     setSelectedProductId(null);
@@ -721,6 +790,35 @@ export default function App() {
     }
   }
 
+  async function loadReservationSchedules() {
+    setReservationSchedulesLoading(true);
+    setReservationPanelError(null);
+    try {
+      const response = await apiGet<ReservationScheduleSummary[]>("/api/v1/reservations/schedules");
+      setReservationSchedules(response.data);
+    } catch (error) {
+      setReservationPanelError(errorMessage(error));
+    } finally {
+      setReservationSchedulesLoading(false);
+    }
+  }
+
+  async function loadReservationsForMember(memberId: number) {
+    setReservationLoading(true);
+    setReservationPanelError(null);
+    try {
+      const response = await apiGet<ReservationRecord[]>(`/api/v1/reservations?memberId=${memberId}`);
+      setReservationRowsByMemberId((prev) => ({
+        ...prev,
+        [memberId]: response.data
+      }));
+    } catch (error) {
+      setReservationPanelError(errorMessage(error));
+    } finally {
+      setReservationLoading(false);
+    }
+  }
+
   useEffect(() => {
     if (!isJwtMode) {
       configureApiAuth(null);
@@ -808,7 +906,15 @@ export default function App() {
     }
     void loadMembers();
     void loadProducts();
+    void loadReservationSchedules();
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !selectedMember || activeNavSection !== "reservations") {
+      return;
+    }
+    void loadReservationsForMember(selectedMember.memberId);
+  }, [isAuthenticated, activeNavSection, selectedMember]);
 
   async function handleLoginSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1175,6 +1281,90 @@ export default function App() {
       setMembershipActionErrorById((prev) => ({ ...prev, [membership.membershipId]: errorMessage(error) }));
     } finally {
       setMembershipActionSubmittingId(null);
+    }
+  }
+
+  async function handleReservationCreateSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedMember) {
+      setReservationPanelError("예약 대상 회원을 먼저 선택해주세요.");
+      return;
+    }
+    if (!reservationCreateForm.membershipId) {
+      setReservationPanelError("예약에 사용할 회원권을 선택해주세요.");
+      return;
+    }
+    if (!reservationCreateForm.scheduleId) {
+      setReservationPanelError("예약할 스케줄을 선택해주세요.");
+      return;
+    }
+
+    setReservationCreateSubmitting(true);
+    setReservationPanelError(null);
+    setReservationPanelMessage(null);
+    try {
+      const response = await apiPost<ReservationRecord>("/api/v1/reservations", {
+        memberId: selectedMember.memberId,
+        membershipId: Number.parseInt(reservationCreateForm.membershipId, 10),
+        scheduleId: Number.parseInt(reservationCreateForm.scheduleId, 10),
+        memo: normalizeOptionalText(reservationCreateForm.memo)
+      });
+      setReservationPanelMessage(response.message);
+      await loadReservationsForMember(selectedMember.memberId);
+      await loadReservationSchedules();
+      setReservationCreateForm({ ...EMPTY_RESERVATION_CREATE_FORM });
+    } catch (error) {
+      setReservationPanelError(errorMessage(error));
+    } finally {
+      setReservationCreateSubmitting(false);
+    }
+  }
+
+  async function handleReservationCancel(reservationId: number) {
+    if (!selectedMember) {
+      return;
+    }
+    setReservationActionSubmittingId(reservationId);
+    setReservationPanelError(null);
+    setReservationPanelMessage(null);
+    try {
+      const response = await apiPost<ReservationRecord>(`/api/v1/reservations/${reservationId}/cancel`, {
+        cancelReason: "관리자 포털 취소"
+      });
+      setReservationPanelMessage(response.message);
+      await loadReservationsForMember(selectedMember.memberId);
+      await loadReservationSchedules();
+    } catch (error) {
+      setReservationPanelError(errorMessage(error));
+    } finally {
+      setReservationActionSubmittingId(null);
+    }
+  }
+
+  async function handleReservationComplete(reservationId: number) {
+    if (!selectedMember) {
+      return;
+    }
+    setReservationActionSubmittingId(reservationId);
+    setReservationPanelError(null);
+    setReservationPanelMessage(null);
+    try {
+      const response = await apiPost<ReservationCompleteResponse>(`/api/v1/reservations/${reservationId}/complete`);
+      setReservationPanelMessage(
+        response.data.countDeducted
+          ? `${response.message} (잔여횟수: ${response.data.remainingCount ?? "-"})`
+          : response.message
+      );
+      await loadReservationsForMember(selectedMember.memberId);
+      await loadReservationSchedules();
+      if (selectedMember) {
+        // Keep membership workspace cache aligned for status/remaining count display in the same session.
+        await loadMemberDetail(selectedMember.memberId, { syncForm: false });
+      }
+    } catch (error) {
+      setReservationPanelError(errorMessage(error));
+    } finally {
+      setReservationActionSubmittingId(null);
     }
   }
 
@@ -1658,10 +1848,17 @@ export default function App() {
     { key: "dashboard", label: "대시보드", description: "운영 요약 / 빠른 진입" },
     { key: "members", label: "회원 관리", description: "회원 목록 / 등록 / 수정" },
     { key: "memberships", label: "회원권 업무", description: "구매 / 홀딩 / 해제 / 환불" },
+    { key: "reservations", label: "예약 관리", description: "예약 생성 / 취소 / 완료 / 차감" },
     { key: "products", label: "상품 관리", description: "상품 목록 / 정책 / 상태" }
   ];
   const selectedMemberMemberships = selectedMember ? (memberMembershipsByMemberId[selectedMember.memberId] ?? []) : [];
   const selectedMemberPayments = selectedMember ? (memberPaymentsByMemberId[selectedMember.memberId] ?? []) : [];
+  const selectedMemberReservations = selectedMember ? (reservationRowsByMemberId[selectedMember.memberId] ?? []) : [];
+  const reservableMemberships = selectedMemberMemberships.filter(
+    (membership) =>
+      membership.membershipStatus === "ACTIVE" &&
+      (membership.productTypeSnapshot !== "COUNT" || (membership.remainingCount ?? 0) > 0)
+  );
   const isDeskRole = authUser?.roleCode === "ROLE_DESK";
   const canManageProducts = !isJwtMode || authUser?.roleCode === "ROLE_CENTER_ADMIN";
   const appSubtitle = isJwtMode ? "Admin Portal · Phase 5 JWT/RBAC" : "Admin Portal Prototype · Phase 5";
@@ -1846,10 +2043,12 @@ export default function App() {
                     ? "회원 목록/등록/수정과 회원 기본 상세를 관리합니다."
                     : activeNavSection === "memberships"
                       ? "선택한 회원 기준으로 회원권 업무 상태를 확인하고 회원권 처리 흐름으로 이동합니다."
-                      : "상품 목록/정책/상태를 관리합니다."}
+                      : activeNavSection === "reservations"
+                        ? "선택한 회원 기준으로 예약 생성/취소/완료와 차감 흐름을 처리합니다."
+                        : "상품 목록/정책/상태를 관리합니다."}
               </p>
             </div>
-            {activeNavSection === "memberships" && !selectedMember ? (
+            {(activeNavSection === "memberships" || activeNavSection === "reservations") && !selectedMember ? (
               <button type="button" className="secondary-button" onClick={() => setActiveNavSection("members")}>
                 회원 선택하러 가기
               </button>
@@ -1873,6 +2072,14 @@ export default function App() {
                     disabled={!selectedMember}
                   >
                     회원권 업무 열기
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => setActiveNavSection("reservations")}
+                    disabled={!selectedMember}
+                  >
+                    예약 관리 열기
                   </button>
                   <button type="button" className="secondary-button" onClick={() => setActiveNavSection("products")}>
                     상품 관리 열기
@@ -1986,6 +2193,254 @@ export default function App() {
                   </article>
 
                   {renderMembershipOperationsPanels()}
+                </>
+              )}
+            </section>
+          ) : activeNavSection === "reservations" ? (
+            <section className="membership-ops-shell" aria-label="예약 관리 화면">
+              {!selectedMember ? (
+                <article className="panel">
+                  <div className="panel-header">
+                    <h3>회원 선택 필요</h3>
+                  </div>
+                  <div className="placeholder-card">
+                    <p>예약 관리는 선택된 회원 기준으로 동작합니다.</p>
+                    <p className="muted-text">먼저 회원 관리 탭에서 회원을 선택한 뒤 다시 돌아오세요.</p>
+                    <div className="form-actions">
+                      <button type="button" className="primary-button" onClick={() => setActiveNavSection("members")}>
+                        회원 관리로 이동
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              ) : (
+                <>
+                  <article className="panel">
+                    <div className="panel-header">
+                      <h3>예약 대상 회원</h3>
+                      <button type="button" className="secondary-button" onClick={() => setActiveNavSection("members")}>
+                        회원 변경
+                      </button>
+                    </div>
+                    <dl className="detail-grid compact-detail-grid">
+                      <div>
+                        <dt>회원 ID</dt>
+                        <dd>{selectedMember.memberId}</dd>
+                      </div>
+                      <div>
+                        <dt>회원명</dt>
+                        <dd>{selectedMember.memberName}</dd>
+                      </div>
+                      <div>
+                        <dt>예약 수(세션)</dt>
+                        <dd>{selectedMemberReservations.length}</dd>
+                      </div>
+                      <div>
+                        <dt>예약 가능 회원권</dt>
+                        <dd>{reservableMemberships.length}</dd>
+                      </div>
+                    </dl>
+                    {reservationPanelMessage ? <p className="notice success compact">{reservationPanelMessage}</p> : null}
+                    {reservationPanelError ? <p className="notice error compact">{reservationPanelError}</p> : null}
+                  </article>
+
+                  <article className="panel">
+                    <div className="panel-header">
+                      <h3>예약 생성</h3>
+                      {reservationSchedulesLoading ? <span className="muted-text">스케줄 로딩 중...</span> : null}
+                    </div>
+                    <form className="form-grid" onSubmit={handleReservationCreateSubmit}>
+                      <label>
+                        사용할 회원권 *
+                        <select
+                          value={reservationCreateForm.membershipId}
+                          onChange={(e) =>
+                            setReservationCreateForm((prev) => ({ ...prev, membershipId: e.target.value }))
+                          }
+                        >
+                          <option value="">선택하세요</option>
+                          {reservableMemberships.map((membership) => (
+                            <option key={membership.membershipId} value={membership.membershipId}>
+                              #{membership.membershipId} · {membership.productNameSnapshot} ({membership.productTypeSnapshot})
+                              {membership.productTypeSnapshot === "COUNT"
+                                ? ` · 잔여 ${membership.remainingCount ?? 0}`
+                                : membership.endDate
+                                  ? ` · 만료 ${membership.endDate}`
+                                  : ""}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        예약 스케줄 *
+                        <select
+                          value={reservationCreateForm.scheduleId}
+                          onChange={(e) =>
+                            setReservationCreateForm((prev) => ({ ...prev, scheduleId: e.target.value }))
+                          }
+                        >
+                          <option value="">선택하세요</option>
+                          {reservationSchedules.map((schedule) => (
+                            <option key={schedule.scheduleId} value={schedule.scheduleId}>
+                              #{schedule.scheduleId} · [{schedule.scheduleType}] {schedule.slotTitle} · {schedule.trainerName} ·{" "}
+                              {formatDateTime(schedule.startAt)} ({schedule.currentCount}/{schedule.capacity})
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="full-row">
+                        메모(선택)
+                        <textarea
+                          rows={2}
+                          value={reservationCreateForm.memo}
+                          onChange={(e) => setReservationCreateForm((prev) => ({ ...prev, memo: e.target.value }))}
+                        />
+                      </label>
+                      <div className="form-actions full-row">
+                        <button
+                          type="submit"
+                          className="primary-button"
+                          disabled={
+                            reservationCreateSubmitting ||
+                            !reservationCreateForm.membershipId ||
+                            !reservationCreateForm.scheduleId
+                          }
+                        >
+                          {reservationCreateSubmitting ? "예약 생성 중..." : "예약 생성"}
+                        </button>
+                      </div>
+                    </form>
+                    {reservableMemberships.length === 0 ? (
+                      <p className="notice compact">예약에 사용할 ACTIVE 회원권(세션 기준)이 없습니다.</p>
+                    ) : null}
+                  </article>
+
+                  <article className="panel">
+                    <div className="panel-header">
+                      <h3>예약 스케줄 목록</h3>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={() => void loadReservationSchedules()}
+                        disabled={reservationSchedulesLoading}
+                      >
+                        {reservationSchedulesLoading ? "새로고침 중..." : "새로고침"}
+                      </button>
+                    </div>
+                    <div className="list-shell">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>ID</th>
+                            <th>유형</th>
+                            <th>타이틀</th>
+                            <th>트레이너</th>
+                            <th>시작</th>
+                            <th>종료</th>
+                            <th>정원</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {reservationSchedules.length === 0 ? (
+                            <tr>
+                              <td colSpan={7} className="empty-cell">
+                                예약 스케줄이 없습니다.
+                              </td>
+                            </tr>
+                          ) : (
+                            reservationSchedules.map((schedule) => (
+                              <tr key={schedule.scheduleId}>
+                                <td>{schedule.scheduleId}</td>
+                                <td>{schedule.scheduleType}</td>
+                                <td>{schedule.slotTitle}</td>
+                                <td>{schedule.trainerName}</td>
+                                <td>{formatDateTime(schedule.startAt)}</td>
+                                <td>{formatDateTime(schedule.endAt)}</td>
+                                <td>
+                                  {schedule.currentCount}/{schedule.capacity}
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </article>
+
+                  <article className="panel">
+                    <div className="panel-header">
+                      <h3>선택 회원 예약 목록</h3>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={() => void loadReservationsForMember(selectedMember.memberId)}
+                        disabled={reservationLoading}
+                      >
+                        {reservationLoading ? "조회 중..." : "새로고침"}
+                      </button>
+                    </div>
+                    <div className="list-shell">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>ID</th>
+                            <th>스케줄ID</th>
+                            <th>회원권ID</th>
+                            <th>상태</th>
+                            <th>예약시각</th>
+                            <th>취소시각</th>
+                            <th>완료시각</th>
+                            <th>액션</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {selectedMemberReservations.length === 0 ? (
+                            <tr>
+                              <td colSpan={8} className="empty-cell">
+                                선택 회원의 예약 이력이 없습니다.
+                              </td>
+                            </tr>
+                          ) : (
+                            selectedMemberReservations.map((reservation) => {
+                              const isPendingAction = reservationActionSubmittingId === reservation.reservationId;
+                              const canMutate = reservation.reservationStatus === "CONFIRMED";
+                              return (
+                                <tr key={reservation.reservationId}>
+                                  <td>{reservation.reservationId}</td>
+                                  <td>{reservation.scheduleId}</td>
+                                  <td>{reservation.membershipId}</td>
+                                  <td>{reservation.reservationStatus}</td>
+                                  <td>{formatDateTime(reservation.reservedAt)}</td>
+                                  <td>{formatDateTime(reservation.cancelledAt)}</td>
+                                  <td>{formatDateTime(reservation.completedAt)}</td>
+                                  <td>
+                                    <div className="inline-actions">
+                                      <button
+                                        type="button"
+                                        className="secondary-button"
+                                        disabled={!canMutate || isPendingAction}
+                                        onClick={() => void handleReservationComplete(reservation.reservationId)}
+                                      >
+                                        {isPendingAction ? "처리 중..." : "완료"}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="secondary-button"
+                                        disabled={!canMutate || isPendingAction}
+                                        onClick={() => void handleReservationCancel(reservation.reservationId)}
+                                      >
+                                        취소
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </article>
                 </>
               )}
             </section>

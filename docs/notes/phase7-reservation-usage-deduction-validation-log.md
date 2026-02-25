@@ -7,6 +7,7 @@ Branch: `codex/feat-phase7-reservations-usage-deduction-foundation`
 - `P7-1` Reservation schema foundation (`V7`, `V8`)
 - `P7-2` Reservation domain services (`create/cancel/complete`)
 - `P7-3` Reservation API (backend only, RBAC annotation wiring)
+- `P7-4` Frontend reservation workspace (`예약 관리` 탭)
 
 ## Implemented
 - `backend/src/main/resources/db/migration/V7__create_trainer_schedules_and_reservations.sql`
@@ -24,6 +25,11 @@ Branch: `codex/feat-phase7-reservations-usage-deduction-foundation`
 - `backend/src/main/java/com/gymcrm/reservation/ReservationRepository.java`
 - `backend/src/main/java/com/gymcrm/reservation/ReservationService.java`
 - `backend/src/main/java/com/gymcrm/reservation/ReservationController.java`
+- `frontend/src/App.tsx`
+  - 사이드바 `예약 관리` 탭
+  - 예약 생성 폼 (회원권/스케줄 선택, memo)
+  - 예약 스케줄 목록
+  - 선택 회원 예약 목록 + 완료/취소 액션
 - `backend/src/test/java/com/gymcrm/reservation/ReservationStatusTransitionServiceTest.java`
 - `backend/src/test/java/com/gymcrm/reservation/ReservationServiceIntegrationTest.java`
 - `backend/src/test/java/com/gymcrm/reservation/ReservationApiIntegrationTest.java`
@@ -64,12 +70,46 @@ Note:
 - `flyway_schema_history` contains `v7`, `v8` with `success=true` ✅
 - `trainer_schedules` seed rows present (`PT 체험 슬롯`, `GX 그룹 클래스`) with `current_count=0` ✅
 
+### 4) Frontend build + browser validation (`P7-4`)
+- `frontend`: `npm run build` ✅
+- Runtime for validation:
+  - backend: `dev + jwt`, `SERVER_PORT=8084`
+  - frontend: `VITE_DEV_PROXY_TARGET=http://127.0.0.1:8084 npm run dev -- --host 127.0.0.1 --port 5173` (actual port `5174`)
+  - backend CORS allowlist temporarily expanded to include `127.0.0.1:5174` for this validation run
+
+Browser flow (agent-browser) ✅
+1. JWT login (`center-admin`)
+2. `회원 관리` 탭에서 테스트 회원 생성: `P7예약UI회원-1422`
+3. `회원권 업무` 탭에서 COUNT 상품 구매 (`P7API상품-4015ab2f`)
+4. `예약 관리` 탭에서 예약 생성 (schedule `#1`) → `완료`
+5. `예약 관리` 탭에서 예약 생성 (schedule `#33`) → `취소`
+
+Observed UI behavior ✅
+- `예약 관리` 탭 렌더링/회원 선택 가드 정상
+- 예약 생성 후 스케줄 option의 정원 표시 증가 (`0/1 -> 1/1`)
+- 완료 후 스케줄 정원 표시 복원 (`1/1 -> 0/1`)
+- 취소 후 스케줄 정원 표시 복원 (`1/1 -> 0/1`)
+- 예약 목록 행 액션 버튼이 상태에 따라 비활성화됨 (`COMPLETED`, `CANCELLED`)
+
+### 5) SQL verification (P7-4 browser scenario)
+Test member: `P7예약UI회원-1422` (`member_id=263`)
+
+Confirmed via SQL ✅
+- Membership usage deduction after complete:
+  - `membership_id=268` → `remaining_count=4`, `used_count=1`
+- Reservation rows:
+  - `reservation_id=53`, `schedule_id=1`, `reservation_status=COMPLETED`
+  - `reservation_id=54`, `schedule_id=33`, `reservation_status=CANCELLED`
+- Schedule counts restored:
+  - `trainer_schedules.schedule_id IN (1,33)` → `current_count=0`
+
 ## Current Status
 - `P7-1`: done 수준 (schema + dev seed + Flyway/SQL 검증 완료)
 - `P7-2`: done 수준 (상태전이 + create/cancel/complete 서비스 + COUNT 차감 트랜잭션 구현/테스트)
-- `P7-3`: in progress (백엔드 Controller/DTO/RBAC + 자동 통합검증 완료, 수동 API 검증 로그 미완료)
+- `P7-3`: done 수준 (백엔드 Controller/DTO/RBAC + 자동 통합검증 완료)
+- `P7-4`: in progress (프론트 예약 탭 구현 + 브라우저/SQL 핵심 흐름 검증 완료, 문서/체크리스트 반영 중)
 
 ## Next Recommended Step
-1. `P7-3` 마무리: 예약 API 수동 검증 + RBAC(센터관리자/데스크) 통합 검증
-2. `P7-4` 프론트 `예약 관리` 탭 추가 및 JWT 모드 브라우저 검증
-3. SQL 정합성 검증 + 계획/제약사항 문서 업데이트
+1. Phase 7 계획서 acceptance/quality gate 체크 반영
+2. `P7-4` 변경분 커밋 정리
+3. `P7-5` 문서/QA 마무리 (필요 시 추가 E2E/스크린샷/solution note)

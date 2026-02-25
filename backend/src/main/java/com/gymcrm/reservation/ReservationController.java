@@ -53,6 +53,15 @@ public class ReservationController {
         return ApiResponse.success(items, "예약 목록 조회 성공");
     }
 
+    @GetMapping("/schedules")
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    public ApiResponse<List<ReservationScheduleResponse>> listSchedules() {
+        List<ReservationScheduleResponse> items = reservationService.listSchedules().stream()
+                .map(ReservationScheduleResponse::from)
+                .toList();
+        return ApiResponse.success(items, "예약 스케줄 목록 조회 성공");
+    }
+
     @GetMapping("/{reservationId}")
     @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
     public ApiResponse<ReservationResponse> detail(@PathVariable Long reservationId) {
@@ -114,6 +123,34 @@ public class ReservationController {
                     reservation.completedAt(),
                     reservation.cancelReason(),
                     reservation.memo()
+            );
+        }
+    }
+
+    public record ReservationScheduleResponse(
+            Long scheduleId,
+            Long centerId,
+            String scheduleType,
+            String trainerName,
+            String slotTitle,
+            OffsetDateTime startAt,
+            OffsetDateTime endAt,
+            Integer capacity,
+            Integer currentCount,
+            String memo
+    ) {
+        static ReservationScheduleResponse from(TrainerSchedule schedule) {
+            return new ReservationScheduleResponse(
+                    schedule.scheduleId(),
+                    schedule.centerId(),
+                    schedule.scheduleType(),
+                    schedule.trainerName(),
+                    schedule.slotTitle(),
+                    schedule.startAt(),
+                    schedule.endAt(),
+                    schedule.capacity(),
+                    schedule.currentCount(),
+                    schedule.memo()
             );
         }
     }

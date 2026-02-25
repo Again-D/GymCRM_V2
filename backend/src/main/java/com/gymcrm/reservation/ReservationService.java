@@ -104,6 +104,11 @@ public class ReservationService {
         return getReservation(reservationId);
     }
 
+    @Transactional(readOnly = true)
+    public List<TrainerSchedule> listSchedules() {
+        return trainerScheduleRepository.findAll(DEFAULT_CENTER_ID);
+    }
+
     @Transactional
     public Reservation cancel(CancelRequest request) {
         if (request.reservationId() == null) {

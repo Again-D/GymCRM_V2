@@ -4,6 +4,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -22,6 +23,17 @@ public class TrainerScheduleRepository {
                 .param("scheduleId", scheduleId)
                 .query(TrainerSchedule.class)
                 .optional();
+    }
+
+    public List<TrainerSchedule> findAll(Long centerId) {
+        return jdbcClient.sql(baseSelect() + """
+                WHERE center_id = :centerId
+                  AND is_deleted = FALSE
+                ORDER BY start_at ASC, schedule_id ASC
+                """)
+                .param("centerId", centerId)
+                .query(TrainerSchedule.class)
+                .list();
     }
 
     public Optional<TrainerSchedule> incrementCurrentCountIfAvailable(Long scheduleId, Long actorUserId) {
