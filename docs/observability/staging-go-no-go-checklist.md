@@ -33,6 +33,10 @@ Low-traffic handling:
 
 Adjust labels to your dashboard conventions.
 
+Raw-vs-dashboard sample validation helper:
+- `/Users/abc/projects/GymCRM_V2/docs/observability/dashboard-sample-validation-procedure.md`
+- `/Users/abc/projects/GymCRM_V2/docs/observability/tools/validate_sli_sample.sh`
+
 ```promql
 # p95 latency (5m)
 histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri!~"/actuator.*"}[5m])) by (le, uri, method, status))
