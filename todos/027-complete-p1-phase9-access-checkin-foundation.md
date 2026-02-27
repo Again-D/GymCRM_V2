@@ -123,3 +123,23 @@ Option 1 기준으로 진행하되, 구현은 P9-1(스키마) → P9-2/3(서비�
 
 **Learnings:**
 - 로컬 통합 동선 검증은 테스트 DB와 별도로 runtime DB 계정/권한 준비가 선행되어야 안정적으로 재현된다.
+
+### 2026-02-27 - Runtime browser flow validation completed
+
+**By:** Codex
+
+**Actions:**
+- 런타임 백엔드 기동 시 DB 연결을 `5433`으로 명시:
+  - `DB_URL=jdbc:postgresql://localhost:5433/gymcrm_dev DB_USERNAME=gymcrm DB_PASSWORD=gymcrm SPRING_PROFILES_ACTIVE=dev ./gradlew bootRun`
+- 프론트 dev 서버 기동 후 출입 관리 탭 동선 검증:
+  - 탭 진입
+  - 회원 선택
+  - 입장 처리
+  - 퇴장 처리
+- 스크린샷 저장:
+  - `docs/screenshots/phase9-access-workspace.png`
+  - `docs/screenshots/phase9-access-entry-success.png`
+  - `docs/screenshots/phase9-access-exit-success.png`
+
+**Learnings:**
+- 런타임 검증에서는 애플리케이션 기본 DB 설정(5432)보다 실제 준비된 인스턴스(5433)를 환경 변수로 명시하는 것이 가장 빠른 복구 경로다.
