@@ -612,6 +612,12 @@ tbody tr.is-selected {
   background: #ffeede;
 }
 
+.member-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .empty-cell {
   text-align: center;
   color: var(--muted);
@@ -1075,6 +1081,11 @@ code {
   .members-table td:nth-child(6) .secondary-button,
   .products-table td:nth-child(7) .secondary-button {
     width: 100%;
+  }
+
+  .member-row-actions {
+    display: grid;
+    grid-template-columns: 1fr;
   }
 
   .checkbox-row {
