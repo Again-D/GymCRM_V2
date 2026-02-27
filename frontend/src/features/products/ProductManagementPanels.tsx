@@ -187,18 +187,15 @@ export function ProductManagementPanels({
                 <th>카테고리</th>
                 <th>가격</th>
                 <th>상태</th>
+                <th>액션</th>
               </tr>
             </thead>
             <tbody>
               {products.length === 0 ? (
-                <EmptyTableRow colSpan={6} message="조회된 상품이 없습니다." />
+                <EmptyTableRow colSpan={7} message="조회된 상품이 없습니다." />
               ) : (
                 products.map((product) => (
-                  <tr
-                    key={product.productId}
-                    className={product.productId === selectedProductId ? "is-selected" : ""}
-                    onClick={() => void openProductEditor(product.productId)}
-                  >
+                  <tr key={product.productId} className={product.productId === selectedProductId ? "is-selected" : ""}>
                     <td>{product.productId}</td>
                     <td>{product.productName}</td>
                     <td>{product.productType}</td>
@@ -208,6 +205,11 @@ export function ProductManagementPanels({
                       <span className={product.productStatus === "ACTIVE" ? "pill ok" : "pill muted"}>
                         {product.productStatus}
                       </span>
+                    </td>
+                    <td>
+                      <button type="button" className="secondary-button" onClick={() => void openProductEditor(product.productId)}>
+                        편집
+                      </button>
                     </td>
                   </tr>
                 ))
