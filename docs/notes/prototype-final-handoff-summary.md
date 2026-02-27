@@ -175,3 +175,5 @@ See:
   - `/Users/abc/projects/GymCRM_V2/docs/notes/prototype-pr-body-draft.md`
 - `main` 최신 통합 상태(Phase 5~8, PR #6/#7 반영) 요약:
   - `/Users/abc/projects/GymCRM_V2/docs/notes/main-branch-release-change-summary-2026-02-25.md`
+- `main` 경영진 3줄 요약:
+  - `/Users/abc/projects/GymCRM_V2/docs/notes/main-branch-release-change-summary-executive-3line-2026-02-25.md`
