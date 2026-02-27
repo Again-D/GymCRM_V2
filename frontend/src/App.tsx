@@ -596,9 +596,9 @@ export default function App() {
   const [membersLoading, setMembersLoading] = useState(false);
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
   const [selectedMember, setSelectedMember] = useState<MemberDetail | null>(null);
-  const [memberDetailLoading, setMemberDetailLoading] = useState(false);
   const [memberForm, setMemberForm] = useState<MemberFormState>(EMPTY_MEMBER_FORM);
   const [memberFormMode, setMemberFormMode] = useState<"create" | "edit">("create");
+  const [memberFormOpen, setMemberFormOpen] = useState(false);
   const [memberFormSubmitting, setMemberFormSubmitting] = useState(false);
   const [memberPanelMessage, setMemberPanelMessage] = useState<string | null>(null);
   const [memberPanelError, setMemberPanelError] = useState<string | null>(null);
@@ -633,9 +633,9 @@ export default function App() {
   const [productsLoading, setProductsLoading] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<ProductDetail | null>(null);
-  const [productDetailLoading, setProductDetailLoading] = useState(false);
   const [productForm, setProductForm] = useState<ProductFormState>(EMPTY_PRODUCT_FORM);
   const [productFormMode, setProductFormMode] = useState<"create" | "edit">("create");
+  const [productFormOpen, setProductFormOpen] = useState(false);
   const [productFormSubmitting, setProductFormSubmitting] = useState(false);
   const [productPanelMessage, setProductPanelMessage] = useState<string | null>(null);
   const [productPanelError, setProductPanelError] = useState<string | null>(null);
@@ -661,6 +661,7 @@ export default function App() {
     setSelectedMember(null);
     setMemberForm({ ...EMPTY_MEMBER_FORM, joinDate: new Date().toISOString().slice(0, 10) });
     setMemberFormMode("create");
+    setMemberFormOpen(false);
     setMemberPanelMessage(null);
     setMemberPanelError(null);
     setMemberFormMessage(null);
@@ -688,6 +689,7 @@ export default function App() {
     setSelectedProduct(null);
     setProductForm({ ...EMPTY_PRODUCT_FORM });
     setProductFormMode("create");
+    setProductFormOpen(false);
     setProductPanelMessage(null);
     setProductPanelError(null);
     setProductFormMessage(null);
@@ -720,7 +722,6 @@ export default function App() {
 
   async function loadMemberDetail(memberId: number, options?: { syncForm?: boolean }) {
     setSelectedMemberId(memberId);
-    setMemberDetailLoading(true);
     setMemberPanelError(null);
     setMemberPurchaseError(null);
     setMemberPurchaseMessage(null);
@@ -739,8 +740,6 @@ export default function App() {
       }
     } catch (error) {
       setMemberPanelError(errorMessage(error));
-    } finally {
-      setMemberDetailLoading(false);
     }
   }
 
@@ -768,7 +767,6 @@ export default function App() {
 
   async function loadProductDetail(productId: number, options?: { syncForm?: boolean }) {
     setSelectedProductId(productId);
-    setProductDetailLoading(true);
     setProductPanelError(null);
     try {
       const response = await apiGet<ProductDetail>(`/api/v1/products/${productId}`);
@@ -779,8 +777,6 @@ export default function App() {
       }
     } catch (error) {
       setProductPanelError(errorMessage(error));
-    } finally {
-      setProductDetailLoading(false);
     }
   }
 
@@ -924,6 +920,15 @@ export default function App() {
     void loadReservationsForMember(selectedMember.memberId);
   }, [isAuthenticated, activeNavSection, selectedMember]);
 
+  useEffect(() => {
+    if (activeNavSection !== "members") {
+      setMemberFormOpen(false);
+    }
+    if (activeNavSection !== "products") {
+      setProductFormOpen(false);
+    }
+  }, [activeNavSection]);
+
   async function handleLoginSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoginSubmitting(true);
@@ -967,17 +972,21 @@ export default function App() {
       if (memberFormMode === "create") {
         const response = await apiPost<MemberDetail>("/api/v1/members", buildMemberPayload(memberForm));
         setMemberFormMessage(response.message);
+        setMemberPanelMessage(response.message);
         await loadMembers();
         await loadMemberDetail(response.data.memberId);
+        setMemberFormOpen(false);
       } else if (selectedMemberId != null) {
         const response = await apiPatch<MemberDetail>(
           `/api/v1/members/${selectedMemberId}`,
           buildMemberPayload(memberForm)
         );
         setMemberFormMessage(response.message);
+        setMemberPanelMessage(response.message);
         await loadMembers();
         setSelectedMember(response.data);
         setMemberForm(memberFormFromDetail(response.data));
+        setMemberFormOpen(false);
       }
     } catch (error) {
       setMemberFormError(errorMessage(error));
@@ -1001,17 +1010,21 @@ export default function App() {
       if (productFormMode === "create") {
         const response = await apiPost<ProductDetail>("/api/v1/products", buildProductPayload(productForm));
         setProductFormMessage(response.message);
+        setProductPanelMessage(response.message);
         await loadProducts();
         await loadProductDetail(response.data.productId);
+        setProductFormOpen(false);
       } else if (selectedProductId != null) {
         const response = await apiPatch<ProductDetail>(
           `/api/v1/products/${selectedProductId}`,
           buildProductPayload(productForm)
         );
         setProductFormMessage(response.message);
+        setProductPanelMessage(response.message);
         await loadProducts();
         setSelectedProduct(response.data);
         setProductForm(productFormFromDetail(response.data));
+        setProductFormOpen(false);
       }
     } catch (error) {
       setProductFormError(errorMessage(error));
@@ -1422,6 +1435,7 @@ export default function App() {
     setMemberPanelMessage(null);
     setMemberFormError(null);
     setMemberFormMessage("신규 회원 등록 모드입니다.");
+    setMemberFormOpen(true);
   }
 
   function startCreateProduct() {
@@ -1433,6 +1447,29 @@ export default function App() {
     setProductPanelMessage(null);
     setProductFormError(null);
     setProductFormMessage("신규 상품 등록 모드입니다.");
+    setProductFormOpen(true);
+  }
+
+  async function openMemberEditor(memberId: number) {
+    await loadMemberDetail(memberId);
+    setMemberFormOpen(true);
+  }
+
+  async function openProductEditor(productId: number) {
+    await loadProductDetail(productId);
+    setProductFormOpen(true);
+  }
+
+  function closeMemberForm() {
+    setMemberFormOpen(false);
+    setMemberFormError(null);
+    setMemberFormMessage(null);
+  }
+
+  function closeProductForm() {
+    setProductFormOpen(false);
+    setProductFormError(null);
+    setProductFormMessage(null);
   }
 
   const navItems: Array<{ key: NavSectionKey; label: string; description: string }> = [
@@ -1636,19 +1673,16 @@ export default function App() {
             memberPanelError={memberPanelError}
             members={members}
             selectedMemberId={selectedMemberId}
-            loadMemberDetail={loadMemberDetail}
+            openMemberEditor={openMemberEditor}
             memberFormMode={memberFormMode}
+            memberFormOpen={memberFormOpen}
+            closeMemberForm={closeMemberForm}
             handleMemberSubmit={handleMemberSubmit}
             memberFormMessage={memberFormMessage}
             memberFormError={memberFormError}
             memberForm={memberForm}
             setMemberForm={setMemberForm}
             memberFormSubmitting={memberFormSubmitting}
-            memberDetailLoading={memberDetailLoading}
-            selectedMember={selectedMember}
-            selectedMemberMembershipsCount={selectedMemberMemberships.length}
-            selectedMemberPaymentsCount={selectedMemberPayments.length}
-            onOpenMembershipsTab={() => setActiveNavSection("memberships")}
           />
         </MembersSection>
       ) : activeNavSection === "products" ? (
@@ -1664,8 +1698,10 @@ export default function App() {
             productPanelError={productPanelError}
             products={products}
             selectedProductId={selectedProductId}
-            loadProductDetail={loadProductDetail}
+            openProductEditor={openProductEditor}
             productFormMode={productFormMode}
+            productFormOpen={productFormOpen}
+            closeProductForm={closeProductForm}
             selectedProduct={selectedProduct}
             handleProductStatusToggle={handleProductStatusToggle}
             productFormSubmitting={productFormSubmitting}
@@ -1674,7 +1710,6 @@ export default function App() {
             productFormError={productFormError}
             productForm={productForm}
             setProductForm={setProductForm}
-            productDetailLoading={productDetailLoading}
           />
         </ProductsSection>
       ) : null}

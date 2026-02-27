@@ -1,8 +1,8 @@
 import type { Dispatch, FormEvent, SetStateAction } from "react";
 import { EmptyTableRow } from "../../shared/ui/EmptyTableRow";
 import { NoticeText } from "../../shared/ui/NoticeText";
+import { OverlayPanel } from "../../shared/ui/OverlayPanel";
 import { PanelHeader } from "../../shared/ui/PanelHeader";
-import { PlaceholderCard } from "../../shared/ui/PlaceholderCard";
 import { formatCurrency } from "../../shared/utils/format";
 
 type ProductFiltersState = {
@@ -62,8 +62,10 @@ type ProductManagementPanelsProps = {
   productPanelError: string | null;
   products: ProductSummaryRow[];
   selectedProductId: number | null;
-  loadProductDetail: (productId: number, options?: { syncForm?: boolean }) => Promise<void>;
+  openProductEditor: (productId: number) => Promise<void>;
   productFormMode: "create" | "edit";
+  productFormOpen: boolean;
+  closeProductForm: () => void;
   selectedProduct: ProductDetailView | null;
   handleProductStatusToggle: () => Promise<void>;
   productFormSubmitting: boolean;
@@ -72,7 +74,6 @@ type ProductManagementPanelsProps = {
   productFormError: string | null;
   productForm: ProductFormFields;
   setProductForm: Dispatch<SetStateAction<ProductFormFields>>;
-  productDetailLoading: boolean;
 };
 
 export function ProductManagementPanels({
@@ -86,8 +87,10 @@ export function ProductManagementPanels({
   productPanelError,
   products,
   selectedProductId,
-  loadProductDetail,
+  openProductEditor,
   productFormMode,
+  productFormOpen,
+  closeProductForm,
   selectedProduct,
   handleProductStatusToggle,
   productFormSubmitting,
@@ -95,8 +98,7 @@ export function ProductManagementPanels({
   productFormMessage,
   productFormError,
   productForm,
-  setProductForm,
-  productDetailLoading
+  setProductForm
 }: ProductManagementPanelsProps) {
   return (
     <>
@@ -195,7 +197,7 @@ export function ProductManagementPanels({
                   <tr
                     key={product.productId}
                     className={product.productId === selectedProductId ? "is-selected" : ""}
-                    onClick={() => void loadProductDetail(product.productId)}
+                    onClick={() => void openProductEditor(product.productId)}
                   >
                     <td>{product.productId}</td>
                     <td>{product.productName}</td>
@@ -215,34 +217,23 @@ export function ProductManagementPanels({
         </div>
       </article>
 
-      <article className="panel">
-        <PanelHeader
-          title={productFormMode === "create" ? "상품 등록" : `상품 수정 #${selectedProductId ?? "-"}`}
-          actions={
-            <div className="inline-actions">
-              {productFormMode === "edit" ? (
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={startCreateProduct}
-                  disabled={!canManageProducts}
-                >
-                  등록 모드로 전환
-                </button>
-              ) : null}
-              {selectedProduct ? (
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={() => void handleProductStatusToggle()}
-                  disabled={productFormSubmitting || !canManageProducts}
-                >
-                  상태 토글 ({selectedProduct.productStatus})
-                </button>
-              ) : null}
-            </div>
-          }
-        />
+      <OverlayPanel
+        open={productFormOpen}
+        title={productFormMode === "create" ? "상품 등록" : `상품 수정 #${selectedProductId ?? "-"}`}
+        onClose={closeProductForm}
+        actions={
+          productFormMode === "edit" && selectedProduct ? (
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => void handleProductStatusToggle()}
+              disabled={productFormSubmitting || !canManageProducts}
+            >
+              상태 토글 ({selectedProduct.productStatus})
+            </button>
+          ) : undefined
+        }
+      >
         {!canManageProducts ? (
           <NoticeText compact>상품 정책 변경은 `ROLE_CENTER_ADMIN` 권한에서만 가능합니다.</NoticeText>
         ) : null}
@@ -394,74 +385,7 @@ export function ProductManagementPanels({
             </div>
           </fieldset>
         </form>
-      </article>
-
-      <article className="panel wide-panel">
-        <PanelHeader
-          title="상품 상세"
-          suffix={productDetailLoading ? <span className="muted-text">불러오는 중...</span> : undefined}
-        />
-        {!selectedProduct ? (
-          <PlaceholderCard>
-            <p>상품 목록에서 항목을 선택하면 상세/수정 폼이 동기화됩니다.</p>
-          </PlaceholderCard>
-        ) : (
-          <dl className="detail-grid">
-            <div>
-              <dt>상품 ID</dt>
-              <dd>{selectedProduct.productId}</dd>
-            </div>
-            <div>
-              <dt>센터 ID</dt>
-              <dd>{selectedProduct.centerId}</dd>
-            </div>
-            <div>
-              <dt>상품명</dt>
-              <dd>{selectedProduct.productName}</dd>
-            </div>
-            <div>
-              <dt>카테고리</dt>
-              <dd>{selectedProduct.productCategory ?? "-"}</dd>
-            </div>
-            <div>
-              <dt>유형</dt>
-              <dd>{selectedProduct.productType}</dd>
-            </div>
-            <div>
-              <dt>가격</dt>
-              <dd>{formatCurrency(selectedProduct.priceAmount)}</dd>
-            </div>
-            <div>
-              <dt>유효일수</dt>
-              <dd>{selectedProduct.validityDays ?? "-"}</dd>
-            </div>
-            <div>
-              <dt>총횟수</dt>
-              <dd>{selectedProduct.totalCount ?? "-"}</dd>
-            </div>
-            <div>
-              <dt>홀딩 정책</dt>
-              <dd>
-                {selectedProduct.allowHold
-                  ? `허용 (최대 ${selectedProduct.maxHoldDays ?? "-"}일 / ${selectedProduct.maxHoldCount ?? "-"}회)`
-                  : "불가"}
-              </dd>
-            </div>
-            <div>
-              <dt>양도</dt>
-              <dd>{selectedProduct.allowTransfer ? "허용" : "불가"}</dd>
-            </div>
-            <div>
-              <dt>상태</dt>
-              <dd>{selectedProduct.productStatus}</dd>
-            </div>
-            <div>
-              <dt>설명</dt>
-              <dd>{selectedProduct.description ?? "-"}</dd>
-            </div>
-          </dl>
-        )}
-      </article>
+      </OverlayPanel>
     </>
   );
 }

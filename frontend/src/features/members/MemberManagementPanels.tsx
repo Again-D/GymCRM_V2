@@ -1,25 +1,14 @@
 import type { Dispatch, FormEvent, SetStateAction } from "react";
 import { EmptyTableRow } from "../../shared/ui/EmptyTableRow";
 import { NoticeText } from "../../shared/ui/NoticeText";
+import { OverlayPanel } from "../../shared/ui/OverlayPanel";
 import { PanelHeader } from "../../shared/ui/PanelHeader";
-import { PlaceholderCard } from "../../shared/ui/PlaceholderCard";
 import { formatDate } from "../../shared/utils/format";
 
 type MemberSummaryRow = {
   memberId: number;
   memberName: string;
   phone: string;
-  memberStatus: "ACTIVE" | "INACTIVE";
-  joinDate: string | null;
-};
-
-type MemberDetailView = {
-  memberId: number;
-  centerId: number;
-  memberName: string;
-  phone: string;
-  email: string | null;
-  gender: "MALE" | "FEMALE" | "OTHER" | null;
   memberStatus: "ACTIVE" | "INACTIVE";
   joinDate: string | null;
 };
@@ -49,19 +38,16 @@ type MemberManagementPanelsProps = {
   memberPanelError: string | null;
   members: MemberSummaryRow[];
   selectedMemberId: number | null;
-  loadMemberDetail: (memberId: number, options?: { syncForm?: boolean }) => Promise<void>;
+  openMemberEditor: (memberId: number) => Promise<void>;
   memberFormMode: "create" | "edit";
+  memberFormOpen: boolean;
+  closeMemberForm: () => void;
   handleMemberSubmit: (event: FormEvent<HTMLFormElement>) => void;
   memberFormMessage: string | null;
   memberFormError: string | null;
   memberForm: MemberFormFields;
   setMemberForm: Dispatch<SetStateAction<MemberFormFields>>;
   memberFormSubmitting: boolean;
-  memberDetailLoading: boolean;
-  selectedMember: MemberDetailView | null;
-  selectedMemberMembershipsCount: number;
-  selectedMemberPaymentsCount: number;
-  onOpenMembershipsTab: () => void;
 };
 
 export function MemberManagementPanels({
@@ -76,19 +62,16 @@ export function MemberManagementPanels({
   memberPanelError,
   members,
   selectedMemberId,
-  loadMemberDetail,
+  openMemberEditor,
   memberFormMode,
+  memberFormOpen,
+  closeMemberForm,
   handleMemberSubmit,
   memberFormMessage,
   memberFormError,
   memberForm,
   setMemberForm,
-  memberFormSubmitting,
-  memberDetailLoading,
-  selectedMember,
-  selectedMemberMembershipsCount,
-  selectedMemberPaymentsCount,
-  onOpenMembershipsTab
+  memberFormSubmitting
 }: MemberManagementPanelsProps) {
   return (
     <>
@@ -156,7 +139,7 @@ export function MemberManagementPanels({
                   <tr
                     key={member.memberId}
                     className={member.memberId === selectedMemberId ? "is-selected" : ""}
-                    onClick={() => void loadMemberDetail(member.memberId)}
+                    onClick={() => void openMemberEditor(member.memberId)}
                   >
                     <td>{member.memberId}</td>
                     <td>{member.memberName}</td>
@@ -175,18 +158,11 @@ export function MemberManagementPanels({
         </div>
       </article>
 
-      <article className="panel">
-        <PanelHeader
-          title={memberFormMode === "create" ? "회원 등록" : `회원 수정 #${selectedMemberId ?? "-"}`}
-          actions={
-            memberFormMode === "edit" ? (
-              <button type="button" className="secondary-button" onClick={startCreateMember}>
-                등록 모드로 전환
-              </button>
-            ) : undefined
-          }
-        />
-
+      <OverlayPanel
+        open={memberFormOpen}
+        title={memberFormMode === "create" ? "회원 등록" : `회원 수정 #${selectedMemberId ?? "-"}`}
+        onClose={closeMemberForm}
+      >
         <form className="form-grid" onSubmit={handleMemberSubmit}>
           {memberFormMessage ? (
             <NoticeText tone="success" fullRow>
@@ -293,76 +269,7 @@ export function MemberManagementPanels({
             </button>
           </div>
         </form>
-      </article>
-
-      <article className="panel wide-panel">
-        <PanelHeader
-          title="회원 상세"
-          suffix={memberDetailLoading ? <span className="muted-text">불러오는 중...</span> : undefined}
-        />
-        {!selectedMember ? (
-          <PlaceholderCard>
-            <p>회원 목록에서 항목을 선택하면 상세 정보를 표시합니다.</p>
-          </PlaceholderCard>
-        ) : (
-          <div className="detail-stack">
-            <dl className="detail-grid">
-              <div>
-                <dt>회원 ID</dt>
-                <dd>{selectedMember.memberId}</dd>
-              </div>
-              <div>
-                <dt>센터 ID</dt>
-                <dd>{selectedMember.centerId}</dd>
-              </div>
-              <div>
-                <dt>회원명</dt>
-                <dd>{selectedMember.memberName}</dd>
-              </div>
-              <div>
-                <dt>연락처</dt>
-                <dd>{selectedMember.phone}</dd>
-              </div>
-              <div>
-                <dt>상태</dt>
-                <dd>{selectedMember.memberStatus}</dd>
-              </div>
-              <div>
-                <dt>가입일</dt>
-                <dd>{formatDate(selectedMember.joinDate)}</dd>
-              </div>
-              <div>
-                <dt>이메일</dt>
-                <dd>{selectedMember.email ?? "-"}</dd>
-              </div>
-              <div>
-                <dt>성별</dt>
-                <dd>{selectedMember.gender ?? "-"}</dd>
-              </div>
-            </dl>
-
-            <PlaceholderCard as="section">
-              <h4>회원권 업무는 별도 탭으로 이동</h4>
-              <p>구매/홀딩/해제/환불/결제이력은 사이드바의 `회원권 업무` 탭에서 처리합니다.</p>
-              <div className="detail-grid compact-detail-grid">
-                <div>
-                  <dt>세션 회원권 수</dt>
-                  <dd>{selectedMemberMembershipsCount}</dd>
-                </div>
-                <div>
-                  <dt>세션 결제 이력 수</dt>
-                  <dd>{selectedMemberPaymentsCount}</dd>
-                </div>
-              </div>
-              <div className="form-actions">
-                <button type="button" className="primary-button" onClick={onOpenMembershipsTab}>
-                  회원권 업무 탭 열기
-                </button>
-              </div>
-            </PlaceholderCard>
-          </div>
-        )}
-      </article>
+      </OverlayPanel>
     </>
   );
 }

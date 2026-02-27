@@ -6,7 +6,7 @@ type MembersSectionProps = {
 
 export function MembersSection({ children }: MembersSectionProps) {
   return (
-    <section className="workspace-grid" aria-label="회원 관리 화면">
+    <section className="workspace-grid workspace-grid-single" aria-label="회원 관리 화면">
       {children}
     </section>
   );
