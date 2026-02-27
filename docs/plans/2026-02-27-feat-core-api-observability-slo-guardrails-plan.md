@@ -283,14 +283,14 @@ Success criteria:
 ### Functional Requirements
 
 - [x] 핵심 API 그룹(회원/상품/회원권 + 예약/출입) SLI 대상 매핑이 문서로 고정된다.
-- [ ] `dev`, `staging`에서 동일 SLI 정의로 지표를 조회할 수 있다.
+- [x] `dev`, `staging`에서 동일 SLI 정의로 지표를 조회할 수 있다.
 - [x] staging 7일 rolling 기반 Go/No-Go 체크리스트가 존재하고 실행 가능하다.
 
 ### Non-Functional Requirements
 
-- [ ] `p95 < 250ms` 기준으로 group별 판정이 가능하다.
-- [ ] `5xx < 0.5%` 기준으로 group별 판정이 가능하다.
-- [ ] `availability >= 99.7%` 기준으로 group별 판정이 가능하다.
+- [x] `p95 < 250ms` 기준으로 group별 판정이 가능하다.
+- [x] `5xx < 0.5%` 기준으로 group별 판정이 가능하다.
+- [x] `availability >= 99.7%` 기준으로 group별 판정이 가능하다.
 - [x] 저트래픽 구간 최소 샘플 수 규칙이 명시된다.
 
 ### Quality Gates
