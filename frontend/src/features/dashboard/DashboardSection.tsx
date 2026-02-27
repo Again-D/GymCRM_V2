@@ -16,6 +16,7 @@ type DashboardSectionProps = {
   onOpenMembers: () => void;
   onOpenMemberships: () => void;
   onOpenReservations: () => void;
+  onOpenAccess: () => void;
   onOpenProducts: () => void;
 };
 
@@ -33,6 +34,7 @@ export function DashboardSection(props: DashboardSectionProps) {
     onOpenMembers,
     onOpenMemberships,
     onOpenReservations,
+    onOpenAccess,
     onOpenProducts
   } = props;
 
@@ -51,6 +53,9 @@ export function DashboardSection(props: DashboardSectionProps) {
           </button>
           <button type="button" className="secondary-button" onClick={onOpenReservations} disabled={!hasSelectedMember}>
             예약 관리 열기
+          </button>
+          <button type="button" className="secondary-button" onClick={onOpenAccess}>
+            출입 관리 열기
           </button>
           <button type="button" className="secondary-button" onClick={onOpenProducts}>
             상품 관리 열기
