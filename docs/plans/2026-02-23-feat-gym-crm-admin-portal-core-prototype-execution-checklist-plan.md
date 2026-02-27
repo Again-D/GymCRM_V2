@@ -1,7 +1,7 @@
 ---
 title: feat: GYM CRM Admin Portal Core Prototype Execution Checklist
 type: feat
-status: active
+status: completed
 date: 2026-02-23
 origin: docs/brainstorms/2026-02-23-gym-crm-product-brainstorm.md
 ---
@@ -179,7 +179,7 @@ Phase 1.5 착수 조건:
 
 - [x] `backend/pom.xml` 제거 또는 임시 유지 결정
 - [x] 유지 시 제거 조건/시점 문서화
-- [ ] 제거 시 문서/스크립트 참조 정리
+- [x] 제거 시 문서/스크립트 참조 정리
 
 완료 기준:
 - [x] 빌드 표준 단일화 상태 또는 임시 병행 사유가 명확하다.
