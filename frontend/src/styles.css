@@ -571,6 +571,11 @@ table {
   min-width: 680px;
 }
 
+.members-table,
+.products-table {
+  min-width: 640px;
+}
+
 thead {
   background: #f8f1e6;
 }
@@ -913,6 +918,35 @@ code {
   background: rgba(255, 255, 255, 0.2);
 }
 
+@media (max-width: 1400px) {
+  .members-table,
+  .products-table {
+    min-width: 600px;
+  }
+
+  .member-management-panel th,
+  .member-management-panel td,
+  .product-management-panel th,
+  .product-management-panel td {
+    padding: 9px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .members-table,
+  .products-table {
+    min-width: 560px;
+  }
+
+  .member-management-panel th,
+  .member-management-panel td,
+  .product-management-panel th,
+  .product-management-panel td {
+    font-size: 12px;
+    padding: 8px;
+  }
+}
+
 @media (max-width: 1100px) {
   .portal-layout {
     grid-template-columns: 1fr;
@@ -1002,6 +1036,47 @@ code {
     grid-template-columns: 1fr;
   }
 
+  .members-toolbar-grid .toolbar-actions,
+  .products-toolbar-grid .toolbar-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+  }
+
+  .members-toolbar-grid .toolbar-actions button,
+  .products-toolbar-grid .toolbar-actions button {
+    width: 100%;
+  }
+
+  .members-table,
+  .products-table {
+    min-width: 100%;
+  }
+
+  .members-table th:nth-child(1),
+  .members-table td:nth-child(1),
+  .members-table th:nth-child(5),
+  .members-table td:nth-child(5),
+  .products-table th:nth-child(1),
+  .products-table td:nth-child(1),
+  .products-table th:nth-child(4),
+  .products-table td:nth-child(4) {
+    display: none;
+  }
+
+  .members-table th,
+  .members-table td,
+  .products-table th,
+  .products-table td {
+    padding: 8px;
+    font-size: 12px;
+  }
+
+  .members-table td:nth-child(6) .secondary-button,
+  .products-table td:nth-child(7) .secondary-button {
+    width: 100%;
+  }
+
   .checkbox-row {
     padding-top: 4px;
   }
@@ -1059,6 +1134,18 @@ code {
 
   .membership-action-group summary {
     font-size: 11px;
+  }
+
+  .members-toolbar-grid .toolbar-actions,
+  .products-toolbar-grid .toolbar-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .members-table th,
+  .members-table td,
+  .products-table th,
+  .products-table td {
+    padding: 7px 6px;
   }
 
   th,

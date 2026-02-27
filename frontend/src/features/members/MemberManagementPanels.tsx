@@ -75,7 +75,7 @@ export function MemberManagementPanels({
 }: MemberManagementPanelsProps) {
   return (
     <>
-      <article className="panel">
+      <article className="panel member-management-panel">
         <PanelHeader
           title="회원 목록"
           actions={
@@ -85,7 +85,7 @@ export function MemberManagementPanels({
           }
         />
         <form
-          className="toolbar-grid"
+          className="toolbar-grid members-toolbar-grid"
           onSubmit={(event) => {
             event.preventDefault();
             void loadMembers();
@@ -121,7 +121,7 @@ export function MemberManagementPanels({
         {memberPanelError ? <NoticeText tone="error">{memberPanelError}</NoticeText> : null}
 
         <div className="list-shell">
-          <table>
+          <table className="members-table">
             <thead>
               <tr>
                 <th>ID</th>

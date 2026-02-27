@@ -102,7 +102,7 @@ export function ProductManagementPanels({
 }: ProductManagementPanelsProps) {
   return (
     <>
-      <article className="panel">
+      <article className="panel product-management-panel">
         <PanelHeader
           title="상품 목록"
           actions={
@@ -122,7 +122,7 @@ export function ProductManagementPanels({
         ) : null}
 
         <form
-          className="toolbar-grid"
+          className="toolbar-grid products-toolbar-grid"
           onSubmit={(event) => {
             event.preventDefault();
             void loadProducts();
@@ -178,7 +178,7 @@ export function ProductManagementPanels({
         {productPanelError ? <NoticeText tone="error">{productPanelError}</NoticeText> : null}
 
         <div className="list-shell">
-          <table>
+          <table className="products-table">
             <thead>
               <tr>
                 <th>ID</th>
