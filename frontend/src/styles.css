@@ -592,11 +592,14 @@ th {
 }
 
 tbody tr {
-  cursor: pointer;
   transition: background-color 100ms ease;
 }
 
-tbody tr:hover {
+tbody tr.is-clickable-row {
+  cursor: pointer;
+}
+
+tbody tr.is-clickable-row:hover {
   background: #fff8eb;
 }
 
