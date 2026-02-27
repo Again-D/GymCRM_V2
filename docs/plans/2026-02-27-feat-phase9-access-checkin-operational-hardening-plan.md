@@ -1,7 +1,7 @@
 ---
 title: feat: Phase 9 출입/체크인 운영 고도화
 type: feat
-status: active
+status: completed
 date: 2026-02-27
 origin: docs/brainstorms/2026-02-23-gym-crm-product-brainstorm.md
 ---
