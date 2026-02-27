@@ -111,7 +111,8 @@ Reference files:
 
 ## 9) Known constraints
 
-- JWT 모드에서 `/actuator/**` 접근 정책은 네트워크 경계(ingress/ACL)와 함께 운영해야 한다.
+- JWT 모드에서 `/actuator/prometheus`는 앱 레벨 인증(`ROLE_CENTER_ADMIN`)을 요구한다.
+- 운영 스크레이퍼는 인증 토큰 주입 또는 내부 접근 프록시 구성 중 하나를 반드시 사용해야 한다.
 - 현재 단계는 계약/기준선 고정이며, 대시보드/알림 인프라 연결은 단계적으로 적용한다.
 
 ## 10) Validation checklist

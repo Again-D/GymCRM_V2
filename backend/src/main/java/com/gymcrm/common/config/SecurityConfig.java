@@ -57,6 +57,7 @@ public class SecurityConfig {
                         "/api/v1/auth/logout",
                         "/actuator/health"
                 ).permitAll()
+                .requestMatchers("/actuator/prometheus").hasAnyRole("CENTER_ADMIN")
                 .requestMatchers("/api/v1/**").authenticated()
                 .anyRequest().permitAll()
         );
