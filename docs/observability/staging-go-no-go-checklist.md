@@ -7,7 +7,7 @@ Owner: Platform/Backend (temporary: Center Admin engineering owner)
 ## 1) Pre-check (Telemetry health)
 
 - [ ] Staging app up (`/api/v1/health` 200)
-- [ ] Actuator metrics endpoint reachable (`/actuator/prometheus`)
+- [ ] Actuator metrics endpoint reachable (`/actuator/prometheus`, authenticated)
 - [ ] Metrics ingestion pipeline healthy (no scrape gap alert)
 - [ ] Dashboard query returns recent data (< 5m latency)
 
