@@ -1,7 +1,7 @@
 ---
 title: "feat: Separate list and form surfaces in members/products tabs"
 type: feat
-status: active
+status: completed
 date: 2026-02-27
 ---
 
@@ -119,8 +119,8 @@ date: 2026-02-27
 
 ### Phase 4: Polishing and Regression
 - [x] 불필요한 2열 의존 CSS 제거 또는 축소
-- [ ] members/products에서 가로 스크롤 발생 빈도 재측정
-- [ ] 빌드/수동 회귀 테스트 수행
+- [x] members/products에서 가로 스크롤 발생 빈도 재측정
+- [x] 빌드/수동 회귀 테스트 수행
 
 ## Alternatives Considered
 
@@ -142,15 +142,15 @@ date: 2026-02-27
 - [x] 저장 성공 시 목록에 결과가 반영되고 사용자 맥락(검색/선택)이 유지된다
 
 ### UX / Layout
-- [ ] 1280px 전후 해상도에서 members/products 목록 가독성이 개선되고 수평 스크롤 빈도가 유의미하게 감소한다
-- [ ] 모바일에서 폼 surface가 사용 가능한 형태(풀스크린/시트)로 동작한다
+- [x] 1280px 전후 해상도에서 members/products 목록 가독성이 개선되고 수평 스크롤 빈도가 유의미하게 감소한다
+- [x] 모바일에서 폼 surface가 사용 가능한 형태(풀스크린/시트)로 동작한다
 
 ### Authorization
 - [x] `ROLE_DESK` 사용자는 products 편집/등록 제한이 동일하게 유지된다
 
 ### Quality
 - [x] `npm run build` 통과
-- [ ] 수동 회귀: login/logout, members create/edit, products create/edit, desk restriction
+- [x] 수동 회귀: login/logout, members create/edit, products create/edit, desk restriction
 
 ## Success Metrics
 
