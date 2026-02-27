@@ -129,18 +129,15 @@ export function MemberManagementPanels({
                 <th>연락처</th>
                 <th>상태</th>
                 <th>가입일</th>
+                <th>액션</th>
               </tr>
             </thead>
             <tbody>
               {members.length === 0 ? (
-                <EmptyTableRow colSpan={5} message="조회된 회원이 없습니다." />
+                <EmptyTableRow colSpan={6} message="조회된 회원이 없습니다." />
               ) : (
                 members.map((member) => (
-                  <tr
-                    key={member.memberId}
-                    className={member.memberId === selectedMemberId ? "is-selected" : ""}
-                    onClick={() => void openMemberEditor(member.memberId)}
-                  >
+                  <tr key={member.memberId} className={member.memberId === selectedMemberId ? "is-selected" : ""}>
                     <td>{member.memberId}</td>
                     <td>{member.memberName}</td>
                     <td>{member.phone}</td>
@@ -150,6 +147,11 @@ export function MemberManagementPanels({
                       </span>
                     </td>
                     <td>{formatDate(member.joinDate)}</td>
+                    <td>
+                      <button type="button" className="secondary-button" onClick={() => void openMemberEditor(member.memberId)}>
+                        편집
+                      </button>
+                    </td>
                   </tr>
                 ))
               )}

@@ -767,7 +767,7 @@ export default function App() {
     }
   }
 
-  async function loadMemberDetail(memberId: number, options?: { syncForm?: boolean }) {
+  async function loadMemberDetail(memberId: number, options?: { syncForm?: boolean }): Promise<boolean> {
     setSelectedMemberId(memberId);
     setMemberPanelError(null);
     setMemberPurchaseError(null);
@@ -785,8 +785,10 @@ export default function App() {
         setMemberForm(memberFormFromDetail(response.data));
         setMemberFormMode("edit");
       }
+      return true;
     } catch (error) {
       setMemberPanelError(errorMessage(error));
+      return false;
     }
   }
 
@@ -812,7 +814,7 @@ export default function App() {
     }
   }
 
-  async function loadProductDetail(productId: number, options?: { syncForm?: boolean }) {
+  async function loadProductDetail(productId: number, options?: { syncForm?: boolean }): Promise<boolean> {
     setSelectedProductId(productId);
     setProductPanelError(null);
     try {
@@ -822,8 +824,10 @@ export default function App() {
         setProductForm(productFormFromDetail(response.data));
         setProductFormMode("edit");
       }
+      return true;
     } catch (error) {
       setProductPanelError(errorMessage(error));
+      return false;
     }
   }
 
@@ -1576,13 +1580,17 @@ export default function App() {
   }
 
   async function openMemberEditor(memberId: number) {
-    await loadMemberDetail(memberId);
-    setMemberFormOpen(true);
+    const loaded = await loadMemberDetail(memberId);
+    if (loaded) {
+      setMemberFormOpen(true);
+    }
   }
 
   async function openProductEditor(productId: number) {
-    await loadProductDetail(productId);
-    setProductFormOpen(true);
+    const loaded = await loadProductDetail(productId);
+    if (loaded) {
+      setProductFormOpen(true);
+    }
   }
 
   function closeMemberForm() {
