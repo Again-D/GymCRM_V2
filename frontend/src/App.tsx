@@ -6,6 +6,8 @@ import { TopBar } from "./components/layout/TopBar";
 import { BootstrappingScreen } from "./features/auth/BootstrappingScreen";
 import { LoginScreen } from "./features/auth/LoginScreen";
 import { UnknownSecurityScreen } from "./features/auth/UnknownSecurityScreen";
+import { AccessManagementPanels } from "./features/access/AccessManagementPanels";
+import { AccessSection } from "./features/access/AccessSection";
 import { DashboardSection } from "./features/dashboard/DashboardSection";
 import { MemberManagementPanels } from "./features/members/MemberManagementPanels";
 import { MembersSection } from "./features/members/MembersSection";
@@ -18,7 +20,7 @@ import { ReservationsSection } from "./features/reservations/ReservationsSection
 import { ApiClientError, apiGet, apiPatch, apiPost, configureApiAuth } from "./shared/api/client";
 import { formatCurrency, formatDate, formatDateTime } from "./shared/utils/format";
 
-type NavSectionKey = "dashboard" | "members" | "memberships" | "reservations" | "products";
+type NavSectionKey = "dashboard" | "members" | "memberships" | "reservations" | "access" | "products";
 type SecurityMode = "unknown" | "prototype" | "jwt";
 
 type HealthPayload = {
@@ -305,6 +307,36 @@ type ReservationCreateFormState = {
   scheduleId: string;
   membershipId: string;
   memo: string;
+};
+
+type AccessEventRecord = {
+  accessEventId: number;
+  centerId: number;
+  memberId: number;
+  membershipId: number | null;
+  reservationId: number | null;
+  processedBy: number;
+  eventType: "ENTRY_GRANTED" | "EXIT" | "ENTRY_DENIED";
+  denyReason: string | null;
+  processedAt: string;
+};
+
+type AccessOpenSession = {
+  accessSessionId: number;
+  memberId: number;
+  memberName: string;
+  phone: string;
+  membershipId: number | null;
+  reservationId: number | null;
+  entryAt: string;
+};
+
+type AccessPresenceSummary = {
+  openSessionCount: number;
+  todayEntryGrantedCount: number;
+  todayExitCount: number;
+  todayEntryDeniedCount: number;
+  openSessions: AccessOpenSession[];
 };
 
 const EMPTY_MEMBER_FORM: MemberFormState = {
@@ -627,6 +659,15 @@ export default function App() {
   const [reservationActionSubmittingId, setReservationActionSubmittingId] = useState<number | null>(null);
   const [reservationPanelMessage, setReservationPanelMessage] = useState<string | null>(null);
   const [reservationPanelError, setReservationPanelError] = useState<string | null>(null);
+  const [accessMemberQuery, setAccessMemberQuery] = useState("");
+  const [accessSelectedMemberId, setAccessSelectedMemberId] = useState<number | null>(null);
+  const [accessEvents, setAccessEvents] = useState<AccessEventRecord[]>([]);
+  const [accessPresence, setAccessPresence] = useState<AccessPresenceSummary | null>(null);
+  const [accessEventsLoading, setAccessEventsLoading] = useState(false);
+  const [accessPresenceLoading, setAccessPresenceLoading] = useState(false);
+  const [accessActionSubmitting, setAccessActionSubmitting] = useState(false);
+  const [accessPanelMessage, setAccessPanelMessage] = useState<string | null>(null);
+  const [accessPanelError, setAccessPanelError] = useState<string | null>(null);
 
   const [productFilters, setProductFilters] = useState<ProductFilters>({ category: "", status: "" });
   const [products, setProducts] = useState<ProductSummary[]>([]);
@@ -682,6 +723,12 @@ export default function App() {
     setReservationCreateForm({ ...EMPTY_RESERVATION_CREATE_FORM });
     setReservationPanelMessage(null);
     setReservationPanelError(null);
+    setAccessMemberQuery("");
+    setAccessSelectedMemberId(null);
+    setAccessEvents([]);
+    setAccessPresence(null);
+    setAccessPanelMessage(null);
+    setAccessPanelError(null);
 
     setProducts([]);
     setSelectedProductId(null);
@@ -827,6 +874,36 @@ export default function App() {
     }
   }
 
+  async function loadAccessEvents(memberId?: number | null) {
+    setAccessEventsLoading(true);
+    try {
+      const params = new URLSearchParams();
+      params.set("limit", "100");
+      if (memberId != null) {
+        params.set("memberId", String(memberId));
+      }
+      const response = await apiGet<AccessEventRecord[]>(`/api/v1/access/events?${params.toString()}`);
+      setAccessEvents(response.data);
+    } finally {
+      setAccessEventsLoading(false);
+    }
+  }
+
+  async function loadAccessPresence() {
+    setAccessPresenceLoading(true);
+    try {
+      const response = await apiGet<AccessPresenceSummary>("/api/v1/access/presence");
+      setAccessPresence(response.data);
+    } finally {
+      setAccessPresenceLoading(false);
+    }
+  }
+
+  async function reloadAccessData(memberId?: number | null) {
+    setAccessPanelError(null);
+    await Promise.all([loadAccessPresence(), loadAccessEvents(memberId)]);
+  }
+
   useEffect(() => {
     if (!isJwtMode) {
       configureApiAuth(null);
@@ -923,6 +1000,23 @@ export default function App() {
     }
     void loadReservationsForMember(selectedMember.memberId);
   }, [isAuthenticated, activeNavSection, selectedMember]);
+
+  useEffect(() => {
+    if (!isAuthenticated || activeNavSection !== "access") {
+      return;
+    }
+
+    async function initializeAccessWorkspace() {
+      if (members.length === 0) {
+        await loadMembers();
+      }
+      await reloadAccessData(accessSelectedMemberId);
+    }
+
+    void initializeAccessWorkspace().catch((error) => {
+      setAccessPanelError(errorMessage(error));
+    });
+  }, [isAuthenticated, activeNavSection, accessSelectedMemberId]);
 
   async function handleLoginSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1413,6 +1507,37 @@ export default function App() {
     }
   }
 
+  async function handleAccessEntry(memberId: number) {
+    setAccessActionSubmitting(true);
+    setAccessPanelError(null);
+    setAccessPanelMessage(null);
+    try {
+      const response = await apiPost<AccessEventRecord>("/api/v1/access/entry", { memberId });
+      setAccessPanelMessage(response.message);
+      await reloadAccessData(memberId);
+    } catch (error) {
+      setAccessPanelError(errorMessage(error));
+      await reloadAccessData(memberId);
+    } finally {
+      setAccessActionSubmitting(false);
+    }
+  }
+
+  async function handleAccessExit(memberId: number) {
+    setAccessActionSubmitting(true);
+    setAccessPanelError(null);
+    setAccessPanelMessage(null);
+    try {
+      const response = await apiPost<AccessEventRecord>("/api/v1/access/exit", { memberId });
+      setAccessPanelMessage(response.message);
+      await reloadAccessData(memberId);
+    } catch (error) {
+      setAccessPanelError(errorMessage(error));
+    } finally {
+      setAccessActionSubmitting(false);
+    }
+  }
+
   function startCreateMember() {
     setMemberFormMode("create");
     setSelectedMemberId(null);
@@ -1440,6 +1565,7 @@ export default function App() {
     { key: "members", label: "회원 관리", description: "회원 목록 / 등록 / 수정" },
     { key: "memberships", label: "회원권 업무", description: "구매 / 홀딩 / 해제 / 환불" },
     { key: "reservations", label: "예약 관리", description: "예약 생성 / 취소 / 완료 / 차감" },
+    { key: "access", label: "출입 관리", description: "입장 / 퇴장 / 거절 이력 / 현재 입장" },
     { key: "products", label: "상품 관리", description: "상품 목록 / 정책 / 상태" }
   ];
   const selectedMemberMemberships = selectedMember ? (memberMembershipsByMemberId[selectedMember.memberId] ?? []) : [];
@@ -1452,7 +1578,7 @@ export default function App() {
   );
   const isDeskRole = authUser?.roleCode === "ROLE_DESK";
   const canManageProducts = !isJwtMode || authUser?.roleCode === "ROLE_CENTER_ADMIN";
-  const appSubtitle = isJwtMode ? "Admin Portal · Phase 5 JWT/RBAC" : "Admin Portal Prototype · Phase 5";
+  const appSubtitle = isJwtMode ? "Admin Portal · Phase 9 Access Ops" : "Admin Portal Prototype · Phase 9";
   const modeBadgeText = isJwtMode
     ? authUser
       ? `JWT Mode · ${authUser.roleCode} · ${authUser.displayName}`
@@ -1536,7 +1662,9 @@ export default function App() {
                     ? "선택한 회원 기준으로 회원권 업무 상태를 확인하고 회원권 처리 흐름으로 이동합니다."
                     : activeNavSection === "reservations"
                       ? "선택한 회원 기준으로 예약 생성/취소/완료와 차감 흐름을 처리합니다."
-                      : "상품 목록/정책/상태를 관리합니다."
+                      : activeNavSection === "access"
+                        ? "회원 검색 기반으로 입장/퇴장과 출입 이벤트를 운영합니다."
+                        : "상품 목록/정책/상태를 관리합니다."
             }
             showSelectMemberAction={
               (activeNavSection === "memberships" || activeNavSection === "reservations") && !selectedMember
@@ -1558,6 +1686,7 @@ export default function App() {
               onOpenMembers={() => setActiveNavSection("members")}
               onOpenMemberships={() => setActiveNavSection("memberships")}
               onOpenReservations={() => setActiveNavSection("reservations")}
+              onOpenAccess={() => setActiveNavSection("access")}
               onOpenProducts={() => setActiveNavSection("products")}
             />
           ) : activeNavSection === "memberships" ? (
@@ -1622,6 +1751,24 @@ export default function App() {
                 handleReservationNoShow={handleReservationNoShow}
               />
             </ReservationsSection>
+          ) : activeNavSection === "access" ? (
+            <AccessSection accessPanelMessage={accessPanelMessage} accessPanelError={accessPanelError}>
+              <AccessManagementPanels
+                members={members}
+                accessMemberQuery={accessMemberQuery}
+                setAccessMemberQuery={setAccessMemberQuery}
+                accessSelectedMemberId={accessSelectedMemberId}
+                setAccessSelectedMemberId={setAccessSelectedMemberId}
+                accessPresence={accessPresence}
+                accessEvents={accessEvents}
+                accessPresenceLoading={accessPresenceLoading}
+                accessEventsLoading={accessEventsLoading}
+                accessActionSubmitting={accessActionSubmitting}
+                handleAccessEntry={handleAccessEntry}
+                handleAccessExit={handleAccessExit}
+                reloadAccessData={reloadAccessData}
+              />
+            </AccessSection>
           ) : activeNavSection === "members" ? (
         <MembersSection>
           <MemberManagementPanels
