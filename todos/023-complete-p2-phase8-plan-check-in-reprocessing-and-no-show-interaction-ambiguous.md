@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p2
 issue_id: "023"
 tags: [code-review, plan, reservation, attendance, policy]
@@ -65,7 +65,11 @@ These decisions directly affect backend validation, UI button state, and test ex
 
 ## Recommended Action
 
-<!-- Fill during triage -->
+Option 1 적용 완료.
+
+- `check-in`은 `CONFIRMED` 상태에서 1회만 허용, 재호출은 `CONFLICT`
+- `checked_in_at`가 존재하는 예약은 `NO_SHOW` 불가
+- 계획서/서비스/API/UI/테스트에 동일 규칙 반영 완료
 
 ## Technical Details
 
@@ -78,9 +82,9 @@ Affected files:
 
 ## Acceptance Criteria
 
-- [ ] Canonical rules define `check-in` reprocessing behavior (CONFLICT vs idempotent no-op)
-- [ ] Canonical rules define whether `checked_in_at` blocks `NO_SHOW`
-- [ ] P8-2/P8-4/P8-5 sections and Acceptance Criteria reflect the chosen policy consistently
+- [x] Canonical rules define `check-in` reprocessing behavior (CONFLICT vs idempotent no-op)
+- [x] Canonical rules define whether `checked_in_at` blocks `NO_SHOW`
+- [x] P8-2/P8-4/P8-5 sections and Acceptance Criteria reflect the chosen policy consistently
 
 ## Work Log
 
@@ -93,3 +97,11 @@ Affected files:
 - Confirmed prior findings were addressed
 - Identified remaining ambiguity between `check-in` metadata and `NO_SHOW` policy interaction
 
+### 2026-02-25 - Completed
+
+**By:** Codex
+
+**Actions:**
+- 권장안(Option 1)을 계획서 canonical rules에 고정
+- P8-2 서비스 규칙, P8-4 UI 가드, P8-5 테스트 기준까지 일관 반영 확인
+- 관련 구현/검증 로그가 정책과 정렬됨을 확인하고 todo `complete` 전환
