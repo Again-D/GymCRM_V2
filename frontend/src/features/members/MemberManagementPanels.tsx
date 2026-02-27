@@ -38,7 +38,10 @@ type MemberManagementPanelsProps = {
   memberPanelError: string | null;
   members: MemberSummaryRow[];
   selectedMemberId: number | null;
+  selectMember: (memberId: number) => Promise<void>;
   openMemberEditor: (memberId: number) => Promise<void>;
+  openMembershipOperationsForMember: (memberId: number) => Promise<void>;
+  openReservationManagementForMember: (memberId: number) => Promise<void>;
   memberFormMode: "create" | "edit";
   memberFormOpen: boolean;
   closeMemberForm: () => void;
@@ -62,7 +65,10 @@ export function MemberManagementPanels({
   memberPanelError,
   members,
   selectedMemberId,
+  selectMember,
   openMemberEditor,
+  openMembershipOperationsForMember,
+  openReservationManagementForMember,
   memberFormMode,
   memberFormOpen,
   closeMemberForm,
@@ -137,7 +143,18 @@ export function MemberManagementPanels({
                 <EmptyTableRow colSpan={6} message="조회된 회원이 없습니다." />
               ) : (
                 members.map((member) => (
-                  <tr key={member.memberId} className={member.memberId === selectedMemberId ? "is-selected" : ""}>
+                  <tr
+                    key={member.memberId}
+                    className={`is-clickable-row${member.memberId === selectedMemberId ? " is-selected" : ""}`}
+                    onClick={() => void selectMember(member.memberId)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        void selectMember(member.memberId);
+                      }
+                    }}
+                    tabIndex={0}
+                  >
                     <td>{member.memberId}</td>
                     <td>{member.memberName}</td>
                     <td>{member.phone}</td>
@@ -148,9 +165,51 @@ export function MemberManagementPanels({
                     </td>
                     <td>{formatDate(member.joinDate)}</td>
                     <td>
-                      <button type="button" className="secondary-button" onClick={() => void openMemberEditor(member.memberId)}>
-                        편집
-                      </button>
+                      {member.memberId === selectedMemberId ? (
+                        <div className="member-row-actions">
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void openMemberEditor(member.memberId);
+                            }}
+                          >
+                            수정
+                          </button>
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void openMembershipOperationsForMember(member.memberId);
+                            }}
+                          >
+                            회원권 업무
+                          </button>
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void openReservationManagementForMember(member.memberId);
+                            }}
+                          >
+                            예약 관리
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void selectMember(member.memberId);
+                          }}
+                        >
+                          선택
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))

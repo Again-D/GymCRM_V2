@@ -1586,6 +1586,24 @@ export default function App() {
     }
   }
 
+  async function selectMember(memberId: number) {
+    await loadMemberDetail(memberId, { syncForm: false });
+  }
+
+  async function openMembershipOperationsForMember(memberId: number) {
+    const loaded = await loadMemberDetail(memberId, { syncForm: false });
+    if (loaded) {
+      setActiveNavSection("memberships");
+    }
+  }
+
+  async function openReservationManagementForMember(memberId: number) {
+    const loaded = await loadMemberDetail(memberId, { syncForm: false });
+    if (loaded) {
+      setActiveNavSection("reservations");
+    }
+  }
+
   async function openProductEditor(productId: number) {
     const loaded = await loadProductDetail(productId);
     if (loaded) {
@@ -1828,7 +1846,10 @@ export default function App() {
             memberPanelError={memberPanelError}
             members={members}
             selectedMemberId={selectedMemberId}
+            selectMember={selectMember}
             openMemberEditor={openMemberEditor}
+            openMembershipOperationsForMember={openMembershipOperationsForMember}
+            openReservationManagementForMember={openReservationManagementForMember}
             memberFormMode={memberFormMode}
             memberFormOpen={memberFormOpen}
             closeMemberForm={closeMemberForm}
