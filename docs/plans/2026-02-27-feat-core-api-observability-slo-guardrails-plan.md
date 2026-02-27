@@ -298,7 +298,7 @@ Success criteria:
 - [ ] SLO 산출식과 대시보드 수치의 샘플 검증이 수행된다.
 - [x] 알림 임계치(warning/critical)와 대응 runbook이 연결된다.
 - [x] telemetry 파이프라인 장애 시 운영 fallback 절차가 문서화된다.
-- [ ] 관련 plan/checklist/status 동기화가 완료된다.
+- [x] 관련 plan/checklist/status 동기화가 완료된다.
 
 ## Success Metrics
 
