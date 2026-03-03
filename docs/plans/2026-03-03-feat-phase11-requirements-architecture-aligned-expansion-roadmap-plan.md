@@ -267,6 +267,12 @@ Quality gates:
 - source->DLQ 이동 시나리오 테스트
 - 운영 로그에서 traceId/event_id 추적 가능
 
+Progress (2026-03-04):
+- [x] CRM 백엔드 기초 구현: 만료임박 트리거 + 큐 처리(process) + 이력 조회 API 추가
+- [x] 중복 방지/실패 재시도 기본 규칙: dedupe key + 최대 시도 후 `DEAD` 전이 적용
+- [x] CRM 프론트 최소 화면 연결: 트리거/큐처리 액션 + 발송 이력 테이블
+- [x] 통합 테스트 추가: source -> retry -> dead 시나리오 검증
+
 ### Phase 11-D: External Integration Readiness (1~2주)
 
 Deliverables:
