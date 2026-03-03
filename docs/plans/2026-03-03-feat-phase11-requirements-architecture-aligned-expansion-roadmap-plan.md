@@ -288,12 +288,18 @@ Quality gates:
 - 외부 장애 주입(타임아웃/5xx) 테스트
 - fallback/보상 트랜잭션 검증 로그 확보
 
+Progress (2026-03-04):
+- [x] 외부 어댑터 계약 인터페이스 추가: `PaymentGatewayAdapter` / `AlimtalkAdapter` / `SmsAdapter` / `QrGateAdapter`
+- [x] sandbox 스텁 + 리드니스 오케스트레이션 도입: 실패 주입/폴백/SMS/보상 취소 흐름 구현
+- [x] 통합 테스트 추가: `ExternalIntegrationReadinessServiceIntegrationTest` (타임아웃/5xx/보상 실패 포함)
+- [x] 운영 활성화 체크리스트 문서 추가: `docs/observability/external-integration-activation-checklist.md`
+
 ## Acceptance Criteria
 
 - [x] 요구사항 문서 FR 항목과 현재 구현의 추적 매트릭스가 작성된다.
 - [ ] Phase11 범위(라커/정산 기초/CRM 기초)가 아키텍처 원칙에 맞게 설계된다.
-- [ ] 외부 연동은 인터페이스 우선 + 실패 경로 기준으로 수용 기준이 정의된다.
-- [ ] 신규 기능이 observability SLO 체크리스트에 편입된다.
+- [x] 외부 연동은 인터페이스 우선 + 실패 경로 기준으로 수용 기준이 정의된다.
+- [x] 신규 기능이 observability SLO 체크리스트에 편입된다.
 - [ ] 역할/권한 확장 전략(ADMIN -> 다중 역할)이 API/프론트 공통 기준으로 문서화된다.
 - [ ] 문서 상태 동기화 규칙(계획/체크리스트/검증 로그)이 운영된다.
 
