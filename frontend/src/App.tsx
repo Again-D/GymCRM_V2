@@ -9,6 +9,8 @@ import { UnknownSecurityScreen } from "./features/auth/UnknownSecurityScreen";
 import { AccessManagementPanels } from "./features/access/AccessManagementPanels";
 import { AccessSection } from "./features/access/AccessSection";
 import { DashboardSection } from "./features/dashboard/DashboardSection";
+import { CrmMessagePanels } from "./features/crm/CrmMessagePanels";
+import { CrmSection } from "./features/crm/CrmSection";
 import { LockerManagementPanels } from "./features/lockers/LockerManagementPanels";
 import { LockersSection } from "./features/lockers/LockersSection";
 import { MemberManagementPanels } from "./features/members/MemberManagementPanels";
@@ -31,6 +33,7 @@ type NavSectionKey =
   | "reservations"
   | "access"
   | "lockers"
+  | "crm"
   | "settlements"
   | "products";
 type SecurityMode = "unknown" | "prototype" | "jwt";
@@ -420,6 +423,48 @@ type SettlementReportFilters = {
   productKeyword: string;
 };
 
+type CrmMessageHistoryRow = {
+  crmMessageEventId: number;
+  memberId: number;
+  membershipId: number | null;
+  eventType: string;
+  channelType: string;
+  sendStatus: "PENDING" | "RETRY_WAIT" | "SENT" | "DEAD";
+  attemptCount: number;
+  lastAttemptedAt: string | null;
+  nextAttemptAt: string | null;
+  sentAt: string | null;
+  failedAt: string | null;
+  lastErrorMessage: string | null;
+  traceId: string | null;
+  createdAt: string;
+};
+
+type CrmMessageHistoryResponse = {
+  rows: CrmMessageHistoryRow[];
+};
+
+type CrmFilters = {
+  sendStatus: "" | "PENDING" | "RETRY_WAIT" | "SENT" | "DEAD";
+  limit: string;
+};
+
+type CrmTriggerResponse = {
+  baseDate: string;
+  targetDate: string;
+  totalTargets: number;
+  createdCount: number;
+  duplicatedCount: number;
+};
+
+type CrmProcessResponse = {
+  pickedCount: number;
+  sentCount: number;
+  retryWaitCount: number;
+  deadCount: number;
+  maxAttempts: number;
+};
+
 const EMPTY_MEMBER_FORM: MemberFormState = {
   memberName: "",
   phone: "",
@@ -478,6 +523,13 @@ function createInitialSettlementFilters(): SettlementReportFilters {
     endDate: today,
     paymentMethod: "",
     productKeyword: ""
+  };
+}
+
+function createInitialCrmFilters(): CrmFilters {
+  return {
+    sendStatus: "",
+    limit: "100"
   };
 }
 
@@ -782,6 +834,14 @@ export default function App() {
   const [settlementReportLoading, setSettlementReportLoading] = useState(false);
   const [settlementPanelMessage, setSettlementPanelMessage] = useState<string | null>(null);
   const [settlementPanelError, setSettlementPanelError] = useState<string | null>(null);
+  const [crmFilters, setCrmFilters] = useState<CrmFilters>(createInitialCrmFilters);
+  const [crmHistoryRows, setCrmHistoryRows] = useState<CrmMessageHistoryRow[]>([]);
+  const [crmHistoryLoading, setCrmHistoryLoading] = useState(false);
+  const [crmTriggerDaysAhead, setCrmTriggerDaysAhead] = useState("3");
+  const [crmTriggerSubmitting, setCrmTriggerSubmitting] = useState(false);
+  const [crmProcessSubmitting, setCrmProcessSubmitting] = useState(false);
+  const [crmPanelMessage, setCrmPanelMessage] = useState<string | null>(null);
+  const [crmPanelError, setCrmPanelError] = useState<string | null>(null);
 
   const [productFilters, setProductFilters] = useState<ProductFilters>({ category: "", status: "" });
   const [products, setProducts] = useState<ProductSummary[]>([]);
@@ -854,6 +914,11 @@ export default function App() {
     setSettlementReport(null);
     setSettlementPanelMessage(null);
     setSettlementPanelError(null);
+    setCrmFilters(createInitialCrmFilters());
+    setCrmHistoryRows([]);
+    setCrmTriggerDaysAhead("3");
+    setCrmPanelMessage(null);
+    setCrmPanelError(null);
 
     setProducts([]);
     setSelectedProductId(null);
@@ -1088,6 +1153,67 @@ export default function App() {
     }
   }
 
+  async function loadCrmHistory(filters?: CrmFilters) {
+    setCrmHistoryLoading(true);
+    setCrmPanelError(null);
+    try {
+      const effectiveFilters = filters ?? crmFilters;
+      const params = new URLSearchParams();
+      const parsedLimit = Number.parseInt(effectiveFilters.limit, 10);
+      params.set("limit", Number.isFinite(parsedLimit) ? String(parsedLimit) : "100");
+      if (effectiveFilters.sendStatus) {
+        params.set("sendStatus", effectiveFilters.sendStatus);
+      }
+      const response = await apiGet<CrmMessageHistoryResponse>(`/api/v1/crm/messages?${params.toString()}`);
+      setCrmHistoryRows(response.data.rows);
+    } catch (error) {
+      setCrmPanelError(errorMessage(error));
+    } finally {
+      setCrmHistoryLoading(false);
+    }
+  }
+
+  async function triggerCrmExpiryReminder() {
+    setCrmTriggerSubmitting(true);
+    setCrmPanelError(null);
+    setCrmPanelMessage(null);
+    try {
+      const parsedDaysAhead = Number.parseInt(crmTriggerDaysAhead, 10);
+      if (!Number.isFinite(parsedDaysAhead)) {
+        setCrmPanelError("daysAhead는 숫자여야 합니다.");
+        return;
+      }
+      const response = await apiPost<CrmTriggerResponse>("/api/v1/crm/messages/triggers/membership-expiry-reminder", {
+        daysAhead: parsedDaysAhead
+      });
+      setCrmPanelMessage(
+        `${response.message} (target=${response.data.targetDate}, 생성=${response.data.createdCount}, 중복=${response.data.duplicatedCount})`
+      );
+      await loadCrmHistory();
+    } catch (error) {
+      setCrmPanelError(errorMessage(error));
+    } finally {
+      setCrmTriggerSubmitting(false);
+    }
+  }
+
+  async function processCrmQueue() {
+    setCrmProcessSubmitting(true);
+    setCrmPanelError(null);
+    setCrmPanelMessage(null);
+    try {
+      const response = await apiPost<CrmProcessResponse>("/api/v1/crm/messages/process", { limit: 50 });
+      setCrmPanelMessage(
+        `${response.message} (picked=${response.data.pickedCount}, sent=${response.data.sentCount}, retry=${response.data.retryWaitCount}, dead=${response.data.deadCount})`
+      );
+      await loadCrmHistory();
+    } catch (error) {
+      setCrmPanelError(errorMessage(error));
+    } finally {
+      setCrmProcessSubmitting(false);
+    }
+  }
+
   useEffect(() => {
     if (!isJwtMode) {
       configureApiAuth(null);
@@ -1234,6 +1360,15 @@ export default function App() {
     }
     void loadSettlementReport().catch((error) => {
       setSettlementPanelError(errorMessage(error));
+    });
+  }, [isAuthenticated, activeNavSection]);
+
+  useEffect(() => {
+    if (!isAuthenticated || activeNavSection !== "crm") {
+      return;
+    }
+    void loadCrmHistory().catch((error) => {
+      setCrmPanelError(errorMessage(error));
     });
   }, [isAuthenticated, activeNavSection]);
 
@@ -1897,6 +2032,7 @@ export default function App() {
     { key: "reservations", label: "예약 관리", description: "예약 생성 / 취소 / 완료 / 차감" },
     { key: "access", label: "출입 관리", description: "입장 / 퇴장 / 거절 이력 / 현재 입장" },
     { key: "lockers", label: "라커 관리", description: "슬롯 조회 / 배정 / 반납" },
+    { key: "crm", label: "CRM 메시지", description: "만료임박 트리거 / 큐 처리 / 이력" },
     { key: "settlements", label: "정산 리포트", description: "기간/상품/결제수단/순매출" },
     { key: "products", label: "상품 관리", description: "상품 목록 / 정책 / 상태" }
   ];
@@ -1998,6 +2134,8 @@ export default function App() {
                         ? "회원 검색 기반으로 입장/퇴장과 출입 이벤트를 운영합니다."
                         : activeNavSection === "lockers"
                           ? "라커 슬롯 조회와 배정/반납 흐름을 처리합니다."
+                          : activeNavSection === "crm"
+                            ? "만료임박 이벤트 트리거와 메시지 큐 처리/이력 확인을 운영합니다."
                           : activeNavSection === "settlements"
                             ? "기간/상품/결제수단 기준 정산 집계와 순매출을 확인합니다."
                           : "상품 목록/정책/상태를 관리합니다."
@@ -2138,6 +2276,24 @@ export default function App() {
                 settlementPanelError={settlementPanelError}
               />
             </SettlementsSection>
+          ) : activeNavSection === "crm" ? (
+            <CrmSection>
+              <CrmMessagePanels
+                crmHistoryRows={crmHistoryRows}
+                crmHistoryLoading={crmHistoryLoading}
+                crmFilters={crmFilters}
+                setCrmFilters={setCrmFilters}
+                crmTriggerDaysAhead={crmTriggerDaysAhead}
+                setCrmTriggerDaysAhead={setCrmTriggerDaysAhead}
+                crmTriggerSubmitting={crmTriggerSubmitting}
+                crmProcessSubmitting={crmProcessSubmitting}
+                crmPanelMessage={crmPanelMessage}
+                crmPanelError={crmPanelError}
+                loadCrmHistory={loadCrmHistory}
+                triggerCrmExpiryReminder={triggerCrmExpiryReminder}
+                processCrmQueue={processCrmQueue}
+              />
+            </CrmSection>
           ) : activeNavSection === "members" ? (
         <MembersSection>
           <MemberManagementPanels
