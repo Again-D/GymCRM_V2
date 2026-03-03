@@ -9,6 +9,8 @@ import { UnknownSecurityScreen } from "./features/auth/UnknownSecurityScreen";
 import { AccessManagementPanels } from "./features/access/AccessManagementPanels";
 import { AccessSection } from "./features/access/AccessSection";
 import { DashboardSection } from "./features/dashboard/DashboardSection";
+import { LockerManagementPanels } from "./features/lockers/LockerManagementPanels";
+import { LockersSection } from "./features/lockers/LockersSection";
 import { MemberManagementPanels } from "./features/members/MemberManagementPanels";
 import { MembersSection } from "./features/members/MembersSection";
 import { MembershipOperationsPanels } from "./features/memberships/MembershipOperationsPanels";
@@ -20,7 +22,7 @@ import { ReservationsSection } from "./features/reservations/ReservationsSection
 import { ApiClientError, apiGet, apiPatch, apiPost, configureApiAuth } from "./shared/api/client";
 import { formatCurrency, formatDate, formatDateTime } from "./shared/utils/format";
 
-type NavSectionKey = "dashboard" | "members" | "memberships" | "reservations" | "access" | "products";
+type NavSectionKey = "dashboard" | "members" | "memberships" | "reservations" | "access" | "lockers" | "products";
 type SecurityMode = "unknown" | "prototype" | "jwt";
 
 type HealthPayload = {
@@ -339,6 +341,48 @@ type AccessPresenceSummary = {
   openSessions: AccessOpenSession[];
 };
 
+type LockerSlot = {
+  lockerSlotId: number;
+  centerId: number;
+  lockerCode: string;
+  lockerZone: string | null;
+  lockerGrade: string | null;
+  lockerStatus: "AVAILABLE" | "ASSIGNED" | "MAINTENANCE";
+  memo: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type LockerAssignment = {
+  lockerAssignmentId: number;
+  centerId: number;
+  lockerSlotId: number;
+  memberId: number;
+  assignmentStatus: "ACTIVE" | "RETURNED";
+  assignedAt: string;
+  startDate: string;
+  endDate: string;
+  returnedAt: string | null;
+  refundAmount: number | null;
+  returnReason: string | null;
+  memo: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type LockerFilters = {
+  lockerStatus: "" | "AVAILABLE" | "ASSIGNED" | "MAINTENANCE";
+  lockerZone: string;
+};
+
+type LockerAssignFormState = {
+  lockerSlotId: string;
+  memberId: string;
+  startDate: string;
+  endDate: string;
+  memo: string;
+};
+
 const EMPTY_MEMBER_FORM: MemberFormState = {
   memberName: "",
   phone: "",
@@ -379,6 +423,14 @@ const EMPTY_PURCHASE_FORM: PurchaseFormState = {
 const EMPTY_RESERVATION_CREATE_FORM: ReservationCreateFormState = {
   scheduleId: "",
   membershipId: "",
+  memo: ""
+};
+
+const EMPTY_LOCKER_ASSIGN_FORM: LockerAssignFormState = {
+  lockerSlotId: "",
+  memberId: "",
+  startDate: new Date().toISOString().slice(0, 10),
+  endDate: new Date().toISOString().slice(0, 10),
   memo: ""
 };
 
@@ -668,6 +720,16 @@ export default function App() {
   const [accessActionSubmitting, setAccessActionSubmitting] = useState(false);
   const [accessPanelMessage, setAccessPanelMessage] = useState<string | null>(null);
   const [accessPanelError, setAccessPanelError] = useState<string | null>(null);
+  const [lockerFilters, setLockerFilters] = useState<LockerFilters>({ lockerStatus: "", lockerZone: "" });
+  const [lockerSlots, setLockerSlots] = useState<LockerSlot[]>([]);
+  const [lockerSlotsLoading, setLockerSlotsLoading] = useState(false);
+  const [lockerAssignments, setLockerAssignments] = useState<LockerAssignment[]>([]);
+  const [lockerAssignmentsLoading, setLockerAssignmentsLoading] = useState(false);
+  const [lockerAssignForm, setLockerAssignForm] = useState<LockerAssignFormState>(EMPTY_LOCKER_ASSIGN_FORM);
+  const [lockerAssignSubmitting, setLockerAssignSubmitting] = useState(false);
+  const [lockerReturnSubmittingId, setLockerReturnSubmittingId] = useState<number | null>(null);
+  const [lockerPanelMessage, setLockerPanelMessage] = useState<string | null>(null);
+  const [lockerPanelError, setLockerPanelError] = useState<string | null>(null);
 
   const [productFilters, setProductFilters] = useState<ProductFilters>({ category: "", status: "" });
   const [products, setProducts] = useState<ProductSummary[]>([]);
@@ -730,6 +792,12 @@ export default function App() {
     setAccessPresence(null);
     setAccessPanelMessage(null);
     setAccessPanelError(null);
+    setLockerFilters({ lockerStatus: "", lockerZone: "" });
+    setLockerSlots([]);
+    setLockerAssignments([]);
+    setLockerAssignForm({ ...EMPTY_LOCKER_ASSIGN_FORM, startDate: new Date().toISOString().slice(0, 10), endDate: new Date().toISOString().slice(0, 10) });
+    setLockerPanelMessage(null);
+    setLockerPanelError(null);
 
     setProducts([]);
     setSelectedProductId(null);
@@ -904,6 +972,41 @@ export default function App() {
     await Promise.all([loadAccessPresence(), loadAccessEvents(memberId)]);
   }
 
+  async function loadLockerSlots(filters?: LockerFilters) {
+    setLockerSlotsLoading(true);
+    setLockerPanelError(null);
+    try {
+      const effectiveFilters = filters ?? lockerFilters;
+      const params = new URLSearchParams();
+      if (effectiveFilters.lockerStatus) {
+        params.set("lockerStatus", effectiveFilters.lockerStatus);
+      }
+      if (effectiveFilters.lockerZone.trim()) {
+        params.set("lockerZone", effectiveFilters.lockerZone.trim());
+      }
+      const query = params.toString();
+      const response = await apiGet<LockerSlot[]>(`/api/v1/lockers/slots${query ? `?${query}` : ""}`);
+      setLockerSlots(response.data);
+    } catch (error) {
+      setLockerPanelError(errorMessage(error));
+    } finally {
+      setLockerSlotsLoading(false);
+    }
+  }
+
+  async function loadLockerAssignments(activeOnly = false) {
+    setLockerAssignmentsLoading(true);
+    setLockerPanelError(null);
+    try {
+      const response = await apiGet<LockerAssignment[]>(`/api/v1/lockers/assignments?activeOnly=${activeOnly}`);
+      setLockerAssignments(response.data);
+    } catch (error) {
+      setLockerPanelError(errorMessage(error));
+    } finally {
+      setLockerAssignmentsLoading(false);
+    }
+  }
+
   useEffect(() => {
     if (!isJwtMode) {
       configureApiAuth(null);
@@ -1026,6 +1129,23 @@ export default function App() {
       setAccessPanelError(errorMessage(error));
     });
   }, [isAuthenticated, activeNavSection, accessSelectedMemberId]);
+
+  useEffect(() => {
+    if (!isAuthenticated || activeNavSection !== "lockers") {
+      return;
+    }
+
+    async function initializeLockerWorkspace() {
+      if (members.length === 0) {
+        await loadMembers();
+      }
+      await Promise.all([loadLockerSlots(), loadLockerAssignments(false)]);
+    }
+
+    void initializeLockerWorkspace().catch((error) => {
+      setLockerPanelError(errorMessage(error));
+    });
+  }, [isAuthenticated, activeNavSection]);
 
   async function handleLoginSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1555,6 +1675,63 @@ export default function App() {
     }
   }
 
+  async function handleLockerAssignSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!lockerAssignForm.lockerSlotId) {
+      setLockerPanelError("배정할 라커 슬롯을 선택해주세요.");
+      return;
+    }
+    if (!lockerAssignForm.memberId) {
+      setLockerPanelError("배정할 회원을 선택해주세요.");
+      return;
+    }
+    if (!lockerAssignForm.startDate || !lockerAssignForm.endDate) {
+      setLockerPanelError("시작일과 종료일을 입력해주세요.");
+      return;
+    }
+
+    setLockerAssignSubmitting(true);
+    setLockerPanelMessage(null);
+    setLockerPanelError(null);
+    try {
+      const response = await apiPost<LockerAssignment>("/api/v1/lockers/assignments", {
+        lockerSlotId: Number.parseInt(lockerAssignForm.lockerSlotId, 10),
+        memberId: Number.parseInt(lockerAssignForm.memberId, 10),
+        startDate: lockerAssignForm.startDate,
+        endDate: lockerAssignForm.endDate,
+        memo: normalizeOptionalText(lockerAssignForm.memo)
+      });
+      setLockerPanelMessage(response.message);
+      setLockerAssignForm({
+        ...EMPTY_LOCKER_ASSIGN_FORM,
+        startDate: new Date().toISOString().slice(0, 10),
+        endDate: new Date().toISOString().slice(0, 10)
+      });
+      await Promise.all([loadLockerSlots(), loadLockerAssignments(false)]);
+    } catch (error) {
+      setLockerPanelError(errorMessage(error));
+    } finally {
+      setLockerAssignSubmitting(false);
+    }
+  }
+
+  async function handleLockerReturn(lockerAssignmentId: number) {
+    setLockerReturnSubmittingId(lockerAssignmentId);
+    setLockerPanelMessage(null);
+    setLockerPanelError(null);
+    try {
+      const response = await apiPost<LockerAssignment>(`/api/v1/lockers/assignments/${lockerAssignmentId}/return`, {
+        returnReason: "관리자 포털 반납 처리"
+      });
+      setLockerPanelMessage(response.message);
+      await Promise.all([loadLockerSlots(), loadLockerAssignments(false)]);
+    } catch (error) {
+      setLockerPanelError(errorMessage(error));
+    } finally {
+      setLockerReturnSubmittingId(null);
+    }
+  }
+
   function startCreateMember() {
     setMemberFormMode("create");
     setSelectedMemberId(null);
@@ -1629,6 +1806,7 @@ export default function App() {
     { key: "memberships", label: "회원권 업무", description: "구매 / 홀딩 / 해제 / 환불" },
     { key: "reservations", label: "예약 관리", description: "예약 생성 / 취소 / 완료 / 차감" },
     { key: "access", label: "출입 관리", description: "입장 / 퇴장 / 거절 이력 / 현재 입장" },
+    { key: "lockers", label: "라커 관리", description: "슬롯 조회 / 배정 / 반납" },
     { key: "products", label: "상품 관리", description: "상품 목록 / 정책 / 상태" }
   ];
   const selectedMemberMemberships = selectedMember ? (memberMembershipsByMemberId[selectedMember.memberId] ?? []) : [];
@@ -1727,7 +1905,9 @@ export default function App() {
                       ? "선택한 회원 기준으로 예약 생성/취소/완료와 차감 흐름을 처리합니다."
                       : activeNavSection === "access"
                         ? "회원 검색 기반으로 입장/퇴장과 출입 이벤트를 운영합니다."
-                        : "상품 목록/정책/상태를 관리합니다."
+                        : activeNavSection === "lockers"
+                          ? "라커 슬롯 조회와 배정/반납 흐름을 처리합니다."
+                          : "상품 목록/정책/상태를 관리합니다."
             }
             showSelectMemberAction={
               (activeNavSection === "memberships" || activeNavSection === "reservations") && !selectedMember
@@ -1832,6 +2012,27 @@ export default function App() {
                 reloadAccessData={reloadAccessData}
               />
             </AccessSection>
+          ) : activeNavSection === "lockers" ? (
+            <LockersSection>
+              <LockerManagementPanels
+                lockerFilters={lockerFilters}
+                setLockerFilters={setLockerFilters}
+                loadLockerSlots={loadLockerSlots}
+                lockerSlotsLoading={lockerSlotsLoading}
+                lockerSlots={lockerSlots}
+                lockerAssignmentsLoading={lockerAssignmentsLoading}
+                lockerAssignments={lockerAssignments}
+                lockerAssignForm={lockerAssignForm}
+                setLockerAssignForm={setLockerAssignForm}
+                handleLockerAssignSubmit={handleLockerAssignSubmit}
+                lockerAssignSubmitting={lockerAssignSubmitting}
+                lockerReturnSubmittingId={lockerReturnSubmittingId}
+                handleLockerReturn={handleLockerReturn}
+                lockerPanelMessage={lockerPanelMessage}
+                lockerPanelError={lockerPanelError}
+                members={members}
+              />
+            </LockersSection>
           ) : activeNavSection === "members" ? (
         <MembersSection>
           <MemberManagementPanels
