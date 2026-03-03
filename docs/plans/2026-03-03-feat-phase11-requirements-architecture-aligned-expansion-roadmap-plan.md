@@ -226,6 +226,12 @@ Quality gates:
 - PR마다 관련 FR ID를 본문에 명시
 - 계획/체크리스트/status 동기화 확인
 
+Progress (2026-03-04):
+- [x] `docs/notes/phase11-fr-traceability-baseline-2026-03-04.md` 작성
+- [x] `docs/notes/phase11-priority-backlog-2026-03-04.md` 작성
+- [x] `docs/notes/phase11-terminology-alignment-2026-03-04.md` 작성
+- [x] 다음 2개 스프린트 우선순위(11-1, 11-2) 확정
+
 ### Phase 11-B: Locker + Settlement Foundation (1~2주)
 
 Deliverables:
@@ -273,7 +279,7 @@ Quality gates:
 
 ## Acceptance Criteria
 
-- [ ] 요구사항 문서 FR 항목과 현재 구현의 추적 매트릭스가 작성된다.
+- [x] 요구사항 문서 FR 항목과 현재 구현의 추적 매트릭스가 작성된다.
 - [ ] Phase11 범위(라커/정산 기초/CRM 기초)가 아키텍처 원칙에 맞게 설계된다.
 - [ ] 외부 연동은 인터페이스 우선 + 실패 경로 기준으로 수용 기준이 정의된다.
 - [ ] 신규 기능이 observability SLO 체크리스트에 편입된다.
@@ -299,8 +305,8 @@ Quality gates:
 1. FR Must Coverage Delta
 - Formula: `(current_completed_must / current_total_must) - (baseline_completed_must / baseline_total_must)`
 - Target: `>= +30%p`
-- Baseline snapshot date: `2026-03-03`
-- Baseline source: `docs/notes/phase11-fr-traceability-baseline-2026-03-03.md` (Phase 11-A 산출물)
+- Baseline snapshot date: `2026-03-04`
+- Baseline source: `docs/notes/phase11-fr-traceability-baseline-2026-03-04.md` (Phase 11-A 산출물)
 - Scope: `docs/01_요구사항_분석서.md`의 Must 항목 전체
 - Owner: Product + Backend Lead
 - Cadence: Phase 종료 시 1회 + 주간 점검
