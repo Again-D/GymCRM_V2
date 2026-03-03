@@ -19,10 +19,20 @@ import { MembershipsSection } from "./features/memberships/MembershipsSection";
 import { ProductsSection } from "./features/products/ProductsSection";
 import { ReservationManagementPanels } from "./features/reservations/ReservationManagementPanels";
 import { ReservationsSection } from "./features/reservations/ReservationsSection";
+import { SettlementReportPanels } from "./features/settlements/SettlementReportPanels";
+import { SettlementsSection } from "./features/settlements/SettlementsSection";
 import { ApiClientError, apiGet, apiPatch, apiPost, configureApiAuth } from "./shared/api/client";
 import { formatCurrency, formatDate, formatDateTime } from "./shared/utils/format";
 
-type NavSectionKey = "dashboard" | "members" | "memberships" | "reservations" | "access" | "lockers" | "products";
+type NavSectionKey =
+  | "dashboard"
+  | "members"
+  | "memberships"
+  | "reservations"
+  | "access"
+  | "lockers"
+  | "settlements"
+  | "products";
 type SecurityMode = "unknown" | "prototype" | "jwt";
 
 type HealthPayload = {
@@ -383,6 +393,33 @@ type LockerAssignFormState = {
   memo: string;
 };
 
+type SalesSettlementReportRow = {
+  productName: string;
+  paymentMethod: "CASH" | "CARD" | "TRANSFER" | "ETC";
+  grossSales: number;
+  refundAmount: number;
+  netSales: number;
+  transactionCount: number;
+};
+
+type SalesSettlementReport = {
+  startDate: string;
+  endDate: string;
+  paymentMethod: "CASH" | "CARD" | "TRANSFER" | "ETC" | null;
+  productKeyword: string | null;
+  totalGrossSales: number;
+  totalRefundAmount: number;
+  totalNetSales: number;
+  rows: SalesSettlementReportRow[];
+};
+
+type SettlementReportFilters = {
+  startDate: string;
+  endDate: string;
+  paymentMethod: "" | "CASH" | "CARD" | "TRANSFER" | "ETC";
+  productKeyword: string;
+};
+
 const EMPTY_MEMBER_FORM: MemberFormState = {
   memberName: "",
   phone: "",
@@ -433,6 +470,16 @@ const EMPTY_LOCKER_ASSIGN_FORM: LockerAssignFormState = {
   endDate: new Date().toISOString().slice(0, 10),
   memo: ""
 };
+
+function createInitialSettlementFilters(): SettlementReportFilters {
+  const today = new Date().toISOString().slice(0, 10);
+  return {
+    startDate: `${today.slice(0, 8)}01`,
+    endDate: today,
+    paymentMethod: "",
+    productKeyword: ""
+  };
+}
 
 function createDefaultMembershipActionDraft(): MembershipActionDraft {
   const today = new Date().toISOString().slice(0, 10);
@@ -730,6 +777,11 @@ export default function App() {
   const [lockerReturnSubmittingId, setLockerReturnSubmittingId] = useState<number | null>(null);
   const [lockerPanelMessage, setLockerPanelMessage] = useState<string | null>(null);
   const [lockerPanelError, setLockerPanelError] = useState<string | null>(null);
+  const [settlementFilters, setSettlementFilters] = useState<SettlementReportFilters>(createInitialSettlementFilters);
+  const [settlementReport, setSettlementReport] = useState<SalesSettlementReport | null>(null);
+  const [settlementReportLoading, setSettlementReportLoading] = useState(false);
+  const [settlementPanelMessage, setSettlementPanelMessage] = useState<string | null>(null);
+  const [settlementPanelError, setSettlementPanelError] = useState<string | null>(null);
 
   const [productFilters, setProductFilters] = useState<ProductFilters>({ category: "", status: "" });
   const [products, setProducts] = useState<ProductSummary[]>([]);
@@ -798,6 +850,10 @@ export default function App() {
     setLockerAssignForm({ ...EMPTY_LOCKER_ASSIGN_FORM, startDate: new Date().toISOString().slice(0, 10), endDate: new Date().toISOString().slice(0, 10) });
     setLockerPanelMessage(null);
     setLockerPanelError(null);
+    setSettlementFilters(createInitialSettlementFilters());
+    setSettlementReport(null);
+    setSettlementPanelMessage(null);
+    setSettlementPanelError(null);
 
     setProducts([]);
     setSelectedProductId(null);
@@ -1007,6 +1063,31 @@ export default function App() {
     }
   }
 
+  async function loadSettlementReport(filters?: SettlementReportFilters) {
+    setSettlementReportLoading(true);
+    setSettlementPanelError(null);
+    setSettlementPanelMessage(null);
+    try {
+      const effectiveFilters = filters ?? settlementFilters;
+      const params = new URLSearchParams();
+      params.set("startDate", effectiveFilters.startDate);
+      params.set("endDate", effectiveFilters.endDate);
+      if (effectiveFilters.paymentMethod) {
+        params.set("paymentMethod", effectiveFilters.paymentMethod);
+      }
+      if (effectiveFilters.productKeyword.trim()) {
+        params.set("productKeyword", effectiveFilters.productKeyword.trim());
+      }
+      const response = await apiGet<SalesSettlementReport>(`/api/v1/settlements/sales-report?${params.toString()}`);
+      setSettlementReport(response.data);
+      setSettlementPanelMessage(response.message);
+    } catch (error) {
+      setSettlementPanelError(errorMessage(error));
+    } finally {
+      setSettlementReportLoading(false);
+    }
+  }
+
   useEffect(() => {
     if (!isJwtMode) {
       configureApiAuth(null);
@@ -1144,6 +1225,15 @@ export default function App() {
 
     void initializeLockerWorkspace().catch((error) => {
       setLockerPanelError(errorMessage(error));
+    });
+  }, [isAuthenticated, activeNavSection]);
+
+  useEffect(() => {
+    if (!isAuthenticated || activeNavSection !== "settlements") {
+      return;
+    }
+    void loadSettlementReport().catch((error) => {
+      setSettlementPanelError(errorMessage(error));
     });
   }, [isAuthenticated, activeNavSection]);
 
@@ -1807,6 +1897,7 @@ export default function App() {
     { key: "reservations", label: "예약 관리", description: "예약 생성 / 취소 / 완료 / 차감" },
     { key: "access", label: "출입 관리", description: "입장 / 퇴장 / 거절 이력 / 현재 입장" },
     { key: "lockers", label: "라커 관리", description: "슬롯 조회 / 배정 / 반납" },
+    { key: "settlements", label: "정산 리포트", description: "기간/상품/결제수단/순매출" },
     { key: "products", label: "상품 관리", description: "상품 목록 / 정책 / 상태" }
   ];
   const selectedMemberMemberships = selectedMember ? (memberMembershipsByMemberId[selectedMember.memberId] ?? []) : [];
@@ -1907,6 +1998,8 @@ export default function App() {
                         ? "회원 검색 기반으로 입장/퇴장과 출입 이벤트를 운영합니다."
                         : activeNavSection === "lockers"
                           ? "라커 슬롯 조회와 배정/반납 흐름을 처리합니다."
+                          : activeNavSection === "settlements"
+                            ? "기간/상품/결제수단 기준 정산 집계와 순매출을 확인합니다."
                           : "상품 목록/정책/상태를 관리합니다."
             }
             showSelectMemberAction={
@@ -2033,6 +2126,18 @@ export default function App() {
                 members={members}
               />
             </LockersSection>
+          ) : activeNavSection === "settlements" ? (
+            <SettlementsSection>
+              <SettlementReportPanels
+                settlementFilters={settlementFilters}
+                setSettlementFilters={setSettlementFilters}
+                loadSettlementReport={loadSettlementReport}
+                settlementReportLoading={settlementReportLoading}
+                settlementReport={settlementReport}
+                settlementPanelMessage={settlementPanelMessage}
+                settlementPanelError={settlementPanelError}
+              />
+            </SettlementsSection>
           ) : activeNavSection === "members" ? (
         <MembersSection>
           <MemberManagementPanels

@@ -250,7 +250,7 @@ Quality gates:
 Progress (2026-03-04):
 - [x] LKR 백엔드 기초 구현: 슬롯/배정/반납 API + DB 제약 + 통합 테스트 추가
 - [x] LKR 프론트 기본 플로우(조회/배정/반납) 연결
-- [ ] SAL 기본 리포트(기간/상품/결제수단/순매출) 구현
+- [x] SAL 기본 리포트(기간/상품/결제수단/순매출) 구현
 
 ### Phase 11-C: CRM Messaging Baseline (1주)
 
