@@ -297,18 +297,21 @@ Progress (2026-03-04):
 ## Acceptance Criteria
 
 - [x] 요구사항 문서 FR 항목과 현재 구현의 추적 매트릭스가 작성된다.
-- [ ] Phase11 범위(라커/정산 기초/CRM 기초)가 아키텍처 원칙에 맞게 설계된다.
+- [x] Phase11 범위(라커/정산 기초/CRM 기초)가 아키텍처 원칙에 맞게 설계된다.
 - [x] 외부 연동은 인터페이스 우선 + 실패 경로 기준으로 수용 기준이 정의된다.
 - [x] 신규 기능이 observability SLO 체크리스트에 편입된다.
-- [ ] 역할/권한 확장 전략(ADMIN -> 다중 역할)이 API/프론트 공통 기준으로 문서화된다.
-- [ ] 문서 상태 동기화 규칙(계획/체크리스트/검증 로그)이 운영된다.
+- [x] 역할/권한 확장 전략(ADMIN -> 다중 역할)이 API/프론트 공통 기준으로 문서화된다.
+- [x] 문서 상태 동기화 규칙(계획/체크리스트/검증 로그)이 운영된다.
 
 ### Research Insights
 
 추가 수용 기준:
 - [ ] 각 Phase에 최소 1개 통합 테스트(실제 DB/큐 경로)가 존재한다.
-- [ ] 메시지 처리 경로에 idempotency 키와 중복 방지 규칙이 문서/코드에 모두 반영된다.
-- [ ] 운영 체크리스트에 DLQ 모니터링 지표(`ApproximateAgeOfOldestMessage` 등)가 포함된다.
+- [x] 메시지 처리 경로에 idempotency 키와 중복 방지 규칙이 문서/코드에 모두 반영된다.
+- [x] 운영 체크리스트에 DLQ 모니터링 지표(`ApproximateAgeOfOldestMessage` 등)가 포함된다.
+
+증빙 문서:
+- `docs/notes/phase11-governance-alignment-2026-03-04.md`
 
 ## Success Metrics
 
