@@ -10,6 +10,32 @@
   --table-head-bg: #f8f1e6;
   --detail-card-bg: rgba(255, 255, 255, 0.92);
   --members-row-hover-bg: #fff8eb;
+  --placeholder-card-bg: linear-gradient(180deg, #fffefb 0%, #fffbf4 100%);
+  --auth-form-bg: linear-gradient(180deg, #fffefb 0%, #fffaf1 100%);
+  --tabbar-bg: rgba(255, 250, 241, 0.84);
+  --tab-hover-bg: rgba(255, 255, 255, 0.7);
+  --field-bg: rgba(255, 255, 255, 0.92);
+  --field-focus-bg: #fff;
+  --field-disabled-bg: #f3eee4;
+  --table-row-selected-bg: #ffeede;
+  --table-cell-border: #ece3d2;
+  --list-shell-bg: rgba(255, 255, 255, 0.96);
+  --overlay-panel-bg: linear-gradient(180deg, rgba(255, 252, 246, 0.99), rgba(255, 250, 241, 0.96));
+  --overlay-panel-border: rgba(217, 207, 188, 0.95);
+  --overlay-panel-header-border: rgba(217, 207, 188, 0.75);
+  --preview-card-bg: linear-gradient(180deg, #fff 0%, #fffcf7 100%);
+  --preview-grid-bg: #fffcf7;
+  --preview-grid-border: #ece3d2;
+  --membership-action-group-bg: rgba(255, 255, 255, 0.72);
+  --membership-preview-bg: #fffaf1;
+  --pill-muted-bg: #f0ebe2;
+  --pill-muted-border: #dfd6c7;
+  --pill-muted-ink: #6a6256;
+  --secondary-button-bg: rgba(255, 255, 255, 0.9);
+  --secondary-button-hover-bg: #fff;
+  --primary-button-hover-bg: #c14f30;
+  --scrollbar-thumb-bg: #d4c5ab;
+  --scrollbar-track-bg: rgba(255, 255, 255, 0.2);
   --accent: #b45a2b;
   --accent-ink: #fff7f1;
   --ok: #237a57;
@@ -38,6 +64,32 @@
   --table-head-bg: rgba(10, 20, 38, 0.9);
   --detail-card-bg: rgba(15, 31, 56, 0.9);
   --members-row-hover-bg: rgba(35, 63, 104, 0.55);
+  --placeholder-card-bg: linear-gradient(180deg, rgba(19, 35, 61, 0.96) 0%, rgba(13, 24, 43, 0.96) 100%);
+  --auth-form-bg: linear-gradient(180deg, rgba(20, 36, 64, 0.96) 0%, rgba(13, 24, 43, 0.95) 100%);
+  --tabbar-bg: rgba(13, 24, 43, 0.82);
+  --tab-hover-bg: rgba(24, 42, 74, 0.78);
+  --field-bg: rgba(13, 24, 43, 0.9);
+  --field-focus-bg: rgba(13, 24, 43, 0.98);
+  --field-disabled-bg: rgba(19, 33, 57, 0.88);
+  --table-row-selected-bg: rgba(47, 86, 145, 0.45);
+  --table-cell-border: rgba(52, 77, 121, 0.88);
+  --list-shell-bg: rgba(13, 24, 43, 0.9);
+  --overlay-panel-bg: linear-gradient(180deg, rgba(18, 33, 57, 0.99), rgba(12, 23, 40, 0.98));
+  --overlay-panel-border: rgba(48, 74, 118, 0.95);
+  --overlay-panel-header-border: rgba(48, 74, 118, 0.78);
+  --preview-card-bg: linear-gradient(180deg, rgba(20, 36, 64, 0.96) 0%, rgba(13, 24, 43, 0.95) 100%);
+  --preview-grid-bg: rgba(14, 26, 46, 0.9);
+  --preview-grid-border: rgba(52, 77, 121, 0.82);
+  --membership-action-group-bg: rgba(15, 27, 48, 0.8);
+  --membership-preview-bg: rgba(18, 33, 57, 0.88);
+  --pill-muted-bg: rgba(26, 42, 68, 0.9);
+  --pill-muted-border: rgba(71, 100, 150, 0.86);
+  --pill-muted-ink: #b5c8e8;
+  --secondary-button-bg: rgba(13, 24, 43, 0.9);
+  --secondary-button-hover-bg: rgba(24, 42, 74, 0.86);
+  --primary-button-hover-bg: linear-gradient(135deg, #3e7cff, #2c5dca);
+  --scrollbar-thumb-bg: #3a5789;
+  --scrollbar-track-bg: rgba(13, 24, 43, 0.45);
   --accent: #2d6df7;
   --accent-ink: #f4f8ff;
   --ok: #3de892;
@@ -271,7 +323,7 @@ textarea {
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 14px;
-  background: linear-gradient(180deg, #fffefb 0%, #fffaf1 100%);
+  background: var(--auth-form-bg);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
@@ -313,7 +365,7 @@ textarea {
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 6px;
-  background: rgba(255, 250, 241, 0.84);
+  background: var(--tabbar-bg);
   backdrop-filter: blur(5px);
   margin-bottom: 16px;
   box-shadow: var(--shadow);
@@ -601,7 +653,7 @@ textarea {
 
 .tab:hover {
   color: var(--ink);
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--tab-hover-bg);
 }
 
 .tab.is-active {
@@ -683,7 +735,7 @@ select,
 textarea {
   width: 100%;
   border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--field-bg);
   border-radius: 10px;
   padding: 9px 10px;
   color: var(--ink);
@@ -696,13 +748,13 @@ textarea:focus {
   outline: 2px solid rgba(184, 75, 45, 0.18);
   border-color: var(--line-strong);
   box-shadow: 0 0 0 3px rgba(184, 75, 45, 0.06);
-  background: #fff;
+  background: var(--field-focus-bg);
 }
 
 input:disabled,
 select:disabled,
 textarea:disabled {
-  background: #f3eee4;
+  background: var(--field-disabled-bg);
   color: #918877;
 }
 
@@ -744,7 +796,7 @@ textarea:disabled {
 }
 
 .primary-button:hover:not(:disabled) {
-  background: #c14f30;
+  background: var(--primary-button-hover-bg);
 }
 
 .primary-button:disabled,
@@ -755,13 +807,13 @@ textarea:disabled {
 
 .secondary-button {
   border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--secondary-button-bg);
   color: var(--ink);
 }
 
 .secondary-button:hover:not(:disabled) {
   border-color: var(--line-strong);
-  background: #fff;
+  background: var(--secondary-button-hover-bg);
   box-shadow: 0 6px 14px rgba(31, 29, 26, 0.05);
 }
 
@@ -902,7 +954,7 @@ textarea:disabled {
   border: 1px solid var(--line);
   border-radius: 12px;
   overflow: auto;
-  background: rgba(255, 255, 255, 0.96);
+  background: var(--list-shell-bg);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
@@ -929,7 +981,7 @@ thead {
 th,
 td {
   text-align: left;
-  border-bottom: 1px solid #ece3d2;
+  border-bottom: 1px solid var(--table-cell-border);
   padding: 10px;
   font-size: 13px;
   vertical-align: middle;
@@ -951,11 +1003,11 @@ tbody tr.is-clickable-row {
 }
 
 tbody tr.is-clickable-row:hover {
-  background: #fff8eb;
+  background: var(--members-row-hover-bg);
 }
 
 tbody tr.is-selected {
-  background: #ffeede;
+  background: var(--table-row-selected-bg);
 }
 
 .member-row-actions {
@@ -987,9 +1039,9 @@ tbody tr.is-selected {
 }
 
 .pill.muted {
-  color: #6a6256;
-  background: #f0ebe2;
-  border-color: #dfd6c7;
+  color: var(--pill-muted-ink);
+  background: var(--pill-muted-bg);
+  border-color: var(--pill-muted-border);
 }
 
 .form-grid {
@@ -1031,8 +1083,8 @@ tbody tr.is-selected {
   max-height: calc(100vh - 40px);
   overflow: auto;
   border-radius: 16px;
-  border: 1px solid rgba(217, 207, 188, 0.95);
-  background: linear-gradient(180deg, rgba(255, 252, 246, 0.99), rgba(255, 250, 241, 0.96));
+  border: 1px solid var(--overlay-panel-border);
+  background: var(--overlay-panel-bg);
   box-shadow: 0 24px 60px rgba(21, 20, 17, 0.28);
 }
 
@@ -1045,8 +1097,8 @@ tbody tr.is-selected {
   align-items: flex-start;
   gap: 10px;
   padding: 14px;
-  border-bottom: 1px solid rgba(217, 207, 188, 0.75);
-  background: linear-gradient(180deg, rgba(255, 252, 246, 0.99), rgba(255, 250, 241, 0.96));
+  border-bottom: 1px solid var(--overlay-panel-header-border);
+  background: var(--overlay-panel-bg);
 }
 
 .overlay-panel-header h3 {
@@ -1073,7 +1125,7 @@ tbody tr.is-selected {
 
 .preview-card {
   border: 1px solid var(--line);
-  background: linear-gradient(180deg, #fff 0%, #fffcf7 100%);
+  background: var(--preview-card-bg);
   border-radius: 10px;
   padding: 10px;
 }
@@ -1091,10 +1143,10 @@ tbody tr.is-selected {
 }
 
 .purchase-preview-grid > div {
-  border: 1px solid #ece3d2;
+  border: 1px solid var(--preview-grid-border);
   border-radius: 8px;
   padding: 8px;
-  background: #fffcf7;
+  background: var(--preview-grid-bg);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
@@ -1119,7 +1171,7 @@ tbody tr.is-selected {
 .membership-action-group {
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--membership-action-group-bg);
   padding: 6px 8px;
 }
 
@@ -1153,7 +1205,7 @@ tbody tr.is-selected {
 .membership-action-preview {
   border: 1px dashed var(--line);
   border-radius: 8px;
-  background: #fffaf1;
+  background: var(--membership-preview-bg);
   padding: 7px 8px;
   font-size: 12px;
   color: var(--muted);
@@ -1188,7 +1240,7 @@ tbody tr.is-selected {
   border: 1px dashed var(--line-strong);
   border-radius: 12px;
   padding: 12px;
-  background: linear-gradient(180deg, #fffefb 0%, #fffbf4 100%);
+  background: var(--placeholder-card-bg);
 }
 
 .placeholder-card h4 {
@@ -1264,14 +1316,14 @@ code {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #d4c5ab;
+  background: var(--scrollbar-thumb-bg);
   border-radius: 999px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--scrollbar-track-bg);
 }
 
 @media (max-width: 1400px) {
