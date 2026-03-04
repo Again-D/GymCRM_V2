@@ -76,14 +76,29 @@ public class ExternalIntegrationReadinessService {
             fallbackUsed = true;
             messageFailureMode = ex.failureMode().name();
             logs.add("message.alimtalk.failed:" + ex.failureMode());
-            SmsAdapter.SendResult smsSent = smsAdapter.send(new SmsAdapter.SendRequest(
-                    scenario.centerId(),
-                    scenario.memberId(),
-                    scenario.phone(),
-                    "sandbox fallback sms",
-                    attributes(scenario.smsFailureMode(), runId)
-            ));
-            logs.add("message.sms.fallback.success:" + smsSent.messageId());
+            try {
+                SmsAdapter.SendResult smsSent = smsAdapter.send(new SmsAdapter.SendRequest(
+                        scenario.centerId(),
+                        scenario.memberId(),
+                        scenario.phone(),
+                        "sandbox fallback sms",
+                        attributes(scenario.smsFailureMode(), runId)
+                ));
+                logs.add("message.sms.fallback.success:" + smsSent.messageId());
+            } catch (ExternalAdapterException smsEx) {
+                logs.add("message.sms.fallback.failed:" + smsEx.failureMode());
+                return new ReadinessResult(
+                        "MESSAGE_FALLBACK_FAILED",
+                        true,
+                        false,
+                        true,
+                        false,
+                        false,
+                        false,
+                        smsEx.failureMode().name(),
+                        logs
+                );
+            }
         }
 
         try {
@@ -103,7 +118,7 @@ public class ExternalIntegrationReadinessService {
                     fallbackUsed,
                     true,
                     false,
-                    true,
+                    false,
                     messageFailureMode,
                     logs
             );
