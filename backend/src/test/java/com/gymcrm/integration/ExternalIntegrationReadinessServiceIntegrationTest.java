@@ -38,6 +38,7 @@ class ExternalIntegrationReadinessServiceIntegrationTest {
         assertFalse(result.fallbackToSms());
         assertTrue(result.qrGateOpened());
         assertFalse(result.compensationTriggered());
+        assertFalse(result.compensationSucceeded());
         assertFalse(result.logs().isEmpty());
     }
 
@@ -58,6 +59,27 @@ class ExternalIntegrationReadinessServiceIntegrationTest {
         assertTrue(result.qrGateOpened());
         assertTrue(result.logs().stream().anyMatch(log -> log.startsWith("message.alimtalk.failed:")));
         assertTrue(result.logs().stream().anyMatch(log -> log.startsWith("message.sms.fallback.success:")));
+    }
+
+    @Test
+    void alimtalkAndSmsFailuresReturnStructuredFallbackFailureOutcome() {
+        ExternalIntegrationReadinessService.ReadinessResult result = readinessService.runSandboxScenario(baseScenario(
+                "NONE",
+                "HTTP_5XX",
+                "TIMEOUT",
+                "NONE",
+                "NONE"
+        ));
+
+        assertEquals("MESSAGE_FALLBACK_FAILED", result.outcome());
+        assertTrue(result.paymentApproved());
+        assertFalse(result.messageSent());
+        assertTrue(result.fallbackToSms());
+        assertFalse(result.qrGateOpened());
+        assertFalse(result.compensationTriggered());
+        assertFalse(result.compensationSucceeded());
+        assertTrue(result.logs().stream().anyMatch(log -> log.startsWith("message.alimtalk.failed:")));
+        assertTrue(result.logs().stream().anyMatch(log -> log.startsWith("message.sms.fallback.failed:")));
     }
 
     @Test
