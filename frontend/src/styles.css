@@ -1093,6 +1093,18 @@ tbody tr.is-selected {
   border-color: var(--pill-muted-border);
 }
 
+.pill.warn {
+  color: var(--warning);
+  background: var(--warning-bg);
+  border-color: rgba(205, 160, 94, 0.42);
+}
+
+.pill.danger {
+  color: var(--error);
+  background: var(--error-bg);
+  border-color: rgba(224, 137, 127, 0.42);
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1524,8 +1536,8 @@ code {
 
   .members-table th:nth-child(1),
   .members-table td:nth-child(1),
-  .members-table th:nth-child(5),
-  .members-table td:nth-child(5),
+  .members-table th:nth-child(8),
+  .members-table td:nth-child(8),
   .products-table th:nth-child(1),
   .products-table td:nth-child(1),
   .products-table th:nth-child(4),
@@ -1541,7 +1553,7 @@ code {
     font-size: 12px;
   }
 
-  .members-table td:nth-child(6) .secondary-button,
+  .members-table td:nth-child(9) .secondary-button,
   .products-table td:nth-child(7) .secondary-button {
     width: 100%;
   }

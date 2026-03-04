@@ -53,8 +53,20 @@ public class MemberService {
     }
 
     @Transactional(readOnly = true)
-    public List<Member> list(String nameKeyword, String phoneKeyword) {
-        return memberRepository.findAll(DEFAULT_CENTER_ID, nameKeyword, phoneKeyword);
+    public List<MemberSummary> list(String nameKeyword, String phoneKeyword) {
+        return memberRepository.findAllSummaries(DEFAULT_CENTER_ID, nameKeyword, phoneKeyword).stream()
+                .map(summary -> new MemberSummary(
+                        summary.memberId(),
+                        summary.centerId(),
+                        summary.memberName(),
+                        summary.phone(),
+                        summary.memberStatus(),
+                        summary.joinDate(),
+                        summary.membershipOperationalStatus(),
+                        summary.membershipExpiryDate(),
+                        summary.remainingPtCount()
+                ))
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -173,5 +185,17 @@ public class MemberService {
             Boolean consentSms,
             Boolean consentMarketing,
             String memo
+    ) {}
+
+    public record MemberSummary(
+            Long memberId,
+            Long centerId,
+            String memberName,
+            String phone,
+            String memberStatus,
+            LocalDate joinDate,
+            String membershipOperationalStatus,
+            LocalDate membershipExpiryDate,
+            Integer remainingPtCount
     ) {}
 }

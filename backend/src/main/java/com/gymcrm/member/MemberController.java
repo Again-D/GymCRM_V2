@@ -125,16 +125,22 @@ public class MemberController {
             String memberName,
             String phone,
             String memberStatus,
-            LocalDate joinDate
+            LocalDate joinDate,
+            String membershipOperationalStatus,
+            LocalDate membershipExpiryDate,
+            Integer remainingPtCount
     ) {
-        static MemberSummaryResponse from(Member member) {
+        static MemberSummaryResponse from(MemberService.MemberSummary member) {
             return new MemberSummaryResponse(
                     member.memberId(),
                     member.centerId(),
                     member.memberName(),
                     member.phone(),
                     member.memberStatus(),
-                    member.joinDate()
+                    member.joinDate(),
+                    member.membershipOperationalStatus(),
+                    member.membershipExpiryDate(),
+                    member.remainingPtCount()
             );
         }
     }
