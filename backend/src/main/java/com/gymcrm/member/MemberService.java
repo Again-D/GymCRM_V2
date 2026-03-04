@@ -8,11 +8,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 
 @Service
 public class MemberService {
     private static final long DEFAULT_CENTER_ID = 1L;
+    private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Seoul");
 
     private final MemberRepository memberRepository;
     private final CurrentUserProvider currentUserProvider;
@@ -54,7 +56,8 @@ public class MemberService {
 
     @Transactional(readOnly = true)
     public List<MemberSummary> list(String nameKeyword, String phoneKeyword) {
-        return memberRepository.findAllSummaries(DEFAULT_CENTER_ID, nameKeyword, phoneKeyword).stream()
+        LocalDate businessDate = LocalDate.now(BUSINESS_ZONE);
+        return memberRepository.findAllSummaries(DEFAULT_CENTER_ID, nameKeyword, phoneKeyword, businessDate).stream()
                 .map(summary -> new MemberSummary(
                         summary.memberId(),
                         summary.centerId(),

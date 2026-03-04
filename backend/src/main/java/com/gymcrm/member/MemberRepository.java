@@ -84,7 +84,12 @@ public class MemberRepository {
         return spec.query(Member.class).list();
     }
 
-    public List<MemberSummaryProjection> findAllSummaries(Long centerId, String nameKeyword, String phoneKeyword) {
+    public List<MemberSummaryProjection> findAllSummaries(
+            Long centerId,
+            String nameKeyword,
+            String phoneKeyword,
+            LocalDate referenceDate
+    ) {
         StringBuilder baseMembersSql = new StringBuilder("""
                 WITH base_members AS (
                     SELECT
@@ -150,8 +155,8 @@ public class MemberRepository {
                     CASE
                         WHEN rm.member_id IS NULL THEN '없음'
                         WHEN rm.end_date IS NULL THEN '정상'
-                        WHEN rm.end_date < CURRENT_DATE THEN '만료'
-                        WHEN rm.end_date <= (CURRENT_DATE + 7) THEN '만료임박'
+                        WHEN rm.end_date < :referenceDate THEN '만료'
+                        WHEN rm.end_date <= (:referenceDate + 7) THEN '만료임박'
                         ELSE '정상'
                     END AS membership_operational_status,
                     rm.end_date AS membership_expiry_date,
@@ -163,7 +168,8 @@ public class MemberRepository {
                 """);
 
         JdbcClient.StatementSpec spec = jdbcClient.sql(baseMembersSql.toString())
-                .param("centerId", centerId);
+                .param("centerId", centerId)
+                .param("referenceDate", referenceDate);
         if (nameKeyword != null && !nameKeyword.isBlank()) {
             spec = spec.param("nameKeyword", "%" + nameKeyword.trim() + "%");
         }

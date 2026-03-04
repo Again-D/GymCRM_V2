@@ -53,6 +53,8 @@ class MemberSummaryApiIntegrationTest {
 
     @Test
     void memberListReturnsMembershipSummaryColumns() throws Exception {
+        LocalDate today = LocalDate.now();
+
         ensureDeskUser();
         String token = loginAndGetAccessToken(DESK_LOGIN_ID, DESK_PASSWORD);
 
@@ -63,25 +65,29 @@ class MemberSummaryApiIntegrationTest {
 
         long expiringMemberId = insertMemberFixture("요약만료임박-" + shortId());
         insertMembershipFixture(expiringMemberId, durationProductId, "ACTIVE", "MEMBERSHIP", "DURATION",
-                LocalDate.now().plusDays(5), null, null);
+                today.plusDays(5), null, null);
+
+        long expiringBoundaryMemberId = insertMemberFixture("요약만료임박경계-" + shortId());
+        insertMembershipFixture(expiringBoundaryMemberId, durationProductId, "ACTIVE", "MEMBERSHIP", "DURATION",
+                today.plusDays(7), null, null);
 
         long expiredActiveMemberId = insertMemberFixture("요약만료-" + shortId());
         insertMembershipFixture(expiredActiveMemberId, durationProductId, "ACTIVE", "MEMBERSHIP", "DURATION",
-                LocalDate.now().minusDays(1), null, null);
+                today.minusDays(1), null, null);
 
         long normalMemberId = insertMemberFixture("요약정상-" + shortId());
         insertMembershipFixture(normalMemberId, durationProductId, "ACTIVE", "MEMBERSHIP", "DURATION",
-                LocalDate.now().plusDays(8), null, null);
+                today.plusDays(8), null, null);
 
         long tieBreakMemberId = insertMemberFixture("요약대표선정-" + shortId());
         insertMembershipFixture(tieBreakMemberId, durationProductId, "ACTIVE", "MEMBERSHIP", "DURATION",
-                LocalDate.now().plusDays(20), null, null);
+                today.plusDays(20), null, null);
         insertMembershipFixture(tieBreakMemberId, durationProductId, "ACTIVE", "MEMBERSHIP", "DURATION",
-                LocalDate.now().plusDays(4), null, null);
+                today.plusDays(4), null, null);
 
         long ptMemberId = insertMemberFixture("요약PT-" + shortId());
         insertMembershipFixture(ptMemberId, durationProductId, "ACTIVE", "MEMBERSHIP", "DURATION",
-                LocalDate.now().plusDays(5), null, null);
+                today.plusDays(5), null, null);
         insertMembershipFixture(ptMemberId, ptProductId, "ACTIVE", "PT", "COUNT",
                 null, 5, 2);
         insertMembershipFixture(ptMemberId, ptProductId, "ACTIVE", "PT", "COUNT",
@@ -97,7 +103,7 @@ class MemberSummaryApiIntegrationTest {
 
         long noActiveMemberId = insertMemberFixture("요약비활성만-" + shortId());
         insertMembershipFixture(noActiveMemberId, durationProductId, "EXPIRED", "MEMBERSHIP", "DURATION",
-                LocalDate.now().minusDays(3), null, null);
+                today.minusDays(3), null, null);
 
         MvcResult result = mockMvc.perform(get("/api/v1/members")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
@@ -114,22 +120,26 @@ class MemberSummaryApiIntegrationTest {
 
         JsonNode expiring = findMember(data, expiringMemberId);
         assertEquals("만료임박", expiring.path("membershipOperationalStatus").asText());
-        assertEquals(LocalDate.now().plusDays(5).toString(), expiring.path("membershipExpiryDate").asText());
+        assertEquals(today.plusDays(5).toString(), expiring.path("membershipExpiryDate").asText());
+
+        JsonNode expiringBoundary = findMember(data, expiringBoundaryMemberId);
+        assertEquals("만료임박", expiringBoundary.path("membershipOperationalStatus").asText());
+        assertEquals(today.plusDays(7).toString(), expiringBoundary.path("membershipExpiryDate").asText());
 
         JsonNode expired = findMember(data, expiredActiveMemberId);
         assertEquals("만료", expired.path("membershipOperationalStatus").asText());
 
         JsonNode normal = findMember(data, normalMemberId);
         assertEquals("정상", normal.path("membershipOperationalStatus").asText());
-        assertEquals(LocalDate.now().plusDays(8).toString(), normal.path("membershipExpiryDate").asText());
+        assertEquals(today.plusDays(8).toString(), normal.path("membershipExpiryDate").asText());
 
         JsonNode tieBreak = findMember(data, tieBreakMemberId);
         assertEquals("만료임박", tieBreak.path("membershipOperationalStatus").asText());
-        assertEquals(LocalDate.now().plusDays(4).toString(), tieBreak.path("membershipExpiryDate").asText());
+        assertEquals(today.plusDays(4).toString(), tieBreak.path("membershipExpiryDate").asText());
 
         JsonNode pt = findMember(data, ptMemberId);
         assertEquals("만료임박", pt.path("membershipOperationalStatus").asText());
-        assertEquals(LocalDate.now().plusDays(5).toString(), pt.path("membershipExpiryDate").asText());
+        assertEquals(today.plusDays(5).toString(), pt.path("membershipExpiryDate").asText());
         assertEquals(3, pt.path("remainingPtCount").asInt());
 
         JsonNode ptNoEnd = findMember(data, ptNoEndMemberId);
