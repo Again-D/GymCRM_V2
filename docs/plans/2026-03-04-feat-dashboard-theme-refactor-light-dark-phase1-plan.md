@@ -1,7 +1,7 @@
 ---
 title: "feat: Refactor dashboard UI to reference style with light/dark theme foundation"
 type: feat
-status: active
+status: completed
 date: 2026-03-04
 origin: docs/brainstorms/2026-03-04-dashboard-theme-refactor-light-dark-brainstorm.md
 ---
@@ -147,56 +147,56 @@ const STORAGE_KEY = "gymcrm.themePreference";
 ## Implementation Phases
 
 ### Phase 1: Theme Foundation (App/TopBar/CSS Token Layer)
-- [ ] `/Users/abc/projects/GymCRM_V2/frontend/src/App.tsx`에 테마 preference/resolved state 및 초기화 로직 추가
-- [ ] `/Users/abc/projects/GymCRM_V2/frontend/src/App.tsx`에서 시스템 테마 감지 + localStorage 읽기/쓰기 처리
-- [ ] `/Users/abc/projects/GymCRM_V2/frontend/src/components/layout/TopBar.tsx`에 우측 토글 스위치 UI 추가
-- [ ] `/Users/abc/projects/GymCRM_V2/frontend/src/styles.css`에 `:root[data-theme="light"]`, `:root[data-theme="dark"]` 토큰 스코프 추가
-- [ ] `/Users/abc/projects/GymCRM_V2/frontend/src/styles.css`의 `color-scheme` 전략을 다크/라이트 대응으로 수정
-- [ ] `/Users/abc/projects/GymCRM_V2/frontend/src/styles.css`에 `@media (prefers-reduced-motion: reduce)` 대응 추가
-- [ ] 테마 토글 접근성 속성(`aria-pressed` 또는 `role="switch"` + `aria-checked`) 반영
+- [x] `/Users/abc/projects/GymCRM_V2/frontend/src/App.tsx`에 테마 preference/resolved state 및 초기화 로직 추가
+- [x] `/Users/abc/projects/GymCRM_V2/frontend/src/App.tsx`에서 시스템 테마 감지 + localStorage 읽기/쓰기 처리
+- [x] `/Users/abc/projects/GymCRM_V2/frontend/src/components/layout/TopBar.tsx`에 우측 토글 스위치 UI 추가
+- [x] `/Users/abc/projects/GymCRM_V2/frontend/src/styles.css`에 `:root[data-theme="light"]`, `:root[data-theme="dark"]` 토큰 스코프 추가
+- [x] `/Users/abc/projects/GymCRM_V2/frontend/src/styles.css`의 `color-scheme` 전략을 다크/라이트 대응으로 수정
+- [x] `/Users/abc/projects/GymCRM_V2/frontend/src/styles.css`에 `@media (prefers-reduced-motion: reduce)` 대응 추가
+- [x] 테마 토글 접근성 속성(`aria-pressed` 또는 `role="switch"` + `aria-checked`) 반영
 
 ### Phase 2: Dashboard Visual Refactor (Reference-style Direction)
-- [ ] `/Users/abc/projects/GymCRM_V2/frontend/src/features/dashboard/DashboardSection.tsx` 레이아웃/카드 구조를 레퍼런스 톤에 맞게 재구성
-- [ ] `/Users/abc/projects/GymCRM_V2/frontend/src/styles.css`에서 대시보드 카드/패널/통계 블록/우측 액티비티 영역 스타일 보강
-- [ ] `/Users/abc/projects/GymCRM_V2/frontend/src/components/layout/SidebarNav.tsx`와 `/Users/abc/projects/GymCRM_V2/frontend/src/components/layout/TopBar.tsx`의 시각 위계(톤/경계/상태) 정렬
-- [ ] 최소 애니메이션 정책 반영(과한 모션 제거, 상태 인지 가능한 최소 전환만 유지)
-- [ ] 데스크톱(1440), 태블릿(1024), 모바일(390) 3개 기준 뷰포트에서 레이아웃 깨짐 없음 확인
+- [x] `/Users/abc/projects/GymCRM_V2/frontend/src/features/dashboard/DashboardSection.tsx` 레이아웃/카드 구조를 레퍼런스 톤에 맞게 재구성
+- [x] `/Users/abc/projects/GymCRM_V2/frontend/src/styles.css`에서 대시보드 카드/패널/통계 블록/우측 액티비티 영역 스타일 보강
+- [x] `/Users/abc/projects/GymCRM_V2/frontend/src/components/layout/SidebarNav.tsx`와 `/Users/abc/projects/GymCRM_V2/frontend/src/components/layout/TopBar.tsx`의 시각 위계(톤/경계/상태) 정렬
+- [x] 최소 애니메이션 정책 반영(과한 모션 제거, 상태 인지 가능한 최소 전환만 유지)
+- [x] 데스크톱(1440), 태블릿(1024), 모바일(390) 3개 기준 뷰포트에서 레이아웃 깨짐 없음 확인
 
 ### Phase 3: Validation & Regression
-- [ ] `frontend` 빌드 검증: `/Users/abc/projects/GymCRM_V2/frontend`에서 `npm run build`
-- [ ] 수동 회귀: 대시보드 외 핵심 탭 진입/조회/기존 액션 정상 동작 확인
-- [ ] 테마 시나리오 수동 검증 로그 작성
+- [x] `frontend` 빌드 검증: `/Users/abc/projects/GymCRM_V2/frontend`에서 `npm run build`
+- [x] 수동 회귀: 대시보드 외 핵심 탭 진입/조회/기존 액션 정상 동작 확인
+- [x] 테마 시나리오 수동 검증 로그 작성
   - `/Users/abc/projects/GymCRM_V2/docs/notes/2026-03-04-dashboard-theme-phase1-validation.md`
-- [ ] UI 캡처 저장
+- [x] UI 캡처 저장
   - `/Users/abc/projects/GymCRM_V2/docs/testing/artifacts/2026-03-04-dashboard-light.png`
   - `/Users/abc/projects/GymCRM_V2/docs/testing/artifacts/2026-03-04-dashboard-dark.png`
   - `/Users/abc/projects/GymCRM_V2/docs/testing/artifacts/2026-03-04-dashboard-theme-toggle-topbar.png`
 
 #### Validation Matrix (Required)
-- [ ] Case A: 저장값 없음 + 시스템 다크 → 초기 다크 렌더
-- [ ] Case B: 저장값 없음 + 시스템 라이트 → 초기 라이트 렌더
-- [ ] Case C: 수동 라이트 저장 후 시스템 다크 변경 → 라이트 유지
-- [ ] Case D: 수동 다크 저장 후 새로고침 → 다크 유지
-- [ ] Case E: localStorage 접근 실패 시 에러 없이 시스템값 fallback
-- [ ] Case F: 키보드(Tab/Enter/Space)로 토글 조작 가능
+- [x] Case A: 저장값 없음 + 시스템 다크 → 초기 다크 렌더
+- [x] Case B: 저장값 없음 + 시스템 라이트 → 초기 라이트 렌더
+- [x] Case C: 수동 라이트 저장 후 시스템 다크 변경 → 라이트 유지
+- [x] Case D: 수동 다크 저장 후 새로고침 → 다크 유지
+- [x] Case E: localStorage 접근 실패 시 에러 없이 시스템값 fallback
+- [x] Case F: 키보드(Tab/Enter/Space)로 토글 조작 가능
 
 ## Acceptance Criteria
 
 ### Functional
-- [ ] TopBar 우측 토글로 라이트/다크 전환이 즉시 반영된다.
-- [ ] 사용자 수동 선택은 localStorage에 저장되고 재접속 시 복원된다.
-- [ ] 저장값이 없을 때 시스템 설정(`prefers-color-scheme`)을 기본 적용한다.
+- [x] TopBar 우측 토글로 라이트/다크 전환이 즉시 반영된다.
+- [x] 사용자 수동 선택은 localStorage에 저장되고 재접속 시 복원된다.
+- [x] 저장값이 없을 때 시스템 설정(`prefers-color-scheme`)을 기본 적용한다.
 
 ### UX / Accessibility
-- [ ] 대시보드가 레퍼런스와 유사한 시각 위계(사이드바-상단바-카드 중심 레이아웃)를 제공한다. (동일 시점 캡처 2장 이상으로 내부 리뷰 승인)
-- [ ] 전환 애니메이션은 최소화되어 시각 피로를 유발하지 않는다.
-- [ ] 토글 스위치는 키보드 접근 가능하며 포커스 가시성을 보장한다.
-- [ ] 라이트/다크 모두 핵심 텍스트 대비가 유지된다.
-- [ ] 핵심 텍스트/배경 대비가 WCAG AA(일반 텍스트 4.5:1)를 충족한다.
+- [x] 대시보드가 레퍼런스와 유사한 시각 위계(사이드바-상단바-카드 중심 레이아웃)를 제공한다. (동일 시점 캡처 2장 이상으로 내부 리뷰 승인)
+- [x] 전환 애니메이션은 최소화되어 시각 피로를 유발하지 않는다.
+- [x] 토글 스위치는 키보드 접근 가능하며 포커스 가시성을 보장한다.
+- [x] 라이트/다크 모두 핵심 텍스트 대비가 유지된다.
+- [x] 핵심 텍스트/배경 대비가 WCAG AA(일반 텍스트 4.5:1)를 충족한다.
 
 ### Regression / Quality
-- [ ] `npm run build` 통과
-- [ ] 대시보드 외 탭에서 기능/API 흐름 회귀가 없다.
+- [x] `npm run build` 통과
+- [x] 대시보드 외 탭에서 기능/API 흐름 회귀가 없다.
 
 ## Success Metrics
 - 대시보드 초기 인상/가독성 개선에 대한 내부 리뷰 통과
@@ -208,7 +208,7 @@ const STORAGE_KEY = "gymcrm.themePreference";
 - Acceptance Criteria의 Functional/UX/Regression 항목 모두 충족
 - `docs/notes/2026-03-04-dashboard-theme-phase1-validation.md` 검증 로그 작성 완료
 - `docs/testing/artifacts/2026-03-04-dashboard-*.png` 증적 업로드 완료
-- 후속 전체 탭 확장용 Phase 2 별도 계획 파일 생성 또는 todo 등록 완료
+- 후속 전체 탭 확장용 Phase 2 별도 계획 파일 생성 또는 todo 등록 완료 (`/Users/abc/projects/GymCRM_V2/todos/050-pending-p2-dashboard-theme-phase2-all-tabs-expansion.md`)
 
 ## Dependencies & Risks
 
