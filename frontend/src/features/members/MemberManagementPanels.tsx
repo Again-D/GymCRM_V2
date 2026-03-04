@@ -11,6 +11,9 @@ type MemberSummaryRow = {
   phone: string;
   memberStatus: "ACTIVE" | "INACTIVE";
   joinDate: string | null;
+  membershipOperationalStatus: "정상" | "만료임박" | "만료" | "없음";
+  membershipExpiryDate: string | null;
+  remainingPtCount: number | null;
 };
 
 type MemberFormFields = {
@@ -78,6 +81,19 @@ function CalendarIcon() {
       <path d="M8 3.8v3.4M16 3.8v3.4M4 10h16" />
     </svg>
   );
+}
+
+function operationalStatusPillClass(status: MemberSummaryRow["membershipOperationalStatus"]) {
+  if (status === "정상") {
+    return "pill ok";
+  }
+  if (status === "만료임박") {
+    return "pill warn";
+  }
+  if (status === "만료") {
+    return "pill danger";
+  }
+  return "pill muted";
 }
 
 export function MemberManagementPanels({
@@ -161,13 +177,16 @@ export function MemberManagementPanels({
                 <th>이름</th>
                 <th>연락처</th>
                 <th>상태</th>
+                <th>회원권 상태</th>
+                <th>회원권 만료일</th>
+                <th>남은 PT 횟수</th>
                 <th>가입일</th>
                 <th>액션</th>
               </tr>
             </thead>
             <tbody>
               {members.length === 0 ? (
-                <EmptyTableRow colSpan={6} message="조회된 회원이 없습니다." />
+                <EmptyTableRow colSpan={9} message="조회된 회원이 없습니다." />
               ) : (
                 members.map((member) => (
                   <tr
@@ -190,6 +209,13 @@ export function MemberManagementPanels({
                         {member.memberStatus}
                       </span>
                     </td>
+                    <td>
+                      <span className={operationalStatusPillClass(member.membershipOperationalStatus)}>
+                        {member.membershipOperationalStatus}
+                      </span>
+                    </td>
+                    <td>{formatDate(member.membershipExpiryDate)}</td>
+                    <td>{member.remainingPtCount != null && member.remainingPtCount > 0 ? member.remainingPtCount : "-"}</td>
                     <td>{formatDate(member.joinDate)}</td>
                     <td>
                       <div className="member-row-actions member-row-actions-icons">

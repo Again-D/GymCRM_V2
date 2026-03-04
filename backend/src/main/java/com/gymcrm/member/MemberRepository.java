@@ -3,6 +3,7 @@ package com.gymcrm.member;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -83,6 +84,96 @@ public class MemberRepository {
         return spec.query(Member.class).list();
     }
 
+    public List<MemberSummaryProjection> findAllSummaries(Long centerId, String nameKeyword, String phoneKeyword) {
+        StringBuilder baseMembersSql = new StringBuilder("""
+                WITH base_members AS (
+                    SELECT
+                        m.member_id,
+                        m.center_id,
+                        m.member_name,
+                        m.phone,
+                        m.member_status,
+                        m.join_date
+                    FROM members m
+                    WHERE m.center_id = :centerId
+                      AND m.is_deleted = FALSE
+                """);
+
+        if (nameKeyword != null && !nameKeyword.isBlank()) {
+            baseMembersSql.append(" AND m.member_name ILIKE :nameKeyword ");
+        }
+        if (phoneKeyword != null && !phoneKeyword.isBlank()) {
+            baseMembersSql.append(" AND m.phone ILIKE :phoneKeyword ");
+        }
+
+        baseMembersSql.append("""
+                    ORDER BY m.member_id DESC
+                    LIMIT 100
+                ),
+                representative_memberships AS (
+                    SELECT DISTINCT ON (mm.member_id)
+                        mm.member_id,
+                        mm.end_date
+                    FROM member_memberships mm
+                    JOIN base_members bm ON bm.member_id = mm.member_id
+                    WHERE mm.center_id = :centerId
+                      AND mm.is_deleted = FALSE
+                      AND mm.membership_status = 'ACTIVE'
+                    ORDER BY mm.member_id, mm.end_date NULLS LAST, mm.membership_id ASC
+                ),
+                pt_remaining_summary AS (
+                    SELECT
+                        mm.member_id,
+                        NULLIF(SUM(
+                            CASE
+                                WHEN mm.remaining_count IS NOT NULL AND mm.remaining_count > 0
+                                    THEN mm.remaining_count
+                                ELSE 0
+                            END
+                        ), 0) AS remaining_pt_count
+                    FROM member_memberships mm
+                    JOIN base_members bm ON bm.member_id = mm.member_id
+                    WHERE mm.center_id = :centerId
+                      AND mm.is_deleted = FALSE
+                      AND mm.membership_status = 'ACTIVE'
+                      AND mm.product_category_snapshot = 'PT'
+                      AND mm.product_type_snapshot = 'COUNT'
+                    GROUP BY mm.member_id
+                )
+                SELECT
+                    bm.member_id,
+                    bm.center_id,
+                    bm.member_name,
+                    bm.phone,
+                    bm.member_status,
+                    bm.join_date,
+                    CASE
+                        WHEN rm.member_id IS NULL THEN '없음'
+                        WHEN rm.end_date IS NULL THEN '정상'
+                        WHEN rm.end_date < CURRENT_DATE THEN '만료'
+                        WHEN rm.end_date <= (CURRENT_DATE + 7) THEN '만료임박'
+                        ELSE '정상'
+                    END AS membership_operational_status,
+                    rm.end_date AS membership_expiry_date,
+                    pts.remaining_pt_count
+                FROM base_members bm
+                LEFT JOIN representative_memberships rm ON rm.member_id = bm.member_id
+                LEFT JOIN pt_remaining_summary pts ON pts.member_id = bm.member_id
+                ORDER BY bm.member_id DESC
+                """);
+
+        JdbcClient.StatementSpec spec = jdbcClient.sql(baseMembersSql.toString())
+                .param("centerId", centerId);
+        if (nameKeyword != null && !nameKeyword.isBlank()) {
+            spec = spec.param("nameKeyword", "%" + nameKeyword.trim() + "%");
+        }
+        if (phoneKeyword != null && !phoneKeyword.isBlank()) {
+            spec = spec.param("phoneKeyword", "%" + phoneKeyword.trim() + "%");
+        }
+
+        return spec.query(MemberSummaryProjection.class).list();
+    }
+
     public Member update(MemberUpdateCommand command) {
         return jdbcClient.sql("""
                 UPDATE members
@@ -139,5 +230,17 @@ public class MemberRepository {
             Boolean consentMarketing,
             String memo,
             Long actorUserId
+    ) {}
+
+    public record MemberSummaryProjection(
+            Long memberId,
+            Long centerId,
+            String memberName,
+            String phone,
+            String memberStatus,
+            LocalDate joinDate,
+            String membershipOperationalStatus,
+            LocalDate membershipExpiryDate,
+            Integer remainingPtCount
     ) {}
 }

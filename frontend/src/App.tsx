@@ -69,6 +69,9 @@ type MemberSummary = {
   phone: string;
   memberStatus: "ACTIVE" | "INACTIVE";
   joinDate: string | null;
+  membershipOperationalStatus: "정상" | "만료임박" | "만료" | "없음";
+  membershipExpiryDate: string | null;
+  remainingPtCount: number | null;
 };
 
 type MemberDetail = {

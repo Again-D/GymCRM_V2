@@ -153,35 +153,35 @@ SELECT ...
 
 ## Implementation Plan
 ### Phase 1: Backend API Summary Extension
-- [ ] 회원 목록 전용 summary projection 모델 정의
+- [x] 회원 목록 전용 summary projection 모델 정의
   - 대상: `backend/src/main/java/com/gymcrm/member/`
-- [ ] `MemberRepository.findAll` 쿼리 확장 또는 요약 조회 쿼리 분리
+- [x] `MemberRepository.findAll` 쿼리 확장 또는 요약 조회 쿼리 분리
   - 대표 회원권 선정 규칙 반영 (ACTIVE 우선 + 만료일 오름차순 + 안정 tie-break)
-- [ ] 운영 상태 매핑 로직 구현
+- [x] 운영 상태 매핑 로직 구현
   - `정상/만료임박/만료/없음`, 7일 기준, 만료일 null 처리
-- [ ] PT 잔여 횟수 집계 로직 구현
+- [x] PT 잔여 횟수 집계 로직 구현
   - 사용 가능한 PT 총합, 값 없으면 null
-- [ ] `MemberController.MemberSummaryResponse` 필드 확장
+- [x] `MemberController.MemberSummaryResponse` 필드 확장
   - API contract: `membershipOperationalStatus`, `membershipExpiryDate`, `remainingPtCount`
 - [ ] (선택) 성능 보강 인덱스 검토
   - 후보: `member_memberships(center_id, member_id, membership_status, end_date)`
   - 적용 여부는 `EXPLAIN ANALYZE`로 판단
 
 ### Phase 2: Frontend Table Expansion
-- [ ] `frontend/src/App.tsx`의 `MemberSummary` 타입/로드 경로 확장
-- [ ] `frontend/src/features/members/MemberManagementPanels.tsx` 테이블 헤더/셀 추가
+- [x] `frontend/src/App.tsx`의 `MemberSummary` 타입/로드 경로 확장
+- [x] `frontend/src/features/members/MemberManagementPanels.tsx` 테이블 헤더/셀 추가
   - 컬럼: 회원권 상태, 회원권 만료일, 남은 PT 횟수
   - 표기 규칙: 날짜 없으면 `-`, PT 값 없거나 0/비대상이면 `-`
-- [ ] 운영 상태 pill/텍스트 스타일 추가
+- [x] 운영 상태 pill/텍스트 스타일 추가
   - 기존 테마 변수 체계 유지 (`frontend/src/styles.css`)
-- [ ] 모바일 반응형 컬럼 가시성 규칙 점검/보정
-- [ ] 테이블 헤더/컬럼 우선순위 재배치
+- [x] 모바일 반응형 컬럼 가시성 규칙 점검/보정
+- [x] 테이블 헤더/컬럼 우선순위 재배치
   - 모바일에서 저우선 열(ID/가입일) 숨김과 요약열 노출 균형 재조정
 
 ### Phase 3: Verification & Regression
-- [ ] 백엔드 통합 테스트 추가/갱신
+- [x] 백엔드 통합 테스트 추가/갱신
   - 대상: `backend/src/test/java/com/gymcrm/member/` (필요시 신규)
-- [ ] 프론트 타입/렌더 회귀 검증
+- [x] 프론트 타입/렌더 회귀 검증
   - `npm run build` 통과
 - [ ] 수동 스모크
   - 회원 목록 조회/검색/선택/액션(보기·수정·회원권업무·예약관리) 회귀 확인
@@ -189,23 +189,23 @@ SELECT ...
   - 기준 데이터(예: 회원 100, 회원권 5k+)에서 응답 시간/플랜 체크
 
 ## SpecFlow-Driven Edge Cases
-- [ ] 회원권이 전혀 없는 회원 → `없음 / - / -`
-- [ ] ACTIVE(만료일 없음, COUNT형) → `정상 / - / [숫자 또는 -]`
+- [x] 회원권이 전혀 없는 회원 → `없음 / - / -`
+- [x] ACTIVE(만료일 없음, COUNT형) → `정상 / - / [숫자 또는 -]`
 - [ ] ACTIVE(만료일 D-7) → `만료임박`
-- [ ] ACTIVE(만료일 D-8) → `정상`
+- [x] ACTIVE(만료일 D-8) → `정상`
 - [ ] ACTIVE 다건 + 동일 만료일 → tie-break 일관성 검증
-- [ ] PT 잔여가 0 또는 null → `-`
-- [ ] ACTIVE 없음 + EXPIRED/REFUNDED만 존재 → `없음`
-- [ ] ACTIVE 1건 + end_date NULL + PT 집계 양수 → `정상 / - / 숫자`
+- [x] PT 잔여가 0 또는 null → `-`
+- [x] ACTIVE 없음 + EXPIRED/REFUNDED만 존재 → `없음`
+- [x] ACTIVE 1건 + end_date NULL + PT 집계 양수 → `정상 / - / 숫자`
 
 ## Acceptance Criteria
-- [ ] 회원 목록 API가 요약 필드 3개를 반환한다.
-- [ ] 운영 상태가 합의된 규칙(정상/만료임박/만료/없음, 7일 기준)에 맞게 계산된다.
-- [ ] 남은 PT 횟수는 숫자 또는 `-` 규칙을 일관되게 따른다.
-- [ ] 프론트 회원관리 테이블에 3개 컬럼이 추가되고 기존 액션 동작이 유지된다.
+- [x] 회원 목록 API가 요약 필드 3개를 반환한다.
+- [x] 운영 상태가 합의된 규칙(정상/만료임박/만료/없음, 7일 기준)에 맞게 계산된다.
+- [x] 남은 PT 횟수는 숫자 또는 `-` 규칙을 일관되게 따른다.
+- [x] 프론트 회원관리 테이블에 3개 컬럼이 추가되고 기존 액션 동작이 유지된다.
 - [ ] 목록 검색/정렬/표시 성능이 실사용 범위에서 저하되지 않는다.
-- [ ] `npm run build` 및 백엔드 관련 테스트가 통과한다.
-- [ ] API 예시 응답 스냅샷이 문서/테스트에 반영되어 FE-BE 계약이 고정된다.
+- [x] `npm run build` 및 백엔드 관련 테스트가 통과한다.
+- [x] API 예시 응답 스냅샷이 문서/테스트에 반영되어 FE-BE 계약이 고정된다.
 
 ## Success Metrics
 - 회원관리 탭에서 만료 임박/만료/PT 잔여 정보를 상세 이동 없이 확인 가능.
@@ -225,7 +225,7 @@ SELECT ...
 
 ## Validation & Rollout Checklist
 - [ ] 백엔드 단위/통합 테스트 통과 (`./gradlew test --tests 'com.gymcrm.member.*'`)
-- [ ] 프론트 빌드 통과 (`npm run build`)
+- [x] 프론트 빌드 통과 (`npm run build`)
 - [ ] 스테이징에서 회원관리 목록 수동 점검:
   - [ ] 상태 pill/텍스트 정확성
   - [ ] 만료일/잔여횟수 `-` 표기 정확성
