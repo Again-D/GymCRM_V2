@@ -8,6 +8,8 @@
   --line: #cfd9d2;
   --line-strong: #b8c8bf;
   --table-head-bg: #f8f1e6;
+  --detail-card-bg: rgba(255, 255, 255, 0.92);
+  --members-row-hover-bg: #fff8eb;
   --accent: #b45a2b;
   --accent-ink: #fff7f1;
   --ok: #237a57;
@@ -34,6 +36,8 @@
   --line: #243654;
   --line-strong: #2f4570;
   --table-head-bg: rgba(10, 20, 38, 0.9);
+  --detail-card-bg: rgba(15, 31, 56, 0.9);
+  --members-row-hover-bg: rgba(35, 63, 104, 0.55);
   --accent: #2d6df7;
   --accent-ink: #f4f8ff;
   --ok: #3de892;
@@ -1214,7 +1218,11 @@ tbody tr.is-selected {
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 9px 10px;
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--detail-card-bg);
+}
+
+.members-table tbody tr.is-clickable-row:hover {
+  background: var(--members-row-hover-bg);
 }
 
 .detail-grid dt {
