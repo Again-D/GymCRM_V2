@@ -37,6 +37,8 @@ type NavSectionKey =
   | "settlements"
   | "products";
 type SecurityMode = "unknown" | "prototype" | "jwt";
+type ThemePreference = "system" | "light" | "dark";
+type ResolvedTheme = "light" | "dark";
 
 type HealthPayload = {
   status: string;
@@ -567,6 +569,37 @@ function parseRequiredNumber(value: string): number {
   return Number.parseFloat(value.trim());
 }
 
+const THEME_PREFERENCE_STORAGE_KEY = "gymcrm.themePreference";
+
+function normalizeThemePreference(value: string | null): ThemePreference {
+  if (value === "light" || value === "dark" || value === "system") {
+    return value;
+  }
+  return "system";
+}
+
+function detectSystemTheme(): ResolvedTheme {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return "light";
+  }
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function readThemePreference(): ThemePreference {
+  if (typeof window === "undefined") {
+    return "system";
+  }
+  try {
+    return normalizeThemePreference(window.localStorage.getItem(THEME_PREFERENCE_STORAGE_KEY));
+  } catch {
+    return "system";
+  }
+}
+
+function resolveTheme(preference: ThemePreference): ResolvedTheme {
+  return preference === "system" ? detectSystemTheme() : preference;
+}
+
 function memberFormFromDetail(member: MemberDetail): MemberFormState {
   return {
     memberName: member.memberName,
@@ -762,6 +795,8 @@ function buildResumePreview(membership: PurchasedMembership, draft: MembershipAc
 
 export default function App() {
   const [activeNavSection, setActiveNavSection] = useState<NavSectionKey>("dashboard");
+  const [themePreference, setThemePreference] = useState<ThemePreference>(() => readThemePreference());
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => resolveTheme(readThemePreference()));
   const [securityMode, setSecurityMode] = useState<SecurityMode>("unknown");
   const [prototypeNoAuth, setPrototypeNoAuth] = useState(false);
   const [authBootstrapping, setAuthBootstrapping] = useState(true);
@@ -1371,6 +1406,50 @@ export default function App() {
       setCrmPanelError(errorMessage(error));
     });
   }, [isAuthenticated, activeNavSection]);
+
+  useEffect(() => {
+    setResolvedTheme(resolveTheme(themePreference));
+  }, [themePreference]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+    document.documentElement.dataset.theme = resolvedTheme;
+  }, [resolvedTheme]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    try {
+      if (themePreference === "system") {
+        window.localStorage.removeItem(THEME_PREFERENCE_STORAGE_KEY);
+      } else {
+        window.localStorage.setItem(THEME_PREFERENCE_STORAGE_KEY, themePreference);
+      }
+    } catch {
+      // Ignore storage access failures and continue with in-memory theme.
+    }
+  }, [themePreference]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return;
+    }
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleChange = () => {
+      if (themePreference === "system") {
+        setResolvedTheme(mediaQuery.matches ? "dark" : "light");
+      }
+    };
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", handleChange);
+      return () => mediaQuery.removeEventListener("change", handleChange);
+    }
+    mediaQuery.addListener(handleChange);
+    return () => mediaQuery.removeListener(handleChange);
+  }, [themePreference]);
 
   async function handleLoginSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -2025,6 +2104,13 @@ export default function App() {
     setProductFormMessage(null);
   }
 
+  function handleThemeToggle() {
+    setThemePreference((prev) => {
+      const current = prev === "system" ? detectSystemTheme() : prev;
+      return current === "dark" ? "light" : "dark";
+    });
+  }
+
   const navItems: Array<{ key: NavSectionKey; label: string; description: string }> = [
     { key: "dashboard", label: "대시보드", description: "운영 요약 / 빠른 진입" },
     { key: "members", label: "회원 관리", description: "회원 목록 / 등록 / 수정" },
@@ -2086,6 +2172,8 @@ export default function App() {
         subtitle={appSubtitle}
         modeBadgeText={modeBadgeText}
         authStatusMessage={authStatusMessage}
+        resolvedTheme={resolvedTheme}
+        onThemeToggle={handleThemeToggle}
         showLogout={Boolean(isJwtMode && authUser)}
         onLogout={() => void handleLogout()}
       />
