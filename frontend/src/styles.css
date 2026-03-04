@@ -110,11 +110,11 @@ textarea {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.88);
   color: var(--ink);
-  padding: 7px 11px;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  padding: 4px;
+  width: 68px;
+  height: 36px;
+  display: inline-grid;
+  place-items: center;
   cursor: pointer;
 }
 
@@ -125,6 +125,66 @@ textarea {
 .theme-toggle-button:focus-visible {
   outline: 2px solid rgba(45, 109, 247, 0.4);
   outline-offset: 2px;
+}
+
+.theme-switch-track {
+  position: relative;
+  width: 58px;
+  height: 26px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 7px;
+  background: linear-gradient(180deg, #f4f2ea, #ebe6d8);
+  border: 1px solid rgba(180, 166, 138, 0.55);
+}
+
+.theme-glyph {
+  width: 14px;
+  height: 14px;
+  display: inline-grid;
+  place-items: center;
+  color: #8c7c57;
+  opacity: 0.78;
+}
+
+.theme-glyph svg,
+.theme-switch-thumb svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.theme-glyph-moon svg,
+.theme-switch-thumb .theme-icon-moon {
+  fill: currentColor;
+  stroke: none;
+}
+
+.theme-switch-thumb {
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #c1891f;
+  background: #fff7dc;
+  box-shadow: 0 2px 6px rgba(34, 31, 24, 0.22);
+  transition: transform 120ms ease;
+}
+
+.theme-toggle-button.is-dark .theme-switch-thumb {
+  transform: translateX(32px);
+  color: #8db5ff;
+  background: #1f3f72;
 }
 
 .inline-status-text {
@@ -746,6 +806,15 @@ textarea:disabled {
 
 :root[data-theme="dark"] .theme-toggle-button {
   background: rgba(10, 20, 38, 0.9);
+}
+
+:root[data-theme="dark"] .theme-switch-track {
+  background: linear-gradient(180deg, #203a61, #172b49);
+  border-color: rgba(103, 131, 181, 0.65);
+}
+
+:root[data-theme="dark"] .theme-glyph {
+  color: #99b5de;
 }
 
 :root[data-theme="dark"] .hero-card {
