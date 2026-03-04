@@ -34,6 +34,7 @@
   --secondary-button-bg: rgba(255, 255, 255, 0.9);
   --secondary-button-hover-bg: #fff;
   --primary-button-hover-bg: #c14f30;
+  --icon-action-active-bg: rgba(180, 90, 43, 0.14);
   --scrollbar-thumb-bg: #d4c5ab;
   --scrollbar-track-bg: rgba(255, 255, 255, 0.2);
   --accent: #b45a2b;
@@ -88,6 +89,7 @@
   --secondary-button-bg: rgba(13, 24, 43, 0.9);
   --secondary-button-hover-bg: rgba(24, 42, 74, 0.86);
   --primary-button-hover-bg: linear-gradient(135deg, #3e7cff, #2c5dca);
+  --icon-action-active-bg: rgba(45, 109, 247, 0.22);
   --scrollbar-thumb-bg: #3a5789;
   --scrollbar-track-bg: rgba(13, 24, 43, 0.45);
   --accent: #2d6df7;
@@ -1016,6 +1018,53 @@ tbody tr.is-selected {
   gap: 6px;
 }
 
+.member-row-actions-icons {
+  justify-content: flex-start;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+.icon-action-button {
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--secondary-button-bg);
+  color: var(--muted);
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+  transition: border-color 100ms ease, color 100ms ease, background-color 100ms ease, transform 100ms ease;
+}
+
+.icon-action-button svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.icon-action-button:hover {
+  border-color: var(--line-strong);
+  color: var(--ink);
+  background: var(--secondary-button-hover-bg);
+  transform: translateY(-1px);
+}
+
+.icon-action-button:focus-visible {
+  outline: 2px solid rgba(45, 109, 247, 0.35);
+  outline-offset: 1px;
+}
+
+.icon-action-button.is-active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--icon-action-active-bg);
+}
+
 .empty-cell {
   text-align: center;
   color: var(--muted);
@@ -1500,6 +1549,12 @@ code {
   .member-row-actions {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .member-row-actions-icons {
+    display: flex;
+    justify-content: flex-start;
+    gap: 4px;
   }
 
   .checkbox-row {
