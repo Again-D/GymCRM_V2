@@ -7,6 +7,7 @@
   --panel: #f7faf6;
   --line: #cfd9d2;
   --line-strong: #b8c8bf;
+  --table-head-bg: #f8f1e6;
   --accent: #b45a2b;
   --accent-ink: #fff7f1;
   --ok: #237a57;
@@ -32,6 +33,7 @@
   --panel: #111f36;
   --line: #243654;
   --line-strong: #2f4570;
+  --table-head-bg: rgba(10, 20, 38, 0.9);
   --accent: #2d6df7;
   --accent-ink: #f4f8ff;
   --ok: #3de892;
@@ -848,7 +850,7 @@ table {
 }
 
 thead {
-  background: #f8f1e6;
+  background: var(--table-head-bg);
 }
 
 th,
