@@ -198,6 +198,41 @@ Phase12~13을 다음 5개 실행 트랙으로 진행한다.
   - 로그/알림: decrypt error, key access deny, audit log 누락 이벤트 실시간 알림
   - 로그/알림: 감사로그 적재 실패율, 보존 정책 배치 실패 이벤트
 
+###### NFR-015 Executable Validation Examples (PostgreSQL baseline)
+
+```sql
+-- Q1) 감사로그 최소/최대 시각으로 보존기간(>=365일) 확인
+SELECT
+  MIN(created_at) AS oldest_log_at,
+  MAX(created_at) AS newest_log_at,
+  EXTRACT(DAY FROM (MAX(created_at) - MIN(created_at))) AS retained_days
+FROM audit_logs;
+```
+
+```sql
+-- Q2) 민감 이벤트 타입별 최근 24시간 적재 누락 여부 확인
+SELECT event_type, COUNT(*) AS cnt
+FROM audit_logs
+WHERE created_at >= NOW() - INTERVAL '24 hours'
+  AND event_type IN ('PII_READ', 'MEMBERSHIP_REFUND', 'ACCOUNT_ROLE_CHANGE')
+GROUP BY event_type
+ORDER BY event_type;
+```
+
+```sql
+-- Q3) 월별 파티션/보존 배치 상태 확인(운영 스키마명은 환경에 맞게 조정)
+SELECT job_name, status, completed_at
+FROM audit_retention_job_runs
+WHERE job_name = 'audit_log_retention'
+ORDER BY completed_at DESC
+LIMIT 10;
+```
+
+운영 로그 검색 패턴:
+- `audit_log_ingest_failed`
+- `audit_retention_job_failed`
+- `audit_event_missing_detected`
+
 ## System-Wide Impact
 
 - **Interaction graph**: User/Desk action -> API -> DB/Queue -> Worker -> External adapter -> Monitoring/Alert
@@ -223,8 +258,17 @@ Phase12~13을 다음 5개 실행 트랙으로 진행한다.
 | Security | 감사로그 적재 누락 | 민감 이벤트 누락 1건 이상 | 즉시 | Platform/Security Owner |
 
 운영 판단 규칙:
-- 임계치 초과가 validation window 동안 지속되면 해당 트랙 feature flag를 즉시 rollback한다.
-- rollback 판단/실행/해제는 PR의 Post-Deploy Monitoring & Validation 섹션에 동일 임계치/오너로 기록한다.
+- 임계치 초과가 validation window 동안 지속되면 트랙별 제어수단(Primary/Secondary)을 사용해 즉시 rollback한다.
+- rollback 판단/실행/해제는 PR의 Post-Deploy Monitoring & Validation 섹션에 동일 임계치/오너/제어수단으로 기록한다.
+
+### Rollback Control Mechanisms by Track
+
+| Track | Primary Control | Secondary Control | Rollback Action |
+|---|---|---|---|
+| ACC | 센터 단위 access feature flag | 게이트 검증 API fail-safe 모드(deny/allow 정책 고정) | 해당 센터 게이트 실연동 비활성 + fail-safe 모드 전환 |
+| SAL | 정산 배치 실행 토글(`settlement.batch.enabled`) | 정산 마감 lock 해제 제한 | 배치 중단 + 마지막 정상 스냅샷 기준 복구 |
+| CRM | 발송 워커 토글(`crm.dispatch.enabled`) | 큐 pause + DLQ drain 모드 | 신규 발송 중단 + 큐 정지 후 재처리 절차 전환 |
+| Security | 암호화 read/write 모드 토글 | key version pinning | encrypted-only 해제/dual-read 복귀 + 키 버전 고정 |
 
 ## Acceptance Criteria
 
@@ -238,6 +282,8 @@ Phase12~13을 다음 5개 실행 트랙으로 진행한다.
 - [ ] PII 암호화 전환(dual-write/read, backfill, cutover, rollback, key rotation) 검증 기준이 운영 체크리스트로 남는다.
 - [ ] ACC/SAL/CRM/Security별 rollback 임계치(수치), 검증 윈도우, 1차 오너가 문서화되어 Go/No-Go 판단 기준으로 사용된다.
 - [ ] NFR-015(감사로그 1년 보존) 검증 항목(보존기간/파티션 또는 TTL/적재누락)이 배포 검증 체크리스트에 포함된다.
+- [ ] NFR-015 검증용 SQL/로그 패턴이 실행 가능한 형태로 문서화되고, 데이터 소스(`audit_logs`, `audit_retention_job_runs`)가 명시된다.
+- [ ] 보안 phase 완료 PR에는 NFR-015 검증 쿼리 결과(또는 스냅샷 링크)가 첨부된다.
 
 ## Success Metrics
 
