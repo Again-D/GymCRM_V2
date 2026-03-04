@@ -1,7 +1,7 @@
 ---
 title: feat: Phase11 Requirements-Architecture Aligned Expansion Roadmap
 type: feat
-status: active
+status: completed
 date: 2026-03-03
 origin: docs/brainstorms/2026-02-23-gym-crm-product-brainstorm.md
 ---
@@ -306,12 +306,13 @@ Progress (2026-03-04):
 ### Research Insights
 
 추가 수용 기준:
-- [ ] 각 Phase에 최소 1개 통합 테스트(실제 DB/큐 경로)가 존재한다.
+- [x] 각 구현 Phase(11-B~11-D)에 최소 1개 통합 테스트(실제 DB/큐 경로)가 존재한다.
 - [x] 메시지 처리 경로에 idempotency 키와 중복 방지 규칙이 문서/코드에 모두 반영된다.
 - [x] 운영 체크리스트에 DLQ 모니터링 지표(`ApproximateAgeOfOldestMessage` 등)가 포함된다.
 
 증빙 문서:
 - `docs/notes/phase11-governance-alignment-2026-03-04.md`
+- `docs/notes/phase11-integration-test-coverage-2026-03-04.md`
 
 ## Success Metrics
 
