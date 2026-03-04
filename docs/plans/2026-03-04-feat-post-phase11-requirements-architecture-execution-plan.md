@@ -194,7 +194,9 @@ Phase12~13을 다음 5개 실행 트랙으로 진행한다.
   - 키 폐기 전 재암호화 완료율 100% 및 샘플 복호화 검증 통과 필수
 - Deployment validation:
   - 쿼리: 암호화 미적용 건수/복호화 실패 건수/센터별 backfill 진행률
+  - 쿼리: 감사로그 보존 정책 검증(보존기간 >= 365일), 월별 파티션/TTL 적용 상태, 만료 예정 파티션 점검
   - 로그/알림: decrypt error, key access deny, audit log 누락 이벤트 실시간 알림
+  - 로그/알림: 감사로그 적재 실패율, 보존 정책 배치 실패 이벤트
 
 ## System-Wide Impact
 
@@ -208,6 +210,22 @@ Phase12~13을 다음 5개 실행 트랙으로 진행한다.
   - CRM 발송 실패 후 재시도/DLQ
   - 실연동 장애 시 보상/폴백
 
+### Rollback Thresholds & Owners
+
+| Domain | Trigger Metric | Threshold | Validation Window | Primary Owner |
+|---|---|---|---|---|
+| ACC | 게이트 인증 실패율 | 5분 이동평균 > 2.0% | 15분 | Backend On-call |
+| ACC | 게이트 timeout 비율 | 5분 이동평균 > 1.0% | 15분 | Integration On-call |
+| SAL | 정산 재집계 불일치율 | 월 정산 샘플 1,000건 기준 > 0.1% | 배포 당일 +1일 | Settlement Owner |
+| CRM | DLQ 누적 건수 | 누적 > 500건 또는 10분 증가율 > 50건/분 | 30분 | CRM Messaging Owner |
+| CRM | 수신거부 위반 발송 | 단일 건이라도 발생 | 즉시 | CRM Messaging Owner |
+| Security | 복호화 실패율 | 5분 이동평균 > 0.1% | 30분 | Security On-call |
+| Security | 감사로그 적재 누락 | 민감 이벤트 누락 1건 이상 | 즉시 | Platform/Security Owner |
+
+운영 판단 규칙:
+- 임계치 초과가 validation window 동안 지속되면 해당 트랙 feature flag를 즉시 rollback한다.
+- rollback 판단/실행/해제는 PR의 Post-Deploy Monitoring & Validation 섹션에 동일 임계치/오너로 기록한다.
+
 ## Acceptance Criteria
 
 - [ ] ACC Must(001~005) 기능이 통합 테스트와 함께 구현된다.
@@ -218,6 +236,8 @@ Phase12~13을 다음 5개 실행 트랙으로 진행한다.
 - [ ] 각 Phase 완료 시 계획/체크리스트/검증로그가 같은 PR에서 동기화된다.
 - [ ] ACC Must 매핑이 `12-A(001~003) + 12-D(004~005)`로 문서화되어 완료 판정에 사용된다.
 - [ ] PII 암호화 전환(dual-write/read, backfill, cutover, rollback, key rotation) 검증 기준이 운영 체크리스트로 남는다.
+- [ ] ACC/SAL/CRM/Security별 rollback 임계치(수치), 검증 윈도우, 1차 오너가 문서화되어 Go/No-Go 판단 기준으로 사용된다.
+- [ ] NFR-015(감사로그 1년 보존) 검증 항목(보존기간/파티션 또는 TTL/적재누락)이 배포 검증 체크리스트에 포함된다.
 
 ## Success Metrics
 
