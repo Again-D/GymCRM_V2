@@ -191,7 +191,7 @@ SELECT ...
 ## SpecFlow-Driven Edge Cases
 - [x] 회원권이 전혀 없는 회원 → `없음 / - / -`
 - [x] ACTIVE(만료일 없음, COUNT형) → `정상 / - / [숫자 또는 -]`
-- [ ] ACTIVE(만료일 D-7) → `만료임박`
+- [x] ACTIVE(만료일 D-7) → `만료임박`
 - [x] ACTIVE(만료일 D-8) → `정상`
 - [ ] ACTIVE 다건 + 동일 만료일 → tie-break 일관성 검증
 - [x] PT 잔여가 0 또는 null → `-`
@@ -224,7 +224,7 @@ SELECT ...
   - **Mitigation:** enum-like 허용값을 테스트로 고정하고 UI 매핑 fallback(`-`) 정의
 
 ## Validation & Rollout Checklist
-- [ ] 백엔드 단위/통합 테스트 통과 (`./gradlew test --tests 'com.gymcrm.member.*'`)
+- [x] 백엔드 단위/통합 테스트 통과 (`./gradlew test --tests 'com.gymcrm.member.*'`)
 - [x] 프론트 빌드 통과 (`npm run build`)
 - [ ] 스테이징에서 회원관리 목록 수동 점검:
   - [ ] 상태 pill/텍스트 정확성
