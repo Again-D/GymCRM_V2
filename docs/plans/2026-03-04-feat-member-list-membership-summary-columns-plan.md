@@ -163,7 +163,7 @@ SELECT ...
   - 사용 가능한 PT 총합, 값 없으면 null
 - [x] `MemberController.MemberSummaryResponse` 필드 확장
   - API contract: `membershipOperationalStatus`, `membershipExpiryDate`, `remainingPtCount`
-- [ ] (선택) 성능 보강 인덱스 검토
+- [x] (선택) 성능 보강 인덱스 검토
   - 후보: `member_memberships(center_id, member_id, membership_status, end_date)`
   - 적용 여부는 `EXPLAIN ANALYZE`로 판단
 
