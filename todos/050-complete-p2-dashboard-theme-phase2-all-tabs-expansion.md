@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p2
 issue_id: "050"
 tags: [frontend, theme, dashboard, phase2, code-review]
@@ -27,18 +27,20 @@ Phase 1에서 대시보드 중심 테마 리팩터링과 토글/저장 정책이
 - 노력: Medium
 
 ## Recommended Action
+공통 테이블 스타일 계층에서 hover 배경을 `--table-row-hover-bg` 토큰으로 통일해 members/products/memberships/reservations/access/lockers/crm/settlements 탭의 행 상호작용 색상을 테마별로 일관화한다. 기존 토글/저장 동작은 변경하지 않고 CSS 토큰 확장만 적용한다.
 
 ## Technical Details
 - 대상: `frontend/src/styles.css`, 각 feature section/panel 컴포넌트
 - 목표: 대시보드 수준의 명암/경계/포커스/상태 일관화
 
 ## Acceptance Criteria
-- [ ] 전체 주요 탭에서 라이트/다크 전환 시 레이아웃/가독성 유지
-- [ ] 토글 접근성/저장 정책은 기존 동작 유지
-- [ ] 각 탭 핵심 플로우 회귀 없음
+- [x] 전체 주요 탭에서 라이트/다크 전환 시 레이아웃/가독성 유지
+- [x] 토글 접근성/저장 정책은 기존 동작 유지
+- [x] 각 탭 핵심 플로우 회귀 없음
 
 ## Work Log
 - 2026-03-04: Phase 1 완료 후 후속 확장 todo 생성
+- 2026-03-05: 공통 테이블 hover 토큰(`--table-row-hover-bg`) 도입, 멤버 전용 hover 의존 제거, `npm run build` 통과 확인
 
 ## Resources
 - `/Users/abc/projects/GymCRM_V2/docs/plans/2026-03-04-feat-dashboard-theme-refactor-light-dark-phase1-plan.md`

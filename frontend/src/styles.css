@@ -9,7 +9,7 @@
   --line-strong: #b8c8bf;
   --table-head-bg: #f8f1e6;
   --detail-card-bg: rgba(255, 255, 255, 0.92);
-  --members-row-hover-bg: #fff8eb;
+  --table-row-hover-bg: #fff8eb;
   --placeholder-card-bg: linear-gradient(180deg, #fffefb 0%, #fffbf4 100%);
   --auth-form-bg: linear-gradient(180deg, #fffefb 0%, #fffaf1 100%);
   --tabbar-bg: rgba(255, 250, 241, 0.84);
@@ -64,7 +64,7 @@
   --line-strong: #2f4570;
   --table-head-bg: rgba(10, 20, 38, 0.9);
   --detail-card-bg: rgba(15, 31, 56, 0.9);
-  --members-row-hover-bg: rgba(35, 63, 104, 0.55);
+  --table-row-hover-bg: rgba(35, 63, 104, 0.55);
   --placeholder-card-bg: linear-gradient(180deg, rgba(19, 35, 61, 0.96) 0%, rgba(13, 24, 43, 0.96) 100%);
   --auth-form-bg: linear-gradient(180deg, rgba(20, 36, 64, 0.96) 0%, rgba(13, 24, 43, 0.95) 100%);
   --tabbar-bg: rgba(13, 24, 43, 0.82);
@@ -1004,8 +1004,12 @@ tbody tr.is-clickable-row {
   cursor: pointer;
 }
 
+tbody tr:hover {
+  background: var(--table-row-hover-bg);
+}
+
 tbody tr.is-clickable-row:hover {
-  background: var(--members-row-hover-bg);
+  background: var(--table-row-hover-bg);
 }
 
 tbody tr.is-selected {
@@ -1335,7 +1339,7 @@ tbody tr.is-selected {
 }
 
 .members-table tbody tr.is-clickable-row:hover {
-  background: var(--members-row-hover-bg);
+  background: var(--table-row-hover-bg);
 }
 
 .detail-grid dt {
