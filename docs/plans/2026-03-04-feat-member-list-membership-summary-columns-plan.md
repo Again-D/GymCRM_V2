@@ -226,6 +226,8 @@ SELECT ...
 ## Validation & Rollout Checklist
 - [x] 백엔드 단위/통합 테스트 통과 (`./gradlew test --tests 'com.gymcrm.member.*'`)
 - [x] 프론트 빌드 통과 (`npm run build`)
+- [x] 수동/운영 검증 실행 체크리스트 문서화
+  - `docs/solutions/documentation-gaps/member-summary-staging-rollout-checklist-gymcrm-20260306.md`
 - [ ] 스테이징에서 회원관리 목록 수동 점검:
   - [ ] 상태 pill/텍스트 정확성
   - [ ] 만료일/잔여횟수 `-` 표기 정확성
