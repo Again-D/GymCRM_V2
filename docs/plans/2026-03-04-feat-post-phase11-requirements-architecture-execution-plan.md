@@ -221,6 +221,12 @@ Phase 12-C execution checklist (current branch):
   - 정상/비정상 출입 이벤트 샘플 검증
   - 오탐/미탐 기준치 합의 및 스테이징 리허설 통과
 
+Phase 12-D execution checklist (current branch):
+- [x] 비정상 출입 알림 집계 API(`GET /api/v1/access/alerts`)를 구현한다.
+- [x] 최근 거부 이벤트/사유별 집계/반복 거부 회원 탐지 규칙(lookback window)을 추가한다.
+- [x] ACC API 통합 테스트로 비정상 출입 패턴 알림 응답을 검증한다.
+- [ ] 운영 알림 임계치/온콜 대응 체크리스트를 문서화한다.
+
 #### Phase 13-A: External Activation Rollout (1주)
 - Deliverables:
   - 벤더 실키 연동 전환(센터 단위 feature flag)

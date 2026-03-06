@@ -76,6 +76,96 @@ public class AccessEventRepository {
         return count == null ? 0 : count;
     }
 
+    public int countDeniedBetween(Long centerId, OffsetDateTime from, OffsetDateTime to) {
+        Integer count = jdbcClient.sql("""
+                SELECT COUNT(*)
+                FROM access_events
+                WHERE center_id = :centerId
+                  AND event_type = 'ENTRY_DENIED'
+                  AND processed_at >= :fromAt
+                  AND processed_at < :toAt
+                """)
+                .param("centerId", centerId)
+                .param("fromAt", from)
+                .param("toAt", to)
+                .query(Integer.class)
+                .single();
+        return count == null ? 0 : count;
+    }
+
+    public List<DeniedReasonCount> countDeniedByReasonBetween(Long centerId, OffsetDateTime from, OffsetDateTime to) {
+        return jdbcClient.sql("""
+                SELECT deny_reason, COUNT(*) AS denied_count
+                FROM access_events
+                WHERE center_id = :centerId
+                  AND event_type = 'ENTRY_DENIED'
+                  AND processed_at >= :fromAt
+                  AND processed_at < :toAt
+                GROUP BY deny_reason
+                ORDER BY denied_count DESC, deny_reason ASC
+                """)
+                .param("centerId", centerId)
+                .param("fromAt", from)
+                .param("toAt", to)
+                .query(DeniedReasonCount.class)
+                .list();
+    }
+
+    public List<DeniedEventRow> findRecentDenied(Long centerId, OffsetDateTime from, OffsetDateTime to, int limit) {
+        return jdbcClient.sql("""
+                SELECT
+                    e.access_event_id,
+                    e.member_id,
+                    m.member_name,
+                    e.deny_reason,
+                    e.processed_at
+                FROM access_events e
+                JOIN members m ON m.member_id = e.member_id
+                WHERE e.center_id = :centerId
+                  AND e.event_type = 'ENTRY_DENIED'
+                  AND e.processed_at >= :fromAt
+                  AND e.processed_at < :toAt
+                ORDER BY e.processed_at DESC, e.access_event_id DESC
+                LIMIT :limit
+                """)
+                .param("centerId", centerId)
+                .param("fromAt", from)
+                .param("toAt", to)
+                .param("limit", limit)
+                .query(DeniedEventRow.class)
+                .list();
+    }
+
+    public List<RepeatedDeniedMember> findRepeatedDeniedMembers(
+            Long centerId,
+            OffsetDateTime from,
+            OffsetDateTime to,
+            int minAttempts
+    ) {
+        return jdbcClient.sql("""
+                SELECT
+                    e.member_id,
+                    m.member_name,
+                    COUNT(*) AS denied_count,
+                    MAX(e.processed_at) AS last_denied_at
+                FROM access_events e
+                JOIN members m ON m.member_id = e.member_id
+                WHERE e.center_id = :centerId
+                  AND e.event_type = 'ENTRY_DENIED'
+                  AND e.processed_at >= :fromAt
+                  AND e.processed_at < :toAt
+                GROUP BY e.member_id, m.member_name
+                HAVING COUNT(*) >= :minAttempts
+                ORDER BY denied_count DESC, last_denied_at DESC
+                """)
+                .param("centerId", centerId)
+                .param("fromAt", from)
+                .param("toAt", to)
+                .param("minAttempts", minAttempts)
+                .query(RepeatedDeniedMember.class)
+                .list();
+    }
+
     public record InsertCommand(
             Long centerId,
             Long memberId,
@@ -85,5 +175,25 @@ public class AccessEventRepository {
             String eventType,
             String denyReason,
             OffsetDateTime processedAt
+    ) {}
+
+    public record DeniedReasonCount(
+            String denyReason,
+            int deniedCount
+    ) {}
+
+    public record DeniedEventRow(
+            Long accessEventId,
+            Long memberId,
+            String memberName,
+            String denyReason,
+            OffsetDateTime processedAt
+    ) {}
+
+    public record RepeatedDeniedMember(
+            Long memberId,
+            String memberName,
+            int deniedCount,
+            OffsetDateTime lastDeniedAt
     ) {}
 }
