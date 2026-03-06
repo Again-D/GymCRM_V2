@@ -152,19 +152,24 @@ export function AccessManagementPanels({
                 <EmptyTableRow colSpan={5} message="검색 결과 회원이 없습니다." />
               ) : (
                 filteredMembers.map((member) => (
-                  <tr key={member.memberId}>
+                  <tr
+                    key={member.memberId}
+                    className={accessSelectedMemberId === member.memberId ? "is-selected" : undefined}
+                  >
                     <td>{member.memberId}</td>
                     <td>{member.memberName}</td>
                     <td>{member.phone}</td>
                     <td>{member.memberStatus}</td>
-                    <td>
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        onClick={() => setAccessSelectedMemberId(member.memberId)}
-                      >
-                        {accessSelectedMemberId === member.memberId ? "선택됨" : "선택"}
-                      </button>
+                    <td className="member-select-cell">
+                      <input
+                        type="checkbox"
+                        className="member-select-checkbox"
+                        checked={accessSelectedMemberId === member.memberId}
+                        aria-label={`회원 #${member.memberId} 선택`}
+                        onChange={(event) =>
+                          setAccessSelectedMemberId(event.target.checked ? member.memberId : null)
+                        }
+                      />
                     </td>
                   </tr>
                 ))

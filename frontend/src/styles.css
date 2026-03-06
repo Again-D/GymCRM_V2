@@ -1016,6 +1016,23 @@ tbody tr.is-selected {
   background: var(--table-row-selected-bg);
 }
 
+.member-select-cell {
+  text-align: center;
+}
+
+.member-select-checkbox {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
+.member-select-checkbox:focus-visible {
+  outline: 2px solid rgba(184, 75, 45, 0.32);
+  outline-offset: 2px;
+}
+
 .member-row-actions {
   display: flex;
   flex-wrap: wrap;
