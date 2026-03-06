@@ -1,7 +1,7 @@
 ---
 title: feat: Post-Phase11 Requirements-Architecture Execution Plan
 type: feat
-status: active
+status: completed
 date: 2026-03-04
 origin: docs/brainstorms/2026-02-23-gym-crm-product-brainstorm.md
 ---
@@ -420,21 +420,21 @@ LIMIT 10;
 
 ## Acceptance Criteria
 
-- [ ] ACC Must(001~005) 기능이 통합 테스트와 함께 구현된다.
-- [ ] SAL Must(001~006) 중 대시보드/정산 핵심 흐름이 운영 검증 가능 상태가 된다.
-- [ ] CRM Must(002~006) 자동화/정책(수신거부 포함)이 반영된다.
+- [x] ACC Must(001~005) 기능이 통합 테스트와 함께 구현된다.
+- [x] SAL Must(001~006) 중 대시보드/정산 핵심 흐름이 운영 검증 가능 상태가 된다.
+- [x] CRM Must(002~006) 자동화/정책(수신거부 포함)이 반영된다.
 - [x] 외부 연동 활성화 runbook과 장애 drill 기록이 남는다.
-- [ ] 실게이트/표시기기 미보유 시 장비 의존 항목은 Deferred Scope로 분리되어 별도 완료 조건으로 관리된다.
-- [ ] PII 암호화 + 감사로그 + 확장 RBAC가 코드/문서에 동기화된다.
+- [x] 실게이트/표시기기 미보유 시 장비 의존 항목은 Deferred Scope로 분리되어 별도 완료 조건으로 관리된다.
+- [x] PII 암호화 + 감사로그 + 확장 RBAC가 코드/문서에 동기화된다.
 - [x] 표시용 비즈니스 ID(`MBR-...`)가 생성/조회/검색/노출 정책과 함께 운영 검증 가능 상태가 된다.
-- [ ] 각 Phase 완료 시 계획/체크리스트/검증로그가 같은 PR에서 동기화된다.
+- [x] 각 Phase 완료 시 계획/체크리스트/검증로그가 같은 PR에서 동기화된다.
 - [x] ACC Must 매핑이 `12-A(001~003) + 12-D(004~005)`로 문서화되어 완료 판정에 사용된다.
-- [ ] PII 암호화 전환(dual-write/read, backfill, cutover, rollback, key rotation) 검증 기준이 운영 체크리스트로 남는다.
-- [ ] ACC/SAL/CRM/Security별 rollback 임계치(수치), 검증 윈도우, 1차 오너가 문서화되어 Go/No-Go 판단 기준으로 사용된다.
-- [ ] NFR-015(감사로그 1년 보존) 검증 항목(보존기간/파티션 또는 TTL/적재누락)이 배포 검증 체크리스트에 포함된다.
-- [ ] NFR-015 검증용 SQL/로그 패턴이 실행 가능한 형태로 문서화되고, 데이터 소스(`audit_logs`, `audit_retention_job_runs`)가 명시된다.
-- [ ] 보안 phase 완료 PR에는 NFR-015 검증 쿼리 결과(또는 스냅샷 링크)가 첨부된다.
-- [ ] Redis 사용처(ACC/예약/Auth)의 도입 시점과 현 단계(Post-Phase11) 보류 범위가 문서에 명시되어 구현 우선순위 혼선이 없다.
+- [x] PII 암호화 전환(dual-write/read, backfill, cutover, rollback, key rotation) 검증 기준이 운영 체크리스트로 남는다.
+- [x] ACC/SAL/CRM/Security별 rollback 임계치(수치), 검증 윈도우, 1차 오너가 문서화되어 Go/No-Go 판단 기준으로 사용된다.
+- [x] NFR-015(감사로그 1년 보존) 검증 항목(보존기간/파티션 또는 TTL/적재누락)이 배포 검증 체크리스트에 포함된다.
+- [x] NFR-015 검증용 SQL/로그 패턴이 실행 가능한 형태로 문서화되고, 데이터 소스(`audit_logs`, `audit_retention_job_runs`)가 명시된다.
+- [x] 보안 phase 완료 PR에는 NFR-015 검증 쿼리 결과(또는 스냅샷 링크)가 첨부된다 (`docs/notes/2026-03-06-security-phase-nfr015-validation-snapshot.md`, PR #54).
+- [x] Redis 사용처(ACC/예약/Auth)의 도입 시점과 현 단계(Post-Phase11) 보류 범위가 문서에 명시되어 구현 우선순위 혼선이 없다.
 
 ## Success Metrics
 
@@ -474,3 +474,4 @@ Mitigation:
 - `docs/solutions/database-issues/reservation-checkin-noshow-usage-event-integrity-gymcrm-20260225.md`
 - `docs/solutions/database-issues/reservation-capacity-and-usage-deduction-integrity-gymcrm-20260225.md`
 - `docs/solutions/documentation-gaps/prototype-plan-checklist-status-drift-gymcrm-20260227.md`
+- `docs/notes/2026-03-06-security-phase-nfr015-validation-snapshot.md`
