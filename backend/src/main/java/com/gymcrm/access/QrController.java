@@ -2,6 +2,7 @@ package com.gymcrm.access;
 
 import com.gymcrm.common.api.ApiResponse;
 import com.gymcrm.common.security.AccessPolicies;
+import com.gymcrm.integration.ExternalFailureMode;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -38,7 +39,8 @@ public class QrController {
                 new QrCodeService.VerifyRequest(
                         request.qrToken(),
                         request.deviceId(),
-                        request.gateMode() == null ? QrCodeService.GateMode.ONLINE : request.gateMode()
+                        request.gateMode() == null ? QrCodeService.GateMode.ONLINE : request.gateMode(),
+                        request.simulateFailure() == null ? ExternalFailureMode.NONE : request.simulateFailure()
                 )
         );
         return ApiResponse.success(VerifyQrResponse.from(verified), "게이트 QR 검증이 처리되었습니다.");
@@ -50,7 +52,8 @@ public class QrController {
     public record VerifyQrRequest(
             @NotBlank(message = "qrToken is required") String qrToken,
             @NotBlank(message = "deviceId is required") String deviceId,
-            QrCodeService.GateMode gateMode
+            QrCodeService.GateMode gateMode,
+            ExternalFailureMode simulateFailure
     ) {
     }
 

@@ -3,6 +3,7 @@ package com.gymcrm.access;
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
+import com.gymcrm.integration.ExternalFailureMode;
 import com.gymcrm.member.Member;
 import com.gymcrm.member.MemberRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -93,6 +94,19 @@ public class QrCodeService {
             return VerifyResult.denied("A002", "QR_INVALID", "유효하지 않은 QR 코드입니다.", null, request.deviceId());
         }
 
+        if (request.simulateFailure() == ExternalFailureMode.TIMEOUT) {
+            AccessEvent denied = accessService.recordGateDenied(consumed.memberId(), "GATE_TIMEOUT");
+            return VerifyResult.denied("A101", "GATE_TIMEOUT", "게이트 제어 요청 시간이 초과되었습니다.", denied, request.deviceId());
+        }
+        if (request.simulateFailure() == ExternalFailureMode.HTTP_5XX) {
+            AccessEvent denied = accessService.recordGateDenied(consumed.memberId(), "GATE_SERVER_ERROR");
+            return VerifyResult.denied("A102", "GATE_SERVER_ERROR", "게이트 제어 서버 오류가 발생했습니다.", denied, request.deviceId());
+        }
+        if (request.simulateFailure() == ExternalFailureMode.OFFLINE) {
+            AccessEvent denied = accessService.recordGateDenied(consumed.memberId(), "GATE_OFFLINE");
+            return VerifyResult.denied("A103", "GATE_OFFLINE", "게이트 장비가 오프라인 상태입니다.", denied, request.deviceId());
+        }
+
         try {
             AccessEvent granted = accessService.enter(new AccessService.EnterRequest(consumed.memberId(), null, null));
             return VerifyResult.allowed(granted, request.deviceId());
@@ -131,7 +145,7 @@ public class QrCodeService {
         OFFLINE
     }
 
-    public record VerifyRequest(String qrToken, String deviceId, GateMode gateMode) {
+    public record VerifyRequest(String qrToken, String deviceId, GateMode gateMode, ExternalFailureMode simulateFailure) {
     }
 
     public record IssueResult(

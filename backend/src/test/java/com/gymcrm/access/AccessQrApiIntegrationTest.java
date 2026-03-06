@@ -149,6 +149,34 @@ class AccessQrApiIntegrationTest {
         exitMember(deskToken, memberId);
     }
 
+    @Test
+    void timeoutInjectionReturnsGateTimeoutCodeAndDeniedEvent() throws Exception {
+        ensureDeskUser();
+        String deskToken = loginAndGetAccessToken(DESK_LOGIN_ID, DESK_PASSWORD);
+        long memberId = createActiveMemberWithMembership();
+        String qrToken = issueQrToken(deskToken, memberId);
+
+        mockMvc.perform(post("/api/v1/access/qr/verify")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + deskToken)
+                        .contentType("application/json")
+                        .content("""
+                                {"qrToken":"%s","deviceId":"gate-04","gateMode":"ONLINE","simulateFailure":"TIMEOUT"}
+                                """.formatted(qrToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.allowed").value(false))
+                .andExpect(jsonPath("$.data.code").value("A101"))
+                .andExpect(jsonPath("$.data.reason").value(org.hamcrest.Matchers.containsString("GATE_TIMEOUT")))
+                .andExpect(jsonPath("$.data.gateAction").value("KEEP_LOCKED"));
+
+        mockMvc.perform(get("/api/v1/access/events")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + deskToken)
+                        .param("memberId", String.valueOf(memberId))
+                        .param("eventType", "ENTRY_DENIED")
+                        .param("limit", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].denyReason").value("GATE_TIMEOUT"));
+    }
+
     private String issueQrToken(String accessToken, long memberId) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/v1/access/qr/issue")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
