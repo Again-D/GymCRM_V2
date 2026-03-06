@@ -3,6 +3,10 @@ package com.gymcrm.settlement;
 import com.gymcrm.common.api.ApiResponse;
 import com.gymcrm.common.security.AccessPolicies;
 import jakarta.validation.constraints.Pattern;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
@@ -20,9 +24,14 @@ import java.util.List;
 @RequestMapping("/api/v1/settlements")
 public class SalesSettlementReportController {
     private final SalesSettlementReportService reportService;
+    private final SalesSettlementCsvExporter csvExporter;
 
-    public SalesSettlementReportController(SalesSettlementReportService reportService) {
+    public SalesSettlementReportController(
+            SalesSettlementReportService reportService,
+            SalesSettlementCsvExporter csvExporter
+    ) {
         this.reportService = reportService;
+        this.csvExporter = csvExporter;
     }
 
     @GetMapping("/sales-report")
@@ -39,6 +48,28 @@ public class SalesSettlementReportController {
                 new SalesSettlementReportService.ReportQuery(startDate, endDate, paymentMethod, productKeyword)
         );
         return ApiResponse.success(SalesReportResponse.from(result), "정산 리포트 조회 성공");
+    }
+
+    @GetMapping(value = "/sales-report/export", produces = "text/csv")
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    public ResponseEntity<String> exportSalesReportCsv(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(required = false)
+            @Pattern(regexp = "^(?i)(CASH|CARD|TRANSFER|ETC)?$", message = "paymentMethod is invalid")
+            String paymentMethod,
+            @RequestParam(required = false) String productKeyword
+    ) {
+        SalesSettlementReportService.SalesReportResult result = reportService.getReport(
+                new SalesSettlementReportService.ReportQuery(startDate, endDate, paymentMethod, productKeyword)
+        );
+        String fileName = "sales-report-%s-to-%s.csv".formatted(startDate, endDate);
+        String csv = csvExporter.export(result);
+
+        return ResponseEntity.ok()
+                .contentType(new MediaType("text", "csv"))
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(fileName).build().toString())
+                .body(csv);
     }
 
     public record SalesReportResponse(

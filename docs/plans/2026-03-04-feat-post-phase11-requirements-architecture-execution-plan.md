@@ -164,8 +164,32 @@ Phase 12-B execution checklist (current branch):
 - [x] 트레이너 월간 완료 PT 수업 집계 + 단가 기반 급여 계산 API(`GET /api/v1/settlements/trainer-payroll`)를 구현했다.
 - [x] 트레이너 정산 집계 통합 테스트(`TrainerPayrollSettlementServiceIntegrationTest`)로 PT/GX·완료/취소 분기 집계 정확도를 검증했다.
 - [x] 매출 대시보드 집계 API(`GET /api/v1/settlements/sales-dashboard`, FR-SAL-001)를 구현한다.
-- [ ] 정산서 export(엑셀/PDF 최소 1종) 기능을 구현한다.
-- [ ] SAL 운영 검증 로그/체크리스트를 문서화하고 Post-Deploy 검증 항목을 고정한다.
+- [x] 정산서 export(엑셀/PDF 최소 1종) 기능을 구현한다. (`GET /api/v1/settlements/sales-report/export`, CSV)
+- [x] SAL 운영 검증 로그/체크리스트를 문서화하고 Post-Deploy 검증 항목을 고정한다.
+
+Phase 12-B Post-Deploy Monitoring & Validation (SAL):
+- Logs(search):
+  - `sales-report/export`
+  - `sales-dashboard`
+  - `trainer-payroll`
+  - `payment_type=REFUND`
+- Metrics/Dashboards:
+  - settlement endpoints p95 latency / 5xx ratio
+  - 월 누적 순매출 계산값 drift(샘플센터 SQL 대조)
+  - trainer payroll total vs row-sum mismatch count
+- Validation queries:
+  - `SELECT COALESCE(SUM(CASE WHEN payment_type='PURCHASE' THEN amount WHEN payment_type='REFUND' THEN -amount ELSE 0 END),0) AS net_sales FROM payments WHERE center_id=:centerId AND is_deleted=FALSE AND payment_status='COMPLETED' AND paid_at >= :startAt AND paid_at < :endAt;`
+  - `SELECT trainer_name, COUNT(*) AS completed_count FROM reservations r JOIN trainer_schedules s ON s.schedule_id=r.schedule_id WHERE r.center_id=:centerId AND s.schedule_type='PT' AND r.reservation_status='COMPLETED' AND r.completed_at >= :monthStart AND r.completed_at < :nextMonthStart GROUP BY trainer_name ORDER BY trainer_name;`
+  - `SELECT COUNT(DISTINCT member_id) FROM member_memberships WHERE center_id=:centerId AND is_deleted=FALSE AND membership_status='ACTIVE' AND end_date BETWEEN :baseDate AND :baseDate + INTERVAL '7 days';`
+- Healthy signals:
+  - dashboard/report/payroll 값이 샘플 SQL 대조와 일치
+  - export API 5xx 0건, CSV 다운로드 성공률 99%+
+- Failure signals / rollback trigger:
+  - SQL 대조 불일치율 > 0.5% 또는 settlement endpoint 5xx > 1% (5분 이동평균)
+  - 즉시 조치: SAL 신규 endpoint 사용 중지(운영 가이드 fallback), 직전 릴리즈로 롤백
+- Validation window & owner:
+  - Window: 배포 후 1영업일 + 월말 마감 리허설 1회
+  - Owner: Settlement Owner, Backend On-call
 
 #### Phase 12-C: CRM Extended Automation (1~2주)
 - Deliverables:
