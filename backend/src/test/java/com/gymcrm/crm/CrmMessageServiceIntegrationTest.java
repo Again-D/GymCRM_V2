@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
 
@@ -51,10 +52,10 @@ class CrmMessageServiceIntegrationTest {
         createExpiringMembership(targetDate);
 
         CrmMessageService.TriggerResult first = crmMessageService.triggerMembershipExpiryReminder(
-                new CrmMessageService.TriggerRequest(baseDate, 3, false)
+                new CrmMessageService.TriggerRequest(baseDate, 3, false, null)
         );
         CrmMessageService.TriggerResult second = crmMessageService.triggerMembershipExpiryReminder(
-                new CrmMessageService.TriggerRequest(baseDate, 3, false)
+                new CrmMessageService.TriggerRequest(baseDate, 3, false, null)
         );
 
         assertTrue(first.totalTargets() >= 1);
@@ -73,7 +74,7 @@ class CrmMessageServiceIntegrationTest {
         createExpiringMembership(targetDate);
 
         crmMessageService.triggerMembershipExpiryReminder(
-                new CrmMessageService.TriggerRequest(baseDate, 1, true)
+                new CrmMessageService.TriggerRequest(baseDate, 1, true, null)
         );
 
         CrmMessageService.ProcessResult first = crmMessageService.processPending(new CrmMessageService.ProcessRequest(50));
@@ -100,7 +101,7 @@ class CrmMessageServiceIntegrationTest {
         Member optedOut = createMemberWithProfile(baseDate, false);
 
         CrmMessageService.TriggerResult result = crmMessageService.triggerBirthdayCampaign(
-                new CrmMessageService.BirthdayTriggerRequest(baseDate, false)
+                new CrmMessageService.BirthdayTriggerRequest(baseDate, false, null)
         );
 
         assertEquals(1, result.createdCount());
@@ -148,13 +149,44 @@ class CrmMessageServiceIntegrationTest {
         ));
 
         CrmMessageService.TriggerResult result = crmMessageService.triggerEventCampaign(
-                new CrmMessageService.EventCampaignTriggerRequest(baseDate, "SEPT_PT", "PT", false)
+                new CrmMessageService.EventCampaignTriggerRequest(baseDate, "SEPT_PT", "PT", false, null)
         );
 
         assertEquals(1, result.createdCount());
         assertTrue(countEvent("EVENT_CAMPAIGN", ptConsented.memberId()) >= 1);
         assertEquals(0, countEvent("EVENT_CAMPAIGN", gxConsented.memberId()));
         assertEquals(0, countEvent("EVENT_CAMPAIGN", ptOptedOut.memberId()));
+    }
+
+    @Test
+    @Transactional
+    void scheduledEventCampaignIsNotProcessedBeforeScheduledAt() {
+        LocalDate baseDate = LocalDate.now(ZoneOffset.UTC);
+        Member member = createMemberWithProfile(baseDate, true);
+        Product ptProduct = createProductByCategory("PT");
+        purchaseService.purchase(new MembershipPurchaseService.PurchaseRequest(
+                member.memberId(),
+                ptProduct.productId(),
+                baseDate,
+                null,
+                "CARD",
+                null,
+                null
+        ));
+
+        OffsetDateTime scheduledAt = OffsetDateTime.now(ZoneOffset.UTC).plusHours(3);
+        crmMessageService.triggerEventCampaign(
+                new CrmMessageService.EventCampaignTriggerRequest(baseDate, "SCHEDULED_PT", "PT", false, scheduledAt)
+        );
+
+        assertEquals("PENDING", latestSendStatus("EVENT_CAMPAIGN", member.memberId()));
+        crmMessageService.processPending(new CrmMessageService.ProcessRequest(50));
+        assertEquals("PENDING", latestSendStatus("EVENT_CAMPAIGN", member.memberId()));
+
+        forceEventNextAttemptAt("EVENT_CAMPAIGN", member.memberId(), OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(1));
+
+        crmMessageService.processPending(new CrmMessageService.ProcessRequest(50));
+        assertEquals("SENT", latestSendStatus("EVENT_CAMPAIGN", member.memberId()));
     }
 
     private void createExpiringMembership(LocalDate targetDate) {
@@ -253,5 +285,38 @@ class CrmMessageServiceIntegrationTest {
                 .query(Integer.class)
                 .single();
         return count == null ? 0 : count;
+    }
+
+    private void forceEventNextAttemptAt(String eventType, Long memberId, OffsetDateTime nextAttemptAt) {
+        jdbcClient.sql("""
+                UPDATE crm_message_events
+                SET next_attempt_at = :nextAttemptAt,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE center_id = 1
+                  AND event_type = :eventType
+                  AND member_id = :memberId
+                  AND is_deleted = FALSE
+                """)
+                .param("nextAttemptAt", nextAttemptAt)
+                .param("eventType", eventType)
+                .param("memberId", memberId)
+                .update();
+    }
+
+    private String latestSendStatus(String eventType, Long memberId) {
+        return jdbcClient.sql("""
+                SELECT send_status
+                FROM crm_message_events
+                WHERE center_id = 1
+                  AND event_type = :eventType
+                  AND member_id = :memberId
+                  AND is_deleted = FALSE
+                ORDER BY crm_message_event_id DESC
+                LIMIT 1
+                """)
+                .param("eventType", eventType)
+                .param("memberId", memberId)
+                .query(String.class)
+                .single();
     }
 }
