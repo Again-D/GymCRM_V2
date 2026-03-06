@@ -113,6 +113,23 @@ Phase12~13을 다음 6개 실행 트랙으로 진행한다.
 - 모듈형 모놀리스 유지 (`access`, `settlement`, `crm`, `integration`, `common`)
 - 외부연동은 adapter 계약 + feature flag로 단계 활성화
 - 메시지/연동 경로는 idempotency key + 처리이력 고정
+- 인증 토큰 저장소는 **현 단계(Post-Phase11)** 에서 PostgreSQL(`auth_refresh_tokens`)을 canonical로 유지
+
+### Redis Adoption Boundary (Stage Alignment)
+
+현재 단계 구현 원칙:
+- Redis 신규 의존성/인프라 도입은 기본값으로 보류한다.
+- 운영 기본기(로그인/refresh rotation/logout)는 PostgreSQL 기반 구현을 유지한다.
+
+후속 단계 도입 트리거:
+- ACC 실게이트 연동 시 1회성 QR 토큰 소비/중복 방지 저장소가 필요할 때
+- 예약 트래픽 증가로 분산 락(동시 예약 제어)이 필요한 시점
+- Access token 즉시 무효화(denylist) 요구가 운영/보안 정책으로 확정될 때
+
+도입 우선순위(권장):
+1. ACC: QR one-time token 소비 저장소
+2. Reservation: 분산 락 서비스
+3. Auth: access denylist/blacklist
 
 ### Implementation Phases
 
@@ -319,6 +336,7 @@ LIMIT 10;
 - [ ] NFR-015(감사로그 1년 보존) 검증 항목(보존기간/파티션 또는 TTL/적재누락)이 배포 검증 체크리스트에 포함된다.
 - [ ] NFR-015 검증용 SQL/로그 패턴이 실행 가능한 형태로 문서화되고, 데이터 소스(`audit_logs`, `audit_retention_job_runs`)가 명시된다.
 - [ ] 보안 phase 완료 PR에는 NFR-015 검증 쿼리 결과(또는 스냅샷 링크)가 첨부된다.
+- [ ] Redis 사용처(ACC/예약/Auth)의 도입 시점과 현 단계(Post-Phase11) 보류 범위가 문서에 명시되어 구현 우선순위 혼선이 없다.
 
 ## Success Metrics
 
