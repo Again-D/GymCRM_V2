@@ -18,17 +18,17 @@ public class MemberRepository {
     public Member insert(MemberCreateCommand command) {
         return jdbcClient.sql("""
                 INSERT INTO members (
-                    center_id, member_name, phone, email, gender, birth_date, member_status,
+                    center_id, member_name, phone, phone_encrypted, email, gender, birth_date, birth_date_encrypted, pii_key_version, member_status,
                     join_date, consent_sms, consent_marketing, memo,
                     created_by, updated_by
                 )
                 VALUES (
-                    :centerId, :memberName, :phone, :email, :gender, :birthDate, :memberStatus,
+                    :centerId, :memberName, :phone, :phoneEncrypted, :email, :gender, :birthDate, :birthDateEncrypted, :piiKeyVersion, :memberStatus,
                     :joinDate, :consentSms, :consentMarketing, :memo,
                     :actorUserId, :actorUserId
                 )
                 RETURNING
-                    member_id, center_id, member_name, phone, email, gender, birth_date, member_status,
+                    member_id, center_id, member_name, phone, phone_encrypted, email, gender, birth_date, birth_date_encrypted, pii_key_version, member_status,
                     join_date, consent_sms, consent_marketing, memo,
                     created_at, created_by, updated_at, updated_by
                 """)
@@ -40,7 +40,7 @@ public class MemberRepository {
     public Optional<Member> findById(Long memberId) {
         return jdbcClient.sql("""
                 SELECT
-                    member_id, center_id, member_name, phone, email, gender, birth_date, member_status,
+                    member_id, center_id, member_name, phone, phone_encrypted, email, gender, birth_date, birth_date_encrypted, pii_key_version, member_status,
                     join_date, consent_sms, consent_marketing, memo,
                     created_at, created_by, updated_at, updated_by
                 FROM members
@@ -55,7 +55,7 @@ public class MemberRepository {
     public List<Member> findAll(Long centerId, String nameKeyword, String phoneKeyword) {
         StringBuilder sql = new StringBuilder("""
                 SELECT
-                    member_id, center_id, member_name, phone, email, gender, birth_date, member_status,
+                    member_id, center_id, member_name, phone, phone_encrypted, email, gender, birth_date, birth_date_encrypted, pii_key_version, member_status,
                     join_date, consent_sms, consent_marketing, memo,
                     created_at, created_by, updated_at, updated_by
                 FROM members
@@ -186,9 +186,12 @@ public class MemberRepository {
                 SET
                     member_name = :memberName,
                     phone = :phone,
+                    phone_encrypted = :phoneEncrypted,
                     email = :email,
                     gender = :gender,
                     birth_date = :birthDate,
+                    birth_date_encrypted = :birthDateEncrypted,
+                    pii_key_version = :piiKeyVersion,
                     member_status = :memberStatus,
                     join_date = :joinDate,
                     consent_sms = :consentSms,
@@ -199,7 +202,7 @@ public class MemberRepository {
                 WHERE member_id = :memberId
                   AND is_deleted = FALSE
                 RETURNING
-                    member_id, center_id, member_name, phone, email, gender, birth_date, member_status,
+                    member_id, center_id, member_name, phone, phone_encrypted, email, gender, birth_date, birth_date_encrypted, pii_key_version, member_status,
                     join_date, consent_sms, consent_marketing, memo,
                     created_at, created_by, updated_at, updated_by
                 """)
@@ -212,9 +215,12 @@ public class MemberRepository {
             Long centerId,
             String memberName,
             String phone,
+            String phoneEncrypted,
             String email,
             String gender,
             java.time.LocalDate birthDate,
+            String birthDateEncrypted,
+            Integer piiKeyVersion,
             String memberStatus,
             java.time.LocalDate joinDate,
             Boolean consentSms,
@@ -227,9 +233,12 @@ public class MemberRepository {
             Long memberId,
             String memberName,
             String phone,
+            String phoneEncrypted,
             String email,
             String gender,
             java.time.LocalDate birthDate,
+            String birthDateEncrypted,
+            Integer piiKeyVersion,
             String memberStatus,
             java.time.LocalDate joinDate,
             Boolean consentSms,

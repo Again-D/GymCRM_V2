@@ -3,6 +3,7 @@ package com.gymcrm.member;
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
+import com.gymcrm.common.security.PiiEncryptionService;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
 
@@ -22,11 +23,13 @@ class MemberServiceTest {
 
     private final MemberRepository memberRepository = mock(MemberRepository.class);
     private final CurrentUserProvider currentUserProvider = mock(CurrentUserProvider.class);
-    private final MemberService service = new MemberService(memberRepository, currentUserProvider);
+    private final PiiEncryptionService piiEncryptionService = mock(PiiEncryptionService.class);
+    private final MemberService service = new MemberService(memberRepository, currentUserProvider, piiEncryptionService, 1);
 
     @Test
     void mapsDuplicatePhoneConstraintToConflict() {
         when(currentUserProvider.currentUserId()).thenReturn(1L);
+        when(piiEncryptionService.encrypt(any())).thenReturn("enc");
         when(memberRepository.insert(any())).thenThrow(new DataIntegrityViolationException(
                 "insert failed",
                 new RuntimeException("duplicate key value violates unique constraint \"uk_members_center_phone_active\"")
@@ -54,6 +57,7 @@ class MemberServiceTest {
     @Test
     void trimsAndNormalizesCreatePayloadBeforeInsert() {
         when(currentUserProvider.currentUserId()).thenReturn(99L);
+        when(piiEncryptionService.encrypt(any())).thenReturn("enc");
         when(memberRepository.insert(any())).thenReturn(sampleMember());
 
         Member result = service.create(new MemberService.MemberCreateRequest(
@@ -75,6 +79,7 @@ class MemberServiceTest {
     @Test
     void createAcceptsLowercaseStatusAndGender() {
         when(currentUserProvider.currentUserId()).thenReturn(99L);
+        when(piiEncryptionService.encrypt(any())).thenReturn("enc");
         when(memberRepository.insert(any())).thenReturn(sampleMember());
 
         service.create(new MemberService.MemberCreateRequest(
@@ -150,9 +155,12 @@ class MemberServiceTest {
                 1L,
                 "테스트회원",
                 "010-9999-0000",
+                "enc-phone",
                 null,
                 "FEMALE",
                 null,
+                null,
+                1,
                 "ACTIVE",
                 LocalDate.of(2026, 2, 23),
                 false,

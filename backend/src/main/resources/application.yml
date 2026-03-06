@@ -43,6 +43,9 @@ app:
       ttl-seconds: ${APP_ACCESS_QR_TTL_SECONDS:30}
   security:
     mode: ${APP_SECURITY_MODE:prototype}
+    pii:
+      encryption-key: ${APP_SECURITY_PII_ENCRYPTION_KEY:dev-only-pii-key-change-me}
+      key-version: ${APP_SECURITY_PII_KEY_VERSION:1}
     jwt:
       issuer: ${APP_SECURITY_JWT_ISSUER:gymcrm}
       audience: ${APP_SECURITY_JWT_AUDIENCE:gymcrm-admin}
