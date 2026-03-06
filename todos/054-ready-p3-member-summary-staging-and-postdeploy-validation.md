@@ -1,5 +1,5 @@
 ---
-status: pending
+status: ready
 priority: p3
 issue_id: "054"
 tags: [code-review, operations, manual-validation, runbook]
@@ -57,6 +57,7 @@ dependencies: []
 
 ## Recommended Action
 
+`docs/solutions/documentation-gaps/member-summary-staging-rollout-checklist-gymcrm-20260306.md`를 기준으로 스테이징 수동 스모크를 먼저 완료하고, 이후 배포 후 24시간 모니터링 결과를 본 todo와 계획 문서에 반영해 최종 `complete`로 종료한다.
 
 ## Technical Details
 
