@@ -160,6 +160,13 @@ Phase 12-A execution checklist (current branch):
 - Quality gates:
   - 월말 경계/환불 반영 통합 테스트
 
+Phase 12-B execution checklist (current branch):
+- [x] 트레이너 월간 완료 PT 수업 집계 + 단가 기반 급여 계산 API(`GET /api/v1/settlements/trainer-payroll`)를 구현했다.
+- [x] 트레이너 정산 집계 통합 테스트(`TrainerPayrollSettlementServiceIntegrationTest`)로 PT/GX·완료/취소 분기 집계 정확도를 검증했다.
+- [ ] 매출 대시보드 집계 API(FR-SAL-001)를 구현한다.
+- [ ] 정산서 export(엑셀/PDF 최소 1종) 기능을 구현한다.
+- [ ] SAL 운영 검증 로그/체크리스트를 문서화하고 Post-Deploy 검증 항목을 고정한다.
+
 #### Phase 12-C: CRM Extended Automation (1~2주)
 - Deliverables:
   - 생일/이벤트/세그먼트 발송
