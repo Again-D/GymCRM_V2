@@ -155,6 +155,52 @@ class MemberSummaryApiIntegrationTest {
         assertEquals("없음", noActive.path("membershipOperationalStatus").asText());
     }
 
+    @Test
+    void representativeMembershipUsesMembershipIdTieBreakWhenExpiryDatesEqual() {
+        LocalDate targetEndDate = LocalDate.now().plusDays(12);
+        long durationProductId = insertProductFixture("SUMMARY-TIE-" + shortId(), "MEMBERSHIP", "DURATION");
+        long memberId = insertMemberFixture("요약동일만료일대표선정-" + shortId());
+
+        long firstMembershipId = insertMembershipFixture(
+                memberId,
+                durationProductId,
+                "ACTIVE",
+                "MEMBERSHIP",
+                "DURATION",
+                targetEndDate,
+                null,
+                null
+        );
+        long secondMembershipId = insertMembershipFixture(
+                memberId,
+                durationProductId,
+                "ACTIVE",
+                "MEMBERSHIP",
+                "DURATION",
+                targetEndDate,
+                null,
+                null
+        );
+
+        Long representativeMembershipId = jdbcClient.sql("""
+                SELECT DISTINCT ON (mm.member_id)
+                    mm.membership_id
+                FROM member_memberships mm
+                WHERE mm.center_id = :centerId
+                  AND mm.member_id = :memberId
+                  AND mm.is_deleted = FALSE
+                  AND mm.membership_status = 'ACTIVE'
+                ORDER BY mm.member_id, mm.end_date NULLS LAST, mm.membership_id ASC
+                """)
+                .param("centerId", CENTER_ID)
+                .param("memberId", memberId)
+                .query(Long.class)
+                .single();
+
+        assertEquals(true, firstMembershipId < secondMembershipId);
+        assertEquals(firstMembershipId, representativeMembershipId);
+    }
+
     private JsonNode findMember(JsonNode data, long memberId) {
         for (JsonNode item : data) {
             if (item.path("memberId").asLong() == memberId) {
