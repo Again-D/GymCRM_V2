@@ -207,7 +207,7 @@ Phase 12-C execution checklist (current branch):
 - [x] 이벤트 세그먼트 캠페인 트리거(`POST /api/v1/crm/messages/triggers/event-campaign`)를 구현한다.
 - [x] 마케팅 수신거부(`consent_marketing=false`) 회원 제외 정책을 CRM 타겟 쿼리에 반영한다.
 - [x] CRM 통합 테스트로 생일/이벤트 대상 추출 및 수신거부 제외를 검증한다.
-- [ ] 템플릿 관리(등록/수정/조회) API를 구현한다.
+- [x] 템플릿 관리(등록/수정/조회) API를 구현한다. (`/api/v1/crm/templates` POST/PATCH/GET)
 - [ ] 예약 발송(지정 시각 이후 처리) 정책과 검증 테스트를 추가한다.
 
 #### Phase 12-D: ACC Monitoring & Alert Completion (1주)
