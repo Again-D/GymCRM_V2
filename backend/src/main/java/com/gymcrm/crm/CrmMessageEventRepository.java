@@ -1,6 +1,5 @@
 package com.gymcrm.crm;
 
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
@@ -29,6 +28,7 @@ public class CrmMessageEventRepository {
                     :nextAttemptAt, :traceId,
                     :actorUserId, :actorUserId
                 )
+                ON CONFLICT (dedupe_key) WHERE is_deleted = FALSE DO NOTHING
                 RETURNING
                     crm_message_event_id, center_id, member_id, membership_id,
                     event_type, channel_type, dedupe_key, payload_json,
@@ -36,25 +36,20 @@ public class CrmMessageEventRepository {
                     next_attempt_at, sent_at, failed_at, last_error_message,
                     trace_id, created_at, updated_at
                 """;
-        try {
-            CrmMessageEvent inserted = jdbcClient.sql(sql)
-                    .param("centerId", command.centerId())
-                    .param("memberId", command.memberId())
-                    .param("membershipId", command.membershipId())
-                    .param("eventType", command.eventType())
-                    .param("channelType", command.channelType())
-                    .param("dedupeKey", command.dedupeKey())
-                    .param("payloadJson", command.payloadJson())
-                    .param("sendStatus", command.sendStatus())
-                    .param("nextAttemptAt", command.nextAttemptAt())
-                    .param("traceId", command.traceId())
-                    .param("actorUserId", command.actorUserId())
-                    .query(CrmMessageEvent.class)
-                    .single();
-            return Optional.of(inserted);
-        } catch (DataIntegrityViolationException ex) {
-            return Optional.empty();
-        }
+        return jdbcClient.sql(sql)
+                .param("centerId", command.centerId())
+                .param("memberId", command.memberId())
+                .param("membershipId", command.membershipId())
+                .param("eventType", command.eventType())
+                .param("channelType", command.channelType())
+                .param("dedupeKey", command.dedupeKey())
+                .param("payloadJson", command.payloadJson())
+                .param("sendStatus", command.sendStatus())
+                .param("nextAttemptAt", command.nextAttemptAt())
+                .param("traceId", command.traceId())
+                .param("actorUserId", command.actorUserId())
+                .query(CrmMessageEvent.class)
+                .optional();
     }
 
     public List<CrmMessageEvent> findDispatchable(Long centerId, int limit, OffsetDateTime now) {
