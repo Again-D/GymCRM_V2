@@ -427,14 +427,14 @@ Phase 4 착수 조건:
 
 ## Backlog (Out of Scope for This Prototype)
 
-- [ ] JWT 로그인/Refresh/RBAC 도입
+- [x] JWT 로그인/Refresh/RBAC 도입
 - [ ] 멀티 센터 운영 UI/권한
 - [ ] 표시용 비즈니스 ID(`MBR-...`) 도입
-- [ ] 예약(PT/GX) 모듈
+- [x] 예약(PT/GX) 모듈
 - [ ] 출입/QR 게이트
-- [ ] 라커 관리
-- [ ] 매출 리포트/정산
-- [ ] CRM 메시지
+- [x] 라커 관리
+- [x] 매출 리포트/정산
+- [x] CRM 메시지
 - [ ] PG/알림톡/QR 외부 연동
 
 ## Suggested Work Slicing (Commit / PR Units)
