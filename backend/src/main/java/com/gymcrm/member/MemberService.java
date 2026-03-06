@@ -3,6 +3,8 @@ package com.gymcrm.member;
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
+import com.gymcrm.common.security.PiiEncryptionService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,10 +20,19 @@ public class MemberService {
 
     private final MemberRepository memberRepository;
     private final CurrentUserProvider currentUserProvider;
+    private final PiiEncryptionService piiEncryptionService;
+    private final int piiKeyVersion;
 
-    public MemberService(MemberRepository memberRepository, CurrentUserProvider currentUserProvider) {
+    public MemberService(
+            MemberRepository memberRepository,
+            CurrentUserProvider currentUserProvider,
+            PiiEncryptionService piiEncryptionService,
+            @Value("${app.security.pii.key-version:1}") int piiKeyVersion
+    ) {
         this.memberRepository = memberRepository;
         this.currentUserProvider = currentUserProvider;
+        this.piiEncryptionService = piiEncryptionService;
+        this.piiKeyVersion = piiKeyVersion;
     }
 
     @Transactional
@@ -35,20 +46,25 @@ public class MemberService {
         validateGender(normalizedGender);
 
         try {
-            return memberRepository.insert(new MemberRepository.MemberCreateCommand(
+            String encryptedPhone = piiEncryptionService.encrypt(normalizedPhone);
+            String encryptedBirthDate = request.birthDate() == null ? null : piiEncryptionService.encrypt(request.birthDate().toString());
+            return resolvePii(memberRepository.insert(new MemberRepository.MemberCreateCommand(
                     DEFAULT_CENTER_ID,
                     normalizedMemberName,
                     normalizedPhone,
+                    encryptedPhone,
                     trimToNull(request.email()),
                     normalizedGender,
                     request.birthDate(),
+                    encryptedBirthDate,
+                    piiKeyVersion,
                     normalizedStatus,
                     request.joinDate() == null ? LocalDate.now() : request.joinDate(),
                     request.consentSms() != null && request.consentSms(),
                     request.consentMarketing() != null && request.consentMarketing(),
                     trimToNull(request.memo()),
                     currentUserProvider.currentUserId()
-            ));
+            )));
         } catch (DataAccessException ex) {
             throw mapDataAccessException(ex);
         }
@@ -75,6 +91,7 @@ public class MemberService {
     @Transactional(readOnly = true)
     public Member get(Long memberId) {
         return memberRepository.findById(memberId)
+                .map(this::resolvePii)
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "회원을 찾을 수 없습니다. memberId=" + memberId));
     }
 
@@ -94,23 +111,59 @@ public class MemberService {
         validateGender(nextGender);
 
         try {
-            return memberRepository.update(new MemberRepository.MemberUpdateCommand(
+            LocalDate nextBirthDate = request.birthDate() == null ? current.birthDate() : request.birthDate();
+            return resolvePii(memberRepository.update(new MemberRepository.MemberUpdateCommand(
                     memberId,
                     nextMemberName,
                     nextPhone,
+                    piiEncryptionService.encrypt(nextPhone),
                     request.email() == null ? current.email() : trimToNull(request.email()),
                     nextGender,
-                    request.birthDate() == null ? current.birthDate() : request.birthDate(),
+                    nextBirthDate,
+                    nextBirthDate == null ? null : piiEncryptionService.encrypt(nextBirthDate.toString()),
+                    piiKeyVersion,
                     nextStatus,
                     request.joinDate() == null ? current.joinDate() : request.joinDate(),
                     request.consentSms() == null ? current.consentSms() : request.consentSms(),
                     request.consentMarketing() == null ? current.consentMarketing() : request.consentMarketing(),
                     request.memo() == null ? current.memo() : trimToNull(request.memo()),
                     currentUserProvider.currentUserId()
-            ));
+            )));
         } catch (DataAccessException ex) {
             throw mapDataAccessException(ex);
         }
+    }
+
+    private Member resolvePii(Member member) {
+        String phone = member.phone();
+        LocalDate birthDate = member.birthDate();
+        if ((phone == null || phone.isBlank()) && member.phoneEncrypted() != null) {
+            phone = piiEncryptionService.decrypt(member.phoneEncrypted());
+        }
+        if (birthDate == null && member.birthDateEncrypted() != null) {
+            birthDate = LocalDate.parse(piiEncryptionService.decrypt(member.birthDateEncrypted()));
+        }
+        return new Member(
+                member.memberId(),
+                member.centerId(),
+                member.memberName(),
+                phone,
+                member.phoneEncrypted(),
+                member.email(),
+                member.gender(),
+                birthDate,
+                member.birthDateEncrypted(),
+                member.piiKeyVersion(),
+                member.memberStatus(),
+                member.joinDate(),
+                member.consentSms(),
+                member.consentMarketing(),
+                member.memo(),
+                member.createdAt(),
+                member.createdBy(),
+                member.updatedAt(),
+                member.updatedBy()
+        );
     }
 
     private void validateStatus(String status) {
