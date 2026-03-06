@@ -19,6 +19,11 @@ import java.util.List;
 public class AccessService {
     private static final int EVENT_LIMIT_MAX = 200;
     private static final int PRESENCE_LIST_LIMIT = 100;
+    private static final int ALERT_LOOKBACK_DEFAULT_MINUTES = 60;
+    private static final int ALERT_LOOKBACK_MAX_MINUTES = 24 * 60;
+    private static final int ALERT_LIMIT_DEFAULT = 20;
+    private static final int ALERT_LIMIT_MAX = 100;
+    private static final int ALERT_REPEAT_THRESHOLD = 3;
 
     private final AccessEventRepository accessEventRepository;
     private final MemberAccessSessionRepository memberAccessSessionRepository;
@@ -156,6 +161,39 @@ public class AccessService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public AlertSummary getAlerts(Integer lookbackMinutes, Integer limit) {
+        Long centerId = currentUserProvider.currentCenterId();
+        int boundedLookback = lookbackMinutes == null ? ALERT_LOOKBACK_DEFAULT_MINUTES : lookbackMinutes;
+        int boundedLimit = limit == null ? ALERT_LIMIT_DEFAULT : limit;
+        if (boundedLookback < 1 || boundedLookback > ALERT_LOOKBACK_MAX_MINUTES) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "lookbackMinutes must be between 1 and 1440");
+        }
+        if (boundedLimit < 1 || boundedLimit > ALERT_LIMIT_MAX) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "limit must be between 1 and 100");
+        }
+
+        OffsetDateTime toAt = OffsetDateTime.now(ZoneOffset.UTC);
+        OffsetDateTime fromAt = toAt.minusMinutes(boundedLookback);
+        int totalDeniedCount = accessEventRepository.countDeniedBetween(centerId, fromAt, toAt);
+        List<AccessEventRepository.DeniedReasonCount> deniedReasonCounts =
+                accessEventRepository.countDeniedByReasonBetween(centerId, fromAt, toAt);
+        List<AccessEventRepository.DeniedEventRow> recentDeniedEvents =
+                accessEventRepository.findRecentDenied(centerId, fromAt, toAt, boundedLimit);
+        List<AccessEventRepository.RepeatedDeniedMember> repeatedDeniedMembers =
+                accessEventRepository.findRepeatedDeniedMembers(centerId, fromAt, toAt, ALERT_REPEAT_THRESHOLD);
+
+        return new AlertSummary(
+                fromAt,
+                toAt,
+                totalDeniedCount,
+                !repeatedDeniedMembers.isEmpty(),
+                deniedReasonCounts,
+                repeatedDeniedMembers,
+                recentDeniedEvents
+        );
+    }
+
     @Transactional
     public AccessEvent recordGateDenied(Long memberId, String denyReason) {
         if (memberId == null) {
@@ -254,5 +292,15 @@ public class AccessService {
             int todayExitCount,
             int todayEntryDeniedCount,
             List<MemberAccessSession> openSessions
+    ) {}
+
+    public record AlertSummary(
+            OffsetDateTime windowFrom,
+            OffsetDateTime windowTo,
+            int totalDeniedCount,
+            boolean requiresImmediateAttention,
+            List<AccessEventRepository.DeniedReasonCount> deniedReasonCounts,
+            List<AccessEventRepository.RepeatedDeniedMember> repeatedDeniedMembers,
+            List<AccessEventRepository.DeniedEventRow> recentDeniedEvents
     ) {}
 }

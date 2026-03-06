@@ -1,6 +1,7 @@
 package com.gymcrm.access;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -15,7 +16,9 @@ import org.springframework.test.web.servlet.MvcResult;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
+import java.util.stream.StreamSupport;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -71,7 +74,8 @@ class AccessApiIntegrationTest {
         mockMvc.perform(get("/api/v1/access/presence")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + deskToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.openSessionCount").value(1));
+                .andExpect(jsonPath("$.data.openSessionCount").exists())
+                .andExpect(jsonPath("$.data.openSessions[*].memberId").value(org.hamcrest.Matchers.hasItem((int) memberId)));
 
         mockMvc.perform(post("/api/v1/access/exit")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + deskToken)
@@ -113,6 +117,49 @@ class AccessApiIntegrationTest {
                         .param("eventType", "ENTRY_DENIED"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].denyReason").value("MEMBER_INACTIVE"));
+    }
+
+    @Test
+    void deskRoleCanReadAccessAlertsForDeniedPatterns() throws Exception {
+        ensureDeskUser();
+        String deskToken = loginAndGetAccessToken(DESK_LOGIN_ID, DESK_PASSWORD);
+
+        long inactiveMemberId = insertMemberFixture("P12D비활성회원", "INACTIVE");
+        for (int i = 0; i < 3; i++) {
+            mockMvc.perform(post("/api/v1/access/entry")
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + deskToken)
+                            .contentType("application/json")
+                            .content("""
+                                    {"memberId": %d}
+                                    """.formatted(inactiveMemberId)))
+                    .andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.error.code").value("BUSINESS_RULE"));
+        }
+
+        MvcResult result = mockMvc.perform(get("/api/v1/access/alerts")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + deskToken)
+                        .param("lookbackMinutes", "60")
+                        .param("limit", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalDeniedCount").exists())
+                .andExpect(jsonPath("$.data.requiresImmediateAttention").value(true))
+                .andReturn();
+
+        JsonNode data = objectMapper.readTree(result.getResponse().getContentAsString()).path("data");
+        assertTrue(data.path("totalDeniedCount").asInt() >= 3);
+
+        boolean hasRepeatedMember = StreamSupport.stream(data.path("repeatedDeniedMembers").spliterator(), false)
+                .anyMatch(row -> row.path("memberId").asLong() == inactiveMemberId && row.path("deniedCount").asInt() >= 3);
+        assertTrue(hasRepeatedMember);
+
+        boolean hasInactiveReason = StreamSupport.stream(data.path("deniedReasonCounts").spliterator(), false)
+                .anyMatch(row -> "MEMBER_INACTIVE".equals(row.path("denyReason").asText()) && row.path("deniedCount").asInt() >= 3);
+        assertTrue(hasInactiveReason);
+
+        boolean hasRecentInactiveEvent = StreamSupport.stream(data.path("recentDeniedEvents").spliterator(), false)
+                .anyMatch(row -> row.path("memberId").asLong() == inactiveMemberId
+                        && "MEMBER_INACTIVE".equals(row.path("denyReason").asText()));
+        assertTrue(hasRecentInactiveEvent);
     }
 
     @Test

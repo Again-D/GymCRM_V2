@@ -3,6 +3,8 @@ package com.gymcrm.access;
 import com.gymcrm.common.api.ApiResponse;
 import com.gymcrm.common.security.AccessPolicies;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
@@ -62,6 +64,16 @@ public class AccessController {
     public ApiResponse<PresenceResponse> presence() {
         AccessService.PresenceSummary summary = accessService.getPresence();
         return ApiResponse.success(PresenceResponse.from(summary), "출입 현황 조회 성공");
+    }
+
+    @GetMapping("/alerts")
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    public ApiResponse<AlertResponse> alerts(
+            @RequestParam(required = false) @Min(1) @Max(1440) Integer lookbackMinutes,
+            @RequestParam(required = false) @Min(1) @Max(100) Integer limit
+    ) {
+        AccessService.AlertSummary summary = accessService.getAlerts(lookbackMinutes, limit);
+        return ApiResponse.success(AlertResponse.from(summary), "출입 비정상 알림 조회 성공");
     }
 
     public record EntryRequest(
@@ -136,6 +148,71 @@ public class AccessController {
                     session.membershipId(),
                     session.reservationId(),
                     session.entryAt()
+            );
+        }
+    }
+
+    public record AlertResponse(
+            OffsetDateTime windowFrom,
+            OffsetDateTime windowTo,
+            int totalDeniedCount,
+            boolean requiresImmediateAttention,
+            List<DeniedReasonCountResponse> deniedReasonCounts,
+            List<RepeatedDeniedMemberResponse> repeatedDeniedMembers,
+            List<DeniedEventResponse> recentDeniedEvents
+    ) {
+        static AlertResponse from(AccessService.AlertSummary summary) {
+            return new AlertResponse(
+                    summary.windowFrom(),
+                    summary.windowTo(),
+                    summary.totalDeniedCount(),
+                    summary.requiresImmediateAttention(),
+                    summary.deniedReasonCounts().stream().map(DeniedReasonCountResponse::from).toList(),
+                    summary.repeatedDeniedMembers().stream().map(RepeatedDeniedMemberResponse::from).toList(),
+                    summary.recentDeniedEvents().stream().map(DeniedEventResponse::from).toList()
+            );
+        }
+    }
+
+    public record DeniedReasonCountResponse(
+            String denyReason,
+            int deniedCount
+    ) {
+        static DeniedReasonCountResponse from(AccessEventRepository.DeniedReasonCount row) {
+            return new DeniedReasonCountResponse(row.denyReason(), row.deniedCount());
+        }
+    }
+
+    public record RepeatedDeniedMemberResponse(
+            Long memberId,
+            String memberName,
+            int deniedCount,
+            OffsetDateTime lastDeniedAt
+    ) {
+        static RepeatedDeniedMemberResponse from(AccessEventRepository.RepeatedDeniedMember row) {
+            return new RepeatedDeniedMemberResponse(
+                    row.memberId(),
+                    row.memberName(),
+                    row.deniedCount(),
+                    row.lastDeniedAt()
+            );
+        }
+    }
+
+    public record DeniedEventResponse(
+            Long accessEventId,
+            Long memberId,
+            String memberName,
+            String denyReason,
+            OffsetDateTime processedAt
+    ) {
+        static DeniedEventResponse from(AccessEventRepository.DeniedEventRow row) {
+            return new DeniedEventResponse(
+                    row.accessEventId(),
+                    row.memberId(),
+                    row.memberName(),
+                    row.denyReason(),
+                    row.processedAt()
             );
         }
     }
