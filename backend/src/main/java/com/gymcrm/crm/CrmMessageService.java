@@ -78,6 +78,97 @@ public class CrmMessageService {
     }
 
     @Transactional
+    public TriggerResult triggerBirthdayCampaign(BirthdayTriggerRequest request) {
+        LocalDate baseDate = request.baseDate() == null ? LocalDate.now(ZoneOffset.UTC) : request.baseDate();
+        Long centerId = currentUserProvider.currentCenterId();
+        Long actorUserId = currentUserProvider.currentUserId();
+        String traceId = TraceIdFilter.currentTraceIdOrGenerate();
+
+        List<CrmTargetRepository.BirthdayTarget> targets = targetRepository.findBirthdayTargets(centerId, baseDate);
+        int createdCount = 0;
+        int duplicatedCount = 0;
+
+        for (CrmTargetRepository.BirthdayTarget target : targets) {
+            String dedupeKey = "BIRTHDAY_CAMPAIGN:" + centerId + ":" + target.memberId() + ":" + baseDate;
+            String payloadJson = "{" +
+                    "\"memberName\":\"" + escapeJson(target.memberName()) + "\"," +
+                    "\"phone\":\"" + escapeJson(target.phone()) + "\"," +
+                    "\"birthDate\":\"" + target.birthDate() + "\"," +
+                    "\"forceFail\":" + request.forceFail() +
+                    "}";
+            boolean inserted = eventRepository.insertIfAbsent(new CrmMessageEventRepository.InsertCommand(
+                    centerId,
+                    target.memberId(),
+                    null,
+                    "BIRTHDAY_CAMPAIGN",
+                    "SMS",
+                    dedupeKey,
+                    payloadJson,
+                    "PENDING",
+                    OffsetDateTime.now(ZoneOffset.UTC),
+                    traceId,
+                    actorUserId
+            )).isPresent();
+            if (inserted) {
+                createdCount += 1;
+            } else {
+                duplicatedCount += 1;
+            }
+        }
+
+        return new TriggerResult(baseDate, baseDate, targets.size(), createdCount, duplicatedCount);
+    }
+
+    @Transactional
+    public TriggerResult triggerEventCampaign(EventCampaignTriggerRequest request) {
+        LocalDate baseDate = request.baseDate() == null ? LocalDate.now(ZoneOffset.UTC) : request.baseDate();
+        if (request.eventCode() == null || request.eventCode().isBlank()) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "eventCode is required");
+        }
+        String productCategory = normalizeProductCategory(request.productCategory());
+        String eventCode = request.eventCode().trim().toUpperCase();
+
+        Long centerId = currentUserProvider.currentCenterId();
+        Long actorUserId = currentUserProvider.currentUserId();
+        String traceId = TraceIdFilter.currentTraceIdOrGenerate();
+
+        List<CrmTargetRepository.EventCampaignTarget> targets = targetRepository.findEventCampaignTargets(centerId, productCategory);
+        int createdCount = 0;
+        int duplicatedCount = 0;
+
+        for (CrmTargetRepository.EventCampaignTarget target : targets) {
+            String dedupeKey = "EVENT_CAMPAIGN:" + centerId + ":" + target.memberId() + ":" + baseDate + ":" + eventCode;
+            String payloadJson = "{" +
+                    "\"memberName\":\"" + escapeJson(target.memberName()) + "\"," +
+                    "\"phone\":\"" + escapeJson(target.phone()) + "\"," +
+                    "\"eventCode\":\"" + escapeJson(eventCode) + "\"," +
+                    "\"productCategory\":\"" + escapeJson(target.productCategorySnapshot()) + "\"," +
+                    "\"forceFail\":" + request.forceFail() +
+                    "}";
+            boolean inserted = eventRepository.insertIfAbsent(new CrmMessageEventRepository.InsertCommand(
+                    centerId,
+                    target.memberId(),
+                    target.membershipId(),
+                    "EVENT_CAMPAIGN",
+                    "SMS",
+                    dedupeKey,
+                    payloadJson,
+                    "PENDING",
+                    OffsetDateTime.now(ZoneOffset.UTC),
+                    traceId,
+                    actorUserId
+            )).isPresent();
+            if (inserted) {
+                createdCount += 1;
+            } else {
+                duplicatedCount += 1;
+            }
+        }
+
+        return new TriggerResult(baseDate, baseDate, targets.size(), createdCount, duplicatedCount);
+    }
+
+    @Transactional
     public ProcessResult processPending(ProcessRequest request) {
         int limit = request.limit() == null ? 20 : request.limit();
         if (limit < 1 || limit > 200) {
@@ -159,6 +250,17 @@ public class CrmMessageService {
         return normalized;
     }
 
+    private String normalizeProductCategory(String productCategory) {
+        if (productCategory == null || productCategory.isBlank()) {
+            return null;
+        }
+        String normalized = productCategory.trim().toUpperCase();
+        if (!normalized.equals("MEMBERSHIP") && !normalized.equals("PT") && !normalized.equals("GX") && !normalized.equals("ETC")) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "productCategory is invalid");
+        }
+        return normalized;
+    }
+
     private String toPayloadJson(CrmTargetRepository.ExpiringMembershipTarget target, LocalDate targetDate, boolean forceFail) {
         return "{" +
                 "\"memberName\":\"" + escapeJson(target.memberName()) + "\"," +
@@ -209,6 +311,20 @@ public class CrmMessageService {
     public record HistoryRequest(
             String sendStatus,
             Integer limit
+    ) {
+    }
+
+    public record BirthdayTriggerRequest(
+            LocalDate baseDate,
+            boolean forceFail
+    ) {
+    }
+
+    public record EventCampaignTriggerRequest(
+            LocalDate baseDate,
+            String eventCode,
+            String productCategory,
+            boolean forceFail
     ) {
     }
 

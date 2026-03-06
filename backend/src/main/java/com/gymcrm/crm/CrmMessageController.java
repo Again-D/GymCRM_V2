@@ -39,6 +39,29 @@ public class CrmMessageController {
         return ApiResponse.success(TriggerResponse.from(result), "CRM 만료임박 메시지 이벤트가 큐에 적재되었습니다.");
     }
 
+    @PostMapping("/triggers/birthday-campaign")
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    public ApiResponse<TriggerResponse> triggerBirthdayCampaign(@Valid @RequestBody BirthdayTriggerRequest request) {
+        CrmMessageService.TriggerResult result = crmMessageService.triggerBirthdayCampaign(
+                new CrmMessageService.BirthdayTriggerRequest(request.baseDate(), Boolean.TRUE.equals(request.forceFail()))
+        );
+        return ApiResponse.success(TriggerResponse.from(result), "CRM 생일 캠페인 메시지 이벤트가 큐에 적재되었습니다.");
+    }
+
+    @PostMapping("/triggers/event-campaign")
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    public ApiResponse<TriggerResponse> triggerEventCampaign(@Valid @RequestBody EventCampaignTriggerRequest request) {
+        CrmMessageService.TriggerResult result = crmMessageService.triggerEventCampaign(
+                new CrmMessageService.EventCampaignTriggerRequest(
+                        request.baseDate(),
+                        request.eventCode(),
+                        request.productCategory(),
+                        Boolean.TRUE.equals(request.forceFail())
+                )
+        );
+        return ApiResponse.success(TriggerResponse.from(result), "CRM 이벤트 캠페인 메시지 이벤트가 큐에 적재되었습니다.");
+    }
+
     @PostMapping("/process")
     @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
     public ApiResponse<ProcessResponse> processPending(@Valid @RequestBody ProcessRequest request) {
@@ -69,6 +92,22 @@ public class CrmMessageController {
 
     public record ProcessRequest(
             @Min(1) @Max(200) Integer limit
+    ) {
+    }
+
+    public record BirthdayTriggerRequest(
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate baseDate,
+            Boolean forceFail
+    ) {
+    }
+
+    public record EventCampaignTriggerRequest(
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate baseDate,
+            @Pattern(regexp = "^[A-Z0-9_\\-]{2,40}$", message = "eventCode is invalid")
+            String eventCode,
+            @Pattern(regexp = "^(?i)(MEMBERSHIP|PT|GX|ETC)?$", message = "productCategory is invalid")
+            String productCategory,
+            Boolean forceFail
     ) {
     }
 
