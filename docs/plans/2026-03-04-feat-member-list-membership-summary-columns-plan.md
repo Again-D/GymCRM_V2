@@ -228,14 +228,15 @@ SELECT ...
 - [x] 프론트 빌드 통과 (`npm run build`)
 - [x] 수동/운영 검증 실행 체크리스트 문서화
   - `docs/solutions/documentation-gaps/member-summary-staging-rollout-checklist-gymcrm-20260306.md`
-- [ ] 스테이징에서 회원관리 목록 수동 점검:
-  - [ ] 상태 pill/텍스트 정확성
-  - [ ] 만료일/잔여횟수 `-` 표기 정확성
-  - [ ] 회원 선택/아이콘 액션 회귀 없음
+- [x] 스테이징에서 회원관리 목록 수동 점검:
+  - [x] 상태 pill/텍스트 정확성
+  - [x] 만료일/잔여횟수 `-` 표기 정확성
+  - [x] 회원 선택/아이콘 액션 회귀 없음
 - [ ] 배포 후 모니터링(초기 24시간):
   - [ ] `/api/v1/members` 에러율
   - [ ] 응답시간 P95
   - [ ] 운영팀 피드백(오분류 사례 여부)
+  - 현재 단계 메모: 실제 배포 시점에만 수행 가능
 
 ## Sources & References
 - **Origin brainstorm:** [`docs/brainstorms/2026-03-04-members-table-membership-summary-columns-brainstorm.md`](/Users/abc/projects/GymCRM_V2/docs/brainstorms/2026-03-04-members-table-membership-summary-columns-brainstorm.md)
