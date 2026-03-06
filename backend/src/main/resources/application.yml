@@ -38,6 +38,9 @@ logging:
     level: "%5p [traceId:%X{traceId:-none}]"
 
 app:
+  access:
+    qr:
+      ttl-seconds: ${APP_ACCESS_QR_TTL_SECONDS:30}
   security:
     mode: ${APP_SECURITY_MODE:prototype}
     jwt:

@@ -156,6 +156,32 @@ public class AccessService {
         );
     }
 
+    @Transactional
+    public AccessEvent recordGateDenied(Long memberId, String denyReason) {
+        if (memberId == null) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "memberId is required");
+        }
+        if (denyReason == null || denyReason.isBlank()) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "denyReason is required");
+        }
+
+        Long centerId = currentUserProvider.currentCenterId();
+        Long actorUserId = currentUserProvider.currentUserId();
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+
+        Member member = getMemberInCenter(memberId, centerId);
+        return accessEventRepository.insert(new AccessEventRepository.InsertCommand(
+                centerId,
+                member.memberId(),
+                null,
+                null,
+                actorUserId,
+                "ENTRY_DENIED",
+                denyReason.trim().toUpperCase(),
+                now
+        ));
+    }
+
     private AccessEvent denyAndThrow(
             Long centerId,
             Long actorUserId,
