@@ -1,5 +1,6 @@
 package com.gymcrm.member;
 
+import com.gymcrm.audit.AuditLogService;
 import com.gymcrm.common.api.ApiResponse;
 import com.gymcrm.common.security.AccessPolicies;
 import jakarta.validation.Valid;
@@ -24,9 +25,11 @@ import java.util.List;
 @RequestMapping("/api/v1/members")
 public class MemberController {
     private final MemberService memberService;
+    private final AuditLogService auditLogService;
 
-    public MemberController(MemberService memberService) {
+    public MemberController(MemberService memberService, AuditLogService auditLogService) {
         this.memberService = memberService;
+        this.auditLogService = auditLogService;
     }
 
     @PostMapping
@@ -62,7 +65,13 @@ public class MemberController {
     @GetMapping("/{memberId}")
     @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
     public ApiResponse<MemberResponse> detail(@PathVariable Long memberId) {
-        return ApiResponse.success(MemberResponse.from(memberService.get(memberId)), "회원 상세 조회 성공");
+        Member member = memberService.get(memberId);
+        auditLogService.recordPiiRead(
+                "MEMBER",
+                String.valueOf(memberId),
+                "{\"fields\":[\"phone\",\"birthDate\"]}"
+        );
+        return ApiResponse.success(MemberResponse.from(member), "회원 상세 조회 성공");
     }
 
     @PatchMapping("/{memberId}")
