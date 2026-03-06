@@ -34,7 +34,12 @@ public class CrmMessageController {
     @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
     public ApiResponse<TriggerResponse> triggerMembershipExpiryReminder(@Valid @RequestBody TriggerRequest request) {
         CrmMessageService.TriggerResult result = crmMessageService.triggerMembershipExpiryReminder(
-                new CrmMessageService.TriggerRequest(request.baseDate(), request.daysAhead(), Boolean.TRUE.equals(request.forceFail()))
+                new CrmMessageService.TriggerRequest(
+                        request.baseDate(),
+                        request.daysAhead(),
+                        Boolean.TRUE.equals(request.forceFail()),
+                        request.scheduledAt()
+                )
         );
         return ApiResponse.success(TriggerResponse.from(result), "CRM 만료임박 메시지 이벤트가 큐에 적재되었습니다.");
     }
@@ -43,7 +48,11 @@ public class CrmMessageController {
     @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
     public ApiResponse<TriggerResponse> triggerBirthdayCampaign(@Valid @RequestBody BirthdayTriggerRequest request) {
         CrmMessageService.TriggerResult result = crmMessageService.triggerBirthdayCampaign(
-                new CrmMessageService.BirthdayTriggerRequest(request.baseDate(), Boolean.TRUE.equals(request.forceFail()))
+                new CrmMessageService.BirthdayTriggerRequest(
+                        request.baseDate(),
+                        Boolean.TRUE.equals(request.forceFail()),
+                        request.scheduledAt()
+                )
         );
         return ApiResponse.success(TriggerResponse.from(result), "CRM 생일 캠페인 메시지 이벤트가 큐에 적재되었습니다.");
     }
@@ -56,7 +65,8 @@ public class CrmMessageController {
                         request.baseDate(),
                         request.eventCode(),
                         request.productCategory(),
-                        Boolean.TRUE.equals(request.forceFail())
+                        Boolean.TRUE.equals(request.forceFail()),
+                        request.scheduledAt()
                 )
         );
         return ApiResponse.success(TriggerResponse.from(result), "CRM 이벤트 캠페인 메시지 이벤트가 큐에 적재되었습니다.");
@@ -86,7 +96,8 @@ public class CrmMessageController {
     public record TriggerRequest(
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate baseDate,
             @Min(0) @Max(30) Integer daysAhead,
-            Boolean forceFail
+            Boolean forceFail,
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime scheduledAt
     ) {
     }
 
@@ -97,7 +108,8 @@ public class CrmMessageController {
 
     public record BirthdayTriggerRequest(
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate baseDate,
-            Boolean forceFail
+            Boolean forceFail,
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime scheduledAt
     ) {
     }
 
@@ -107,7 +119,8 @@ public class CrmMessageController {
             String eventCode,
             @Pattern(regexp = "^(?i)(MEMBERSHIP|PT|GX|ETC)?$", message = "productCategory is invalid")
             String productCategory,
-            Boolean forceFail
+            Boolean forceFail,
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime scheduledAt
     ) {
     }
 

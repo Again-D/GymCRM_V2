@@ -62,7 +62,7 @@ public class CrmMessageService {
                     dedupeKey,
                     payloadJson,
                     "PENDING",
-                    OffsetDateTime.now(ZoneOffset.UTC),
+                    resolveScheduledAt(request.scheduledAt()),
                     traceId,
                     actorUserId
             )).isPresent();
@@ -105,7 +105,7 @@ public class CrmMessageService {
                     dedupeKey,
                     payloadJson,
                     "PENDING",
-                    OffsetDateTime.now(ZoneOffset.UTC),
+                    resolveScheduledAt(request.scheduledAt()),
                     traceId,
                     actorUserId
             )).isPresent();
@@ -154,7 +154,7 @@ public class CrmMessageService {
                     dedupeKey,
                     payloadJson,
                     "PENDING",
-                    OffsetDateTime.now(ZoneOffset.UTC),
+                    resolveScheduledAt(request.scheduledAt()),
                     traceId,
                     actorUserId
             )).isPresent();
@@ -278,10 +278,22 @@ public class CrmMessageService {
         return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
+    private OffsetDateTime resolveScheduledAt(OffsetDateTime scheduledAt) {
+        if (scheduledAt == null) {
+            return OffsetDateTime.now(ZoneOffset.UTC);
+        }
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        if (scheduledAt.isBefore(now)) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "scheduledAt must be current or future time");
+        }
+        return scheduledAt.withOffsetSameInstant(ZoneOffset.UTC);
+    }
+
     public record TriggerRequest(
             LocalDate baseDate,
             Integer daysAhead,
-            boolean forceFail
+            boolean forceFail,
+            OffsetDateTime scheduledAt
     ) {
     }
 
@@ -316,7 +328,8 @@ public class CrmMessageService {
 
     public record BirthdayTriggerRequest(
             LocalDate baseDate,
-            boolean forceFail
+            boolean forceFail,
+            OffsetDateTime scheduledAt
     ) {
     }
 
@@ -324,7 +337,8 @@ public class CrmMessageService {
             LocalDate baseDate,
             String eventCode,
             String productCategory,
-            boolean forceFail
+            boolean forceFail,
+            OffsetDateTime scheduledAt
     ) {
     }
 
