@@ -299,6 +299,13 @@ Phase 13-A execution checklist (current branch):
   - center scope 누락 0건
   - 암호화 전환 리허설(샘플센터) 통과
 
+Phase 13-B execution checklist (current branch):
+- [x] 백엔드 RBAC 정책에 `ROLE_MANAGER`/`ROLE_TRAINER`를 반영한다.
+- [x] 예약 API에 `ROLE_TRAINER` 접근 권한을 반영한다.
+- [x] RBAC 통합 테스트에 manager/trainer 권한 시나리오를 추가한다.
+- [ ] PII 암호화 저장(dual-write/read) 기초 스키마를 추가한다.
+- [ ] 감사로그 보존/조회 강화 항목을 코드/운영문서로 동기화한다.
+
 #### Phase 13-C: Business ID (`MBR-...`) Rollout (0.5~1주, 후순위)
 - Deliverables:
   - 비즈니스 ID 생성 규칙/포맷(`MBR-YYYY-####` 또는 동등 정책) 문서화

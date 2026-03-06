@@ -39,6 +39,10 @@ class RbacAuthorizationIntegrationTest {
     private static final long CENTER_ID = 1L;
     private static final String DESK_LOGIN_ID = "desk-user";
     private static final String DESK_PASSWORD = "desk-user-1234!";
+    private static final String MANAGER_LOGIN_ID = "manager-user";
+    private static final String MANAGER_PASSWORD = "manager-user-1234!";
+    private static final String TRAINER_LOGIN_ID = "trainer-user";
+    private static final String TRAINER_PASSWORD = "trainer-user-1234!";
 
     @Autowired
     private MockMvc mockMvc;
@@ -228,6 +232,54 @@ class RbacAuthorizationIntegrationTest {
     }
 
     @Test
+    void managerRoleCanMutateProducts() throws Exception {
+        ensureManagerUser();
+        String managerToken = loginAndGetAccessToken(MANAGER_LOGIN_ID, MANAGER_PASSWORD);
+        String productName = "MANAGER상품-" + shortId();
+
+        mockMvc.perform(post("/api/v1/products")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + managerToken)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "productName": "%s",
+                                  "productCategory": "MEMBERSHIP",
+                                  "productType": "DURATION",
+                                  "priceAmount": 45000,
+                                  "validityDays": 30,
+                                  "allowHold": true,
+                                  "maxHoldDays": 7,
+                                  "maxHoldCount": 2,
+                                  "allowTransfer": false,
+                                  "productStatus": "ACTIVE"
+                                }
+                                """.formatted(productName)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.productName").value(productName));
+    }
+
+    @Test
+    void trainerRoleCanReadReservationSchedulesButCannotMutateProducts() throws Exception {
+        ensureTrainerUser();
+        String trainerToken = loginAndGetAccessToken(TRAINER_LOGIN_ID, TRAINER_PASSWORD);
+        long productId = insertDurationProductFixture("TRAINER금지상품-" + shortId(), false);
+
+        mockMvc.perform(get("/api/v1/reservations/schedules")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + trainerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        mockMvc.perform(patch("/api/v1/products/{productId}/status", productId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + trainerToken)
+                        .contentType("application/json")
+                        .content("""
+                                { "productStatus": "INACTIVE" }
+                                """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("ACCESS_DENIED"));
+    }
+
+    @Test
     void deskRoleGets403Not401ForForbiddenProductMutation() throws Exception {
         ensureDeskUser();
         long productId = insertDurationProductFixture("RBAC403상품-" + shortId(), false);
@@ -246,11 +298,23 @@ class RbacAuthorizationIntegrationTest {
     }
 
     private void ensureDeskUser() {
+        ensureUserByRole(DESK_LOGIN_ID, DESK_PASSWORD, "ROLE_DESK", "Desk User");
+    }
+
+    private void ensureManagerUser() {
+        ensureUserByRole(MANAGER_LOGIN_ID, MANAGER_PASSWORD, "ROLE_MANAGER", "Manager User");
+    }
+
+    private void ensureTrainerUser() {
+        ensureUserByRole(TRAINER_LOGIN_ID, TRAINER_PASSWORD, "ROLE_TRAINER", "Trainer User");
+    }
+
+    private void ensureUserByRole(String loginId, String password, String roleCode, String displayName) {
         int updated = jdbcClient.sql("""
                 UPDATE users
                 SET password_hash = :passwordHash,
                     display_name = :displayName,
-                    role_code = 'ROLE_DESK',
+                    role_code = :roleCode,
                     user_status = 'ACTIVE',
                     is_deleted = FALSE,
                     deleted_at = NULL,
@@ -261,9 +325,10 @@ class RbacAuthorizationIntegrationTest {
                   AND login_id = :loginId
                 """)
                 .param("centerId", CENTER_ID)
-                .param("loginId", DESK_LOGIN_ID)
-                .param("passwordHash", passwordEncoder.encode(DESK_PASSWORD))
-                .param("displayName", "Desk User")
+                .param("loginId", loginId)
+                .param("passwordHash", passwordEncoder.encode(password))
+                .param("displayName", displayName)
+                .param("roleCode", roleCode)
                 .update();
         if (updated > 0) {
             return;
@@ -275,14 +340,15 @@ class RbacAuthorizationIntegrationTest {
                     created_by, updated_by
                 )
                 VALUES (
-                    :centerId, :loginId, :passwordHash, :displayName, 'ROLE_DESK', 'ACTIVE',
+                    :centerId, :loginId, :passwordHash, :displayName, :roleCode, 'ACTIVE',
                     0, 0
                 )
                 """)
                 .param("centerId", CENTER_ID)
-                .param("loginId", DESK_LOGIN_ID)
-                .param("passwordHash", passwordEncoder.encode(DESK_PASSWORD))
-                .param("displayName", "Desk User")
+                .param("loginId", loginId)
+                .param("passwordHash", passwordEncoder.encode(password))
+                .param("displayName", displayName)
+                .param("roleCode", roleCode)
                 .update();
     }
 
