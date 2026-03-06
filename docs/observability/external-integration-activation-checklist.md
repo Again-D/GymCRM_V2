@@ -10,6 +10,13 @@
 - [ ] 타임아웃/재시도 기본값 확인 (권장: connect 2s, read 5s, 최대 3회)
 - [ ] `traceId` 기반 로그 상관관계 확인
 
+### 1-1. 센터 단위 활성화 정책 설정(API)
+- [ ] 현재 정책 조회: `GET /api/v1/integrations/external/activation-policy`
+- [ ] 단계 전환 반영: `PUT /api/v1/integrations/external/activation-policy`
+  - `SANDBOX` -> `STAGING` -> `PRODUCTION`
+  - 단계 전환 시 `paymentEnabled/messagingEnabled/qrEnabled`를 센터 운영 정책과 동기화
+- [ ] 정책 변경 후 `last_drill_outcome`/`last_drill_at` 확인(최근 drill 기준)
+
 ## 2. 계약 테스트 (Sandbox)
 - [ ] PG 승인 성공/실패(타임아웃, 5xx) 테스트 통과
 - [ ] 알림톡 실패 시 SMS fallback 테스트 통과
@@ -41,3 +48,18 @@
 - 결과 요약:
 - 실패/조치 내역:
 - 최종 판단(Go/No-Go):
+
+### Sandbox Drill API 실행 예시
+```bash
+curl -X POST "$API_BASE/api/v1/integrations/external/sandbox-drill" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "memberId": 1,
+    "paymentApproveFailureMode": "NONE",
+    "alimtalkFailureMode": "TIMEOUT",
+    "smsFailureMode": "NONE",
+    "qrFailureMode": "NONE",
+    "paymentCancelFailureMode": "NONE"
+  }'
+```

@@ -265,6 +265,12 @@ Phase 12-D Post-Deploy Monitoring & Validation (ACC):
 - Quality gates:
   - timeout/5xx 주입 시 보상/폴백 경로 확인
 
+Phase 13-A execution checklist (current branch):
+- [x] 외부 연동 활성화 정책 API(`GET/PUT /api/v1/integrations/external/activation-policy`)를 구현한다.
+- [x] sandbox drill 실행 API(`POST /api/v1/integrations/external/sandbox-drill`)와 drill 결과 기록(`last_drill_*`)을 추가한다.
+- [x] 외부 연동 활성화 runbook/체크리스트에 API 기반 운영 절차를 반영한다.
+- [x] 장애 drill 실행 기록 문서를 추가한다.
+
 ### Deferred Scope (Requires Physical Gate/Display Devices)
 
 다음 항목은 실게이트 장비/표시 기기 확보 전까지 보류 범위로 분리한다.
@@ -405,7 +411,7 @@ LIMIT 10;
 - [ ] ACC Must(001~005) 기능이 통합 테스트와 함께 구현된다.
 - [ ] SAL Must(001~006) 중 대시보드/정산 핵심 흐름이 운영 검증 가능 상태가 된다.
 - [ ] CRM Must(002~006) 자동화/정책(수신거부 포함)이 반영된다.
-- [ ] 외부 연동 활성화 runbook과 장애 drill 기록이 남는다.
+- [x] 외부 연동 활성화 runbook과 장애 drill 기록이 남는다.
 - [ ] 실게이트/표시기기 미보유 시 장비 의존 항목은 Deferred Scope로 분리되어 별도 완료 조건으로 관리된다.
 - [ ] PII 암호화 + 감사로그 + 확장 RBAC가 코드/문서에 동기화된다.
 - [ ] 표시용 비즈니스 ID(`MBR-...`)가 생성/조회/검색/노출 정책과 함께 운영 검증 가능 상태가 된다.
