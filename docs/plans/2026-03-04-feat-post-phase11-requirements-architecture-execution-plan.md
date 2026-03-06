@@ -318,6 +318,11 @@ Phase 13-B execution checklist (current branch):
   - 대량 backfill 리허설 통과(롤백 절차 포함)
   - ID 생성 충돌 회귀 테스트 통과
 
+Phase 13-C execution checklist (current branch):
+- [x] 회원 비즈니스 ID(`member_code`) 스키마/유니크 제약과 백필 마이그레이션을 추가한다.
+- [x] 회원 생성/조회/목록 응답에 `memberCode`를 노출한다.
+- [x] 회원 목록 검색에 `memberCode` 필터를 추가한다.
+
 ##### Phase 13-B Migration & Key Management Plan
 - Scope(대상 컬럼): `member_phone`, `member_birth_date` 우선 적용 후 추가 PII 확장
 - Prepare:
@@ -421,7 +426,7 @@ LIMIT 10;
 - [x] 외부 연동 활성화 runbook과 장애 drill 기록이 남는다.
 - [ ] 실게이트/표시기기 미보유 시 장비 의존 항목은 Deferred Scope로 분리되어 별도 완료 조건으로 관리된다.
 - [ ] PII 암호화 + 감사로그 + 확장 RBAC가 코드/문서에 동기화된다.
-- [ ] 표시용 비즈니스 ID(`MBR-...`)가 생성/조회/검색/노출 정책과 함께 운영 검증 가능 상태가 된다.
+- [x] 표시용 비즈니스 ID(`MBR-...`)가 생성/조회/검색/노출 정책과 함께 운영 검증 가능 상태가 된다.
 - [ ] 각 Phase 완료 시 계획/체크리스트/검증로그가 같은 PR에서 동기화된다.
 - [x] ACC Must 매핑이 `12-A(001~003) + 12-D(004~005)`로 문서화되어 완료 판정에 사용된다.
 - [ ] PII 암호화 전환(dual-write/read, backfill, cutover, rollback, key rotation) 검증 기준이 운영 체크리스트로 남는다.

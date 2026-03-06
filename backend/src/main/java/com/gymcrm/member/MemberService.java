@@ -71,12 +71,13 @@ public class MemberService {
     }
 
     @Transactional(readOnly = true)
-    public List<MemberSummary> list(String nameKeyword, String phoneKeyword) {
+    public List<MemberSummary> list(String memberCodeKeyword, String nameKeyword, String phoneKeyword) {
         LocalDate businessDate = LocalDate.now(BUSINESS_ZONE);
-        return memberRepository.findAllSummaries(DEFAULT_CENTER_ID, nameKeyword, phoneKeyword, businessDate).stream()
+        return memberRepository.findAllSummaries(DEFAULT_CENTER_ID, memberCodeKeyword, nameKeyword, phoneKeyword, businessDate).stream()
                 .map(summary -> new MemberSummary(
                         summary.memberId(),
                         summary.centerId(),
+                        summary.memberCode(),
                         summary.memberName(),
                         summary.phone(),
                         summary.memberStatus(),
@@ -146,6 +147,7 @@ public class MemberService {
         return new Member(
                 member.memberId(),
                 member.centerId(),
+                member.memberCode(),
                 member.memberName(),
                 phone,
                 member.phoneEncrypted(),
@@ -246,6 +248,7 @@ public class MemberService {
     public record MemberSummary(
             Long memberId,
             Long centerId,
+            String memberCode,
             String memberName,
             String phone,
             String memberStatus,

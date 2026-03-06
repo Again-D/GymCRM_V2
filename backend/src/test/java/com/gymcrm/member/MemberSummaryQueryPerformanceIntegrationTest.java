@@ -52,7 +52,7 @@ class MemberSummaryQueryPerformanceIntegrationTest {
         }
 
         long startedAt = System.nanoTime();
-        var rows = memberRepository.findAllSummaries(CENTER_ID, null, null, today);
+        var rows = memberRepository.findAllSummaries(CENTER_ID, null, null, null, today);
         long elapsedMillis = (System.nanoTime() - startedAt) / 1_000_000L;
 
         assertEquals(100, rows.size());

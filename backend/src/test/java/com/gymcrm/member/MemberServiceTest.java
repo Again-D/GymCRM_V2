@@ -153,6 +153,7 @@ class MemberServiceTest {
         return new Member(
                 1L,
                 1L,
+                "MBR-2026-001001",
                 "테스트회원",
                 "010-9999-0000",
                 "enc-phone",

@@ -28,7 +28,7 @@ public class MemberRepository {
                     :actorUserId, :actorUserId
                 )
                 RETURNING
-                    member_id, center_id, member_name, phone, phone_encrypted, email, gender, birth_date, birth_date_encrypted, pii_key_version, member_status,
+                    member_id, center_id, member_code, member_name, phone, phone_encrypted, email, gender, birth_date, birth_date_encrypted, pii_key_version, member_status,
                     join_date, consent_sms, consent_marketing, memo,
                     created_at, created_by, updated_at, updated_by
                 """)
@@ -40,7 +40,7 @@ public class MemberRepository {
     public Optional<Member> findById(Long memberId) {
         return jdbcClient.sql("""
                 SELECT
-                    member_id, center_id, member_name, phone, phone_encrypted, email, gender, birth_date, birth_date_encrypted, pii_key_version, member_status,
+                    member_id, center_id, member_code, member_name, phone, phone_encrypted, email, gender, birth_date, birth_date_encrypted, pii_key_version, member_status,
                     join_date, consent_sms, consent_marketing, memo,
                     created_at, created_by, updated_at, updated_by
                 FROM members
@@ -52,10 +52,10 @@ public class MemberRepository {
                 .optional();
     }
 
-    public List<Member> findAll(Long centerId, String nameKeyword, String phoneKeyword) {
+    public List<Member> findAll(Long centerId, String memberCodeKeyword, String nameKeyword, String phoneKeyword) {
         StringBuilder sql = new StringBuilder("""
                 SELECT
-                    member_id, center_id, member_name, phone, phone_encrypted, email, gender, birth_date, birth_date_encrypted, pii_key_version, member_status,
+                    member_id, center_id, member_code, member_name, phone, phone_encrypted, email, gender, birth_date, birth_date_encrypted, pii_key_version, member_status,
                     join_date, consent_sms, consent_marketing, memo,
                     created_at, created_by, updated_at, updated_by
                 FROM members
@@ -65,6 +65,9 @@ public class MemberRepository {
 
         JdbcClient.StatementSpec spec = jdbcClient.sql(sql.toString()).param("centerId", centerId);
 
+        if (memberCodeKeyword != null && !memberCodeKeyword.isBlank()) {
+            sql.append(" AND member_code ILIKE :memberCodeKeyword ");
+        }
         if (nameKeyword != null && !nameKeyword.isBlank()) {
             sql.append(" AND member_name ILIKE :nameKeyword ");
         }
@@ -74,6 +77,9 @@ public class MemberRepository {
         sql.append(" ORDER BY member_id DESC LIMIT 100 ");
 
         spec = jdbcClient.sql(sql.toString()).param("centerId", centerId);
+        if (memberCodeKeyword != null && !memberCodeKeyword.isBlank()) {
+            spec = spec.param("memberCodeKeyword", "%" + memberCodeKeyword.trim() + "%");
+        }
         if (nameKeyword != null && !nameKeyword.isBlank()) {
             spec = spec.param("nameKeyword", "%" + nameKeyword.trim() + "%");
         }
@@ -86,6 +92,7 @@ public class MemberRepository {
 
     public List<MemberSummaryProjection> findAllSummaries(
             Long centerId,
+            String memberCodeKeyword,
             String nameKeyword,
             String phoneKeyword,
             LocalDate referenceDate
@@ -95,6 +102,7 @@ public class MemberRepository {
                     SELECT
                         m.member_id,
                         m.center_id,
+                        m.member_code,
                         m.member_name,
                         m.phone,
                         m.member_status,
@@ -104,6 +112,9 @@ public class MemberRepository {
                       AND m.is_deleted = FALSE
                 """);
 
+        if (memberCodeKeyword != null && !memberCodeKeyword.isBlank()) {
+            baseMembersSql.append(" AND m.member_code ILIKE :memberCodeKeyword ");
+        }
         if (nameKeyword != null && !nameKeyword.isBlank()) {
             baseMembersSql.append(" AND m.member_name ILIKE :nameKeyword ");
         }
@@ -148,6 +159,7 @@ public class MemberRepository {
                 SELECT
                     bm.member_id,
                     bm.center_id,
+                    bm.member_code,
                     bm.member_name,
                     bm.phone,
                     bm.member_status,
@@ -170,6 +182,9 @@ public class MemberRepository {
         JdbcClient.StatementSpec spec = jdbcClient.sql(baseMembersSql.toString())
                 .param("centerId", centerId)
                 .param("referenceDate", referenceDate);
+        if (memberCodeKeyword != null && !memberCodeKeyword.isBlank()) {
+            spec = spec.param("memberCodeKeyword", "%" + memberCodeKeyword.trim() + "%");
+        }
         if (nameKeyword != null && !nameKeyword.isBlank()) {
             spec = spec.param("nameKeyword", "%" + nameKeyword.trim() + "%");
         }
@@ -202,7 +217,7 @@ public class MemberRepository {
                 WHERE member_id = :memberId
                   AND is_deleted = FALSE
                 RETURNING
-                    member_id, center_id, member_name, phone, phone_encrypted, email, gender, birth_date, birth_date_encrypted, pii_key_version, member_status,
+                    member_id, center_id, member_code, member_name, phone, phone_encrypted, email, gender, birth_date, birth_date_encrypted, pii_key_version, member_status,
                     join_date, consent_sms, consent_marketing, memo,
                     created_at, created_by, updated_at, updated_by
                 """)
@@ -250,6 +265,7 @@ public class MemberRepository {
     public record MemberSummaryProjection(
             Long memberId,
             Long centerId,
+            String memberCode,
             String memberName,
             String phone,
             String memberStatus,
