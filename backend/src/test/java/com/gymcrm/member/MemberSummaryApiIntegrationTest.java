@@ -52,6 +52,43 @@ class MemberSummaryApiIntegrationTest {
     private ObjectMapper objectMapper;
 
     @Test
+    void memberCreateReturnsBusinessIdAndListCanFilterByMemberCode() throws Exception {
+        ensureDeskUser();
+        String token = loginAndGetAccessToken(DESK_LOGIN_ID, DESK_PASSWORD);
+        String memberName = "비즈니스ID회원-" + shortId();
+        String phone = "010" + randomDigits(8);
+
+        MvcResult createResult = mockMvc.perform(post("/api/v1/members")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "memberName": "%s",
+                                  "phone": "%s",
+                                  "memberStatus": "ACTIVE",
+                                  "joinDate": "%s",
+                                  "consentSms": true,
+                                  "consentMarketing": false
+                                }
+                                """.formatted(memberName, phone, LocalDate.now())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.memberCode").exists())
+                .andReturn();
+
+        String memberCode = objectMapper.readTree(createResult.getResponse().getContentAsString())
+                .path("data")
+                .path("memberCode")
+                .asText();
+        assertEquals(true, memberCode.matches("^MBR-\\d{4}-\\d{6}$"));
+
+        mockMvc.perform(get("/api/v1/members")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .param("memberCode", memberCode))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].memberCode").value(memberCode));
+    }
+
+    @Test
     void memberListReturnsMembershipSummaryColumns() throws Exception {
         LocalDate today = LocalDate.now();
 

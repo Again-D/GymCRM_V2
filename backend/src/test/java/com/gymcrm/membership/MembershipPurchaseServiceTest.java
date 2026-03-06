@@ -104,6 +104,7 @@ class MembershipPurchaseServiceTest {
         return new Member(
                 1L,
                 1L,
+                "MBR-2026-001002",
                 "테스트회원",
                 "010-0000-0000",
                 null,

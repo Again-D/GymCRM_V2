@@ -53,10 +53,11 @@ public class MemberController {
     @GetMapping
     @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
     public ApiResponse<List<MemberSummaryResponse>> list(
+            @RequestParam(required = false) String memberCode,
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String phone
     ) {
-        List<MemberSummaryResponse> items = memberService.list(name, phone).stream()
+        List<MemberSummaryResponse> items = memberService.list(memberCode, name, phone).stream()
                 .map(MemberSummaryResponse::from)
                 .toList();
         return ApiResponse.success(items, "회원 목록 조회 성공");
@@ -131,6 +132,7 @@ public class MemberController {
     public record MemberSummaryResponse(
             Long memberId,
             Long centerId,
+            String memberCode,
             String memberName,
             String phone,
             String memberStatus,
@@ -143,6 +145,7 @@ public class MemberController {
             return new MemberSummaryResponse(
                     member.memberId(),
                     member.centerId(),
+                    member.memberCode(),
                     member.memberName(),
                     member.phone(),
                     member.memberStatus(),
@@ -157,6 +160,7 @@ public class MemberController {
     public record MemberResponse(
             Long memberId,
             Long centerId,
+            String memberCode,
             String memberName,
             String phone,
             String email,
@@ -172,6 +176,7 @@ public class MemberController {
             return new MemberResponse(
                     member.memberId(),
                     member.centerId(),
+                    member.memberCode(),
                     member.memberName(),
                     member.phone(),
                     member.email(),

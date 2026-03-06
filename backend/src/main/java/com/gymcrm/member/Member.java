@@ -6,6 +6,7 @@ import java.time.OffsetDateTime;
 public record Member(
         Long memberId,
         Long centerId,
+        String memberCode,
         String memberName,
         String phone,
         String phoneEncrypted,
