@@ -144,6 +144,12 @@ Phase12~13을 다음 6개 실행 트랙으로 진행한다.
   - 재사용 방지/만료 검증 통과
   - 게이트 타임아웃 장애 주입 테스트
 
+Phase 12-A execution checklist (current branch):
+- [x] Dynamic QR 발급/검증 API(`POST /api/v1/access/qr/issue`, `POST /api/v1/access/qr/verify`)를 구현했다.
+- [x] QR 만료/재사용/오프라인 fallback 코드 맵(`A003`, `A004`, `A099`)을 게이트 응답 규격에 반영했다.
+- [x] 게이트 장애 주입 코드 맵(`A101/A102/A103`)과 `TIMEOUT` 주입 검증 테스트를 추가했다.
+- [x] 통합 테스트로 만료/재사용/오프라인/타임아웃 시나리오를 검증했다 (`AccessQrApiIntegrationTest`).
+
 #### Phase 12-B: SAL Advanced Settlement (1~2주)
 - Deliverables:
   - 매출 대시보드 + 트레이너 정산 집계
@@ -330,7 +336,7 @@ LIMIT 10;
 - [ ] PII 암호화 + 감사로그 + 확장 RBAC가 코드/문서에 동기화된다.
 - [ ] 표시용 비즈니스 ID(`MBR-...`)가 생성/조회/검색/노출 정책과 함께 운영 검증 가능 상태가 된다.
 - [ ] 각 Phase 완료 시 계획/체크리스트/검증로그가 같은 PR에서 동기화된다.
-- [ ] ACC Must 매핑이 `12-A(001~003) + 12-D(004~005)`로 문서화되어 완료 판정에 사용된다.
+- [x] ACC Must 매핑이 `12-A(001~003) + 12-D(004~005)`로 문서화되어 완료 판정에 사용된다.
 - [ ] PII 암호화 전환(dual-write/read, backfill, cutover, rollback, key rotation) 검증 기준이 운영 체크리스트로 남는다.
 - [ ] ACC/SAL/CRM/Security별 rollback 임계치(수치), 검증 윈도우, 1차 오너가 문서화되어 Go/No-Go 판단 기준으로 사용된다.
 - [ ] NFR-015(감사로그 1년 보존) 검증 항목(보존기간/파티션 또는 TTL/적재누락)이 배포 검증 체크리스트에 포함된다.
