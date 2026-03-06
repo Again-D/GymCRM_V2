@@ -225,7 +225,36 @@ Phase 12-D execution checklist (current branch):
 - [x] 비정상 출입 알림 집계 API(`GET /api/v1/access/alerts`)를 구현한다.
 - [x] 최근 거부 이벤트/사유별 집계/반복 거부 회원 탐지 규칙(lookback window)을 추가한다.
 - [x] ACC API 통합 테스트로 비정상 출입 패턴 알림 응답을 검증한다.
-- [ ] 운영 알림 임계치/온콜 대응 체크리스트를 문서화한다.
+- [x] 운영 알림 임계치/온콜 대응 체크리스트를 문서화한다.
+
+Phase 12-D Post-Deploy Monitoring & Validation (ACC):
+- Logs(search):
+  - `GET /api/v1/access/alerts`
+  - `ENTRY_DENIED`
+  - `deny_reason=MEMBERSHIP_INELIGIBLE`
+  - `deny_reason=MEMBER_INACTIVE`
+  - `deny_reason=ALREADY_ENTERED`
+- Metrics/Dashboards:
+  - 게이트 인증 실패율(ENTRY_DENIED / 전체 인증 요청): 5분 이동평균
+  - 게이트 timeout 비율(`A101/A102/A103`): 5분 이동평균
+  - alerts endpoint p95 latency / 5xx ratio
+  - 반복 거부 회원 수(lookback 60분, 3회 이상)
+- Alert thresholds (Go/No-Go):
+  - `게이트 인증 실패율 > 2.0%`가 15분 지속되면 On-call 에스컬레이션
+  - `게이트 timeout 비율 > 1.0%`가 15분 지속되면 Integration On-call 호출
+  - `반복 거부 회원(3회+)`이 60분 내 5명 초과 시 운영 경보 발령
+- On-call runbook (first 30 minutes):
+  - 0~5분: 장애 범위 식별(센터/게이트/시간대), 최근 배포/설정 변경 확인
+  - 5~10분: `deny_reason` 분포 확인 후 정책성 이슈(만료/비활성)와 시스템성 이슈(timeout/5xx) 분리
+  - 10~20분: 시스템성 이슈 시 Primary control 적용(센터 단위 access feature flag off)
+  - 20~30분: Secondary control 적용(fail-safe 모드 전환) 및 공지/상황실 갱신
+- Validation queries (sample):
+  - `SELECT deny_reason, COUNT(*) FROM access_events WHERE processed_at >= NOW() - INTERVAL '60 minutes' AND event_type='ENTRY_DENIED' GROUP BY deny_reason ORDER BY COUNT(*) DESC;`
+  - `SELECT member_id, COUNT(*) AS denied_count FROM access_events WHERE processed_at >= NOW() - INTERVAL '60 minutes' AND event_type='ENTRY_DENIED' GROUP BY member_id HAVING COUNT(*) >= 3 ORDER BY denied_count DESC;`
+  - `SELECT COUNT(*) FROM access_events WHERE processed_at >= NOW() - INTERVAL '5 minutes' AND event_type='ENTRY_DENIED';`
+- Owner / window:
+  - Owner: Backend On-call(1차), Integration On-call(게이트 timeout), Operations Manager(공지/현장대응)
+  - Validation window: 배포 당일 + 다음 영업일 오픈시간(피크타임 포함)
 
 #### Phase 13-A: External Activation Rollout (1주)
 - Deliverables:
