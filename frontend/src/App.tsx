@@ -895,6 +895,8 @@ export default function App() {
   const [productFormMessage, setProductFormMessage] = useState<string | null>(null);
   const [productFormError, setProductFormError] = useState<string | null>(null);
   const memberDetailRequestIdRef = useRef(0);
+  const workspaceMemberSearchCacheRef = useRef(new Map<string, MemberSummary[]>());
+  const workspaceMemberSearchInFlightRef = useRef(new Map<string, Promise<MemberSummary[]>>());
 
   const routePreview = useMemo(() => routes.slice(0, 4), []);
   const isPrototypeMode = securityMode === "prototype";
@@ -996,13 +998,35 @@ export default function App() {
   }
 
   async function loadWorkspaceMembers(keyword?: string) {
-    const params = new URLSearchParams();
-    if (keyword?.trim()) {
-      params.set("keyword", keyword.trim());
+    const normalizedKeyword = keyword?.trim().toLowerCase() ?? "";
+    const cachedRows = workspaceMemberSearchCacheRef.current.get(normalizedKeyword);
+    if (cachedRows) {
+      return cachedRows;
     }
-    const query = params.toString();
-    const response = await apiGet<MemberSummary[]>(`/api/v1/members${query ? `?${query}` : ""}`);
-    return response.data;
+
+    const inFlight = workspaceMemberSearchInFlightRef.current.get(normalizedKeyword);
+    if (inFlight) {
+      return inFlight;
+    }
+
+    const request = (async () => {
+      const params = new URLSearchParams();
+      if (normalizedKeyword) {
+        params.set("keyword", normalizedKeyword);
+      }
+      const query = params.toString();
+      const response = await apiGet<MemberSummary[]>(`/api/v1/members${query ? `?${query}` : ""}`);
+      workspaceMemberSearchCacheRef.current.set(normalizedKeyword, response.data);
+      return response.data;
+    })();
+
+    workspaceMemberSearchInFlightRef.current.set(normalizedKeyword, request);
+
+    try {
+      return await request;
+    } finally {
+      workspaceMemberSearchInFlightRef.current.delete(normalizedKeyword);
+    }
   }
 
   async function loadMemberDetail(memberId: number, options?: { syncForm?: boolean }): Promise<boolean> {
