@@ -1,7 +1,7 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { NoticeText } from "../../shared/ui/NoticeText";
 import { PanelHeader } from "../../shared/ui/PanelHeader";
-import { PlaceholderCard } from "../../shared/ui/PlaceholderCard";
+import { WorkspaceMemberPicker, type WorkspaceMemberPickerRow } from "../../shared/ui/WorkspaceMemberPicker";
 
 type SelectedMemberSummary = {
   memberId: number;
@@ -12,35 +12,66 @@ type SelectedMemberSummary = {
 
 type MembershipsSectionProps = {
   selectedMember: SelectedMemberSummary | null;
+  loadWorkspaceMembers: () => Promise<WorkspaceMemberPickerRow[]>;
+  onSelectWorkspaceMember: (memberId: number) => Promise<boolean>;
   onGoMembers: () => void;
   children: ReactNode;
 };
 
-export function MembershipsSection({ selectedMember, onGoMembers, children }: MembershipsSectionProps) {
+export function MembershipsSection({
+  selectedMember,
+  loadWorkspaceMembers,
+  onSelectWorkspaceMember,
+  onGoMembers,
+  children
+}: MembershipsSectionProps) {
+  const [isPickerOpen, setIsPickerOpen] = useState(selectedMember == null);
+
+  useEffect(() => {
+    setIsPickerOpen(selectedMember == null);
+  }, [selectedMember]);
+
   return (
     <section className="membership-ops-shell" aria-label="회원권 업무 화면">
-      {!selectedMember ? (
-        <article className="panel">
-          <PanelHeader title="회원 선택 필요" />
-          <PlaceholderCard>
-            <p>회원권 업무는 선택된 회원 기준으로 동작합니다.</p>
-            <p className="muted-text">먼저 회원 관리 탭에서 회원을 선택한 뒤 다시 돌아오세요.</p>
-            <div className="form-actions">
-              <button type="button" className="primary-button" onClick={onGoMembers}>
-                회원 관리로 이동
-              </button>
-            </div>
-          </PlaceholderCard>
-        </article>
+      {!selectedMember || isPickerOpen ? (
+        <WorkspaceMemberPicker
+          title={selectedMember ? "회원 변경" : "회원 선택 필요"}
+          description={
+            selectedMember
+              ? "다른 회원으로 업무 대상을 바꿉니다. 선택을 완료하면 이 워크스페이스에서 바로 회원권 업무를 이어갈 수 있습니다."
+              : "회원권 업무는 선택된 회원 기준으로 동작합니다. 이 화면에서 바로 회원을 찾아 시작할 수 있습니다."
+          }
+          queryPlaceholder="예: 김민수, 010-1234, 102"
+          emptyMessage="검색 결과 회원이 없습니다."
+          warningText={
+            selectedMember
+              ? "회원을 변경하면 입력 중인 회원권 구매 폼과 관련 미리보기/메시지가 초기화됩니다."
+              : undefined
+          }
+          loadMembers={loadWorkspaceMembers}
+          onSelectMember={onSelectWorkspaceMember}
+          onSelected={() => setIsPickerOpen(false)}
+          submitLabel={selectedMember ? "이 회원으로 변경" : "이 회원으로 시작"}
+          actions={
+            <button type="button" className="secondary-button" onClick={onGoMembers}>
+              회원 관리 열기
+            </button>
+          }
+        />
       ) : (
         <>
           <article className="panel">
             <PanelHeader
               title="선택 회원 요약"
               actions={
-                <button type="button" className="secondary-button" onClick={onGoMembers}>
-                  회원 정보 열기
-                </button>
+                <div className="panel-header-actions">
+                  <button type="button" className="secondary-button" onClick={() => setIsPickerOpen(true)}>
+                    회원 변경
+                  </button>
+                  <button type="button" className="secondary-button" onClick={onGoMembers}>
+                    회원 정보 열기
+                  </button>
+                </div>
               }
             />
             <dl className="detail-grid">
