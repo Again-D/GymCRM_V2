@@ -39,15 +39,11 @@ export function createInitialSettlementFilters(): SettlementReportFilters {
 
 export function useSettlementWorkspaceState() {
   const [settlementFilters, setSettlementFilters] = useState<SettlementReportFilters>(createInitialSettlementFilters);
-  const [settlementReport, setSettlementReport] = useState<SalesSettlementReport | null>(null);
-  const [settlementReportLoading, setSettlementReportLoading] = useState(false);
   const [settlementPanelMessage, setSettlementPanelMessage] = useState<string | null>(null);
   const [settlementPanelError, setSettlementPanelError] = useState<string | null>(null);
 
   function resetSettlementWorkspace() {
     setSettlementFilters(createInitialSettlementFilters());
-    setSettlementReport(null);
-    setSettlementReportLoading(false);
     setSettlementPanelMessage(null);
     setSettlementPanelError(null);
   }
@@ -55,10 +51,6 @@ export function useSettlementWorkspaceState() {
   return {
     settlementFilters,
     setSettlementFilters,
-    settlementReport,
-    setSettlementReport,
-    settlementReportLoading,
-    setSettlementReportLoading,
     settlementPanelMessage,
     setSettlementPanelMessage,
     settlementPanelError,

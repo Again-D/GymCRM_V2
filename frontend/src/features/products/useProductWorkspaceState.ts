@@ -64,8 +64,6 @@ export const EMPTY_PRODUCT_FORM: ProductFormState = {
 
 export function useProductWorkspaceState() {
   const [productFilters, setProductFilters] = useState<ProductFilters>({ category: "", status: "" });
-  const [products, setProducts] = useState<ProductSummary[]>([]);
-  const [productsLoading, setProductsLoading] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<ProductDetail | null>(null);
   const [productForm, setProductForm] = useState<ProductFormState>(EMPTY_PRODUCT_FORM);
@@ -79,8 +77,6 @@ export function useProductWorkspaceState() {
 
   function resetProductWorkspace() {
     setProductFilters({ category: "", status: "" });
-    setProducts([]);
-    setProductsLoading(false);
     setSelectedProductId(null);
     setSelectedProduct(null);
     setProductForm({ ...EMPTY_PRODUCT_FORM });
@@ -96,10 +92,6 @@ export function useProductWorkspaceState() {
   return {
     productFilters,
     setProductFilters,
-    products,
-    setProducts,
-    productsLoading,
-    setProductsLoading,
     selectedProductId,
     setSelectedProductId,
     selectedProduct,

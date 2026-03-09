@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { routes } from "./app/routes";
 import { ContentHeader } from "./components/layout/ContentHeader";
 import { SidebarNav } from "./components/layout/SidebarNav";
@@ -6,7 +6,6 @@ import { TopBar } from "./components/layout/TopBar";
 import { BootstrappingScreen } from "./features/auth/BootstrappingScreen";
 import { LoginScreen } from "./features/auth/LoginScreen";
 import { UnknownSecurityScreen } from "./features/auth/UnknownSecurityScreen";
-import { AccessManagementPanels } from "./features/access/AccessManagementPanels";
 import { AccessSection } from "./features/access/AccessSection";
 import {
   type AccessEventRecord,
@@ -14,17 +13,14 @@ import {
   useAccessWorkspaceState
 } from "./features/access/useAccessWorkspaceState";
 import { DashboardSection } from "./features/dashboard/DashboardSection";
-import { CrmMessagePanels } from "./features/crm/CrmMessagePanels";
 import { CrmSection } from "./features/crm/CrmSection";
 import {
   type CrmFilters,
-  type CrmMessageHistoryResponse,
-  type CrmMessageHistoryRow,
   type CrmProcessResponse,
   type CrmTriggerResponse,
   useCrmWorkspaceState
 } from "./features/crm/useCrmWorkspaceState";
-import { LockerManagementPanels } from "./features/lockers/LockerManagementPanels";
+import { useCrmHistoryQuery } from "./features/crm/useCrmHistoryQuery";
 import { LockersSection } from "./features/lockers/LockersSection";
 import {
   createEmptyLockerAssignForm,
@@ -36,7 +32,7 @@ import {
 } from "./features/lockers/useLockerWorkspaceState";
 import { MemberManagementPanels } from "./features/members/MemberManagementPanels";
 import { MembersSection } from "./features/members/MembersSection";
-import { MembershipOperationsPanels } from "./features/memberships/MembershipOperationsPanels";
+import { type MemberSummary, useMembersQuery } from "./features/members/useMembersQuery";
 import {
   createEmptyPurchaseForm,
   createDefaultMembershipActionDraft,
@@ -45,7 +41,6 @@ import {
   type RefundCalculationApi,
   useMembershipWorkspaceState
 } from "./features/memberships/useMembershipWorkspaceState";
-import { ProductManagementPanels } from "./features/products/ProductManagementPanels";
 import { MembershipsSection } from "./features/memberships/MembershipsSection";
 import { ProductsSection } from "./features/products/ProductsSection";
 import {
@@ -53,26 +48,25 @@ import {
   type ProductDetail,
   type ProductFilters,
   type ProductFormState,
-  type ProductSummary,
   useProductWorkspaceState
 } from "./features/products/useProductWorkspaceState";
-import { ReservationManagementPanels } from "./features/reservations/ReservationManagementPanels";
+import { useProductsQuery } from "./features/products/useProductsQuery";
 import { ReservationsSection } from "./features/reservations/ReservationsSection";
 import {
   EMPTY_RESERVATION_CREATE_FORM,
   type ReservationCompleteResponse,
   type ReservationRecord,
-  type ReservationScheduleSummary,
   useReservationWorkspaceState
 } from "./features/reservations/useReservationWorkspaceState";
-import { SettlementReportPanels } from "./features/settlements/SettlementReportPanels";
+import { useReservationSchedulesQuery } from "./features/reservations/useReservationSchedulesQuery";
 import { SettlementsSection } from "./features/settlements/SettlementsSection";
 import {
-  type SalesSettlementReport,
   type SettlementReportFilters,
   useSettlementWorkspaceState
 } from "./features/settlements/useSettlementWorkspaceState";
-import { ApiClientError, apiGet, apiPatch, apiPost, configureApiAuth } from "./shared/api/client";
+import { useSettlementReportQuery } from "./features/settlements/useSettlementReportQuery";
+import { ApiClientError, apiGet, apiPatch, apiPost } from "./shared/api/client";
+import { type AuthTokenResponse, type AuthUserSession, type SecurityMode, useAuthSession } from "./shared/hooks/useAuthSession";
 import {
   useAccessWorkspaceLoader,
   useCrmWorkspaceLoader,
@@ -81,6 +75,10 @@ import {
   useSettlementWorkspaceLoader
 } from "./shared/hooks/useWorkspaceLoaders";
 import { useWorkspaceMemberSearchLoader } from "./shared/hooks/useWorkspaceMemberSearchLoader";
+
+function WorkspacePanelFallback() {
+  return <div className="panel-placeholder">패널을 불러오는 중입니다.</div>;
+}
 import { detectSystemTheme, useThemePreference } from "./shared/hooks/useThemePreference";
 import { formatCurrency, formatDate, formatDateTime } from "./shared/utils/format";
 
@@ -94,41 +92,6 @@ type NavSectionKey =
   | "crm"
   | "settlements"
   | "products";
-type SecurityMode = "unknown" | "prototype" | "jwt";
-
-type HealthPayload = {
-  status: string;
-  securityMode: string;
-  prototypeNoAuth: boolean;
-  currentUserId: number | null;
-};
-
-type AuthUserSession = {
-  userId: number;
-  centerId: number;
-  loginId: string;
-  displayName: string;
-  roleCode: "ROLE_CENTER_ADMIN" | "ROLE_DESK";
-};
-
-type AuthTokenResponse = {
-  accessToken: string;
-  accessTokenExpiresInSeconds: number;
-  accessTokenExpiresAt: string;
-  user: AuthUserSession;
-};
-
-type MemberSummary = {
-  memberId: number;
-  centerId: number;
-  memberName: string;
-  phone: string;
-  memberStatus: "ACTIVE" | "INACTIVE";
-  joinDate: string | null;
-  membershipOperationalStatus: "정상" | "만료임박" | "만료" | "없음";
-  membershipExpiryDate: string | null;
-  remainingPtCount: number | null;
-};
 
 type MemberDetail = {
   memberId: number;
@@ -144,6 +107,28 @@ type MemberDetail = {
   consentMarketing: boolean;
   memo: string | null;
 };
+
+const LazyMembershipOperationsPanels = lazy(async () => ({
+  default: (await import("./features/memberships/MembershipOperationsPanels")).MembershipOperationsPanels
+}));
+const LazyReservationManagementPanels = lazy(async () => ({
+  default: (await import("./features/reservations/ReservationManagementPanels")).ReservationManagementPanels
+}));
+const LazyAccessManagementPanels = lazy(async () => ({
+  default: (await import("./features/access/AccessManagementPanels")).AccessManagementPanels
+}));
+const LazyLockerManagementPanels = lazy(async () => ({
+  default: (await import("./features/lockers/LockerManagementPanels")).LockerManagementPanels
+}));
+const LazyCrmMessagePanels = lazy(async () => ({
+  default: (await import("./features/crm/CrmMessagePanels")).CrmMessagePanels
+}));
+const LazySettlementReportPanels = lazy(async () => ({
+  default: (await import("./features/settlements/SettlementReportPanels")).SettlementReportPanels
+}));
+const LazyProductManagementPanels = lazy(async () => ({
+  default: (await import("./features/products/ProductManagementPanels")).ProductManagementPanels
+}));
 
 type PurchasedMembership = {
   membershipId: number;
@@ -495,21 +480,11 @@ function buildResumePreview(membership: PurchasedMembership, draft: MembershipAc
 export default function App() {
   const [activeNavSection, setActiveNavSection] = useState<NavSectionKey>("dashboard");
   const { themePreference, setThemePreference, resolvedTheme } = useThemePreference();
-  const [securityMode, setSecurityMode] = useState<SecurityMode>("unknown");
-  const [prototypeNoAuth, setPrototypeNoAuth] = useState(false);
-  const [authBootstrapping, setAuthBootstrapping] = useState(true);
-  const [authAccessToken, setAuthAccessToken] = useState<string | null>(null);
-  const [authUser, setAuthUser] = useState<AuthUserSession | null>(null);
-  const [authStatusMessage, setAuthStatusMessage] = useState<string | null>(null);
-  const [authError, setAuthError] = useState<string | null>(null);
   const [loginIdInput, setLoginIdInput] = useState("center-admin");
   const [loginPasswordInput, setLoginPasswordInput] = useState("dev-admin-1234!");
-  const [loginSubmitting, setLoginSubmitting] = useState(false);
 
   const [memberSearchName, setMemberSearchName] = useState("");
   const [memberSearchPhone, setMemberSearchPhone] = useState("");
-  const [members, setMembers] = useState<MemberSummary[]>([]);
-  const [membersLoading, setMembersLoading] = useState(false);
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
   const [selectedMember, setSelectedMember] = useState<MemberDetail | null>(null);
   const [memberForm, setMemberForm] = useState<MemberFormState>(EMPTY_MEMBER_FORM);
@@ -560,10 +535,6 @@ export default function App() {
   } = membershipWorkspace;
   const reservationWorkspace = useReservationWorkspaceState(selectedMemberId);
   const {
-    reservationSchedules,
-    setReservationSchedules,
-    reservationSchedulesLoading,
-    setReservationSchedulesLoading,
     reservationRowsByMemberId,
     setReservationRowsByMemberId,
     reservationLoading,
@@ -627,10 +598,6 @@ export default function App() {
   const {
     settlementFilters,
     setSettlementFilters,
-    settlementReport,
-    setSettlementReport,
-    settlementReportLoading,
-    setSettlementReportLoading,
     settlementPanelMessage,
     setSettlementPanelMessage,
     settlementPanelError,
@@ -640,10 +607,6 @@ export default function App() {
   const {
     crmFilters,
     setCrmFilters,
-    crmHistoryRows,
-    setCrmHistoryRows,
-    crmHistoryLoading,
-    setCrmHistoryLoading,
     crmTriggerDaysAhead,
     setCrmTriggerDaysAhead,
     crmTriggerSubmitting,
@@ -659,10 +622,6 @@ export default function App() {
   const {
     productFilters,
     setProductFilters,
-    products,
-    setProducts,
-    productsLoading,
-    setProductsLoading,
     selectedProductId,
     setSelectedProductId,
     selectedProduct,
@@ -684,23 +643,55 @@ export default function App() {
     productFormError,
     setProductFormError
   } = productWorkspace;
-
-  const routePreview = useMemo(() => routes.slice(0, 4), []);
-  const isPrototypeMode = securityMode === "prototype";
-  const isJwtMode = securityMode === "jwt";
-  const isAuthenticated = isPrototypeMode || (isJwtMode && authUser != null && authAccessToken != null);
-  const activeProductsForPurchase = useMemo(
-    () => products.filter((product) => product.productStatus === "ACTIVE"),
-    [products]
-  );
-  const purchasePreview = useMemo(
-    () => buildPurchasePreview(purchaseProductDetail, purchaseForm),
-    [purchaseProductDetail, purchaseForm]
-  );
+  const { members, setMembers, membersLoading, membersQueryError, loadMembers: runMembersQuery, resetMembersQuery } = useMembersQuery({
+    getDefaultFilters: () => ({ name: memberSearchName, phone: memberSearchPhone }),
+    formatError: errorMessage
+  });
+  const {
+    products,
+    setProducts,
+    productsLoading,
+    productsQueryError,
+    loadProducts: runProductsQuery,
+    resetProductsQuery
+  } = useProductsQuery({
+    getDefaultFilters: () => productFilters,
+    formatError: errorMessage
+  });
+  const {
+    reservationSchedules,
+    reservationSchedulesLoading,
+    reservationSchedulesError,
+    loadReservationSchedules,
+    resetReservationSchedulesQuery
+  } = useReservationSchedulesQuery({
+    formatError: errorMessage
+  });
+  const {
+    settlementReport,
+    settlementReportLoading,
+    settlementReportError,
+    settlementReportMessage,
+    loadSettlementReport,
+    resetSettlementReportQuery
+  } = useSettlementReportQuery({
+    getDefaultFilters: () => settlementFilters,
+    formatError: errorMessage
+  });
+  const {
+    crmHistoryRows,
+    crmHistoryLoading,
+    crmHistoryError,
+    loadCrmHistory,
+    resetCrmHistoryQuery
+  } = useCrmHistoryQuery({
+    getDefaultFilters: () => crmFilters,
+    formatError: errorMessage
+  });
 
   function clearProtectedUiState() {
     workspaceMemberSearch.invalidate();
-    setMembers([]);
+    resetMembersQuery();
     setSelectedMemberId(null);
     setSelectedMember(null);
     setMemberForm({ ...EMPTY_MEMBER_FORM, joinDate: new Date().toISOString().slice(0, 10) });
@@ -717,34 +708,60 @@ export default function App() {
     setMemberMembershipsByMemberId({});
     setMemberPaymentsByMemberId({});
     reservationWorkspace.resetReservationWorkspace();
+    resetReservationSchedulesQuery();
     accessWorkspace.resetAccessWorkspace();
     lockerWorkspace.resetLockerWorkspace();
     settlementWorkspace.resetSettlementWorkspace();
+    resetSettlementReportQuery();
     crmWorkspace.resetCrmWorkspace();
+    resetCrmHistoryQuery();
+    resetProductsQuery();
     productWorkspace.resetProductWorkspace();
   }
 
+  const {
+    securityMode,
+    prototypeNoAuth,
+    authBootstrapping,
+    authAccessToken,
+    authUser,
+    authStatusMessage,
+    authError,
+    loginSubmitting,
+    isPrototypeMode,
+    isJwtMode,
+    isAuthenticated,
+    login,
+    logout
+  } = useAuthSession({
+    formatError: errorMessage,
+    onProtectedUiReset: clearProtectedUiState
+  });
+
+  const routePreview = useMemo(() => routes.slice(0, 4), []);
+  const activeProductsForPurchase = useMemo(
+    () => products.filter((product) => product.productStatus === "ACTIVE"),
+    [products]
+  );
+  const effectiveMemberPanelError = memberPanelError ?? membersQueryError;
+  const effectiveReservationPanelError = reservationPanelError ?? reservationSchedulesError;
+  const effectiveSettlementPanelMessage = settlementPanelMessage ?? settlementReportMessage;
+  const effectiveSettlementPanelError = settlementPanelError ?? settlementReportError;
+  const effectiveCrmPanelError = crmPanelError ?? crmHistoryError;
+  const effectiveProductPanelError = productPanelError ?? productsQueryError;
+  const purchasePreview = useMemo(
+    () => buildPurchasePreview(purchaseProductDetail, purchaseForm),
+    [purchaseProductDetail, purchaseForm]
+  );
+
   async function loadMembers(filters?: { name?: string; phone?: string }) {
-    setMembersLoading(true);
     setMemberPanelError(null);
-    try {
-      const name = filters?.name ?? memberSearchName;
-      const phone = filters?.phone ?? memberSearchPhone;
-      const params = new URLSearchParams();
-      if (name.trim()) {
-        params.set("name", name.trim());
-      }
-      if (phone.trim()) {
-        params.set("phone", phone.trim());
-      }
-      const query = params.toString();
-      const response = await apiGet<MemberSummary[]>(`/api/v1/members${query ? `?${query}` : ""}`);
-      setMembers(response.data);
-    } catch (error) {
-      setMemberPanelError(errorMessage(error));
-    } finally {
-      setMembersLoading(false);
-    }
+    await runMembersQuery(filters);
+  }
+
+  async function loadProducts(filters?: ProductFilters) {
+    setProductPanelError(null);
+    await runProductsQuery(filters);
   }
 
   async function ensureMembersLoaded() {
@@ -801,28 +818,6 @@ export default function App() {
     }
   }
 
-  async function loadProducts(filters?: ProductFilters) {
-    setProductsLoading(true);
-    setProductPanelError(null);
-    try {
-      const effectiveFilters = filters ?? productFilters;
-      const params = new URLSearchParams();
-      if (effectiveFilters.category) {
-        params.set("category", effectiveFilters.category);
-      }
-      if (effectiveFilters.status) {
-        params.set("status", effectiveFilters.status);
-      }
-      const query = params.toString();
-      const response = await apiGet<ProductSummary[]>(`/api/v1/products${query ? `?${query}` : ""}`);
-      setProducts(response.data);
-    } catch (error) {
-      setProductPanelError(errorMessage(error));
-    } finally {
-      setProductsLoading(false);
-    }
-  }
-
   async function loadProductDetail(productId: number, options?: { syncForm?: boolean }): Promise<boolean> {
     setSelectedProductId(productId);
     setProductPanelError(null);
@@ -851,19 +846,6 @@ export default function App() {
       setMemberPurchaseError(errorMessage(error));
     } finally {
       setPurchaseProductLoading(false);
-    }
-  }
-
-  async function loadReservationSchedules() {
-    setReservationSchedulesLoading(true);
-    setReservationPanelError(null);
-    try {
-      const response = await apiGet<ReservationScheduleSummary[]>("/api/v1/reservations/schedules");
-      setReservationSchedules(response.data);
-    } catch (error) {
-      setReservationPanelError(errorMessage(error));
-    } finally {
-      setReservationSchedulesLoading(false);
     }
   }
 
@@ -982,67 +964,6 @@ export default function App() {
     }
   }
 
-  async function loadSettlementReport(filters?: SettlementReportFilters, shouldCommit?: () => boolean) {
-    setSettlementReportLoading(true);
-    setSettlementPanelError(null);
-    setSettlementPanelMessage(null);
-    try {
-      const effectiveFilters = filters ?? settlementFilters;
-      const params = new URLSearchParams();
-      params.set("startDate", effectiveFilters.startDate);
-      params.set("endDate", effectiveFilters.endDate);
-      if (effectiveFilters.paymentMethod) {
-        params.set("paymentMethod", effectiveFilters.paymentMethod);
-      }
-      if (effectiveFilters.productKeyword.trim()) {
-        params.set("productKeyword", effectiveFilters.productKeyword.trim());
-      }
-      const response = await apiGet<SalesSettlementReport>(`/api/v1/settlements/sales-report?${params.toString()}`);
-      if (!canCommitState(shouldCommit)) {
-        return;
-      }
-      setSettlementReport(response.data);
-      setSettlementPanelMessage(response.message);
-    } catch (error) {
-      if (!canCommitState(shouldCommit)) {
-        return;
-      }
-      setSettlementPanelError(errorMessage(error));
-    } finally {
-      if (canCommitState(shouldCommit)) {
-        setSettlementReportLoading(false);
-      }
-    }
-  }
-
-  async function loadCrmHistory(filters?: CrmFilters, shouldCommit?: () => boolean) {
-    setCrmHistoryLoading(true);
-    setCrmPanelError(null);
-    try {
-      const effectiveFilters = filters ?? crmFilters;
-      const params = new URLSearchParams();
-      const parsedLimit = Number.parseInt(effectiveFilters.limit, 10);
-      params.set("limit", Number.isFinite(parsedLimit) ? String(parsedLimit) : "100");
-      if (effectiveFilters.sendStatus) {
-        params.set("sendStatus", effectiveFilters.sendStatus);
-      }
-      const response = await apiGet<CrmMessageHistoryResponse>(`/api/v1/crm/messages?${params.toString()}`);
-      if (!canCommitState(shouldCommit)) {
-        return;
-      }
-      setCrmHistoryRows(response.data.rows);
-    } catch (error) {
-      if (!canCommitState(shouldCommit)) {
-        return;
-      }
-      setCrmPanelError(errorMessage(error));
-    } finally {
-      if (canCommitState(shouldCommit)) {
-        setCrmHistoryLoading(false);
-      }
-    }
-  }
-
   async function triggerCrmExpiryReminder() {
     setCrmTriggerSubmitting(true);
     setCrmPanelError(null);
@@ -1083,87 +1004,6 @@ export default function App() {
       setCrmProcessSubmitting(false);
     }
   }
-
-  useEffect(() => {
-    if (!isJwtMode) {
-      configureApiAuth(null);
-      return;
-    }
-    configureApiAuth({
-      getAccessToken: () => authAccessToken,
-      refreshAccessToken: async () => {
-        const response = await apiPost<AuthTokenResponse>("/api/v1/auth/refresh");
-        setAuthAccessToken(response.data.accessToken);
-        setAuthUser(response.data.user);
-        return response.data.accessToken;
-      },
-      onUnauthorized: () => {
-        setAuthAccessToken(null);
-        setAuthUser(null);
-        setAuthStatusMessage("세션이 만료되어 다시 로그인해야 합니다.");
-      }
-    });
-    return () => configureApiAuth(null);
-  }, [isJwtMode, authAccessToken]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function bootstrapAuthMode() {
-      setAuthBootstrapping(true);
-      setAuthError(null);
-      try {
-        const health = await apiGet<HealthPayload>("/api/v1/health");
-        if (cancelled) {
-          return;
-        }
-        const mode = health.data.securityMode === "jwt" ? "jwt" : "prototype";
-        setSecurityMode(mode);
-        setPrototypeNoAuth(Boolean(health.data.prototypeNoAuth));
-
-        if (mode === "prototype") {
-          setAuthAccessToken(null);
-          setAuthUser(null);
-          setAuthStatusMessage(null);
-          return;
-        }
-
-        try {
-          const refreshResponse = await apiPost<AuthTokenResponse>("/api/v1/auth/refresh");
-          if (cancelled) {
-            return;
-          }
-          setAuthAccessToken(refreshResponse.data.accessToken);
-          setAuthUser(refreshResponse.data.user);
-          setAuthStatusMessage("기존 세션을 복구했습니다.");
-        } catch (refreshError) {
-          if (cancelled) {
-            return;
-          }
-          setAuthAccessToken(null);
-          setAuthUser(null);
-          if (!(refreshError instanceof ApiClientError && refreshError.status === 401)) {
-            setAuthError(errorMessage(refreshError));
-          }
-        }
-      } catch (error) {
-        if (cancelled) {
-          return;
-        }
-        setSecurityMode("unknown");
-        setAuthError(errorMessage(error));
-      } finally {
-        if (!cancelled) {
-          setAuthBootstrapping(false);
-        }
-      }
-    }
-
-    void bootstrapAuthMode();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -1220,36 +1060,11 @@ export default function App() {
 
   async function handleLoginSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setLoginSubmitting(true);
-    setAuthError(null);
-    setAuthStatusMessage(null);
-    try {
-      const response = await apiPost<AuthTokenResponse>("/api/v1/auth/login", {
-        loginId: loginIdInput,
-        password: loginPasswordInput
-      });
-      setAuthAccessToken(response.data.accessToken);
-      setAuthUser(response.data.user);
-      setAuthStatusMessage(response.message);
-    } catch (error) {
-      setAuthError(errorMessage(error));
-    } finally {
-      setLoginSubmitting(false);
-    }
+    await login(loginIdInput, loginPasswordInput);
   }
 
   async function handleLogout() {
-    setAuthError(null);
-    try {
-      await apiPost<void>("/api/v1/auth/logout");
-    } catch {
-      // Logout is best-effort; clear local session even if request fails.
-    } finally {
-      setAuthAccessToken(null);
-      setAuthUser(null);
-      setAuthStatusMessage("로그아웃되었습니다.");
-      clearProtectedUiState();
-    }
+    await logout();
   }
 
   async function handleMemberSubmit(event: FormEvent<HTMLFormElement>) {
@@ -2023,37 +1838,39 @@ export default function App() {
               onSelectWorkspaceMember={(memberId) => loadMemberDetail(memberId, { syncForm: false })}
               onGoMembers={() => setActiveNavSection("members")}
             >
-              <MembershipOperationsPanels
-                key={selectedMember?.memberId ?? "membership-empty"}
-                selectedMember={selectedMember}
-                activeProductsForPurchase={activeProductsForPurchase}
-                purchaseForm={purchaseForm}
-                setPurchaseForm={setPurchaseForm}
-                setPurchaseProductDetail={setPurchaseProductDetail}
-                loadPurchaseProductDetail={loadPurchaseProductDetail}
-                purchaseProductLoading={purchaseProductLoading}
-                purchaseProductDetail={purchaseProductDetail}
-                purchasePreview={purchasePreview}
-                handleMembershipPurchaseSubmit={handleMembershipPurchaseSubmit}
-                memberPurchaseSubmitting={memberPurchaseSubmitting}
-                memberPurchaseMessage={memberPurchaseMessage}
-                memberPurchaseError={memberPurchaseError}
-                selectedMemberMemberships={selectedMemberMemberships}
-                selectedMemberPayments={selectedMemberPayments}
-                getMembershipActionDraft={getMembershipActionDraft}
-                buildHoldPreview={buildHoldPreview}
-                buildResumePreview={buildResumePreview}
-                membershipRefundPreviewById={membershipRefundPreviewById}
-                membershipActionMessageById={membershipActionMessageById}
-                membershipActionErrorById={membershipActionErrorById}
-                membershipActionSubmittingId={membershipActionSubmittingId}
-                membershipRefundPreviewLoadingId={membershipRefundPreviewLoadingId}
-                updateMembershipActionDraft={updateMembershipActionDraft}
-                handleMembershipHoldSubmit={handleMembershipHoldSubmit}
-                handleMembershipResumeSubmit={handleMembershipResumeSubmit}
-                handleMembershipRefundPreview={handleMembershipRefundPreview}
-                handleMembershipRefundSubmit={handleMembershipRefundSubmit}
-              />
+              <Suspense fallback={<WorkspacePanelFallback />}>
+                <LazyMembershipOperationsPanels
+                  key={selectedMember?.memberId ?? "membership-empty"}
+                  selectedMember={selectedMember}
+                  activeProductsForPurchase={activeProductsForPurchase}
+                  purchaseForm={purchaseForm}
+                  setPurchaseForm={setPurchaseForm}
+                  setPurchaseProductDetail={setPurchaseProductDetail}
+                  loadPurchaseProductDetail={loadPurchaseProductDetail}
+                  purchaseProductLoading={purchaseProductLoading}
+                  purchaseProductDetail={purchaseProductDetail}
+                  purchasePreview={purchasePreview}
+                  handleMembershipPurchaseSubmit={handleMembershipPurchaseSubmit}
+                  memberPurchaseSubmitting={memberPurchaseSubmitting}
+                  memberPurchaseMessage={memberPurchaseMessage}
+                  memberPurchaseError={memberPurchaseError}
+                  selectedMemberMemberships={selectedMemberMemberships}
+                  selectedMemberPayments={selectedMemberPayments}
+                  getMembershipActionDraft={getMembershipActionDraft}
+                  buildHoldPreview={buildHoldPreview}
+                  buildResumePreview={buildResumePreview}
+                  membershipRefundPreviewById={membershipRefundPreviewById}
+                  membershipActionMessageById={membershipActionMessageById}
+                  membershipActionErrorById={membershipActionErrorById}
+                  membershipActionSubmittingId={membershipActionSubmittingId}
+                  membershipRefundPreviewLoadingId={membershipRefundPreviewLoadingId}
+                  updateMembershipActionDraft={updateMembershipActionDraft}
+                  handleMembershipHoldSubmit={handleMembershipHoldSubmit}
+                  handleMembershipResumeSubmit={handleMembershipResumeSubmit}
+                  handleMembershipRefundPreview={handleMembershipRefundPreview}
+                  handleMembershipRefundSubmit={handleMembershipRefundSubmit}
+                />
+              </Suspense>
             </MembershipsSection>
           ) : activeNavSection === "reservations" ? (
             <ReservationsSection
@@ -2061,100 +1878,110 @@ export default function App() {
               selectedMemberReservationsCount={selectedMemberReservations.length}
               reservableMembershipsCount={reservableMemberships.length}
               reservationPanelMessage={reservationPanelMessage}
-              reservationPanelError={reservationPanelError}
+              reservationPanelError={effectiveReservationPanelError}
               loadWorkspaceMembers={loadWorkspaceMembers}
               onSelectWorkspaceMember={(memberId) => loadMemberDetail(memberId, { syncForm: false })}
               onGoMembers={() => setActiveNavSection("members")}
             >
-              <ReservationManagementPanels
-                key={selectedMember?.memberId ?? "reservation-empty"}
-                reservationSchedulesLoading={reservationSchedulesLoading}
-                handleReservationCreateSubmit={handleReservationCreateSubmit}
-                reservationCreateForm={reservationCreateForm}
-                setReservationCreateForm={setReservationCreateForm}
-                reservableMemberships={reservableMemberships}
-                reservationSchedules={reservationSchedules}
-                reservationCreateSubmitting={reservationCreateSubmitting}
-                loadReservationSchedules={loadReservationSchedules}
-                selectedMemberId={selectedMember?.memberId ?? null}
-                loadReservationsForMember={loadReservationsForMember}
-                reservationLoading={reservationLoading}
-                selectedMemberReservations={selectedMemberReservations}
-                reservationActionSubmittingId={reservationActionSubmittingId}
-                handleReservationCheckIn={handleReservationCheckIn}
-                handleReservationComplete={handleReservationComplete}
-                handleReservationCancel={handleReservationCancel}
-                handleReservationNoShow={handleReservationNoShow}
-              />
+              <Suspense fallback={<WorkspacePanelFallback />}>
+                <LazyReservationManagementPanels
+                  key={selectedMember?.memberId ?? "reservation-empty"}
+                  reservationSchedulesLoading={reservationSchedulesLoading}
+                  handleReservationCreateSubmit={handleReservationCreateSubmit}
+                  reservationCreateForm={reservationCreateForm}
+                  setReservationCreateForm={setReservationCreateForm}
+                  reservableMemberships={reservableMemberships}
+                  reservationSchedules={reservationSchedules}
+                  reservationCreateSubmitting={reservationCreateSubmitting}
+                  loadReservationSchedules={loadReservationSchedules}
+                  selectedMemberId={selectedMember?.memberId ?? null}
+                  loadReservationsForMember={loadReservationsForMember}
+                  reservationLoading={reservationLoading}
+                  selectedMemberReservations={selectedMemberReservations}
+                  reservationActionSubmittingId={reservationActionSubmittingId}
+                  handleReservationCheckIn={handleReservationCheckIn}
+                  handleReservationComplete={handleReservationComplete}
+                  handleReservationCancel={handleReservationCancel}
+                  handleReservationNoShow={handleReservationNoShow}
+                />
+              </Suspense>
             </ReservationsSection>
           ) : activeNavSection === "access" ? (
             <AccessSection accessPanelMessage={accessPanelMessage} accessPanelError={accessPanelError}>
-              <AccessManagementPanels
-                members={members}
-                accessMemberQuery={accessMemberQuery}
-                setAccessMemberQuery={setAccessMemberQuery}
-                accessSelectedMemberId={accessSelectedMemberId}
-                setAccessSelectedMemberId={setAccessSelectedMemberId}
-                accessPresence={accessPresence}
-                accessEvents={accessEvents}
-                accessPresenceLoading={accessPresenceLoading}
-                accessEventsLoading={accessEventsLoading}
-                accessActionSubmitting={accessActionSubmitting}
-                handleAccessEntry={handleAccessEntry}
-                handleAccessExit={handleAccessExit}
-                reloadAccessData={reloadAccessData}
-              />
+              <Suspense fallback={<WorkspacePanelFallback />}>
+                <LazyAccessManagementPanels
+                  members={members}
+                  accessMemberQuery={accessMemberQuery}
+                  setAccessMemberQuery={setAccessMemberQuery}
+                  accessSelectedMemberId={accessSelectedMemberId}
+                  setAccessSelectedMemberId={setAccessSelectedMemberId}
+                  accessPresence={accessPresence}
+                  accessEvents={accessEvents}
+                  accessPresenceLoading={accessPresenceLoading}
+                  accessEventsLoading={accessEventsLoading}
+                  accessActionSubmitting={accessActionSubmitting}
+                  handleAccessEntry={handleAccessEntry}
+                  handleAccessExit={handleAccessExit}
+                  reloadAccessData={reloadAccessData}
+                />
+              </Suspense>
             </AccessSection>
           ) : activeNavSection === "lockers" ? (
             <LockersSection>
-              <LockerManagementPanels
-                lockerFilters={lockerFilters}
-                setLockerFilters={setLockerFilters}
-                loadLockerSlots={loadLockerSlots}
-                lockerSlotsLoading={lockerSlotsLoading}
-                lockerSlots={lockerSlots}
-                lockerAssignmentsLoading={lockerAssignmentsLoading}
-                lockerAssignments={lockerAssignments}
-                lockerAssignForm={lockerAssignForm}
-                setLockerAssignForm={setLockerAssignForm}
-                handleLockerAssignSubmit={handleLockerAssignSubmit}
-                lockerAssignSubmitting={lockerAssignSubmitting}
-                lockerReturnSubmittingId={lockerReturnSubmittingId}
-                handleLockerReturn={handleLockerReturn}
-                lockerPanelMessage={lockerPanelMessage}
-                lockerPanelError={lockerPanelError}
-                members={members}
-              />
+              <Suspense fallback={<WorkspacePanelFallback />}>
+                <LazyLockerManagementPanels
+                  lockerFilters={lockerFilters}
+                  setLockerFilters={setLockerFilters}
+                  loadLockerSlots={loadLockerSlots}
+                  lockerSlotsLoading={lockerSlotsLoading}
+                  lockerSlots={lockerSlots}
+                  lockerAssignmentsLoading={lockerAssignmentsLoading}
+                  lockerAssignments={lockerAssignments}
+                  lockerAssignForm={lockerAssignForm}
+                  setLockerAssignForm={setLockerAssignForm}
+                  handleLockerAssignSubmit={handleLockerAssignSubmit}
+                  lockerAssignSubmitting={lockerAssignSubmitting}
+                  lockerReturnSubmittingId={lockerReturnSubmittingId}
+                  handleLockerReturn={handleLockerReturn}
+                  lockerPanelMessage={lockerPanelMessage}
+                  lockerPanelError={lockerPanelError}
+                  members={members}
+                />
+              </Suspense>
             </LockersSection>
           ) : activeNavSection === "settlements" ? (
             <SettlementsSection>
-              <SettlementReportPanels
-                settlementFilters={settlementFilters}
-                setSettlementFilters={setSettlementFilters}
-                loadSettlementReport={loadSettlementReport}
-                settlementReportLoading={settlementReportLoading}
-                settlementReport={settlementReport}
-                settlementPanelMessage={settlementPanelMessage}
-                settlementPanelError={settlementPanelError}
-              />
+              <Suspense fallback={<WorkspacePanelFallback />}>
+                <LazySettlementReportPanels
+                  settlementFilters={settlementFilters}
+                  setSettlementFilters={setSettlementFilters}
+                  loadSettlementReport={loadSettlementReport}
+                  settlementReportLoading={settlementReportLoading}
+                  settlementReport={settlementReport}
+                  settlementPanelMessage={effectiveSettlementPanelMessage}
+                  settlementPanelError={effectiveSettlementPanelError}
+                />
+              </Suspense>
             </SettlementsSection>
           ) : activeNavSection === "crm" ? (
             <CrmSection>
-              <CrmMessagePanels
-                crmHistoryRows={crmHistoryRows}
-                crmHistoryLoading={crmHistoryLoading}
-                crmFilters={crmFilters}
-                setCrmFilters={setCrmFilters}
-                crmTriggerDaysAhead={crmTriggerDaysAhead}
-                setCrmTriggerDaysAhead={setCrmTriggerDaysAhead}
-                crmTriggerSubmitting={crmTriggerSubmitting}
-                crmProcessSubmitting={crmProcessSubmitting}
-                crmPanelMessage={crmPanelMessage}
-                crmPanelError={crmPanelError}
-                loadCrmHistory={loadCrmHistory}
-                triggerCrmExpiryReminder={triggerCrmExpiryReminder}
-                processCrmQueue={processCrmQueue}
-              />
+              <Suspense fallback={<WorkspacePanelFallback />}>
+                <LazyCrmMessagePanels
+                  crmHistoryRows={crmHistoryRows}
+                  crmHistoryLoading={crmHistoryLoading}
+                  crmFilters={crmFilters}
+                  setCrmFilters={setCrmFilters}
+                  crmTriggerDaysAhead={crmTriggerDaysAhead}
+                  setCrmTriggerDaysAhead={setCrmTriggerDaysAhead}
+                  crmTriggerSubmitting={crmTriggerSubmitting}
+                  crmProcessSubmitting={crmProcessSubmitting}
+                  crmPanelMessage={crmPanelMessage}
+                  crmPanelError={effectiveCrmPanelError}
+                  loadCrmHistory={loadCrmHistory}
+                  triggerCrmExpiryReminder={triggerCrmExpiryReminder}
+                  processCrmQueue={processCrmQueue}
+                />
+              </Suspense>
             </CrmSection>
           ) : activeNavSection === "members" ? (
         <MembersSection>
@@ -2167,7 +1994,7 @@ export default function App() {
             loadMembers={loadMembers}
             membersLoading={membersLoading}
             memberPanelMessage={memberPanelMessage}
-            memberPanelError={memberPanelError}
+            memberPanelError={effectiveMemberPanelError}
             members={members}
             selectedMemberId={selectedMemberId}
             selectMember={selectMember}
@@ -2187,30 +2014,32 @@ export default function App() {
         </MembersSection>
       ) : activeNavSection === "products" ? (
         <ProductsSection>
-          <ProductManagementPanels
-            canManageProducts={canManageProducts}
-            startCreateProduct={startCreateProduct}
-            productFilters={productFilters}
-            setProductFilters={setProductFilters}
-            loadProducts={loadProducts}
-            productsLoading={productsLoading}
-            productPanelMessage={productPanelMessage}
-            productPanelError={productPanelError}
-            products={products}
-            selectedProductId={selectedProductId}
-            openProductEditor={openProductEditor}
-            productFormMode={productFormMode}
-            productFormOpen={productFormOpen}
-            closeProductForm={closeProductForm}
-            selectedProduct={selectedProduct}
-            handleProductStatusToggle={handleProductStatusToggle}
-            productFormSubmitting={productFormSubmitting}
-            handleProductSubmit={handleProductSubmit}
-            productFormMessage={productFormMessage}
-            productFormError={productFormError}
-            productForm={productForm}
-            setProductForm={setProductForm}
-          />
+          <Suspense fallback={<WorkspacePanelFallback />}>
+            <LazyProductManagementPanels
+              canManageProducts={canManageProducts}
+              startCreateProduct={startCreateProduct}
+              productFilters={productFilters}
+              setProductFilters={setProductFilters}
+              loadProducts={loadProducts}
+              productsLoading={productsLoading}
+              productPanelMessage={productPanelMessage}
+              productPanelError={effectiveProductPanelError}
+              products={products}
+              selectedProductId={selectedProductId}
+              openProductEditor={openProductEditor}
+              productFormMode={productFormMode}
+              productFormOpen={productFormOpen}
+              closeProductForm={closeProductForm}
+              selectedProduct={selectedProduct}
+              handleProductStatusToggle={handleProductStatusToggle}
+              productFormSubmitting={productFormSubmitting}
+              handleProductSubmit={handleProductSubmit}
+              productFormMessage={productFormMessage}
+              productFormError={productFormError}
+              productForm={productForm}
+              setProductForm={setProductForm}
+            />
+          </Suspense>
         </ProductsSection>
       ) : null}
         </section>
