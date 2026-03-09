@@ -16,6 +16,14 @@ import { LockersSection } from "./features/lockers/LockersSection";
 import { MemberManagementPanels } from "./features/members/MemberManagementPanels";
 import { MembersSection } from "./features/members/MembersSection";
 import { MembershipOperationsPanels } from "./features/memberships/MembershipOperationsPanels";
+import {
+  createDefaultMembershipActionDraft,
+  EMPTY_PURCHASE_FORM,
+  type MembershipActionDraft,
+  type PurchaseFormState,
+  type RefundCalculationApi,
+  useMembershipWorkspaceState
+} from "./features/memberships/useMembershipWorkspaceState";
 import { ProductManagementPanels } from "./features/products/ProductManagementPanels";
 import { MembershipsSection } from "./features/memberships/MembershipsSection";
 import { ProductsSection } from "./features/products/ProductsSection";
@@ -205,14 +213,6 @@ type ResumeMembershipResponse = {
   calculation: ResumeCalculationApi;
 };
 
-type RefundCalculationApi = {
-  refundDate: string;
-  originalAmount: number;
-  usedAmount: number;
-  penaltyAmount: number;
-  refundAmount: number;
-};
-
 type RefundPreviewResponse = {
   calculation: RefundCalculationApi;
 };
@@ -269,28 +269,6 @@ type ProductFormState = {
 type ProductFilters = {
   category: "" | "MEMBERSHIP" | "PT" | "GX" | "ETC";
   status: "" | "ACTIVE" | "INACTIVE";
-};
-
-type PurchaseFormState = {
-  productId: string;
-  startDate: string;
-  paidAmount: string;
-  paymentMethod: "CASH" | "CARD" | "TRANSFER" | "ETC";
-  membershipMemo: string;
-  paymentMemo: string;
-};
-
-type MembershipActionDraft = {
-  holdStartDate: string;
-  holdEndDate: string;
-  holdReason: string;
-  holdMemo: string;
-  resumeDate: string;
-  refundDate: string;
-  refundPaymentMethod: "CASH" | "CARD" | "TRANSFER" | "ETC";
-  refundReason: string;
-  refundMemo: string;
-  refundPaymentMemo: string;
 };
 
 type AccessEventRecord = {
@@ -462,15 +440,6 @@ const EMPTY_PRODUCT_FORM: ProductFormState = {
   description: ""
 };
 
-const EMPTY_PURCHASE_FORM: PurchaseFormState = {
-  productId: "",
-  startDate: new Date().toISOString().slice(0, 10),
-  paidAmount: "",
-  paymentMethod: "CASH",
-  membershipMemo: "",
-  paymentMemo: ""
-};
-
 const EMPTY_LOCKER_ASSIGN_FORM: LockerAssignFormState = {
   lockerSlotId: "",
   memberId: "",
@@ -493,22 +462,6 @@ function createInitialCrmFilters(): CrmFilters {
   return {
     sendStatus: "",
     limit: "100"
-  };
-}
-
-function createDefaultMembershipActionDraft(): MembershipActionDraft {
-  const today = new Date().toISOString().slice(0, 10);
-  return {
-    holdStartDate: today,
-    holdEndDate: today,
-    holdReason: "",
-    holdMemo: "",
-    resumeDate: today,
-    refundDate: today,
-    refundPaymentMethod: "CASH",
-    refundReason: "",
-    refundMemo: "",
-    refundPaymentMemo: ""
   };
 }
 
@@ -783,20 +736,10 @@ export default function App() {
   const [memberPanelError, setMemberPanelError] = useState<string | null>(null);
   const [memberFormMessage, setMemberFormMessage] = useState<string | null>(null);
   const [memberFormError, setMemberFormError] = useState<string | null>(null);
-  const [purchaseForm, setPurchaseForm] = useState<PurchaseFormState>(EMPTY_PURCHASE_FORM);
   const [purchaseProductDetail, setPurchaseProductDetail] = useState<ProductDetail | null>(null);
   const [purchaseProductLoading, setPurchaseProductLoading] = useState(false);
-  const [memberPurchaseSubmitting, setMemberPurchaseSubmitting] = useState(false);
-  const [memberPurchaseMessage, setMemberPurchaseMessage] = useState<string | null>(null);
-  const [memberPurchaseError, setMemberPurchaseError] = useState<string | null>(null);
   const [memberMembershipsByMemberId, setMemberMembershipsByMemberId] = useState<Record<number, PurchasedMembership[]>>({});
   const [memberPaymentsByMemberId, setMemberPaymentsByMemberId] = useState<Record<number, PurchasePayment[]>>({});
-  const [membershipActionDrafts, setMembershipActionDrafts] = useState<Record<number, MembershipActionDraft>>({});
-  const [membershipActionSubmittingId, setMembershipActionSubmittingId] = useState<number | null>(null);
-  const [membershipActionMessageById, setMembershipActionMessageById] = useState<Record<number, string>>({});
-  const [membershipActionErrorById, setMembershipActionErrorById] = useState<Record<number, string>>({});
-  const [membershipRefundPreviewById, setMembershipRefundPreviewById] = useState<Record<number, RefundCalculationApi>>({});
-  const [membershipRefundPreviewLoadingId, setMembershipRefundPreviewLoadingId] = useState<number | null>(null);
   const [accessMemberQuery, setAccessMemberQuery] = useState("");
   const [accessSelectedMemberId, setAccessSelectedMemberId] = useState<number | null>(null);
   const [accessEvents, setAccessEvents] = useState<AccessEventRecord[]>([]);
@@ -853,6 +796,29 @@ export default function App() {
     const response = await apiGet<MemberSummary[]>(`/api/v1/members${query ? `?${query}` : ""}`);
     return response.data;
   });
+  const membershipWorkspace = useMembershipWorkspaceState(selectedMemberId);
+  const {
+    purchaseForm,
+    setPurchaseForm,
+    memberPurchaseSubmitting,
+    setMemberPurchaseSubmitting,
+    memberPurchaseMessage,
+    setMemberPurchaseMessage,
+    memberPurchaseError,
+    setMemberPurchaseError,
+    membershipActionDrafts,
+    setMembershipActionDrafts,
+    membershipActionSubmittingId,
+    setMembershipActionSubmittingId,
+    membershipActionMessageById,
+    setMembershipActionMessageById,
+    membershipActionErrorById,
+    setMembershipActionErrorById,
+    membershipRefundPreviewById,
+    setMembershipRefundPreviewById,
+    membershipRefundPreviewLoadingId,
+    setMembershipRefundPreviewLoadingId
+  } = membershipWorkspace;
   const reservationWorkspace = useReservationWorkspaceState(selectedMemberId);
   const {
     reservationSchedules,
@@ -902,16 +868,10 @@ export default function App() {
     setMemberFormError(null);
     setMemberSearchName("");
     setMemberSearchPhone("");
-    setPurchaseForm({ ...EMPTY_PURCHASE_FORM, startDate: new Date().toISOString().slice(0, 10) });
+    membershipWorkspace.resetMembershipWorkspace();
     setPurchaseProductDetail(null);
-    setMemberPurchaseError(null);
-    setMemberPurchaseMessage(null);
     setMemberMembershipsByMemberId({});
     setMemberPaymentsByMemberId({});
-    setMembershipActionDrafts({});
-    setMembershipActionMessageById({});
-    setMembershipActionErrorById({});
-    setMembershipRefundPreviewById({});
     reservationWorkspace.resetReservationWorkspace();
     setAccessMemberQuery("");
     setAccessSelectedMemberId(null);
@@ -984,9 +944,6 @@ export default function App() {
     memberDetailRequestIdRef.current = requestId;
     setSelectedMemberId(memberId);
     setMemberPanelError(null);
-    setMemberPurchaseError(null);
-    setMemberPurchaseMessage(null);
-    setPurchaseForm({ ...EMPTY_PURCHASE_FORM, startDate: new Date().toISOString().slice(0, 10) });
     setPurchaseProductDetail(null);
     try {
       const response = await apiGet<MemberDetail>(`/api/v1/members/${memberId}`);
