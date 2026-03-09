@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { routes } from "./app/routes";
 import { ContentHeader } from "./components/layout/ContentHeader";
 import { SidebarNav } from "./components/layout/SidebarNav";
@@ -894,6 +894,7 @@ export default function App() {
   const [productPanelError, setProductPanelError] = useState<string | null>(null);
   const [productFormMessage, setProductFormMessage] = useState<string | null>(null);
   const [productFormError, setProductFormError] = useState<string | null>(null);
+  const memberDetailRequestIdRef = useRef(0);
 
   const routePreview = useMemo(() => routes.slice(0, 4), []);
   const isPrototypeMode = securityMode === "prototype";
@@ -994,7 +995,14 @@ export default function App() {
     }
   }
 
+  async function loadWorkspaceMembers() {
+    const response = await apiGet<MemberSummary[]>("/api/v1/members");
+    return response.data;
+  }
+
   async function loadMemberDetail(memberId: number, options?: { syncForm?: boolean }): Promise<boolean> {
+    const requestId = memberDetailRequestIdRef.current + 1;
+    memberDetailRequestIdRef.current = requestId;
     setSelectedMemberId(memberId);
     setMemberPanelError(null);
     setMemberPurchaseError(null);
@@ -1007,6 +1015,9 @@ export default function App() {
     setPurchaseProductDetail(null);
     try {
       const response = await apiGet<MemberDetail>(`/api/v1/members/${memberId}`);
+      if (memberDetailRequestIdRef.current !== requestId) {
+        return false;
+      }
       setSelectedMember(response.data);
       if (options?.syncForm !== false) {
         setMemberForm(memberFormFromDetail(response.data));
@@ -1014,7 +1025,9 @@ export default function App() {
       }
       return true;
     } catch (error) {
-      setMemberPanelError(errorMessage(error));
+      if (memberDetailRequestIdRef.current === requestId) {
+        setMemberPanelError(errorMessage(error));
+      }
       return false;
     }
   }
@@ -2255,8 +2268,14 @@ export default function App() {
               onOpenProducts={() => setActiveNavSection("products")}
             />
           ) : activeNavSection === "memberships" ? (
-            <MembershipsSection selectedMember={selectedMember} onGoMembers={() => setActiveNavSection("members")}>
+            <MembershipsSection
+              selectedMember={selectedMember}
+              loadWorkspaceMembers={loadWorkspaceMembers}
+              onSelectWorkspaceMember={(memberId) => loadMemberDetail(memberId, { syncForm: false })}
+              onGoMembers={() => setActiveNavSection("members")}
+            >
               <MembershipOperationsPanels
+                key={selectedMember?.memberId ?? "membership-empty"}
                 selectedMember={selectedMember}
                 activeProductsForPurchase={activeProductsForPurchase}
                 purchaseForm={purchaseForm}
@@ -2294,9 +2313,12 @@ export default function App() {
               reservableMembershipsCount={reservableMemberships.length}
               reservationPanelMessage={reservationPanelMessage}
               reservationPanelError={reservationPanelError}
+              loadWorkspaceMembers={loadWorkspaceMembers}
+              onSelectWorkspaceMember={(memberId) => loadMemberDetail(memberId, { syncForm: false })}
               onGoMembers={() => setActiveNavSection("members")}
             >
               <ReservationManagementPanels
+                key={selectedMember?.memberId ?? "reservation-empty"}
                 reservationSchedulesLoading={reservationSchedulesLoading}
                 handleReservationCreateSubmit={handleReservationCreateSubmit}
                 reservationCreateForm={reservationCreateForm}

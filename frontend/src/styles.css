@@ -1197,6 +1197,14 @@ tbody tr.is-selected {
   justify-content: flex-end;
 }
 
+.panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .overlay-panel-body {
   padding: 14px;
 }
@@ -1334,6 +1342,76 @@ tbody tr.is-selected {
   margin: 0;
   color: var(--muted);
   line-height: 1.45;
+}
+
+.workspace-member-picker-shell {
+  display: grid;
+  gap: 10px;
+}
+
+.workspace-member-picker-search {
+  gap: 6px;
+}
+
+.workspace-member-picker-list {
+  display: grid;
+  gap: 8px;
+}
+
+.workspace-member-picker-item {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--preview-card-bg);
+  color: var(--ink);
+  padding: 12px;
+  text-align: left;
+  display: grid;
+  gap: 8px;
+  cursor: pointer;
+  transition: transform 100ms ease, border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+}
+
+.workspace-member-picker-item:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: var(--line-strong);
+  box-shadow: 0 8px 16px rgba(31, 29, 26, 0.08);
+}
+
+.workspace-member-picker-item:disabled {
+  opacity: 0.72;
+  cursor: wait;
+}
+
+.workspace-member-picker-item:focus-visible {
+  outline: 2px solid rgba(184, 75, 45, 0.24);
+  outline-offset: 2px;
+}
+
+.workspace-member-picker-main {
+  display: grid;
+  gap: 4px;
+}
+
+.workspace-member-picker-main strong {
+  letter-spacing: -0.01em;
+}
+
+.workspace-member-picker-main span:last-child {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.workspace-member-picker-meta {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.workspace-member-picker-cta {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
 }
 
 .detail-stack {
@@ -1481,6 +1559,11 @@ code {
 
   .purchase-preview-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .panel-header-actions {
+    width: 100%;
+    justify-content: flex-start;
   }
 }
 
@@ -1670,6 +1753,10 @@ code {
   .products-table th,
   .products-table td {
     padding: 7px 6px;
+  }
+
+  .workspace-member-picker-item {
+    padding: 10px;
   }
 
   th,
