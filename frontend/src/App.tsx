@@ -8,22 +8,72 @@ import { LoginScreen } from "./features/auth/LoginScreen";
 import { UnknownSecurityScreen } from "./features/auth/UnknownSecurityScreen";
 import { AccessManagementPanels } from "./features/access/AccessManagementPanels";
 import { AccessSection } from "./features/access/AccessSection";
+import {
+  type AccessEventRecord,
+  type AccessPresenceSummary,
+  useAccessWorkspaceState
+} from "./features/access/useAccessWorkspaceState";
 import { DashboardSection } from "./features/dashboard/DashboardSection";
 import { CrmMessagePanels } from "./features/crm/CrmMessagePanels";
 import { CrmSection } from "./features/crm/CrmSection";
+import {
+  type CrmFilters,
+  type CrmMessageHistoryResponse,
+  type CrmMessageHistoryRow,
+  type CrmProcessResponse,
+  type CrmTriggerResponse,
+  useCrmWorkspaceState
+} from "./features/crm/useCrmWorkspaceState";
 import { LockerManagementPanels } from "./features/lockers/LockerManagementPanels";
 import { LockersSection } from "./features/lockers/LockersSection";
+import {
+  createEmptyLockerAssignForm,
+  type LockerAssignment,
+  type LockerAssignFormState,
+  type LockerFilters,
+  type LockerSlot,
+  useLockerWorkspaceState
+} from "./features/lockers/useLockerWorkspaceState";
 import { MemberManagementPanels } from "./features/members/MemberManagementPanels";
 import { MembersSection } from "./features/members/MembersSection";
 import { MembershipOperationsPanels } from "./features/memberships/MembershipOperationsPanels";
+import {
+  createEmptyPurchaseForm,
+  createDefaultMembershipActionDraft,
+  type MembershipActionDraft,
+  type PurchaseFormState,
+  type RefundCalculationApi,
+  useMembershipWorkspaceState
+} from "./features/memberships/useMembershipWorkspaceState";
 import { ProductManagementPanels } from "./features/products/ProductManagementPanels";
 import { MembershipsSection } from "./features/memberships/MembershipsSection";
 import { ProductsSection } from "./features/products/ProductsSection";
+import {
+  EMPTY_PRODUCT_FORM,
+  type ProductDetail,
+  type ProductFilters,
+  type ProductFormState,
+  type ProductSummary,
+  useProductWorkspaceState
+} from "./features/products/useProductWorkspaceState";
 import { ReservationManagementPanels } from "./features/reservations/ReservationManagementPanels";
 import { ReservationsSection } from "./features/reservations/ReservationsSection";
+import {
+  EMPTY_RESERVATION_CREATE_FORM,
+  type ReservationCompleteResponse,
+  type ReservationRecord,
+  type ReservationScheduleSummary,
+  useReservationWorkspaceState
+} from "./features/reservations/useReservationWorkspaceState";
 import { SettlementReportPanels } from "./features/settlements/SettlementReportPanels";
 import { SettlementsSection } from "./features/settlements/SettlementsSection";
+import {
+  type SalesSettlementReport,
+  type SettlementReportFilters,
+  useSettlementWorkspaceState
+} from "./features/settlements/useSettlementWorkspaceState";
 import { ApiClientError, apiGet, apiPatch, apiPost, configureApiAuth } from "./shared/api/client";
+import { useWorkspaceMemberSearchLoader } from "./shared/hooks/useWorkspaceMemberSearchLoader";
 import { formatCurrency, formatDate, formatDateTime } from "./shared/utils/format";
 
 type NavSectionKey =
@@ -87,33 +137,6 @@ type MemberDetail = {
   consentSms: boolean;
   consentMarketing: boolean;
   memo: string | null;
-};
-
-type ProductSummary = {
-  productId: number;
-  centerId: number;
-  productName: string;
-  productCategory: "MEMBERSHIP" | "PT" | "GX" | "ETC" | null;
-  productType: "DURATION" | "COUNT";
-  priceAmount: number;
-  productStatus: "ACTIVE" | "INACTIVE";
-};
-
-type ProductDetail = {
-  productId: number;
-  centerId: number;
-  productName: string;
-  productCategory: "MEMBERSHIP" | "PT" | "GX" | "ETC" | null;
-  productType: "DURATION" | "COUNT";
-  priceAmount: number;
-  validityDays: number | null;
-  totalCount: number | null;
-  allowHold: boolean;
-  maxHoldDays: number | null;
-  maxHoldCount: number | null;
-  allowTransfer: boolean;
-  productStatus: "ACTIVE" | "INACTIVE";
-  description: string | null;
 };
 
 type PurchasedMembership = {
@@ -197,14 +220,6 @@ type ResumeMembershipResponse = {
   calculation: ResumeCalculationApi;
 };
 
-type RefundCalculationApi = {
-  refundDate: string;
-  originalAmount: number;
-  usedAmount: number;
-  penaltyAmount: number;
-  refundAmount: number;
-};
-
 type RefundPreviewResponse = {
   calculation: RefundCalculationApi;
 };
@@ -243,233 +258,6 @@ type MemberFormState = {
   memo: string;
 };
 
-type ProductFormState = {
-  productName: string;
-  productCategory: "" | "MEMBERSHIP" | "PT" | "GX" | "ETC";
-  productType: "DURATION" | "COUNT";
-  priceAmount: string;
-  validityDays: string;
-  totalCount: string;
-  allowHold: boolean;
-  maxHoldDays: string;
-  maxHoldCount: string;
-  allowTransfer: boolean;
-  productStatus: "ACTIVE" | "INACTIVE";
-  description: string;
-};
-
-type ProductFilters = {
-  category: "" | "MEMBERSHIP" | "PT" | "GX" | "ETC";
-  status: "" | "ACTIVE" | "INACTIVE";
-};
-
-type PurchaseFormState = {
-  productId: string;
-  startDate: string;
-  paidAmount: string;
-  paymentMethod: "CASH" | "CARD" | "TRANSFER" | "ETC";
-  membershipMemo: string;
-  paymentMemo: string;
-};
-
-type MembershipActionDraft = {
-  holdStartDate: string;
-  holdEndDate: string;
-  holdReason: string;
-  holdMemo: string;
-  resumeDate: string;
-  refundDate: string;
-  refundPaymentMethod: "CASH" | "CARD" | "TRANSFER" | "ETC";
-  refundReason: string;
-  refundMemo: string;
-  refundPaymentMemo: string;
-};
-
-type ReservationScheduleSummary = {
-  scheduleId: number;
-  centerId: number;
-  scheduleType: "PT" | "GX";
-  trainerName: string;
-  slotTitle: string;
-  startAt: string;
-  endAt: string;
-  capacity: number;
-  currentCount: number;
-  memo: string | null;
-};
-
-type ReservationRecord = {
-  reservationId: number;
-  centerId: number;
-  memberId: number;
-  membershipId: number;
-  scheduleId: number;
-  reservationStatus: "CONFIRMED" | "CANCELLED" | "COMPLETED" | "NO_SHOW";
-  reservedAt: string;
-  cancelledAt: string | null;
-  completedAt: string | null;
-  noShowAt: string | null;
-  checkedInAt: string | null;
-  cancelReason: string | null;
-  memo: string | null;
-};
-
-type ReservationCompleteResponse = {
-  reservation: ReservationRecord;
-  membershipId: number;
-  membershipStatus: string;
-  remainingCount: number | null;
-  usedCount: number;
-  countDeducted: boolean;
-};
-
-type ReservationCreateFormState = {
-  scheduleId: string;
-  membershipId: string;
-  memo: string;
-};
-
-type AccessEventRecord = {
-  accessEventId: number;
-  centerId: number;
-  memberId: number;
-  membershipId: number | null;
-  reservationId: number | null;
-  processedBy: number;
-  eventType: "ENTRY_GRANTED" | "EXIT" | "ENTRY_DENIED";
-  denyReason: string | null;
-  processedAt: string;
-};
-
-type AccessOpenSession = {
-  accessSessionId: number;
-  memberId: number;
-  memberName: string;
-  phone: string;
-  membershipId: number | null;
-  reservationId: number | null;
-  entryAt: string;
-};
-
-type AccessPresenceSummary = {
-  openSessionCount: number;
-  todayEntryGrantedCount: number;
-  todayExitCount: number;
-  todayEntryDeniedCount: number;
-  openSessions: AccessOpenSession[];
-};
-
-type LockerSlot = {
-  lockerSlotId: number;
-  centerId: number;
-  lockerCode: string;
-  lockerZone: string | null;
-  lockerGrade: string | null;
-  lockerStatus: "AVAILABLE" | "ASSIGNED" | "MAINTENANCE";
-  memo: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
-
-type LockerAssignment = {
-  lockerAssignmentId: number;
-  centerId: number;
-  lockerSlotId: number;
-  memberId: number;
-  assignmentStatus: "ACTIVE" | "RETURNED";
-  assignedAt: string;
-  startDate: string;
-  endDate: string;
-  returnedAt: string | null;
-  refundAmount: number | null;
-  returnReason: string | null;
-  memo: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
-
-type LockerFilters = {
-  lockerStatus: "" | "AVAILABLE" | "ASSIGNED" | "MAINTENANCE";
-  lockerZone: string;
-};
-
-type LockerAssignFormState = {
-  lockerSlotId: string;
-  memberId: string;
-  startDate: string;
-  endDate: string;
-  memo: string;
-};
-
-type SalesSettlementReportRow = {
-  productName: string;
-  paymentMethod: "CASH" | "CARD" | "TRANSFER" | "ETC";
-  grossSales: number;
-  refundAmount: number;
-  netSales: number;
-  transactionCount: number;
-};
-
-type SalesSettlementReport = {
-  startDate: string;
-  endDate: string;
-  paymentMethod: "CASH" | "CARD" | "TRANSFER" | "ETC" | null;
-  productKeyword: string | null;
-  totalGrossSales: number;
-  totalRefundAmount: number;
-  totalNetSales: number;
-  rows: SalesSettlementReportRow[];
-};
-
-type SettlementReportFilters = {
-  startDate: string;
-  endDate: string;
-  paymentMethod: "" | "CASH" | "CARD" | "TRANSFER" | "ETC";
-  productKeyword: string;
-};
-
-type CrmMessageHistoryRow = {
-  crmMessageEventId: number;
-  memberId: number;
-  membershipId: number | null;
-  eventType: string;
-  channelType: string;
-  sendStatus: "PENDING" | "RETRY_WAIT" | "SENT" | "DEAD";
-  attemptCount: number;
-  lastAttemptedAt: string | null;
-  nextAttemptAt: string | null;
-  sentAt: string | null;
-  failedAt: string | null;
-  lastErrorMessage: string | null;
-  traceId: string | null;
-  createdAt: string;
-};
-
-type CrmMessageHistoryResponse = {
-  rows: CrmMessageHistoryRow[];
-};
-
-type CrmFilters = {
-  sendStatus: "" | "PENDING" | "RETRY_WAIT" | "SENT" | "DEAD";
-  limit: string;
-};
-
-type CrmTriggerResponse = {
-  baseDate: string;
-  targetDate: string;
-  totalTargets: number;
-  createdCount: number;
-  duplicatedCount: number;
-};
-
-type CrmProcessResponse = {
-  pickedCount: number;
-  sentCount: number;
-  retryWaitCount: number;
-  deadCount: number;
-  maxAttempts: number;
-};
-
 const EMPTY_MEMBER_FORM: MemberFormState = {
   memberName: "",
   phone: "",
@@ -482,77 +270,6 @@ const EMPTY_MEMBER_FORM: MemberFormState = {
   consentMarketing: false,
   memo: ""
 };
-
-const EMPTY_PRODUCT_FORM: ProductFormState = {
-  productName: "",
-  productCategory: "MEMBERSHIP",
-  productType: "DURATION",
-  priceAmount: "",
-  validityDays: "30",
-  totalCount: "",
-  allowHold: true,
-  maxHoldDays: "30",
-  maxHoldCount: "1",
-  allowTransfer: false,
-  productStatus: "ACTIVE",
-  description: ""
-};
-
-const EMPTY_PURCHASE_FORM: PurchaseFormState = {
-  productId: "",
-  startDate: new Date().toISOString().slice(0, 10),
-  paidAmount: "",
-  paymentMethod: "CASH",
-  membershipMemo: "",
-  paymentMemo: ""
-};
-
-const EMPTY_RESERVATION_CREATE_FORM: ReservationCreateFormState = {
-  scheduleId: "",
-  membershipId: "",
-  memo: ""
-};
-
-const EMPTY_LOCKER_ASSIGN_FORM: LockerAssignFormState = {
-  lockerSlotId: "",
-  memberId: "",
-  startDate: new Date().toISOString().slice(0, 10),
-  endDate: new Date().toISOString().slice(0, 10),
-  memo: ""
-};
-
-function createInitialSettlementFilters(): SettlementReportFilters {
-  const today = new Date().toISOString().slice(0, 10);
-  return {
-    startDate: `${today.slice(0, 8)}01`,
-    endDate: today,
-    paymentMethod: "",
-    productKeyword: ""
-  };
-}
-
-function createInitialCrmFilters(): CrmFilters {
-  return {
-    sendStatus: "",
-    limit: "100"
-  };
-}
-
-function createDefaultMembershipActionDraft(): MembershipActionDraft {
-  const today = new Date().toISOString().slice(0, 10);
-  return {
-    holdStartDate: today,
-    holdEndDate: today,
-    holdReason: "",
-    holdMemo: "",
-    resumeDate: today,
-    refundDate: today,
-    refundPaymentMethod: "CASH",
-    refundReason: "",
-    refundMemo: "",
-    refundPaymentMemo: ""
-  };
-}
 
 function normalizeOptionalText(value: string): string | null {
   const trimmed = value.trim();
@@ -825,78 +542,169 @@ export default function App() {
   const [memberPanelError, setMemberPanelError] = useState<string | null>(null);
   const [memberFormMessage, setMemberFormMessage] = useState<string | null>(null);
   const [memberFormError, setMemberFormError] = useState<string | null>(null);
-  const [purchaseForm, setPurchaseForm] = useState<PurchaseFormState>(EMPTY_PURCHASE_FORM);
   const [purchaseProductDetail, setPurchaseProductDetail] = useState<ProductDetail | null>(null);
   const [purchaseProductLoading, setPurchaseProductLoading] = useState(false);
-  const [memberPurchaseSubmitting, setMemberPurchaseSubmitting] = useState(false);
-  const [memberPurchaseMessage, setMemberPurchaseMessage] = useState<string | null>(null);
-  const [memberPurchaseError, setMemberPurchaseError] = useState<string | null>(null);
   const [memberMembershipsByMemberId, setMemberMembershipsByMemberId] = useState<Record<number, PurchasedMembership[]>>({});
   const [memberPaymentsByMemberId, setMemberPaymentsByMemberId] = useState<Record<number, PurchasePayment[]>>({});
-  const [membershipActionDrafts, setMembershipActionDrafts] = useState<Record<number, MembershipActionDraft>>({});
-  const [membershipActionSubmittingId, setMembershipActionSubmittingId] = useState<number | null>(null);
-  const [membershipActionMessageById, setMembershipActionMessageById] = useState<Record<number, string>>({});
-  const [membershipActionErrorById, setMembershipActionErrorById] = useState<Record<number, string>>({});
-  const [membershipRefundPreviewById, setMembershipRefundPreviewById] = useState<Record<number, RefundCalculationApi>>({});
-  const [membershipRefundPreviewLoadingId, setMembershipRefundPreviewLoadingId] = useState<number | null>(null);
-  const [reservationSchedules, setReservationSchedules] = useState<ReservationScheduleSummary[]>([]);
-  const [reservationSchedulesLoading, setReservationSchedulesLoading] = useState(false);
-  const [reservationRowsByMemberId, setReservationRowsByMemberId] = useState<Record<number, ReservationRecord[]>>({});
-  const [reservationLoading, setReservationLoading] = useState(false);
-  const [reservationCreateForm, setReservationCreateForm] = useState<ReservationCreateFormState>(EMPTY_RESERVATION_CREATE_FORM);
-  const [reservationCreateSubmitting, setReservationCreateSubmitting] = useState(false);
-  const [reservationActionSubmittingId, setReservationActionSubmittingId] = useState<number | null>(null);
-  const [reservationPanelMessage, setReservationPanelMessage] = useState<string | null>(null);
-  const [reservationPanelError, setReservationPanelError] = useState<string | null>(null);
-  const [accessMemberQuery, setAccessMemberQuery] = useState("");
-  const [accessSelectedMemberId, setAccessSelectedMemberId] = useState<number | null>(null);
-  const [accessEvents, setAccessEvents] = useState<AccessEventRecord[]>([]);
-  const [accessPresence, setAccessPresence] = useState<AccessPresenceSummary | null>(null);
-  const [accessEventsLoading, setAccessEventsLoading] = useState(false);
-  const [accessPresenceLoading, setAccessPresenceLoading] = useState(false);
-  const [accessActionSubmitting, setAccessActionSubmitting] = useState(false);
-  const [accessPanelMessage, setAccessPanelMessage] = useState<string | null>(null);
-  const [accessPanelError, setAccessPanelError] = useState<string | null>(null);
-  const [lockerFilters, setLockerFilters] = useState<LockerFilters>({ lockerStatus: "", lockerZone: "" });
-  const [lockerSlots, setLockerSlots] = useState<LockerSlot[]>([]);
-  const [lockerSlotsLoading, setLockerSlotsLoading] = useState(false);
-  const [lockerAssignments, setLockerAssignments] = useState<LockerAssignment[]>([]);
-  const [lockerAssignmentsLoading, setLockerAssignmentsLoading] = useState(false);
-  const [lockerAssignForm, setLockerAssignForm] = useState<LockerAssignFormState>(EMPTY_LOCKER_ASSIGN_FORM);
-  const [lockerAssignSubmitting, setLockerAssignSubmitting] = useState(false);
-  const [lockerReturnSubmittingId, setLockerReturnSubmittingId] = useState<number | null>(null);
-  const [lockerPanelMessage, setLockerPanelMessage] = useState<string | null>(null);
-  const [lockerPanelError, setLockerPanelError] = useState<string | null>(null);
-  const [settlementFilters, setSettlementFilters] = useState<SettlementReportFilters>(createInitialSettlementFilters);
-  const [settlementReport, setSettlementReport] = useState<SalesSettlementReport | null>(null);
-  const [settlementReportLoading, setSettlementReportLoading] = useState(false);
-  const [settlementPanelMessage, setSettlementPanelMessage] = useState<string | null>(null);
-  const [settlementPanelError, setSettlementPanelError] = useState<string | null>(null);
-  const [crmFilters, setCrmFilters] = useState<CrmFilters>(createInitialCrmFilters);
-  const [crmHistoryRows, setCrmHistoryRows] = useState<CrmMessageHistoryRow[]>([]);
-  const [crmHistoryLoading, setCrmHistoryLoading] = useState(false);
-  const [crmTriggerDaysAhead, setCrmTriggerDaysAhead] = useState("3");
-  const [crmTriggerSubmitting, setCrmTriggerSubmitting] = useState(false);
-  const [crmProcessSubmitting, setCrmProcessSubmitting] = useState(false);
-  const [crmPanelMessage, setCrmPanelMessage] = useState<string | null>(null);
-  const [crmPanelError, setCrmPanelError] = useState<string | null>(null);
-
-  const [productFilters, setProductFilters] = useState<ProductFilters>({ category: "", status: "" });
-  const [products, setProducts] = useState<ProductSummary[]>([]);
-  const [productsLoading, setProductsLoading] = useState(false);
-  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
-  const [selectedProduct, setSelectedProduct] = useState<ProductDetail | null>(null);
-  const [productForm, setProductForm] = useState<ProductFormState>(EMPTY_PRODUCT_FORM);
-  const [productFormMode, setProductFormMode] = useState<"create" | "edit">("create");
-  const [productFormOpen, setProductFormOpen] = useState(false);
-  const [productFormSubmitting, setProductFormSubmitting] = useState(false);
-  const [productPanelMessage, setProductPanelMessage] = useState<string | null>(null);
-  const [productPanelError, setProductPanelError] = useState<string | null>(null);
-  const [productFormMessage, setProductFormMessage] = useState<string | null>(null);
-  const [productFormError, setProductFormError] = useState<string | null>(null);
   const memberDetailRequestIdRef = useRef(0);
-  const workspaceMemberSearchCacheRef = useRef(new Map<string, MemberSummary[]>());
-  const workspaceMemberSearchInFlightRef = useRef(new Map<string, Promise<MemberSummary[]>>());
+  const workspaceMemberSearch = useWorkspaceMemberSearchLoader<MemberSummary>(async (keyword) => {
+    const params = new URLSearchParams();
+    if (keyword) {
+      params.set("keyword", keyword);
+    }
+    const query = params.toString();
+    const response = await apiGet<MemberSummary[]>(`/api/v1/members${query ? `?${query}` : ""}`);
+    return response.data;
+  });
+  const membershipWorkspace = useMembershipWorkspaceState(selectedMemberId);
+  const {
+    purchaseForm,
+    setPurchaseForm,
+    memberPurchaseSubmitting,
+    setMemberPurchaseSubmitting,
+    memberPurchaseMessage,
+    setMemberPurchaseMessage,
+    memberPurchaseError,
+    setMemberPurchaseError,
+    membershipActionDrafts,
+    setMembershipActionDrafts,
+    membershipActionSubmittingId,
+    setMembershipActionSubmittingId,
+    membershipActionMessageById,
+    setMembershipActionMessageById,
+    membershipActionErrorById,
+    setMembershipActionErrorById,
+    membershipRefundPreviewById,
+    setMembershipRefundPreviewById,
+    membershipRefundPreviewLoadingId,
+    setMembershipRefundPreviewLoadingId
+  } = membershipWorkspace;
+  const reservationWorkspace = useReservationWorkspaceState(selectedMemberId);
+  const {
+    reservationSchedules,
+    setReservationSchedules,
+    reservationSchedulesLoading,
+    setReservationSchedulesLoading,
+    reservationRowsByMemberId,
+    setReservationRowsByMemberId,
+    reservationLoading,
+    setReservationLoading,
+    reservationCreateForm,
+    setReservationCreateForm,
+    reservationCreateSubmitting,
+    setReservationCreateSubmitting,
+    reservationActionSubmittingId,
+    setReservationActionSubmittingId,
+    reservationPanelMessage,
+    setReservationPanelMessage,
+    reservationPanelError,
+    setReservationPanelError
+  } = reservationWorkspace;
+  const accessWorkspace = useAccessWorkspaceState();
+  const {
+    accessMemberQuery,
+    setAccessMemberQuery,
+    accessSelectedMemberId,
+    setAccessSelectedMemberId,
+    accessEvents,
+    setAccessEvents,
+    accessPresence,
+    setAccessPresence,
+    accessEventsLoading,
+    setAccessEventsLoading,
+    accessPresenceLoading,
+    setAccessPresenceLoading,
+    accessActionSubmitting,
+    setAccessActionSubmitting,
+    accessPanelMessage,
+    setAccessPanelMessage,
+    accessPanelError,
+    setAccessPanelError
+  } = accessWorkspace;
+  const lockerWorkspace = useLockerWorkspaceState();
+  const {
+    lockerFilters,
+    setLockerFilters,
+    lockerSlots,
+    setLockerSlots,
+    lockerSlotsLoading,
+    setLockerSlotsLoading,
+    lockerAssignments,
+    setLockerAssignments,
+    lockerAssignmentsLoading,
+    setLockerAssignmentsLoading,
+    lockerAssignForm,
+    setLockerAssignForm,
+    lockerAssignSubmitting,
+    setLockerAssignSubmitting,
+    lockerReturnSubmittingId,
+    setLockerReturnSubmittingId,
+    lockerPanelMessage,
+    setLockerPanelMessage,
+    lockerPanelError,
+    setLockerPanelError
+  } = lockerWorkspace;
+  const settlementWorkspace = useSettlementWorkspaceState();
+  const {
+    settlementFilters,
+    setSettlementFilters,
+    settlementReport,
+    setSettlementReport,
+    settlementReportLoading,
+    setSettlementReportLoading,
+    settlementPanelMessage,
+    setSettlementPanelMessage,
+    settlementPanelError,
+    setSettlementPanelError
+  } = settlementWorkspace;
+  const crmWorkspace = useCrmWorkspaceState();
+  const {
+    crmFilters,
+    setCrmFilters,
+    crmHistoryRows,
+    setCrmHistoryRows,
+    crmHistoryLoading,
+    setCrmHistoryLoading,
+    crmTriggerDaysAhead,
+    setCrmTriggerDaysAhead,
+    crmTriggerSubmitting,
+    setCrmTriggerSubmitting,
+    crmProcessSubmitting,
+    setCrmProcessSubmitting,
+    crmPanelMessage,
+    setCrmPanelMessage,
+    crmPanelError,
+    setCrmPanelError
+  } = crmWorkspace;
+  const productWorkspace = useProductWorkspaceState();
+  const {
+    productFilters,
+    setProductFilters,
+    products,
+    setProducts,
+    productsLoading,
+    setProductsLoading,
+    selectedProductId,
+    setSelectedProductId,
+    selectedProduct,
+    setSelectedProduct,
+    productForm,
+    setProductForm,
+    productFormMode,
+    setProductFormMode,
+    productFormOpen,
+    setProductFormOpen,
+    productFormSubmitting,
+    setProductFormSubmitting,
+    productPanelMessage,
+    setProductPanelMessage,
+    productPanelError,
+    setProductPanelError,
+    productFormMessage,
+    setProductFormMessage,
+    productFormError,
+    setProductFormError
+  } = productWorkspace;
 
   const routePreview = useMemo(() => routes.slice(0, 4), []);
   const isPrototypeMode = securityMode === "prototype";
@@ -912,6 +720,7 @@ export default function App() {
   );
 
   function clearProtectedUiState() {
+    workspaceMemberSearch.invalidate();
     setMembers([]);
     setSelectedMemberId(null);
     setSelectedMember(null);
@@ -924,54 +733,16 @@ export default function App() {
     setMemberFormError(null);
     setMemberSearchName("");
     setMemberSearchPhone("");
-    setPurchaseForm({ ...EMPTY_PURCHASE_FORM, startDate: new Date().toISOString().slice(0, 10) });
+    membershipWorkspace.resetMembershipWorkspace();
     setPurchaseProductDetail(null);
-    setMemberPurchaseError(null);
-    setMemberPurchaseMessage(null);
     setMemberMembershipsByMemberId({});
     setMemberPaymentsByMemberId({});
-    setMembershipActionDrafts({});
-    setMembershipActionMessageById({});
-    setMembershipActionErrorById({});
-    setMembershipRefundPreviewById({});
-    setReservationSchedules([]);
-    setReservationRowsByMemberId({});
-    setReservationCreateForm({ ...EMPTY_RESERVATION_CREATE_FORM });
-    setReservationPanelMessage(null);
-    setReservationPanelError(null);
-    setAccessMemberQuery("");
-    setAccessSelectedMemberId(null);
-    setAccessEvents([]);
-    setAccessPresence(null);
-    setAccessPanelMessage(null);
-    setAccessPanelError(null);
-    setLockerFilters({ lockerStatus: "", lockerZone: "" });
-    setLockerSlots([]);
-    setLockerAssignments([]);
-    setLockerAssignForm({ ...EMPTY_LOCKER_ASSIGN_FORM, startDate: new Date().toISOString().slice(0, 10), endDate: new Date().toISOString().slice(0, 10) });
-    setLockerPanelMessage(null);
-    setLockerPanelError(null);
-    setSettlementFilters(createInitialSettlementFilters());
-    setSettlementReport(null);
-    setSettlementPanelMessage(null);
-    setSettlementPanelError(null);
-    setCrmFilters(createInitialCrmFilters());
-    setCrmHistoryRows([]);
-    setCrmTriggerDaysAhead("3");
-    setCrmPanelMessage(null);
-    setCrmPanelError(null);
-
-    setProducts([]);
-    setSelectedProductId(null);
-    setSelectedProduct(null);
-    setProductForm({ ...EMPTY_PRODUCT_FORM });
-    setProductFormMode("create");
-    setProductFormOpen(false);
-    setProductPanelMessage(null);
-    setProductPanelError(null);
-    setProductFormMessage(null);
-    setProductFormError(null);
-    setProductFilters({ category: "", status: "" });
+    reservationWorkspace.resetReservationWorkspace();
+    accessWorkspace.resetAccessWorkspace();
+    lockerWorkspace.resetLockerWorkspace();
+    settlementWorkspace.resetSettlementWorkspace();
+    crmWorkspace.resetCrmWorkspace();
+    productWorkspace.resetProductWorkspace();
   }
 
   async function loadMembers(filters?: { name?: string; phone?: string }) {
@@ -998,35 +769,11 @@ export default function App() {
   }
 
   async function loadWorkspaceMembers(keyword?: string) {
-    const normalizedKeyword = keyword?.trim().toLowerCase() ?? "";
-    const cachedRows = workspaceMemberSearchCacheRef.current.get(normalizedKeyword);
-    if (cachedRows) {
-      return cachedRows;
-    }
+    return workspaceMemberSearch.load(keyword);
+  }
 
-    const inFlight = workspaceMemberSearchInFlightRef.current.get(normalizedKeyword);
-    if (inFlight) {
-      return inFlight;
-    }
-
-    const request = (async () => {
-      const params = new URLSearchParams();
-      if (normalizedKeyword) {
-        params.set("keyword", normalizedKeyword);
-      }
-      const query = params.toString();
-      const response = await apiGet<MemberSummary[]>(`/api/v1/members${query ? `?${query}` : ""}`);
-      workspaceMemberSearchCacheRef.current.set(normalizedKeyword, response.data);
-      return response.data;
-    })();
-
-    workspaceMemberSearchInFlightRef.current.set(normalizedKeyword, request);
-
-    try {
-      return await request;
-    } finally {
-      workspaceMemberSearchInFlightRef.current.delete(normalizedKeyword);
-    }
+  function invalidateWorkspaceMemberSearchCache() {
+    workspaceMemberSearch.invalidate();
   }
 
   async function loadMemberDetail(memberId: number, options?: { syncForm?: boolean }): Promise<boolean> {
@@ -1034,13 +781,6 @@ export default function App() {
     memberDetailRequestIdRef.current = requestId;
     setSelectedMemberId(memberId);
     setMemberPanelError(null);
-    setMemberPurchaseError(null);
-    setMemberPurchaseMessage(null);
-    setReservationPanelError(null);
-    setReservationPanelMessage(null);
-    setReservationActionSubmittingId(null);
-    setReservationCreateForm({ ...EMPTY_RESERVATION_CREATE_FORM });
-    setPurchaseForm({ ...EMPTY_PURCHASE_FORM, startDate: new Date().toISOString().slice(0, 10) });
     setPurchaseProductDetail(null);
     try {
       const response = await apiGet<MemberDetail>(`/api/v1/members/${memberId}`);
@@ -1540,6 +1280,7 @@ export default function App() {
         const response = await apiPost<MemberDetail>("/api/v1/members", buildMemberPayload(memberForm));
         setMemberFormMessage(response.message);
         setMemberPanelMessage(response.message);
+        invalidateWorkspaceMemberSearchCache();
         await loadMembers();
         await loadMemberDetail(response.data.memberId);
         setMemberFormOpen(false);
@@ -1550,6 +1291,7 @@ export default function App() {
         );
         setMemberFormMessage(response.message);
         setMemberPanelMessage(response.message);
+        invalidateWorkspaceMemberSearchCache();
         await loadMembers();
         setSelectedMember(response.data);
         setMemberForm(memberFormFromDetail(response.data));
@@ -1677,7 +1419,7 @@ export default function App() {
         ...prev,
         [response.data.membership.membershipId]: createDefaultMembershipActionDraft()
       }));
-      setPurchaseForm({ ...EMPTY_PURCHASE_FORM, startDate: new Date().toISOString().slice(0, 10) });
+      setPurchaseForm(createEmptyPurchaseForm());
       setPurchaseProductDetail(null);
     } catch (error) {
       setMemberPurchaseError(errorMessage(error));
@@ -2051,11 +1793,7 @@ export default function App() {
         memo: normalizeOptionalText(lockerAssignForm.memo)
       });
       setLockerPanelMessage(response.message);
-      setLockerAssignForm({
-        ...EMPTY_LOCKER_ASSIGN_FORM,
-        startDate: new Date().toISOString().slice(0, 10),
-        endDate: new Date().toISOString().slice(0, 10)
-      });
+      setLockerAssignForm(createEmptyLockerAssignForm());
       await Promise.all([loadLockerSlots(), loadLockerAssignments(false)]);
     } catch (error) {
       setLockerPanelError(errorMessage(error));
