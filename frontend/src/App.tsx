@@ -338,6 +338,10 @@ function errorMessage(error: unknown): string {
   return "알 수 없는 오류가 발생했습니다.";
 }
 
+function canCommitState(shouldCommit?: () => boolean) {
+  return shouldCommit?.() ?? true;
+}
+
 function buildMemberPayload(form: MemberFormState) {
   return {
     memberName: form.memberName.trim(),
@@ -863,23 +867,31 @@ export default function App() {
     }
   }
 
-  async function loadReservationsForMember(memberId: number) {
+  async function loadReservationsForMember(memberId: number, shouldCommit?: () => boolean) {
     setReservationLoading(true);
     setReservationPanelError(null);
     try {
       const response = await apiGet<ReservationRecord[]>(`/api/v1/reservations?memberId=${memberId}`);
+      if (!canCommitState(shouldCommit)) {
+        return;
+      }
       setReservationRowsByMemberId((prev) => ({
         ...prev,
         [memberId]: response.data
       }));
     } catch (error) {
+      if (!canCommitState(shouldCommit)) {
+        return;
+      }
       setReservationPanelError(errorMessage(error));
     } finally {
-      setReservationLoading(false);
+      if (canCommitState(shouldCommit)) {
+        setReservationLoading(false);
+      }
     }
   }
 
-  async function loadAccessEvents(memberId?: number | null) {
+  async function loadAccessEvents(memberId?: number | null, shouldCommit?: () => boolean) {
     setAccessEventsLoading(true);
     try {
       const params = new URLSearchParams();
@@ -888,28 +900,38 @@ export default function App() {
         params.set("memberId", String(memberId));
       }
       const response = await apiGet<AccessEventRecord[]>(`/api/v1/access/events?${params.toString()}`);
+      if (!canCommitState(shouldCommit)) {
+        return;
+      }
       setAccessEvents(response.data);
     } finally {
-      setAccessEventsLoading(false);
+      if (canCommitState(shouldCommit)) {
+        setAccessEventsLoading(false);
+      }
     }
   }
 
-  async function loadAccessPresence() {
+  async function loadAccessPresence(shouldCommit?: () => boolean) {
     setAccessPresenceLoading(true);
     try {
       const response = await apiGet<AccessPresenceSummary>("/api/v1/access/presence");
+      if (!canCommitState(shouldCommit)) {
+        return;
+      }
       setAccessPresence(response.data);
     } finally {
-      setAccessPresenceLoading(false);
+      if (canCommitState(shouldCommit)) {
+        setAccessPresenceLoading(false);
+      }
     }
   }
 
-  async function reloadAccessData(memberId?: number | null) {
+  async function reloadAccessData(memberId?: number | null, shouldCommit?: () => boolean) {
     setAccessPanelError(null);
-    await Promise.all([loadAccessPresence(), loadAccessEvents(memberId)]);
+    await Promise.all([loadAccessPresence(shouldCommit), loadAccessEvents(memberId, shouldCommit)]);
   }
 
-  async function loadLockerSlots(filters?: LockerFilters) {
+  async function loadLockerSlots(filters?: LockerFilters, shouldCommit?: () => boolean) {
     setLockerSlotsLoading(true);
     setLockerPanelError(null);
     try {
@@ -923,28 +945,44 @@ export default function App() {
       }
       const query = params.toString();
       const response = await apiGet<LockerSlot[]>(`/api/v1/lockers/slots${query ? `?${query}` : ""}`);
+      if (!canCommitState(shouldCommit)) {
+        return;
+      }
       setLockerSlots(response.data);
     } catch (error) {
+      if (!canCommitState(shouldCommit)) {
+        return;
+      }
       setLockerPanelError(errorMessage(error));
     } finally {
-      setLockerSlotsLoading(false);
+      if (canCommitState(shouldCommit)) {
+        setLockerSlotsLoading(false);
+      }
     }
   }
 
-  async function loadLockerAssignments(activeOnly = false) {
+  async function loadLockerAssignments(activeOnly = false, shouldCommit?: () => boolean) {
     setLockerAssignmentsLoading(true);
     setLockerPanelError(null);
     try {
       const response = await apiGet<LockerAssignment[]>(`/api/v1/lockers/assignments?activeOnly=${activeOnly}`);
+      if (!canCommitState(shouldCommit)) {
+        return;
+      }
       setLockerAssignments(response.data);
     } catch (error) {
+      if (!canCommitState(shouldCommit)) {
+        return;
+      }
       setLockerPanelError(errorMessage(error));
     } finally {
-      setLockerAssignmentsLoading(false);
+      if (canCommitState(shouldCommit)) {
+        setLockerAssignmentsLoading(false);
+      }
     }
   }
 
-  async function loadSettlementReport(filters?: SettlementReportFilters) {
+  async function loadSettlementReport(filters?: SettlementReportFilters, shouldCommit?: () => boolean) {
     setSettlementReportLoading(true);
     setSettlementPanelError(null);
     setSettlementPanelMessage(null);
@@ -960,16 +998,24 @@ export default function App() {
         params.set("productKeyword", effectiveFilters.productKeyword.trim());
       }
       const response = await apiGet<SalesSettlementReport>(`/api/v1/settlements/sales-report?${params.toString()}`);
+      if (!canCommitState(shouldCommit)) {
+        return;
+      }
       setSettlementReport(response.data);
       setSettlementPanelMessage(response.message);
     } catch (error) {
+      if (!canCommitState(shouldCommit)) {
+        return;
+      }
       setSettlementPanelError(errorMessage(error));
     } finally {
-      setSettlementReportLoading(false);
+      if (canCommitState(shouldCommit)) {
+        setSettlementReportLoading(false);
+      }
     }
   }
 
-  async function loadCrmHistory(filters?: CrmFilters) {
+  async function loadCrmHistory(filters?: CrmFilters, shouldCommit?: () => boolean) {
     setCrmHistoryLoading(true);
     setCrmPanelError(null);
     try {
@@ -981,11 +1027,19 @@ export default function App() {
         params.set("sendStatus", effectiveFilters.sendStatus);
       }
       const response = await apiGet<CrmMessageHistoryResponse>(`/api/v1/crm/messages?${params.toString()}`);
+      if (!canCommitState(shouldCommit)) {
+        return;
+      }
       setCrmHistoryRows(response.data.rows);
     } catch (error) {
+      if (!canCommitState(shouldCommit)) {
+        return;
+      }
       setCrmPanelError(errorMessage(error));
     } finally {
-      setCrmHistoryLoading(false);
+      if (canCommitState(shouldCommit)) {
+        setCrmHistoryLoading(false);
+      }
     }
   }
 
@@ -1147,20 +1201,20 @@ export default function App() {
   useLockerWorkspaceLoader({
     enabled: isAuthenticated && activeNavSection === "lockers",
     ensureMembersLoaded,
-    loadLockerSlots: () => loadLockerSlots(),
+    loadLockerSlots: (shouldCommit) => loadLockerSlots(undefined, shouldCommit),
     loadLockerAssignments,
     onError: (error) => setLockerPanelError(errorMessage(error))
   });
 
   useSettlementWorkspaceLoader({
     enabled: isAuthenticated && activeNavSection === "settlements",
-    load: () => loadSettlementReport(),
+    load: (shouldCommit) => loadSettlementReport(undefined, shouldCommit),
     onError: (error) => setSettlementPanelError(errorMessage(error))
   });
 
   useCrmWorkspaceLoader({
     enabled: isAuthenticated && activeNavSection === "crm",
-    load: () => loadCrmHistory(),
+    load: (shouldCommit) => loadCrmHistory(undefined, shouldCommit),
     onError: (error) => setCrmPanelError(errorMessage(error))
   });
 

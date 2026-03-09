@@ -1,11 +1,12 @@
 import { useEffect, useRef } from "react";
 
 type ErrorHandler = (error: unknown) => void;
+type CommitGuard = () => boolean;
 
 type ReservationsLoaderOptions = {
   enabled: boolean;
   selectedMemberId: number | null;
-  loadReservationsForMember: (memberId: number) => Promise<void>;
+  loadReservationsForMember: (memberId: number, shouldCommit?: CommitGuard) => Promise<void>;
   onError: ErrorHandler;
 };
 
@@ -13,21 +14,21 @@ type AccessLoaderOptions = {
   enabled: boolean;
   selectedMemberId: number | null;
   ensureMembersLoaded: () => Promise<void>;
-  reloadAccessData: (memberId?: number | null) => Promise<void>;
+  reloadAccessData: (memberId?: number | null, shouldCommit?: CommitGuard) => Promise<void>;
   onError: ErrorHandler;
 };
 
 type LockerLoaderOptions = {
   enabled: boolean;
   ensureMembersLoaded: () => Promise<void>;
-  loadLockerSlots: () => Promise<void>;
-  loadLockerAssignments: (activeOnly?: boolean) => Promise<void>;
+  loadLockerSlots: (shouldCommit?: CommitGuard) => Promise<void>;
+  loadLockerAssignments: (activeOnly?: boolean, shouldCommit?: CommitGuard) => Promise<void>;
   onError: ErrorHandler;
 };
 
 type SimpleLoaderOptions = {
   enabled: boolean;
-  load: () => Promise<void>;
+  load: (shouldCommit?: CommitGuard) => Promise<void>;
   onError: ErrorHandler;
 };
 
@@ -52,8 +53,9 @@ export function useReservationsWorkspaceLoader({
     }
 
     let cancelled = false;
+    const shouldCommit = () => !cancelled;
 
-    void loadReservationsForMemberRef.current(selectedMemberId).catch((error) => {
+    void loadReservationsForMemberRef.current(selectedMemberId, shouldCommit).catch((error) => {
       if (cancelled) {
         return;
       }
@@ -83,13 +85,14 @@ export function useAccessWorkspaceLoader({
     }
 
     let cancelled = false;
+    const shouldCommit = () => !cancelled;
 
     void (async () => {
       await ensureMembersLoadedRef.current();
       if (cancelled) {
         return;
       }
-      await reloadAccessDataRef.current(selectedMemberId);
+      await reloadAccessDataRef.current(selectedMemberId, shouldCommit);
     })().catch((error) => {
       if (cancelled) {
         return;
@@ -121,13 +124,14 @@ export function useLockerWorkspaceLoader({
     }
 
     let cancelled = false;
+    const shouldCommit = () => !cancelled;
 
     void (async () => {
       await ensureMembersLoadedRef.current();
       if (cancelled) {
         return;
       }
-      await Promise.all([loadLockerSlotsRef.current(), loadLockerAssignmentsRef.current(false)]);
+      await Promise.all([loadLockerSlotsRef.current(shouldCommit), loadLockerAssignmentsRef.current(false, shouldCommit)]);
     })().catch((error) => {
       if (cancelled) {
         return;
@@ -151,8 +155,9 @@ export function useSettlementWorkspaceLoader({ enabled, load, onError }: SimpleL
     }
 
     let cancelled = false;
+    const shouldCommit = () => !cancelled;
 
-    void loadRef.current().catch((error) => {
+    void loadRef.current(shouldCommit).catch((error) => {
       if (cancelled) {
         return;
       }
@@ -175,8 +180,9 @@ export function useCrmWorkspaceLoader({ enabled, load, onError }: SimpleLoaderOp
     }
 
     let cancelled = false;
+    const shouldCommit = () => !cancelled;
 
-    void loadRef.current().catch((error) => {
+    void loadRef.current(shouldCommit).catch((error) => {
       if (cancelled) {
         return;
       }
