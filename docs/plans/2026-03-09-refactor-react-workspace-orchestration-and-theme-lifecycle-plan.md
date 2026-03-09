@@ -1,7 +1,7 @@
 ---
 title: "refactor: React workspace orchestration and theme lifecycle"
 type: refactor
-status: active
+status: completed
 date: 2026-03-09
 ---
 
@@ -454,32 +454,32 @@ const {
 
 ### Functional
 
-- [ ] `/Users/abc/projects/GymCRM_V2/frontend/src/App.tsx`에서 access/locker/settlement/CRM/reservations 초기화 effect가 workspace loader hook으로 이동한다.
-- [ ] `WorkspaceMemberPicker`는 async query lifecycle을 직접 소유하지 않고, 별도 query hook을 사용한다.
-- [ ] theme preference/resolved theme/browser side-effects가 전용 hook으로 이동한다.
-- [ ] 긴 리스트 surface에 opt-in rendering guard가 적용된다.
-- [ ] shared preload ownership(`members`, `products`, auth context`)이 app-shared boundary로 문서화되고, workspace loader hook은 그 경계를 소비만 한다.
-- [ ] theme refactor가 기존 no-flicker / first-paint contract를 유지한다.
+- [x] `/Users/abc/projects/GymCRM_V2/frontend/src/App.tsx`에서 access/locker/settlement/CRM/reservations 초기화 effect가 workspace loader hook으로 이동한다.
+- [x] `WorkspaceMemberPicker`는 async query lifecycle을 직접 소유하지 않고, 별도 query hook을 사용한다.
+- [x] theme preference/resolved theme/browser side-effects가 전용 hook으로 이동한다.
+- [x] 긴 리스트 surface에 opt-in rendering guard가 적용된다.
+- [x] shared preload ownership(`members`, `products`, auth context`)이 app-shared boundary로 문서화되고, workspace loader hook은 그 경계를 소비만 한다.
+- [x] theme refactor가 기존 no-flicker / first-paint contract를 유지한다.
 
 ### Non-Functional
 
-- [ ] 기존 workspace direct-entry/member switch/reset 동작에 회귀가 없다.
-- [ ] `App.tsx`의 effect/브라우저 API 직접 사용 수가 눈에 띄게 줄어든다.
-- [ ] workspace query/search behavior는 기존 `debounce + cache + in-flight dedupe` 계약을 유지한다.
-- [ ] render guard 적용으로 레이아웃 깨짐이나 눈에 띄는 점프가 없다.
-- [ ] shared preload 사용 workspace 간 중복 preload 호출이 새로 생기지 않는다.
-- [ ] persisted theme reload 시 초기 잘못된 테마 페인트가 발생하지 않는다.
+- [x] 기존 workspace direct-entry/member switch/reset 동작에 회귀가 없다.
+- [x] `App.tsx`의 effect/브라우저 API 직접 사용 수가 눈에 띄게 줄어든다.
+- [x] workspace query/search behavior는 기존 `debounce + cache + in-flight dedupe` 계약을 유지한다.
+- [x] render guard 적용으로 레이아웃 깨짐이나 눈에 띄는 점프가 없다.
+- [x] shared preload 사용 workspace 간 중복 preload 호출이 새로 생기지 않는다.
+- [x] persisted theme reload 시 초기 잘못된 테마 페인트가 발생하지 않는다.
 
 ### Quality Gates
 
-- [ ] `cd /Users/abc/projects/GymCRM_V2/frontend && npm test` 통과
-- [ ] `cd /Users/abc/projects/GymCRM_V2/frontend && npm run build` 통과
-- [ ] `agent-browser` 또는 수동 브라우저 스모크로 memberships, reservations, access, theme toggle, long-list surface 확인
-- [ ] 변경된 hook 경계에 맞는 최소 테스트 추가
-- [ ] theme hook에 대해 `matchMedia`/`localStorage` 예외 또는 변경 이벤트를 다루는 테스트 추가
-- [ ] picker query hook 또는 workspace loader hook 중 최소 1개 이상에서 stale-response 보호 테스트 추가
-- [ ] persisted theme reload/first-paint 회귀를 확인하는 수동 또는 자동 검증 추가
-- [ ] shared preload helper 또는 preload boundary에 대해 중복 호출 방지 검증 추가
+- [x] `cd /Users/abc/projects/GymCRM_V2/frontend && npm test` 통과
+- [x] `cd /Users/abc/projects/GymCRM_V2/frontend && npm run build` 통과
+- [x] `agent-browser` 또는 수동 브라우저 스모크로 memberships, reservations, access, theme toggle, long-list surface 확인
+- [x] 변경된 hook 경계에 맞는 최소 테스트 추가
+- [x] theme hook에 대해 `matchMedia`/`localStorage` 예외 또는 변경 이벤트를 다루는 테스트 추가
+- [x] picker query hook 또는 workspace loader hook 중 최소 1개 이상에서 stale-response 보호 테스트 추가
+- [x] persisted theme reload/first-paint 회귀를 확인하는 수동 또는 자동 검증 추가
+- [x] shared preload helper 또는 preload boundary에 대해 중복 호출 방지 검증 추가
 
 ## Success Metrics
 

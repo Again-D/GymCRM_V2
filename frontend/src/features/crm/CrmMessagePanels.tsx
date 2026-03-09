@@ -151,7 +151,7 @@ export function CrmMessagePanels({
           </div>
         </form>
 
-        <div className="list-shell">
+        <div className="list-shell deferred-list-surface">
           <table>
             <thead>
               <tr>

@@ -73,7 +73,15 @@ import {
   useSettlementWorkspaceState
 } from "./features/settlements/useSettlementWorkspaceState";
 import { ApiClientError, apiGet, apiPatch, apiPost, configureApiAuth } from "./shared/api/client";
+import {
+  useAccessWorkspaceLoader,
+  useCrmWorkspaceLoader,
+  useLockerWorkspaceLoader,
+  useReservationsWorkspaceLoader,
+  useSettlementWorkspaceLoader
+} from "./shared/hooks/useWorkspaceLoaders";
 import { useWorkspaceMemberSearchLoader } from "./shared/hooks/useWorkspaceMemberSearchLoader";
+import { detectSystemTheme, useThemePreference } from "./shared/hooks/useThemePreference";
 import { formatCurrency, formatDate, formatDateTime } from "./shared/utils/format";
 
 type NavSectionKey =
@@ -87,8 +95,6 @@ type NavSectionKey =
   | "settlements"
   | "products";
 type SecurityMode = "unknown" | "prototype" | "jwt";
-type ThemePreference = "system" | "light" | "dark";
-type ResolvedTheme = "light" | "dark";
 
 type HealthPayload = {
   status: string;
@@ -289,37 +295,6 @@ function parseRequiredNumber(value: string): number {
   return Number.parseFloat(value.trim());
 }
 
-const THEME_PREFERENCE_STORAGE_KEY = "gymcrm.themePreference";
-
-function normalizeThemePreference(value: string | null): ThemePreference {
-  if (value === "light" || value === "dark" || value === "system") {
-    return value;
-  }
-  return "system";
-}
-
-function detectSystemTheme(): ResolvedTheme {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
-    return "light";
-  }
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-}
-
-function readThemePreference(): ThemePreference {
-  if (typeof window === "undefined") {
-    return "system";
-  }
-  try {
-    return normalizeThemePreference(window.localStorage.getItem(THEME_PREFERENCE_STORAGE_KEY));
-  } catch {
-    return "system";
-  }
-}
-
-function resolveTheme(preference: ThemePreference): ResolvedTheme {
-  return preference === "system" ? detectSystemTheme() : preference;
-}
-
 function memberFormFromDetail(member: MemberDetail): MemberFormState {
   return {
     memberName: member.memberName,
@@ -515,8 +490,7 @@ function buildResumePreview(membership: PurchasedMembership, draft: MembershipAc
 
 export default function App() {
   const [activeNavSection, setActiveNavSection] = useState<NavSectionKey>("dashboard");
-  const [themePreference, setThemePreference] = useState<ThemePreference>(() => readThemePreference());
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => resolveTheme(readThemePreference()));
+  const { themePreference, setThemePreference, resolvedTheme } = useThemePreference();
   const [securityMode, setSecurityMode] = useState<SecurityMode>("unknown");
   const [prototypeNoAuth, setPrototypeNoAuth] = useState(false);
   const [authBootstrapping, setAuthBootstrapping] = useState(true);
@@ -542,6 +516,7 @@ export default function App() {
   const [memberPanelError, setMemberPanelError] = useState<string | null>(null);
   const [memberFormMessage, setMemberFormMessage] = useState<string | null>(null);
   const [memberFormError, setMemberFormError] = useState<string | null>(null);
+  const membersPreloadPromiseRef = useRef<Promise<void> | null>(null);
   const [purchaseProductDetail, setPurchaseProductDetail] = useState<ProductDetail | null>(null);
   const [purchaseProductLoading, setPurchaseProductLoading] = useState(false);
   const [memberMembershipsByMemberId, setMemberMembershipsByMemberId] = useState<Record<number, PurchasedMembership[]>>({});
@@ -765,6 +740,27 @@ export default function App() {
       setMemberPanelError(errorMessage(error));
     } finally {
       setMembersLoading(false);
+    }
+  }
+
+  async function ensureMembersLoaded() {
+    if (members.length > 0) {
+      return;
+    }
+
+    const inFlight = membersPreloadPromiseRef.current;
+    if (inFlight) {
+      await inFlight;
+      return;
+    }
+
+    const request = loadMembers();
+    membersPreloadPromiseRef.current = request;
+
+    try {
+      await request;
+    } finally {
+      membersPreloadPromiseRef.current = null;
     }
   }
 
@@ -1125,13 +1121,6 @@ export default function App() {
   }, [isAuthenticated]);
 
   useEffect(() => {
-    if (!isAuthenticated || !selectedMember || activeNavSection !== "reservations") {
-      return;
-    }
-    void loadReservationsForMember(selectedMember.memberId);
-  }, [isAuthenticated, activeNavSection, selectedMember]);
-
-  useEffect(() => {
     if (activeNavSection !== "members") {
       setMemberFormOpen(false);
     }
@@ -1140,101 +1129,40 @@ export default function App() {
     }
   }, [activeNavSection]);
 
-  useEffect(() => {
-    if (!isAuthenticated || activeNavSection !== "access") {
-      return;
-    }
+  useReservationsWorkspaceLoader({
+    enabled: isAuthenticated && activeNavSection === "reservations",
+    selectedMemberId: selectedMember?.memberId ?? null,
+    loadReservationsForMember,
+    onError: (error) => setReservationPanelError(errorMessage(error))
+  });
 
-    async function initializeAccessWorkspace() {
-      if (members.length === 0) {
-        await loadMembers();
-      }
-      await reloadAccessData(accessSelectedMemberId);
-    }
+  useAccessWorkspaceLoader({
+    enabled: isAuthenticated && activeNavSection === "access",
+    selectedMemberId: accessSelectedMemberId,
+    ensureMembersLoaded,
+    reloadAccessData,
+    onError: (error) => setAccessPanelError(errorMessage(error))
+  });
 
-    void initializeAccessWorkspace().catch((error) => {
-      setAccessPanelError(errorMessage(error));
-    });
-  }, [isAuthenticated, activeNavSection, accessSelectedMemberId]);
+  useLockerWorkspaceLoader({
+    enabled: isAuthenticated && activeNavSection === "lockers",
+    ensureMembersLoaded,
+    loadLockerSlots: () => loadLockerSlots(),
+    loadLockerAssignments,
+    onError: (error) => setLockerPanelError(errorMessage(error))
+  });
 
-  useEffect(() => {
-    if (!isAuthenticated || activeNavSection !== "lockers") {
-      return;
-    }
+  useSettlementWorkspaceLoader({
+    enabled: isAuthenticated && activeNavSection === "settlements",
+    load: () => loadSettlementReport(),
+    onError: (error) => setSettlementPanelError(errorMessage(error))
+  });
 
-    async function initializeLockerWorkspace() {
-      if (members.length === 0) {
-        await loadMembers();
-      }
-      await Promise.all([loadLockerSlots(), loadLockerAssignments(false)]);
-    }
-
-    void initializeLockerWorkspace().catch((error) => {
-      setLockerPanelError(errorMessage(error));
-    });
-  }, [isAuthenticated, activeNavSection]);
-
-  useEffect(() => {
-    if (!isAuthenticated || activeNavSection !== "settlements") {
-      return;
-    }
-    void loadSettlementReport().catch((error) => {
-      setSettlementPanelError(errorMessage(error));
-    });
-  }, [isAuthenticated, activeNavSection]);
-
-  useEffect(() => {
-    if (!isAuthenticated || activeNavSection !== "crm") {
-      return;
-    }
-    void loadCrmHistory().catch((error) => {
-      setCrmPanelError(errorMessage(error));
-    });
-  }, [isAuthenticated, activeNavSection]);
-
-  useEffect(() => {
-    setResolvedTheme(resolveTheme(themePreference));
-  }, [themePreference]);
-
-  useEffect(() => {
-    if (typeof document === "undefined") {
-      return;
-    }
-    document.documentElement.dataset.theme = resolvedTheme;
-  }, [resolvedTheme]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    try {
-      if (themePreference === "system") {
-        window.localStorage.removeItem(THEME_PREFERENCE_STORAGE_KEY);
-      } else {
-        window.localStorage.setItem(THEME_PREFERENCE_STORAGE_KEY, themePreference);
-      }
-    } catch {
-      // Ignore storage access failures and continue with in-memory theme.
-    }
-  }, [themePreference]);
-
-  useEffect(() => {
-    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
-      return;
-    }
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const handleChange = () => {
-      if (themePreference === "system") {
-        setResolvedTheme(mediaQuery.matches ? "dark" : "light");
-      }
-    };
-    if (typeof mediaQuery.addEventListener === "function") {
-      mediaQuery.addEventListener("change", handleChange);
-      return () => mediaQuery.removeEventListener("change", handleChange);
-    }
-    mediaQuery.addListener(handleChange);
-    return () => mediaQuery.removeListener(handleChange);
-  }, [themePreference]);
+  useCrmWorkspaceLoader({
+    enabled: isAuthenticated && activeNavSection === "crm",
+    load: () => loadCrmHistory(),
+    onError: (error) => setCrmPanelError(errorMessage(error))
+  });
 
   async function handleLoginSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

@@ -136,7 +136,7 @@ export function AccessManagementPanels({
           />
         </label>
 
-        <div className="list-shell" style={{ marginTop: 10 }}>
+        <div className="list-shell deferred-list-surface" style={{ marginTop: 10 }}>
           <table>
             <thead>
               <tr>
@@ -203,7 +203,7 @@ export function AccessManagementPanels({
 
       <article className="panel">
         <PanelHeader title="현재 입장중 회원" />
-        <div className="list-shell">
+        <div className="list-shell deferred-list-surface">
           <table>
             <thead>
               <tr>
@@ -237,7 +237,7 @@ export function AccessManagementPanels({
 
       <article className="panel">
         <PanelHeader title="최근 출입 이벤트" />
-        <div className="list-shell">
+        <div className="list-shell deferred-list-surface">
           <table>
             <thead>
               <tr>

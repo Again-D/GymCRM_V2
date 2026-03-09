@@ -169,7 +169,7 @@ export function MemberManagementPanels({
         {memberPanelMessage ? <NoticeText tone="success">{memberPanelMessage}</NoticeText> : null}
         {memberPanelError ? <NoticeText tone="error">{memberPanelError}</NoticeText> : null}
 
-        <div className="list-shell">
+        <div className="list-shell deferred-list-surface">
           <table className="members-table">
             <thead>
               <tr>
