@@ -27,7 +27,7 @@ import {
 import { LockerManagementPanels } from "./features/lockers/LockerManagementPanels";
 import { LockersSection } from "./features/lockers/LockersSection";
 import {
-  EMPTY_LOCKER_ASSIGN_FORM,
+  createEmptyLockerAssignForm,
   type LockerAssignment,
   type LockerAssignFormState,
   type LockerFilters,
@@ -38,8 +38,8 @@ import { MemberManagementPanels } from "./features/members/MemberManagementPanel
 import { MembersSection } from "./features/members/MembersSection";
 import { MembershipOperationsPanels } from "./features/memberships/MembershipOperationsPanels";
 import {
+  createEmptyPurchaseForm,
   createDefaultMembershipActionDraft,
-  EMPTY_PURCHASE_FORM,
   type MembershipActionDraft,
   type PurchaseFormState,
   type RefundCalculationApi,
@@ -1419,7 +1419,7 @@ export default function App() {
         ...prev,
         [response.data.membership.membershipId]: createDefaultMembershipActionDraft()
       }));
-      setPurchaseForm({ ...EMPTY_PURCHASE_FORM, startDate: new Date().toISOString().slice(0, 10) });
+      setPurchaseForm(createEmptyPurchaseForm());
       setPurchaseProductDetail(null);
     } catch (error) {
       setMemberPurchaseError(errorMessage(error));
@@ -1793,11 +1793,7 @@ export default function App() {
         memo: normalizeOptionalText(lockerAssignForm.memo)
       });
       setLockerPanelMessage(response.message);
-      setLockerAssignForm({
-        ...EMPTY_LOCKER_ASSIGN_FORM,
-        startDate: new Date().toISOString().slice(0, 10),
-        endDate: new Date().toISOString().slice(0, 10)
-      });
+      setLockerAssignForm(createEmptyLockerAssignForm());
       await Promise.all([loadLockerSlots(), loadLockerAssignments(false)]);
     } catch (error) {
       setLockerPanelError(errorMessage(error));

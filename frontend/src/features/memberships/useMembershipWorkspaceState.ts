@@ -30,14 +30,16 @@ export type RefundCalculationApi = {
   refundAmount: number;
 };
 
-export const EMPTY_PURCHASE_FORM: PurchaseFormState = {
-  productId: "",
-  startDate: new Date().toISOString().slice(0, 10),
-  paidAmount: "",
-  paymentMethod: "CASH",
-  membershipMemo: "",
-  paymentMemo: ""
-};
+export function createEmptyPurchaseForm(): PurchaseFormState {
+  return {
+    productId: "",
+    startDate: new Date().toISOString().slice(0, 10),
+    paidAmount: "",
+    paymentMethod: "CASH",
+    membershipMemo: "",
+    paymentMemo: ""
+  };
+}
 
 export function createDefaultMembershipActionDraft(): MembershipActionDraft {
   const today = new Date().toISOString().slice(0, 10);
@@ -56,7 +58,7 @@ export function createDefaultMembershipActionDraft(): MembershipActionDraft {
 }
 
 export function useMembershipWorkspaceState(selectedMemberId: number | null) {
-  const [purchaseForm, setPurchaseForm] = useState<PurchaseFormState>(EMPTY_PURCHASE_FORM);
+  const [purchaseForm, setPurchaseForm] = useState<PurchaseFormState>(() => createEmptyPurchaseForm());
   const [memberPurchaseSubmitting, setMemberPurchaseSubmitting] = useState(false);
   const [memberPurchaseMessage, setMemberPurchaseMessage] = useState<string | null>(null);
   const [memberPurchaseError, setMemberPurchaseError] = useState<string | null>(null);
@@ -70,7 +72,7 @@ export function useMembershipWorkspaceState(selectedMemberId: number | null) {
   const [membershipRefundPreviewLoadingId, setMembershipRefundPreviewLoadingId] = useState<number | null>(null);
 
   useEffect(() => {
-    setPurchaseForm({ ...EMPTY_PURCHASE_FORM });
+    setPurchaseForm(createEmptyPurchaseForm());
     setMemberPurchaseSubmitting(false);
     setMemberPurchaseMessage(null);
     setMemberPurchaseError(null);
@@ -83,7 +85,7 @@ export function useMembershipWorkspaceState(selectedMemberId: number | null) {
   }, [selectedMemberId]);
 
   function resetMembershipWorkspace() {
-    setPurchaseForm({ ...EMPTY_PURCHASE_FORM });
+    setPurchaseForm(createEmptyPurchaseForm());
     setMemberPurchaseSubmitting(false);
     setMemberPurchaseMessage(null);
     setMemberPurchaseError(null);

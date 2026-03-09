@@ -42,13 +42,16 @@ export type LockerAssignFormState = {
   memo: string;
 };
 
-export const EMPTY_LOCKER_ASSIGN_FORM: LockerAssignFormState = {
-  lockerSlotId: "",
-  memberId: "",
-  startDate: new Date().toISOString().slice(0, 10),
-  endDate: new Date().toISOString().slice(0, 10),
-  memo: ""
-};
+export function createEmptyLockerAssignForm(): LockerAssignFormState {
+  const today = new Date().toISOString().slice(0, 10);
+  return {
+    lockerSlotId: "",
+    memberId: "",
+    startDate: today,
+    endDate: today,
+    memo: ""
+  };
+}
 
 export function useLockerWorkspaceState() {
   const [lockerFilters, setLockerFilters] = useState<LockerFilters>({ lockerStatus: "", lockerZone: "" });
@@ -56,7 +59,7 @@ export function useLockerWorkspaceState() {
   const [lockerSlotsLoading, setLockerSlotsLoading] = useState(false);
   const [lockerAssignments, setLockerAssignments] = useState<LockerAssignment[]>([]);
   const [lockerAssignmentsLoading, setLockerAssignmentsLoading] = useState(false);
-  const [lockerAssignForm, setLockerAssignForm] = useState<LockerAssignFormState>(EMPTY_LOCKER_ASSIGN_FORM);
+  const [lockerAssignForm, setLockerAssignForm] = useState<LockerAssignFormState>(() => createEmptyLockerAssignForm());
   const [lockerAssignSubmitting, setLockerAssignSubmitting] = useState(false);
   const [lockerReturnSubmittingId, setLockerReturnSubmittingId] = useState<number | null>(null);
   const [lockerPanelMessage, setLockerPanelMessage] = useState<string | null>(null);
@@ -68,7 +71,7 @@ export function useLockerWorkspaceState() {
     setLockerSlotsLoading(false);
     setLockerAssignments([]);
     setLockerAssignmentsLoading(false);
-    setLockerAssignForm({ ...EMPTY_LOCKER_ASSIGN_FORM });
+    setLockerAssignForm(createEmptyLockerAssignForm());
     setLockerAssignSubmitting(false);
     setLockerReturnSubmittingId(null);
     setLockerPanelMessage(null);
