@@ -24,6 +24,7 @@ import { ReservationsSection } from "./features/reservations/ReservationsSection
 import { SettlementReportPanels } from "./features/settlements/SettlementReportPanels";
 import { SettlementsSection } from "./features/settlements/SettlementsSection";
 import { ApiClientError, apiGet, apiPatch, apiPost, configureApiAuth } from "./shared/api/client";
+import { useWorkspaceMemberSearchLoader } from "./shared/hooks/useWorkspaceMemberSearchLoader";
 import { formatCurrency, formatDate, formatDateTime } from "./shared/utils/format";
 
 type NavSectionKey =
@@ -895,8 +896,15 @@ export default function App() {
   const [productFormMessage, setProductFormMessage] = useState<string | null>(null);
   const [productFormError, setProductFormError] = useState<string | null>(null);
   const memberDetailRequestIdRef = useRef(0);
-  const workspaceMemberSearchCacheRef = useRef(new Map<string, MemberSummary[]>());
-  const workspaceMemberSearchInFlightRef = useRef(new Map<string, Promise<MemberSummary[]>>());
+  const workspaceMemberSearch = useWorkspaceMemberSearchLoader<MemberSummary>(async (keyword) => {
+    const params = new URLSearchParams();
+    if (keyword) {
+      params.set("keyword", keyword);
+    }
+    const query = params.toString();
+    const response = await apiGet<MemberSummary[]>(`/api/v1/members${query ? `?${query}` : ""}`);
+    return response.data;
+  });
 
   const routePreview = useMemo(() => routes.slice(0, 4), []);
   const isPrototypeMode = securityMode === "prototype";
@@ -912,6 +920,7 @@ export default function App() {
   );
 
   function clearProtectedUiState() {
+    workspaceMemberSearch.invalidate();
     setMembers([]);
     setSelectedMemberId(null);
     setSelectedMember(null);
@@ -998,35 +1007,11 @@ export default function App() {
   }
 
   async function loadWorkspaceMembers(keyword?: string) {
-    const normalizedKeyword = keyword?.trim().toLowerCase() ?? "";
-    const cachedRows = workspaceMemberSearchCacheRef.current.get(normalizedKeyword);
-    if (cachedRows) {
-      return cachedRows;
-    }
+    return workspaceMemberSearch.load(keyword);
+  }
 
-    const inFlight = workspaceMemberSearchInFlightRef.current.get(normalizedKeyword);
-    if (inFlight) {
-      return inFlight;
-    }
-
-    const request = (async () => {
-      const params = new URLSearchParams();
-      if (normalizedKeyword) {
-        params.set("keyword", normalizedKeyword);
-      }
-      const query = params.toString();
-      const response = await apiGet<MemberSummary[]>(`/api/v1/members${query ? `?${query}` : ""}`);
-      workspaceMemberSearchCacheRef.current.set(normalizedKeyword, response.data);
-      return response.data;
-    })();
-
-    workspaceMemberSearchInFlightRef.current.set(normalizedKeyword, request);
-
-    try {
-      return await request;
-    } finally {
-      workspaceMemberSearchInFlightRef.current.delete(normalizedKeyword);
-    }
+  function invalidateWorkspaceMemberSearchCache() {
+    workspaceMemberSearch.invalidate();
   }
 
   async function loadMemberDetail(memberId: number, options?: { syncForm?: boolean }): Promise<boolean> {
@@ -1540,6 +1525,7 @@ export default function App() {
         const response = await apiPost<MemberDetail>("/api/v1/members", buildMemberPayload(memberForm));
         setMemberFormMessage(response.message);
         setMemberPanelMessage(response.message);
+        invalidateWorkspaceMemberSearchCache();
         await loadMembers();
         await loadMemberDetail(response.data.memberId);
         setMemberFormOpen(false);
@@ -1550,6 +1536,7 @@ export default function App() {
         );
         setMemberFormMessage(response.message);
         setMemberPanelMessage(response.message);
+        invalidateWorkspaceMemberSearchCache();
         await loadMembers();
         setSelectedMember(response.data);
         setMemberForm(memberFormFromDetail(response.data));
