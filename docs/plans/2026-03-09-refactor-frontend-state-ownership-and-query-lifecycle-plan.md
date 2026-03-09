@@ -1,7 +1,7 @@
 ---
 title: "refactor: Frontend state ownership and query lifecycle"
 type: refactor
-status: active
+status: completed
 date: 2026-03-09
 ---
 
@@ -267,12 +267,12 @@ function useReservationWorkspaceState(selectedMemberId: number | null) {
 
 - [x] 회원 생성/수정 이후 workspace member search cache가 명시적으로 invalidate된다.
 - [x] 회원 생성/수정 직후 direct-entry picker에서 최신 회원 정보가 확인된다.
-- [ ] React profiler 또는 동등한 방식으로 주요 직접 진입 시나리오의 렌더 hotspot이 기록된다.
-- [ ] profiler 결과를 기준으로 최소 1개 이상의 업무 상태 묶음이 `App.tsx` 밖으로 이동한다.
-- [ ] memberships / reservations / access 중 우선순위가 높은 섹션에 대해 state ownership 경계가 문서 또는 코드로 명확해진다.
-- [ ] 공통 query layer 방향(유지 / custom hook / SWR 단계 도입)이 명시적으로 결정된다.
-- [ ] `frontend/package.json` 기준 빌드가 성공한다.
-- [ ] 변경된 데이터 패칭 또는 상태 리셋 경로에 대한 검증 로그 또는 테스트가 남는다.
+- [x] React profiler 또는 동등한 방식으로 주요 직접 진입 시나리오의 렌더 hotspot이 기록된다.
+- [x] profiler 결과를 기준으로 최소 1개 이상의 업무 상태 묶음이 `App.tsx` 밖으로 이동한다.
+- [x] memberships / reservations / access 중 우선순위가 높은 섹션에 대해 state ownership 경계가 문서 또는 코드로 명확해진다.
+- [x] 공통 query layer 방향(유지 / custom hook / SWR 단계 도입)이 명시적으로 결정된다.
+- [x] `frontend/package.json` 기준 빌드가 성공한다.
+- [x] 변경된 데이터 패칭 또는 상태 리셋 경로에 대한 검증 로그 또는 테스트가 남는다.
 
 ## Success Metrics
 
@@ -299,5 +299,7 @@ function useReservationWorkspaceState(selectedMemberId: number | null) {
 - Similar implementation focus: `/Users/abc/projects/GymCRM_V2/frontend/src/App.tsx:1533`
 - Related solution: `/Users/abc/projects/GymCRM_V2/docs/solutions/performance-issues/workspace-member-search-request-churn-gymcrm-20260309.md`
 - Related solution: `/Users/abc/projects/GymCRM_V2/docs/solutions/ui-bugs/admin-portal-sidebar-workspace-reorg-login-first-gymcrm-20260225.md`
+- Query layer decision: `/Users/abc/projects/GymCRM_V2/docs/notes/2026-03-09-frontend-query-layer-decision.md`
+- Reservation workspace validation: `/Users/abc/projects/GymCRM_V2/docs/notes/2026-03-09-reservation-workspace-state-ownership-validation.md`
 - Recently merged optimization: PR #58
 - Recently merged direct-entry flow: PR #57

@@ -21,6 +21,13 @@ import { MembershipsSection } from "./features/memberships/MembershipsSection";
 import { ProductsSection } from "./features/products/ProductsSection";
 import { ReservationManagementPanels } from "./features/reservations/ReservationManagementPanels";
 import { ReservationsSection } from "./features/reservations/ReservationsSection";
+import {
+  EMPTY_RESERVATION_CREATE_FORM,
+  type ReservationCompleteResponse,
+  type ReservationRecord,
+  type ReservationScheduleSummary,
+  useReservationWorkspaceState
+} from "./features/reservations/useReservationWorkspaceState";
 import { SettlementReportPanels } from "./features/settlements/SettlementReportPanels";
 import { SettlementsSection } from "./features/settlements/SettlementsSection";
 import { ApiClientError, apiGet, apiPatch, apiPost, configureApiAuth } from "./shared/api/client";
@@ -286,50 +293,6 @@ type MembershipActionDraft = {
   refundPaymentMemo: string;
 };
 
-type ReservationScheduleSummary = {
-  scheduleId: number;
-  centerId: number;
-  scheduleType: "PT" | "GX";
-  trainerName: string;
-  slotTitle: string;
-  startAt: string;
-  endAt: string;
-  capacity: number;
-  currentCount: number;
-  memo: string | null;
-};
-
-type ReservationRecord = {
-  reservationId: number;
-  centerId: number;
-  memberId: number;
-  membershipId: number;
-  scheduleId: number;
-  reservationStatus: "CONFIRMED" | "CANCELLED" | "COMPLETED" | "NO_SHOW";
-  reservedAt: string;
-  cancelledAt: string | null;
-  completedAt: string | null;
-  noShowAt: string | null;
-  checkedInAt: string | null;
-  cancelReason: string | null;
-  memo: string | null;
-};
-
-type ReservationCompleteResponse = {
-  reservation: ReservationRecord;
-  membershipId: number;
-  membershipStatus: string;
-  remainingCount: number | null;
-  usedCount: number;
-  countDeducted: boolean;
-};
-
-type ReservationCreateFormState = {
-  scheduleId: string;
-  membershipId: string;
-  memo: string;
-};
-
 type AccessEventRecord = {
   accessEventId: number;
   centerId: number;
@@ -506,12 +469,6 @@ const EMPTY_PURCHASE_FORM: PurchaseFormState = {
   paymentMethod: "CASH",
   membershipMemo: "",
   paymentMemo: ""
-};
-
-const EMPTY_RESERVATION_CREATE_FORM: ReservationCreateFormState = {
-  scheduleId: "",
-  membershipId: "",
-  memo: ""
 };
 
 const EMPTY_LOCKER_ASSIGN_FORM: LockerAssignFormState = {
@@ -840,15 +797,6 @@ export default function App() {
   const [membershipActionErrorById, setMembershipActionErrorById] = useState<Record<number, string>>({});
   const [membershipRefundPreviewById, setMembershipRefundPreviewById] = useState<Record<number, RefundCalculationApi>>({});
   const [membershipRefundPreviewLoadingId, setMembershipRefundPreviewLoadingId] = useState<number | null>(null);
-  const [reservationSchedules, setReservationSchedules] = useState<ReservationScheduleSummary[]>([]);
-  const [reservationSchedulesLoading, setReservationSchedulesLoading] = useState(false);
-  const [reservationRowsByMemberId, setReservationRowsByMemberId] = useState<Record<number, ReservationRecord[]>>({});
-  const [reservationLoading, setReservationLoading] = useState(false);
-  const [reservationCreateForm, setReservationCreateForm] = useState<ReservationCreateFormState>(EMPTY_RESERVATION_CREATE_FORM);
-  const [reservationCreateSubmitting, setReservationCreateSubmitting] = useState(false);
-  const [reservationActionSubmittingId, setReservationActionSubmittingId] = useState<number | null>(null);
-  const [reservationPanelMessage, setReservationPanelMessage] = useState<string | null>(null);
-  const [reservationPanelError, setReservationPanelError] = useState<string | null>(null);
   const [accessMemberQuery, setAccessMemberQuery] = useState("");
   const [accessSelectedMemberId, setAccessSelectedMemberId] = useState<number | null>(null);
   const [accessEvents, setAccessEvents] = useState<AccessEventRecord[]>([]);
@@ -905,6 +853,27 @@ export default function App() {
     const response = await apiGet<MemberSummary[]>(`/api/v1/members${query ? `?${query}` : ""}`);
     return response.data;
   });
+  const reservationWorkspace = useReservationWorkspaceState(selectedMemberId);
+  const {
+    reservationSchedules,
+    setReservationSchedules,
+    reservationSchedulesLoading,
+    setReservationSchedulesLoading,
+    reservationRowsByMemberId,
+    setReservationRowsByMemberId,
+    reservationLoading,
+    setReservationLoading,
+    reservationCreateForm,
+    setReservationCreateForm,
+    reservationCreateSubmitting,
+    setReservationCreateSubmitting,
+    reservationActionSubmittingId,
+    setReservationActionSubmittingId,
+    reservationPanelMessage,
+    setReservationPanelMessage,
+    reservationPanelError,
+    setReservationPanelError
+  } = reservationWorkspace;
 
   const routePreview = useMemo(() => routes.slice(0, 4), []);
   const isPrototypeMode = securityMode === "prototype";
@@ -943,11 +912,7 @@ export default function App() {
     setMembershipActionMessageById({});
     setMembershipActionErrorById({});
     setMembershipRefundPreviewById({});
-    setReservationSchedules([]);
-    setReservationRowsByMemberId({});
-    setReservationCreateForm({ ...EMPTY_RESERVATION_CREATE_FORM });
-    setReservationPanelMessage(null);
-    setReservationPanelError(null);
+    reservationWorkspace.resetReservationWorkspace();
     setAccessMemberQuery("");
     setAccessSelectedMemberId(null);
     setAccessEvents([]);
@@ -1021,10 +986,6 @@ export default function App() {
     setMemberPanelError(null);
     setMemberPurchaseError(null);
     setMemberPurchaseMessage(null);
-    setReservationPanelError(null);
-    setReservationPanelMessage(null);
-    setReservationActionSubmittingId(null);
-    setReservationCreateForm({ ...EMPTY_RESERVATION_CREATE_FORM });
     setPurchaseForm({ ...EMPTY_PURCHASE_FORM, startDate: new Date().toISOString().slice(0, 10) });
     setPurchaseProductDetail(null);
     try {
