@@ -185,4 +185,51 @@ describe("useLockerQueries", () => {
     expect(result.current.lockerAssignmentsLoading).toBe(false);
     expect(result.current.lockerQueryError).toBeNull();
   });
+
+  it("clears stale locker query error when a retry starts and succeeds", async () => {
+    apiGetMock
+      .mockRejectedValueOnce(new Error("boom"))
+      .mockResolvedValueOnce({
+        data: [
+          {
+            lockerSlotId: 3,
+            centerId: 1,
+            lockerCode: "A-03",
+            lockerZone: "A",
+            lockerGrade: null,
+            lockerStatus: "AVAILABLE",
+            memo: null,
+            createdAt: "2026-03-01T00:00:00Z",
+            updatedAt: "2026-03-09T00:00:00Z"
+          }
+        ]
+      });
+
+    const { result } = renderHook(() =>
+      useLockerQueries({
+        getDefaultFilters: () => ({ lockerStatus: "", lockerZone: "" }),
+        formatError: () => "load failed"
+      })
+    );
+
+    await act(async () => {
+      await result.current.loadLockerSlots();
+    });
+
+    expect(result.current.lockerQueryError).toBe("load failed");
+
+    await act(async () => {
+      await result.current.loadLockerSlots();
+    });
+
+    await waitFor(() => {
+      expect(result.current.lockerQueryError).toBeNull();
+    });
+
+    await waitFor(() => {
+      expect(result.current.lockerSlots).toHaveLength(1);
+    });
+
+    expect(result.current.lockerQueryError).toBeNull();
+  });
 });

@@ -34,6 +34,7 @@ export function useLockerQueries({ getDefaultFilters, formatError }: UseLockerQu
     const requestId = lockerSlotsRequestIdRef.current + 1;
     lockerSlotsRequestIdRef.current = requestId;
     setLockerSlotsLoading(true);
+    setLockerQueryError(null);
     try {
       const effectiveFilters = filters ?? getDefaultFiltersRef.current();
       const params = new URLSearchParams();
@@ -65,6 +66,7 @@ export function useLockerQueries({ getDefaultFilters, formatError }: UseLockerQu
     const requestId = lockerAssignmentsRequestIdRef.current + 1;
     lockerAssignmentsRequestIdRef.current = requestId;
     setLockerAssignmentsLoading(true);
+    setLockerQueryError(null);
     try {
       const response = await apiGet<LockerAssignment[]>(`/api/v1/lockers/assignments?activeOnly=${activeOnly}`);
       if (lockerAssignmentsRequestIdRef.current !== requestId || !canCommitState(shouldCommit)) {
