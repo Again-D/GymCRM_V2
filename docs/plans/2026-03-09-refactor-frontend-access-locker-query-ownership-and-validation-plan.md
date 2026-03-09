@@ -9,9 +9,9 @@ date: 2026-03-09
 
 ## Overview
 
-PR `#61`까지의 리팩토링으로 `members`, `products`, `reservation schedules`, `settlement report`, `crm history`, `auth lifecycle`, panel-level lazy split은 정리됐다. 남은 프론트 orchestration 병목은 `/Users/abc/projects/GymCRM_V2/frontend/src/App.tsx` 안에 남아 있는 `access`/`lockers` read query ownership, `agent-browser` 기준으로 불안정했던 jwt login submit 검증 경로, 그리고 reservations/settlements long-list rendering guard 후속 판단이다.
+이 플랜은 PR `#61` 이후 남아 있던 frontend tail work를 정리하기 위해 작성됐고, 현재는 구현과 검증이 모두 끝난 상태다. 최종 결과로 `/Users/abc/projects/GymCRM_V2/frontend/src/App.tsx`에 남아 있던 `access`/`lockers` read query ownership은 dedicated query hook으로 이동했고, jwt auth gate 검증 fallback과 reservations/settlements rendering guard 판단도 문서로 고정됐다.
 
-이번 단계의 목적은 신규 기능 추가가 아니라, PR `#61`에서 남겨둔 후속 범위를 닫아 query lifecycle 일관성과 검증 신뢰도를 높이는 것이다.
+아래 서술은 이 작업이 시작될 당시의 문제 정의와 실행 기준을 남겨 두기 위한 기록이며, 실제 완료 결과는 `/Users/abc/projects/GymCRM_V2/docs/notes/2026-03-09-access-locker-query-ownership-validation.md`에 반영돼 있다.
 
 ## Enhancement Summary
 
@@ -25,13 +25,13 @@ PR `#61`까지의 리팩토링으로 `members`, `products`, `reservation schedul
 
 ## Problem Statement / Motivation
 
-현재 구조에서 남아 있는 문제는 세 가지다.
+작성 시점 기준으로 남아 있던 문제는 세 가지였다.
 
 1. `/Users/abc/projects/GymCRM_V2/frontend/src/App.tsx`가 여전히 `access presence/events`, `locker slots/assignments` read query를 직접 소유한다.
 2. jwt 모드 검증은 로그인 화면/auth gate 확인과 proxy API cycle로는 닫혔지만, 실제 브라우저 post-login 전환은 `agent-browser` 상호작용 불안정성 때문에 완전히 자동 검증되지 않았다.
 3. `/Users/abc/projects/GymCRM_V2/frontend/src/features/reservations/ReservationManagementPanels.tsx`, `/Users/abc/projects/GymCRM_V2/frontend/src/features/settlements/SettlementReportPanels.tsx`는 `deferred-list-surface` 적용 후보로 남아 있으나, 실제 체감 이득과 스크롤/포커스 안정성은 아직 정리되지 않았다.
 
-이 범위를 정리하면 다음 효과가 있다.
+이 범위를 정리하면 다음 효과가 있었다.
 - `App.tsx`의 read-side orchestration을 더 줄일 수 있다.
 - stale write / reset 계약을 access/locker까지 같은 기준으로 맞출 수 있다.
 - auth regression 검증을 더 재현 가능하게 만들 수 있다.
@@ -41,14 +41,14 @@ PR `#61`까지의 리팩토링으로 `members`, `products`, `reservation schedul
 
 ### Repo Findings
 
-- `/Users/abc/projects/GymCRM_V2/frontend/src/App.tsx`에는 여전히 아래 read query가 직접 남아 있다.
+- 작성 당시 `/Users/abc/projects/GymCRM_V2/frontend/src/App.tsx`에는 아래 read query가 직접 남아 있었다.
   - `loadAccessEvents()`
   - `loadAccessPresence()`
   - `loadLockerSlots()`
   - `loadLockerAssignments()`
-- `/Users/abc/projects/GymCRM_V2/frontend/src/shared/hooks/useWorkspaceLoaders.ts`는 `shouldCommit` 기반 stale write guard 패턴을 이미 제공한다.
-- `/Users/abc/projects/GymCRM_V2/frontend/src/features/members/useMembersQuery.ts`, `/Users/abc/projects/GymCRM_V2/frontend/src/features/products/useProductsQuery.ts`, `/Users/abc/projects/GymCRM_V2/frontend/src/features/reservations/useReservationSchedulesQuery.ts`는 request-version guard 기반 query hook 기준선을 제공한다.
-- `/Users/abc/projects/GymCRM_V2/frontend/src/features/access/useAccessWorkspaceState.ts`, `/Users/abc/projects/GymCRM_V2/frontend/src/features/lockers/useLockerWorkspaceState.ts`는 workspace-local state 경계는 이미 분리돼 있고, read data/loading 일부만 남아 있다.
+- `/Users/abc/projects/GymCRM_V2/frontend/src/shared/hooks/useWorkspaceLoaders.ts`는 `shouldCommit` 기반 stale write guard 패턴을 이미 제공했고, 이 플랜에서는 이를 query hook의 주된 방어가 아니라 상위 조합 계층 보조 guard로 제한했다.
+- `/Users/abc/projects/GymCRM_V2/frontend/src/features/members/useMembersQuery.ts`, `/Users/abc/projects/GymCRM_V2/frontend/src/features/products/useProductsQuery.ts`, `/Users/abc/projects/GymCRM_V2/frontend/src/features/reservations/useReservationSchedulesQuery.ts`는 request-version guard 기반 query hook 기준선으로 사용됐다.
+- `/Users/abc/projects/GymCRM_V2/frontend/src/features/access/useAccessWorkspaceState.ts`, `/Users/abc/projects/GymCRM_V2/frontend/src/features/lockers/useLockerWorkspaceState.ts`는 당시 이미 workspace-local state 경계가 분리돼 있었고, 이후 구현에서 read data/loading ownership도 dedicated query hook으로 이동했다.
 - `/Users/abc/projects/GymCRM_V2/frontend/src/features/auth/LoginScreen.tsx`는 표준 `form onSubmit` 구조지만, `agent-browser`가 controlled input submit을 안정적으로 트리거하지 못한 검증 로그가 남아 있다.
 - `/Users/abc/projects/GymCRM_V2/frontend/src/styles.css`와 일부 패널 컴포넌트에는 이미 `deferred-list-surface`가 적용돼 있어 follow-up 적용 비교 기준이 있다.
 
