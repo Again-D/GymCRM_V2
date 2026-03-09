@@ -92,6 +92,7 @@ public class MemberRepository {
 
     public List<MemberSummaryProjection> findAllSummaries(
             Long centerId,
+            String keyword,
             String memberCodeKeyword,
             String nameKeyword,
             String phoneKeyword,
@@ -112,6 +113,17 @@ public class MemberRepository {
                       AND m.is_deleted = FALSE
                 """);
 
+        if (keyword != null && !keyword.isBlank()) {
+            baseMembersSql.append("""
+                     AND (
+                        CAST(m.member_id AS TEXT) ILIKE :keyword
+                        OR m.member_code ILIKE :keyword
+                        OR m.member_name ILIKE :keyword
+                        OR m.phone ILIKE :keyword
+                        OR m.member_status ILIKE :keyword
+                     )
+                    """);
+        }
         if (memberCodeKeyword != null && !memberCodeKeyword.isBlank()) {
             baseMembersSql.append(" AND m.member_code ILIKE :memberCodeKeyword ");
         }
@@ -182,6 +194,9 @@ public class MemberRepository {
         JdbcClient.StatementSpec spec = jdbcClient.sql(baseMembersSql.toString())
                 .param("centerId", centerId)
                 .param("referenceDate", referenceDate);
+        if (keyword != null && !keyword.isBlank()) {
+            spec = spec.param("keyword", "%" + keyword.trim() + "%");
+        }
         if (memberCodeKeyword != null && !memberCodeKeyword.isBlank()) {
             spec = spec.param("memberCodeKeyword", "%" + memberCodeKeyword.trim() + "%");
         }

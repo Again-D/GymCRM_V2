@@ -20,7 +20,7 @@ type WorkspaceMemberPickerProps = {
   emptyMessage: string;
   warningText?: string;
   actions?: ReactNode;
-  loadMembers: () => Promise<WorkspaceMemberPickerRow[]>;
+  loadMembers: (keyword?: string) => Promise<WorkspaceMemberPickerRow[]>;
   onSelectMember: (memberId: number) => Promise<boolean>;
   onSelected?: () => void;
   submitLabel?: string;
@@ -56,7 +56,7 @@ export function WorkspaceMemberPicker({
     setLoading(true);
     setError(null);
 
-    void loadMembers()
+    void loadMembers(deferredQuery || undefined)
       .then((nextRows) => {
         if (!mounted || requestIdRef.current !== requestId) {
           return;
@@ -79,23 +79,9 @@ export function WorkspaceMemberPicker({
     return () => {
       mounted = false;
     };
-  }, [loadMembers]);
+  }, [deferredQuery, loadMembers]);
 
-  const filteredRows = rows
-    .filter((member) => {
-      if (!deferredQuery) {
-        return true;
-      }
-
-      return (
-        member.memberName.toLowerCase().includes(deferredQuery) ||
-        member.phone.toLowerCase().includes(deferredQuery) ||
-        String(member.memberId).includes(deferredQuery) ||
-        member.memberStatus.toLowerCase().includes(deferredQuery) ||
-        member.membershipOperationalStatus?.toLowerCase().includes(deferredQuery)
-      );
-    })
-    .slice(0, MAX_VISIBLE_RESULTS);
+  const visibleRows = rows.slice(0, MAX_VISIBLE_RESULTS);
 
   async function handleSelect(memberId: number) {
     setSelectingMemberId(memberId);
@@ -135,11 +121,11 @@ export function WorkspaceMemberPicker({
             </NoticeText>
           ) : null}
           {!loading ? (
-            filteredRows.length === 0 ? (
+            visibleRows.length === 0 ? (
               <p className="muted-text">{emptyMessage}</p>
             ) : (
               <div className="workspace-member-picker-list" role="list" aria-label="회원 검색 결과">
-                {filteredRows.map((member) => (
+                {visibleRows.map((member) => (
                   <button
                     key={member.memberId}
                     type="button"

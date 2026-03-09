@@ -67,8 +67,8 @@ export function DashboardSection(props: DashboardSectionProps) {
 
   const quickActions = [
     { label: "회원 관리", onClick: onOpenMembers, disabled: false },
-    { label: "회원권 업무", onClick: onOpenMemberships, disabled: !hasSelectedMember },
-    { label: "예약 관리", onClick: onOpenReservations, disabled: !hasSelectedMember },
+    { label: "회원권 업무", onClick: onOpenMemberships, disabled: false },
+    { label: "예약 관리", onClick: onOpenReservations, disabled: false },
     { label: "출입 관리", onClick: onOpenAccess, disabled: false },
     { label: "상품 관리", onClick: onOpenProducts, disabled: false }
   ] as const;
@@ -120,7 +120,7 @@ export function DashboardSection(props: DashboardSectionProps) {
           </div>
 
           {!hasSelectedMember ? (
-            <p className="notice compact">회원권/예약 업무를 사용하려면 회원을 먼저 선택하세요.</p>
+            <p className="notice compact">회원권/예약 업무는 바로 진입할 수 있으며, 탭 안에서 회원을 선택해 시작할 수 있습니다.</p>
           ) : (
             <p className="notice success compact">선택된 회원: {selectedMemberLabel}</p>
           )}

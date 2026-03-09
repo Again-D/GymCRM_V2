@@ -71,9 +71,9 @@ public class MemberService {
     }
 
     @Transactional(readOnly = true)
-    public List<MemberSummary> list(String memberCodeKeyword, String nameKeyword, String phoneKeyword) {
+    public List<MemberSummary> list(String keyword, String memberCodeKeyword, String nameKeyword, String phoneKeyword) {
         LocalDate businessDate = LocalDate.now(BUSINESS_ZONE);
-        return memberRepository.findAllSummaries(DEFAULT_CENTER_ID, memberCodeKeyword, nameKeyword, phoneKeyword, businessDate).stream()
+        return memberRepository.findAllSummaries(DEFAULT_CENTER_ID, keyword, memberCodeKeyword, nameKeyword, phoneKeyword, businessDate).stream()
                 .map(summary -> new MemberSummary(
                         summary.memberId(),
                         summary.centerId(),

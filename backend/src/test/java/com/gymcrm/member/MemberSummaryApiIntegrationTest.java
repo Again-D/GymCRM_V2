@@ -193,6 +193,35 @@ class MemberSummaryApiIntegrationTest {
     }
 
     @Test
+    void memberListKeywordSearchMatchesMemberIdNameAndStatus() throws Exception {
+        ensureDeskUser();
+        String token = loginAndGetAccessToken(DESK_LOGIN_ID, DESK_PASSWORD);
+
+        long activeMemberId = insertMemberFixture("키워드활성-" + shortId());
+        long inactiveMemberId = insertInactiveMemberFixture("키워드비활성-" + shortId());
+
+        mockMvc.perform(get("/api/v1/members")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .param("keyword", String.valueOf(activeMemberId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].memberId").value(activeMemberId));
+
+        mockMvc.perform(get("/api/v1/members")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .param("keyword", "키워드활성"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].memberId").value(activeMemberId));
+
+        mockMvc.perform(get("/api/v1/members")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .param("keyword", "INACTIVE"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[*].memberId").isArray())
+                .andExpect(jsonPath("$.data[0].memberId").value(inactiveMemberId))
+                .andExpect(jsonPath("$.data[0].memberStatus").value("INACTIVE"));
+    }
+
+    @Test
     void representativeMembershipUsesMembershipIdTieBreakWhenExpiryDatesEqual() {
         LocalDate targetEndDate = LocalDate.now().plusDays(12);
         long durationProductId = insertProductFixture("SUMMARY-TIE-" + shortId(), "MEMBERSHIP", "DURATION");
@@ -308,6 +337,25 @@ class MemberSummaryApiIntegrationTest {
                 )
                 VALUES (
                     :centerId, :memberName, :phone, 'ACTIVE', CURRENT_DATE,
+                    FALSE, FALSE, 0, 0
+                )
+                RETURNING member_id
+                """)
+                .param("centerId", CENTER_ID)
+                .param("memberName", memberName)
+                .param("phone", "010" + randomDigits(8))
+                .query(Long.class)
+                .single();
+    }
+
+    private long insertInactiveMemberFixture(String memberName) {
+        return jdbcClient.sql("""
+                INSERT INTO members (
+                    center_id, member_name, phone, member_status, join_date,
+                    consent_sms, consent_marketing, created_by, updated_by
+                )
+                VALUES (
+                    :centerId, :memberName, :phone, 'INACTIVE', CURRENT_DATE,
                     FALSE, FALSE, 0, 0
                 )
                 RETURNING member_id

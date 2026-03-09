@@ -995,8 +995,13 @@ export default function App() {
     }
   }
 
-  async function loadWorkspaceMembers() {
-    const response = await apiGet<MemberSummary[]>("/api/v1/members");
+  async function loadWorkspaceMembers(keyword?: string) {
+    const params = new URLSearchParams();
+    if (keyword?.trim()) {
+      params.set("keyword", keyword.trim());
+    }
+    const query = params.toString();
+    const response = await apiGet<MemberSummary[]>(`/api/v1/members${query ? `?${query}` : ""}`);
     return response.data;
   }
 
