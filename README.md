@@ -46,6 +46,12 @@ DB_PASSWORD=gymcrm \
 ./gradlew bootRun
 ```
 
+백엔드 빌드 표준:
+- `backend`의 canonical build는 Gradle이다.
+- QueryDSL generated source는 `backend/build/generated/sources/annotationProcessor/java/main`에 생성된다.
+- 생성 확인만 필요하면 `cd backend && ./gradlew clean compileJava`를 사용한다.
+- OpenAPI/Swagger UI는 `dev` 프로필에서만 노출되며 경로는 `/v3/api-docs`, `/swagger-ui`다.
+
 기본 개발 seed 계정(`dev/staging`, jwt 모드):
 - `loginId`: `center-admin`
 - `password`: `dev-admin-1234!`

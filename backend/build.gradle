@@ -8,9 +8,22 @@ group = 'com.gymcrm'
 version = '0.0.1-SNAPSHOT'
 description = 'GYM CRM backend prototype'
 
+ext {
+    querydslVersion = '5.1.0'
+    springdocVersion = '2.8.5'
+}
+
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+sourceSets {
+    main {
+        java {
+            srcDir layout.buildDirectory.dir('generated/sources/annotationProcessor/java/main')
+        }
     }
 }
 
@@ -23,9 +36,15 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation "com.querydsl:querydsl-jpa:${querydslVersion}:jakarta"
+    implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:${springdocVersion}"
     implementation 'org.flywaydb:flyway-core'
     implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
+    annotationProcessor "com.querydsl:querydsl-apt:${querydslVersion}:jakarta"
+    annotationProcessor 'jakarta.annotation:jakarta.annotation-api'
+    annotationProcessor 'jakarta.persistence:jakarta.persistence-api'
     runtimeOnly 'org.flywaydb:flyway-database-postgresql'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
@@ -39,4 +58,8 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+}
+
+tasks.named('compileJava') {
+    options.generatedSourceOutputDirectory = file("$buildDir/generated/sources/annotationProcessor/java/main")
 }

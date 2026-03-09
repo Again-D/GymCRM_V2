@@ -9,6 +9,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,6 +57,19 @@ public class GlobalExceptionHandler {
                                 ErrorCode.ACCESS_DENIED.name(),
                                 ErrorCode.ACCESS_DENIED.status().value(),
                                 "접근 권한이 없습니다."
+                        )
+                ));
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleNoResourceFound(NoResourceFoundException ex) {
+        return ResponseEntity.status(ErrorCode.NOT_FOUND.status())
+                .body(ApiResponse.error(
+                        ErrorCode.NOT_FOUND.defaultMessage(),
+                        new ApiResponse.ApiError(
+                                ErrorCode.NOT_FOUND.name(),
+                                ErrorCode.NOT_FOUND.status().value(),
+                                ex.getMessage()
                         )
                 ));
     }
