@@ -16,8 +16,24 @@ import {
 import { DashboardSection } from "./features/dashboard/DashboardSection";
 import { CrmMessagePanels } from "./features/crm/CrmMessagePanels";
 import { CrmSection } from "./features/crm/CrmSection";
+import {
+  type CrmFilters,
+  type CrmMessageHistoryResponse,
+  type CrmMessageHistoryRow,
+  type CrmProcessResponse,
+  type CrmTriggerResponse,
+  useCrmWorkspaceState
+} from "./features/crm/useCrmWorkspaceState";
 import { LockerManagementPanels } from "./features/lockers/LockerManagementPanels";
 import { LockersSection } from "./features/lockers/LockersSection";
+import {
+  EMPTY_LOCKER_ASSIGN_FORM,
+  type LockerAssignment,
+  type LockerAssignFormState,
+  type LockerFilters,
+  type LockerSlot,
+  useLockerWorkspaceState
+} from "./features/lockers/useLockerWorkspaceState";
 import { MemberManagementPanels } from "./features/members/MemberManagementPanels";
 import { MembersSection } from "./features/members/MembersSection";
 import { MembershipOperationsPanels } from "./features/memberships/MembershipOperationsPanels";
@@ -32,6 +48,14 @@ import {
 import { ProductManagementPanels } from "./features/products/ProductManagementPanels";
 import { MembershipsSection } from "./features/memberships/MembershipsSection";
 import { ProductsSection } from "./features/products/ProductsSection";
+import {
+  EMPTY_PRODUCT_FORM,
+  type ProductDetail,
+  type ProductFilters,
+  type ProductFormState,
+  type ProductSummary,
+  useProductWorkspaceState
+} from "./features/products/useProductWorkspaceState";
 import { ReservationManagementPanels } from "./features/reservations/ReservationManagementPanels";
 import { ReservationsSection } from "./features/reservations/ReservationsSection";
 import {
@@ -43,6 +67,11 @@ import {
 } from "./features/reservations/useReservationWorkspaceState";
 import { SettlementReportPanels } from "./features/settlements/SettlementReportPanels";
 import { SettlementsSection } from "./features/settlements/SettlementsSection";
+import {
+  type SalesSettlementReport,
+  type SettlementReportFilters,
+  useSettlementWorkspaceState
+} from "./features/settlements/useSettlementWorkspaceState";
 import { ApiClientError, apiGet, apiPatch, apiPost, configureApiAuth } from "./shared/api/client";
 import { useWorkspaceMemberSearchLoader } from "./shared/hooks/useWorkspaceMemberSearchLoader";
 import { formatCurrency, formatDate, formatDateTime } from "./shared/utils/format";
@@ -108,33 +137,6 @@ type MemberDetail = {
   consentSms: boolean;
   consentMarketing: boolean;
   memo: string | null;
-};
-
-type ProductSummary = {
-  productId: number;
-  centerId: number;
-  productName: string;
-  productCategory: "MEMBERSHIP" | "PT" | "GX" | "ETC" | null;
-  productType: "DURATION" | "COUNT";
-  priceAmount: number;
-  productStatus: "ACTIVE" | "INACTIVE";
-};
-
-type ProductDetail = {
-  productId: number;
-  centerId: number;
-  productName: string;
-  productCategory: "MEMBERSHIP" | "PT" | "GX" | "ETC" | null;
-  productType: "DURATION" | "COUNT";
-  priceAmount: number;
-  validityDays: number | null;
-  totalCount: number | null;
-  allowHold: boolean;
-  maxHoldDays: number | null;
-  maxHoldCount: number | null;
-  allowTransfer: boolean;
-  productStatus: "ACTIVE" | "INACTIVE";
-  description: string | null;
 };
 
 type PurchasedMembership = {
@@ -256,137 +258,6 @@ type MemberFormState = {
   memo: string;
 };
 
-type ProductFormState = {
-  productName: string;
-  productCategory: "" | "MEMBERSHIP" | "PT" | "GX" | "ETC";
-  productType: "DURATION" | "COUNT";
-  priceAmount: string;
-  validityDays: string;
-  totalCount: string;
-  allowHold: boolean;
-  maxHoldDays: string;
-  maxHoldCount: string;
-  allowTransfer: boolean;
-  productStatus: "ACTIVE" | "INACTIVE";
-  description: string;
-};
-
-type ProductFilters = {
-  category: "" | "MEMBERSHIP" | "PT" | "GX" | "ETC";
-  status: "" | "ACTIVE" | "INACTIVE";
-};
-
-type LockerSlot = {
-  lockerSlotId: number;
-  centerId: number;
-  lockerCode: string;
-  lockerZone: string | null;
-  lockerGrade: string | null;
-  lockerStatus: "AVAILABLE" | "ASSIGNED" | "MAINTENANCE";
-  memo: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
-
-type LockerAssignment = {
-  lockerAssignmentId: number;
-  centerId: number;
-  lockerSlotId: number;
-  memberId: number;
-  assignmentStatus: "ACTIVE" | "RETURNED";
-  assignedAt: string;
-  startDate: string;
-  endDate: string;
-  returnedAt: string | null;
-  refundAmount: number | null;
-  returnReason: string | null;
-  memo: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
-
-type LockerFilters = {
-  lockerStatus: "" | "AVAILABLE" | "ASSIGNED" | "MAINTENANCE";
-  lockerZone: string;
-};
-
-type LockerAssignFormState = {
-  lockerSlotId: string;
-  memberId: string;
-  startDate: string;
-  endDate: string;
-  memo: string;
-};
-
-type SalesSettlementReportRow = {
-  productName: string;
-  paymentMethod: "CASH" | "CARD" | "TRANSFER" | "ETC";
-  grossSales: number;
-  refundAmount: number;
-  netSales: number;
-  transactionCount: number;
-};
-
-type SalesSettlementReport = {
-  startDate: string;
-  endDate: string;
-  paymentMethod: "CASH" | "CARD" | "TRANSFER" | "ETC" | null;
-  productKeyword: string | null;
-  totalGrossSales: number;
-  totalRefundAmount: number;
-  totalNetSales: number;
-  rows: SalesSettlementReportRow[];
-};
-
-type SettlementReportFilters = {
-  startDate: string;
-  endDate: string;
-  paymentMethod: "" | "CASH" | "CARD" | "TRANSFER" | "ETC";
-  productKeyword: string;
-};
-
-type CrmMessageHistoryRow = {
-  crmMessageEventId: number;
-  memberId: number;
-  membershipId: number | null;
-  eventType: string;
-  channelType: string;
-  sendStatus: "PENDING" | "RETRY_WAIT" | "SENT" | "DEAD";
-  attemptCount: number;
-  lastAttemptedAt: string | null;
-  nextAttemptAt: string | null;
-  sentAt: string | null;
-  failedAt: string | null;
-  lastErrorMessage: string | null;
-  traceId: string | null;
-  createdAt: string;
-};
-
-type CrmMessageHistoryResponse = {
-  rows: CrmMessageHistoryRow[];
-};
-
-type CrmFilters = {
-  sendStatus: "" | "PENDING" | "RETRY_WAIT" | "SENT" | "DEAD";
-  limit: string;
-};
-
-type CrmTriggerResponse = {
-  baseDate: string;
-  targetDate: string;
-  totalTargets: number;
-  createdCount: number;
-  duplicatedCount: number;
-};
-
-type CrmProcessResponse = {
-  pickedCount: number;
-  sentCount: number;
-  retryWaitCount: number;
-  deadCount: number;
-  maxAttempts: number;
-};
-
 const EMPTY_MEMBER_FORM: MemberFormState = {
   memberName: "",
   phone: "",
@@ -399,46 +270,6 @@ const EMPTY_MEMBER_FORM: MemberFormState = {
   consentMarketing: false,
   memo: ""
 };
-
-const EMPTY_PRODUCT_FORM: ProductFormState = {
-  productName: "",
-  productCategory: "MEMBERSHIP",
-  productType: "DURATION",
-  priceAmount: "",
-  validityDays: "30",
-  totalCount: "",
-  allowHold: true,
-  maxHoldDays: "30",
-  maxHoldCount: "1",
-  allowTransfer: false,
-  productStatus: "ACTIVE",
-  description: ""
-};
-
-const EMPTY_LOCKER_ASSIGN_FORM: LockerAssignFormState = {
-  lockerSlotId: "",
-  memberId: "",
-  startDate: new Date().toISOString().slice(0, 10),
-  endDate: new Date().toISOString().slice(0, 10),
-  memo: ""
-};
-
-function createInitialSettlementFilters(): SettlementReportFilters {
-  const today = new Date().toISOString().slice(0, 10);
-  return {
-    startDate: `${today.slice(0, 8)}01`,
-    endDate: today,
-    paymentMethod: "",
-    productKeyword: ""
-  };
-}
-
-function createInitialCrmFilters(): CrmFilters {
-  return {
-    sendStatus: "",
-    limit: "100"
-  };
-}
 
 function normalizeOptionalText(value: string): string | null {
   const trimmed = value.trim();
@@ -715,43 +546,6 @@ export default function App() {
   const [purchaseProductLoading, setPurchaseProductLoading] = useState(false);
   const [memberMembershipsByMemberId, setMemberMembershipsByMemberId] = useState<Record<number, PurchasedMembership[]>>({});
   const [memberPaymentsByMemberId, setMemberPaymentsByMemberId] = useState<Record<number, PurchasePayment[]>>({});
-  const [lockerFilters, setLockerFilters] = useState<LockerFilters>({ lockerStatus: "", lockerZone: "" });
-  const [lockerSlots, setLockerSlots] = useState<LockerSlot[]>([]);
-  const [lockerSlotsLoading, setLockerSlotsLoading] = useState(false);
-  const [lockerAssignments, setLockerAssignments] = useState<LockerAssignment[]>([]);
-  const [lockerAssignmentsLoading, setLockerAssignmentsLoading] = useState(false);
-  const [lockerAssignForm, setLockerAssignForm] = useState<LockerAssignFormState>(EMPTY_LOCKER_ASSIGN_FORM);
-  const [lockerAssignSubmitting, setLockerAssignSubmitting] = useState(false);
-  const [lockerReturnSubmittingId, setLockerReturnSubmittingId] = useState<number | null>(null);
-  const [lockerPanelMessage, setLockerPanelMessage] = useState<string | null>(null);
-  const [lockerPanelError, setLockerPanelError] = useState<string | null>(null);
-  const [settlementFilters, setSettlementFilters] = useState<SettlementReportFilters>(createInitialSettlementFilters);
-  const [settlementReport, setSettlementReport] = useState<SalesSettlementReport | null>(null);
-  const [settlementReportLoading, setSettlementReportLoading] = useState(false);
-  const [settlementPanelMessage, setSettlementPanelMessage] = useState<string | null>(null);
-  const [settlementPanelError, setSettlementPanelError] = useState<string | null>(null);
-  const [crmFilters, setCrmFilters] = useState<CrmFilters>(createInitialCrmFilters);
-  const [crmHistoryRows, setCrmHistoryRows] = useState<CrmMessageHistoryRow[]>([]);
-  const [crmHistoryLoading, setCrmHistoryLoading] = useState(false);
-  const [crmTriggerDaysAhead, setCrmTriggerDaysAhead] = useState("3");
-  const [crmTriggerSubmitting, setCrmTriggerSubmitting] = useState(false);
-  const [crmProcessSubmitting, setCrmProcessSubmitting] = useState(false);
-  const [crmPanelMessage, setCrmPanelMessage] = useState<string | null>(null);
-  const [crmPanelError, setCrmPanelError] = useState<string | null>(null);
-
-  const [productFilters, setProductFilters] = useState<ProductFilters>({ category: "", status: "" });
-  const [products, setProducts] = useState<ProductSummary[]>([]);
-  const [productsLoading, setProductsLoading] = useState(false);
-  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
-  const [selectedProduct, setSelectedProduct] = useState<ProductDetail | null>(null);
-  const [productForm, setProductForm] = useState<ProductFormState>(EMPTY_PRODUCT_FORM);
-  const [productFormMode, setProductFormMode] = useState<"create" | "edit">("create");
-  const [productFormOpen, setProductFormOpen] = useState(false);
-  const [productFormSubmitting, setProductFormSubmitting] = useState(false);
-  const [productPanelMessage, setProductPanelMessage] = useState<string | null>(null);
-  const [productPanelError, setProductPanelError] = useState<string | null>(null);
-  const [productFormMessage, setProductFormMessage] = useState<string | null>(null);
-  const [productFormError, setProductFormError] = useState<string | null>(null);
   const memberDetailRequestIdRef = useRef(0);
   const workspaceMemberSearch = useWorkspaceMemberSearchLoader<MemberSummary>(async (keyword) => {
     const params = new URLSearchParams();
@@ -827,6 +621,90 @@ export default function App() {
     accessPanelError,
     setAccessPanelError
   } = accessWorkspace;
+  const lockerWorkspace = useLockerWorkspaceState();
+  const {
+    lockerFilters,
+    setLockerFilters,
+    lockerSlots,
+    setLockerSlots,
+    lockerSlotsLoading,
+    setLockerSlotsLoading,
+    lockerAssignments,
+    setLockerAssignments,
+    lockerAssignmentsLoading,
+    setLockerAssignmentsLoading,
+    lockerAssignForm,
+    setLockerAssignForm,
+    lockerAssignSubmitting,
+    setLockerAssignSubmitting,
+    lockerReturnSubmittingId,
+    setLockerReturnSubmittingId,
+    lockerPanelMessage,
+    setLockerPanelMessage,
+    lockerPanelError,
+    setLockerPanelError
+  } = lockerWorkspace;
+  const settlementWorkspace = useSettlementWorkspaceState();
+  const {
+    settlementFilters,
+    setSettlementFilters,
+    settlementReport,
+    setSettlementReport,
+    settlementReportLoading,
+    setSettlementReportLoading,
+    settlementPanelMessage,
+    setSettlementPanelMessage,
+    settlementPanelError,
+    setSettlementPanelError
+  } = settlementWorkspace;
+  const crmWorkspace = useCrmWorkspaceState();
+  const {
+    crmFilters,
+    setCrmFilters,
+    crmHistoryRows,
+    setCrmHistoryRows,
+    crmHistoryLoading,
+    setCrmHistoryLoading,
+    crmTriggerDaysAhead,
+    setCrmTriggerDaysAhead,
+    crmTriggerSubmitting,
+    setCrmTriggerSubmitting,
+    crmProcessSubmitting,
+    setCrmProcessSubmitting,
+    crmPanelMessage,
+    setCrmPanelMessage,
+    crmPanelError,
+    setCrmPanelError
+  } = crmWorkspace;
+  const productWorkspace = useProductWorkspaceState();
+  const {
+    productFilters,
+    setProductFilters,
+    products,
+    setProducts,
+    productsLoading,
+    setProductsLoading,
+    selectedProductId,
+    setSelectedProductId,
+    selectedProduct,
+    setSelectedProduct,
+    productForm,
+    setProductForm,
+    productFormMode,
+    setProductFormMode,
+    productFormOpen,
+    setProductFormOpen,
+    productFormSubmitting,
+    setProductFormSubmitting,
+    productPanelMessage,
+    setProductPanelMessage,
+    productPanelError,
+    setProductPanelError,
+    productFormMessage,
+    setProductFormMessage,
+    productFormError,
+    setProductFormError
+  } = productWorkspace;
 
   const routePreview = useMemo(() => routes.slice(0, 4), []);
   const isPrototypeMode = securityMode === "prototype";
@@ -861,33 +739,10 @@ export default function App() {
     setMemberPaymentsByMemberId({});
     reservationWorkspace.resetReservationWorkspace();
     accessWorkspace.resetAccessWorkspace();
-    setLockerFilters({ lockerStatus: "", lockerZone: "" });
-    setLockerSlots([]);
-    setLockerAssignments([]);
-    setLockerAssignForm({ ...EMPTY_LOCKER_ASSIGN_FORM, startDate: new Date().toISOString().slice(0, 10), endDate: new Date().toISOString().slice(0, 10) });
-    setLockerPanelMessage(null);
-    setLockerPanelError(null);
-    setSettlementFilters(createInitialSettlementFilters());
-    setSettlementReport(null);
-    setSettlementPanelMessage(null);
-    setSettlementPanelError(null);
-    setCrmFilters(createInitialCrmFilters());
-    setCrmHistoryRows([]);
-    setCrmTriggerDaysAhead("3");
-    setCrmPanelMessage(null);
-    setCrmPanelError(null);
-
-    setProducts([]);
-    setSelectedProductId(null);
-    setSelectedProduct(null);
-    setProductForm({ ...EMPTY_PRODUCT_FORM });
-    setProductFormMode("create");
-    setProductFormOpen(false);
-    setProductPanelMessage(null);
-    setProductPanelError(null);
-    setProductFormMessage(null);
-    setProductFormError(null);
-    setProductFilters({ category: "", status: "" });
+    lockerWorkspace.resetLockerWorkspace();
+    settlementWorkspace.resetSettlementWorkspace();
+    crmWorkspace.resetCrmWorkspace();
+    productWorkspace.resetProductWorkspace();
   }
 
   async function loadMembers(filters?: { name?: string; phone?: string }) {

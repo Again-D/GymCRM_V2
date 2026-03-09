@@ -1,0 +1,101 @@
+import { useState } from "react";
+
+export type LockerSlot = {
+  lockerSlotId: number;
+  centerId: number;
+  lockerCode: string;
+  lockerZone: string | null;
+  lockerGrade: string | null;
+  lockerStatus: "AVAILABLE" | "ASSIGNED" | "MAINTENANCE";
+  memo: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type LockerAssignment = {
+  lockerAssignmentId: number;
+  centerId: number;
+  lockerSlotId: number;
+  memberId: number;
+  assignmentStatus: "ACTIVE" | "RETURNED";
+  assignedAt: string;
+  startDate: string;
+  endDate: string;
+  returnedAt: string | null;
+  refundAmount: number | null;
+  returnReason: string | null;
+  memo: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type LockerFilters = {
+  lockerStatus: "" | "AVAILABLE" | "ASSIGNED" | "MAINTENANCE";
+  lockerZone: string;
+};
+
+export type LockerAssignFormState = {
+  lockerSlotId: string;
+  memberId: string;
+  startDate: string;
+  endDate: string;
+  memo: string;
+};
+
+export const EMPTY_LOCKER_ASSIGN_FORM: LockerAssignFormState = {
+  lockerSlotId: "",
+  memberId: "",
+  startDate: new Date().toISOString().slice(0, 10),
+  endDate: new Date().toISOString().slice(0, 10),
+  memo: ""
+};
+
+export function useLockerWorkspaceState() {
+  const [lockerFilters, setLockerFilters] = useState<LockerFilters>({ lockerStatus: "", lockerZone: "" });
+  const [lockerSlots, setLockerSlots] = useState<LockerSlot[]>([]);
+  const [lockerSlotsLoading, setLockerSlotsLoading] = useState(false);
+  const [lockerAssignments, setLockerAssignments] = useState<LockerAssignment[]>([]);
+  const [lockerAssignmentsLoading, setLockerAssignmentsLoading] = useState(false);
+  const [lockerAssignForm, setLockerAssignForm] = useState<LockerAssignFormState>(EMPTY_LOCKER_ASSIGN_FORM);
+  const [lockerAssignSubmitting, setLockerAssignSubmitting] = useState(false);
+  const [lockerReturnSubmittingId, setLockerReturnSubmittingId] = useState<number | null>(null);
+  const [lockerPanelMessage, setLockerPanelMessage] = useState<string | null>(null);
+  const [lockerPanelError, setLockerPanelError] = useState<string | null>(null);
+
+  function resetLockerWorkspace() {
+    setLockerFilters({ lockerStatus: "", lockerZone: "" });
+    setLockerSlots([]);
+    setLockerSlotsLoading(false);
+    setLockerAssignments([]);
+    setLockerAssignmentsLoading(false);
+    setLockerAssignForm({ ...EMPTY_LOCKER_ASSIGN_FORM });
+    setLockerAssignSubmitting(false);
+    setLockerReturnSubmittingId(null);
+    setLockerPanelMessage(null);
+    setLockerPanelError(null);
+  }
+
+  return {
+    lockerFilters,
+    setLockerFilters,
+    lockerSlots,
+    setLockerSlots,
+    lockerSlotsLoading,
+    setLockerSlotsLoading,
+    lockerAssignments,
+    setLockerAssignments,
+    lockerAssignmentsLoading,
+    setLockerAssignmentsLoading,
+    lockerAssignForm,
+    setLockerAssignForm,
+    lockerAssignSubmitting,
+    setLockerAssignSubmitting,
+    lockerReturnSubmittingId,
+    setLockerReturnSubmittingId,
+    lockerPanelMessage,
+    setLockerPanelMessage,
+    lockerPanelError,
+    setLockerPanelError,
+    resetLockerWorkspace
+  };
+}
