@@ -12,7 +12,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.annotation.Transactional;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -25,10 +26,13 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 @SpringBootTest(properties = {
         "DB_URL=jdbc:postgresql://localhost:5433/gymcrm_dev",
         "DB_USERNAME=gymcrm",
-        "DB_PASSWORD=gymcrm"
+        "DB_PASSWORD=gymcrm",
+        "app.security.mode=prototype"
 })
 @ActiveProfiles("dev")
 class AccessServiceIntegrationTest {
+
+    private static final long CENTER_ID = 1L;
 
     @Autowired
     private AccessService accessService;
@@ -45,8 +49,17 @@ class AccessServiceIntegrationTest {
     @Autowired
     private JdbcClient jdbcClient;
 
+    @BeforeEach
+    void resetCenterData() {
+        cleanupCenterData();
+    }
+
+    @AfterEach
+    void cleanupAfterTest() {
+        cleanupCenterData();
+    }
+
     @Test
-    @Transactional
     void activeMemberWithEligibleMembershipCanEnterAndExit() {
         Member member = createMember("ACTIVE");
         MemberMembership membership = purchaseCountMembership(member, 5);
@@ -65,7 +78,6 @@ class AccessServiceIntegrationTest {
     }
 
     @Test
-    @Transactional
     void inactiveMemberEntryIsDeniedAndDeniedEventRecorded() {
         Member inactive = createMember("INACTIVE");
 
@@ -79,7 +91,6 @@ class AccessServiceIntegrationTest {
     }
 
     @Test
-    @Transactional
     void exhaustedCountMembershipEntryIsDenied() {
         Member member = createMember("ACTIVE");
         MemberMembership membership = purchaseCountMembership(member, 1);
@@ -103,7 +114,6 @@ class AccessServiceIntegrationTest {
     }
 
     @Test
-    @Transactional
     void duplicateOpenSessionEntryIsDenied() {
         Member member = createMember("ACTIVE");
         MemberMembership membership = purchaseCountMembership(member, 5);
@@ -118,7 +128,6 @@ class AccessServiceIntegrationTest {
     }
 
     @Test
-    @Transactional
     void exitWithoutOpenSessionIsBlocked() {
         Member member = createMember("ACTIVE");
         purchaseCountMembership(member, 5);
@@ -171,5 +180,44 @@ class AccessServiceIntegrationTest {
         )).membership();
         assertNotNull(membership.membershipId());
         return membership;
+    }
+
+    private void cleanupCenterData() {
+        jdbcClient.sql("DELETE FROM member_access_sessions WHERE center_id = :centerId")
+                .param("centerId", CENTER_ID)
+                .update();
+        jdbcClient.sql("DELETE FROM access_events WHERE center_id = :centerId")
+                .param("centerId", CENTER_ID)
+                .update();
+        jdbcClient.sql("DELETE FROM crm_message_events WHERE center_id = :centerId")
+                .param("centerId", CENTER_ID)
+                .update();
+        jdbcClient.sql("DELETE FROM membership_usage_events WHERE center_id = :centerId")
+                .param("centerId", CENTER_ID)
+                .update();
+        jdbcClient.sql("DELETE FROM membership_holds WHERE center_id = :centerId")
+                .param("centerId", CENTER_ID)
+                .update();
+        jdbcClient.sql("DELETE FROM membership_refunds WHERE center_id = :centerId")
+                .param("centerId", CENTER_ID)
+                .update();
+        jdbcClient.sql("DELETE FROM payment_details WHERE center_id = :centerId")
+                .param("centerId", CENTER_ID)
+                .update();
+        jdbcClient.sql("DELETE FROM payments WHERE center_id = :centerId")
+                .param("centerId", CENTER_ID)
+                .update();
+        jdbcClient.sql("DELETE FROM reservations WHERE center_id = :centerId")
+                .param("centerId", CENTER_ID)
+                .update();
+        jdbcClient.sql("DELETE FROM member_memberships WHERE center_id = :centerId")
+                .param("centerId", CENTER_ID)
+                .update();
+        jdbcClient.sql("DELETE FROM members WHERE center_id = :centerId")
+                .param("centerId", CENTER_ID)
+                .update();
+        jdbcClient.sql("DELETE FROM products WHERE center_id = :centerId")
+                .param("centerId", CENTER_ID)
+                .update();
     }
 }

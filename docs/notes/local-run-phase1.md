@@ -62,6 +62,10 @@ SPRING_PROFILES_ACTIVE=dev ./gradlew bootRun
 
 참고:
 - `dev` 또는 `staging` 프로필에서 no-auth를 허용한다 (기본값은 안전하게 `false`)
+- backend canonical build는 Gradle이며 `pom.xml`은 deprecated 상태로 유지 중이다.
+- QueryDSL generated source는 `build/generated/sources/annotationProcessor/java/main`에 생성된다.
+- 생성 확인이 필요하면 `./gradlew clean compileJava`를 사용한다.
+- OpenAPI/Swagger UI는 `dev`에서만 노출되며 경로는 `/v3/api-docs`, `/swagger-ui`다.
 
 ### Backend (JWT Mode - Phase 5)
 

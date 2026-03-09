@@ -158,11 +158,16 @@ Found brainstorm from 2026-03-09: `backend-architecture-stack-alignment`. Using 
   - Swagger가 `staging/prod`에서 비활성화됨
 
 Phase 1 checklist:
-- [ ] `backend/build.gradle`에 JPA/QueryDSL/SpringDoc 의존성을 추가한다.
-- [ ] QueryDSL generated source 경로와 CI/로컬 빌드 절차를 고정한다.
-- [ ] `SecurityConfig`와 OpenAPI 설정을 맞춰 Swagger `dev only` 노출 정책을 적용한다.
-- [ ] `backend/pom.xml`의 역할을 `deprecated`로 명시하거나 제거 시점을 확정한다.
-- [ ] 실행 문서(`README.md`, `docs/notes/local-run-phase1.md`)를 새 빌드 기준에 맞춘다.
+- [x] `backend/build.gradle`에 JPA/QueryDSL/SpringDoc 의존성을 추가한다.
+- [x] QueryDSL generated source 경로와 CI/로컬 빌드 절차를 고정한다.
+- [x] `SecurityConfig`와 OpenAPI 설정을 맞춰 Swagger `dev only` 노출 정책을 적용한다.
+- [x] `backend/pom.xml`의 역할을 `deprecated`로 명시하거나 제거 시점을 확정한다.
+- [x] 실행 문서(`README.md`, `docs/notes/local-run-phase1.md`)를 새 빌드 기준에 맞춘다.
+
+Phase 1 execution note (2026-03-09):
+- `./gradlew clean compileJava`로 새 의존성 및 QueryDSL annotation processing 기동을 검증했다.
+- `OpenApiExposureIntegrationTest`, `ActuatorSecurityIntegrationTest` targeted validation으로 `dev` 노출 / `prod` 비노출을 확인했다.
+- 전체 `./gradlew test`는 기존 `AccessServiceIntegrationTest`의 공유 dev DB 의존성 때문에 실패하며, 이 문제는 `main`에서도 동일하게 재현된다.
 
 Phase 1 research insights:
 - `application.yml`의 multi-document profile block으로 `springdoc.api-docs.enabled` / `springdoc.swagger-ui.enabled`를 `dev=true`, `staging/prod=false`로 분리하는 것이 가장 단순하다.
