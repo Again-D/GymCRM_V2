@@ -9,9 +9,9 @@ import { UnknownSecurityScreen } from "./features/auth/UnknownSecurityScreen";
 import { AccessSection } from "./features/access/AccessSection";
 import {
   type AccessEventRecord,
-  type AccessPresenceSummary,
   useAccessWorkspaceState
 } from "./features/access/useAccessWorkspaceState";
+import { useAccessQueries } from "./features/access/useAccessQueries";
 import { DashboardSection } from "./features/dashboard/DashboardSection";
 import { CrmSection } from "./features/crm/CrmSection";
 import {
@@ -27,9 +27,9 @@ import {
   type LockerAssignment,
   type LockerAssignFormState,
   type LockerFilters,
-  type LockerSlot,
   useLockerWorkspaceState
 } from "./features/lockers/useLockerWorkspaceState";
+import { useLockerQueries } from "./features/lockers/useLockerQueries";
 import { MemberManagementPanels } from "./features/members/MemberManagementPanels";
 import { MembersSection } from "./features/members/MembersSection";
 import { type MemberSummary, useMembersQuery } from "./features/members/useMembersQuery";
@@ -556,14 +556,6 @@ export default function App() {
     setAccessMemberQuery,
     accessSelectedMemberId,
     setAccessSelectedMemberId,
-    accessEvents,
-    setAccessEvents,
-    accessPresence,
-    setAccessPresence,
-    accessEventsLoading,
-    setAccessEventsLoading,
-    accessPresenceLoading,
-    setAccessPresenceLoading,
     accessActionSubmitting,
     setAccessActionSubmitting,
     accessPanelMessage,
@@ -571,18 +563,21 @@ export default function App() {
     accessPanelError,
     setAccessPanelError
   } = accessWorkspace;
+  const {
+    accessEvents,
+    accessPresence,
+    accessEventsLoading,
+    accessPresenceLoading,
+    accessQueryError,
+    reloadAccessData,
+    resetAccessQueries
+  } = useAccessQueries({
+    formatError: errorMessage
+  });
   const lockerWorkspace = useLockerWorkspaceState();
   const {
     lockerFilters,
     setLockerFilters,
-    lockerSlots,
-    setLockerSlots,
-    lockerSlotsLoading,
-    setLockerSlotsLoading,
-    lockerAssignments,
-    setLockerAssignments,
-    lockerAssignmentsLoading,
-    setLockerAssignmentsLoading,
     lockerAssignForm,
     setLockerAssignForm,
     lockerAssignSubmitting,
@@ -594,6 +589,19 @@ export default function App() {
     lockerPanelError,
     setLockerPanelError
   } = lockerWorkspace;
+  const {
+    lockerSlots,
+    lockerSlotsLoading,
+    lockerAssignments,
+    lockerAssignmentsLoading,
+    lockerQueryError,
+    loadLockerSlots,
+    loadLockerAssignments,
+    resetLockerQueries
+  } = useLockerQueries({
+    getDefaultFilters: () => lockerFilters,
+    formatError: errorMessage
+  });
   const settlementWorkspace = useSettlementWorkspaceState();
   const {
     settlementFilters,
@@ -710,7 +718,9 @@ export default function App() {
     reservationWorkspace.resetReservationWorkspace();
     resetReservationSchedulesQuery();
     accessWorkspace.resetAccessWorkspace();
+    resetAccessQueries();
     lockerWorkspace.resetLockerWorkspace();
+    resetLockerQueries();
     settlementWorkspace.resetSettlementWorkspace();
     resetSettlementReportQuery();
     crmWorkspace.resetCrmWorkspace();
@@ -745,6 +755,8 @@ export default function App() {
   );
   const effectiveMemberPanelError = memberPanelError ?? membersQueryError;
   const effectiveReservationPanelError = reservationPanelError ?? reservationSchedulesError;
+  const effectiveAccessPanelError = accessPanelError ?? accessQueryError;
+  const effectiveLockerPanelError = lockerPanelError ?? lockerQueryError;
   const effectiveSettlementPanelMessage = settlementPanelMessage ?? settlementReportMessage;
   const effectiveSettlementPanelError = settlementPanelError ?? settlementReportError;
   const effectiveCrmPanelError = crmPanelError ?? crmHistoryError;
@@ -869,97 +881,6 @@ export default function App() {
     } finally {
       if (canCommitState(shouldCommit)) {
         setReservationLoading(false);
-      }
-    }
-  }
-
-  async function loadAccessEvents(memberId?: number | null, shouldCommit?: () => boolean) {
-    setAccessEventsLoading(true);
-    try {
-      const params = new URLSearchParams();
-      params.set("limit", "100");
-      if (memberId != null) {
-        params.set("memberId", String(memberId));
-      }
-      const response = await apiGet<AccessEventRecord[]>(`/api/v1/access/events?${params.toString()}`);
-      if (!canCommitState(shouldCommit)) {
-        return;
-      }
-      setAccessEvents(response.data);
-    } finally {
-      if (canCommitState(shouldCommit)) {
-        setAccessEventsLoading(false);
-      }
-    }
-  }
-
-  async function loadAccessPresence(shouldCommit?: () => boolean) {
-    setAccessPresenceLoading(true);
-    try {
-      const response = await apiGet<AccessPresenceSummary>("/api/v1/access/presence");
-      if (!canCommitState(shouldCommit)) {
-        return;
-      }
-      setAccessPresence(response.data);
-    } finally {
-      if (canCommitState(shouldCommit)) {
-        setAccessPresenceLoading(false);
-      }
-    }
-  }
-
-  async function reloadAccessData(memberId?: number | null, shouldCommit?: () => boolean) {
-    setAccessPanelError(null);
-    await Promise.all([loadAccessPresence(shouldCommit), loadAccessEvents(memberId, shouldCommit)]);
-  }
-
-  async function loadLockerSlots(filters?: LockerFilters, shouldCommit?: () => boolean) {
-    setLockerSlotsLoading(true);
-    setLockerPanelError(null);
-    try {
-      const effectiveFilters = filters ?? lockerFilters;
-      const params = new URLSearchParams();
-      if (effectiveFilters.lockerStatus) {
-        params.set("lockerStatus", effectiveFilters.lockerStatus);
-      }
-      if (effectiveFilters.lockerZone.trim()) {
-        params.set("lockerZone", effectiveFilters.lockerZone.trim());
-      }
-      const query = params.toString();
-      const response = await apiGet<LockerSlot[]>(`/api/v1/lockers/slots${query ? `?${query}` : ""}`);
-      if (!canCommitState(shouldCommit)) {
-        return;
-      }
-      setLockerSlots(response.data);
-    } catch (error) {
-      if (!canCommitState(shouldCommit)) {
-        return;
-      }
-      setLockerPanelError(errorMessage(error));
-    } finally {
-      if (canCommitState(shouldCommit)) {
-        setLockerSlotsLoading(false);
-      }
-    }
-  }
-
-  async function loadLockerAssignments(activeOnly = false, shouldCommit?: () => boolean) {
-    setLockerAssignmentsLoading(true);
-    setLockerPanelError(null);
-    try {
-      const response = await apiGet<LockerAssignment[]>(`/api/v1/lockers/assignments?activeOnly=${activeOnly}`);
-      if (!canCommitState(shouldCommit)) {
-        return;
-      }
-      setLockerAssignments(response.data);
-    } catch (error) {
-      if (!canCommitState(shouldCommit)) {
-        return;
-      }
-      setLockerPanelError(errorMessage(error));
-    } finally {
-      if (canCommitState(shouldCommit)) {
-        setLockerAssignmentsLoading(false);
       }
     }
   }
@@ -1907,7 +1828,7 @@ export default function App() {
               </Suspense>
             </ReservationsSection>
           ) : activeNavSection === "access" ? (
-            <AccessSection accessPanelMessage={accessPanelMessage} accessPanelError={accessPanelError}>
+            <AccessSection accessPanelMessage={accessPanelMessage} accessPanelError={effectiveAccessPanelError}>
               <Suspense fallback={<WorkspacePanelFallback />}>
                 <LazyAccessManagementPanels
                   members={members}
@@ -1944,7 +1865,7 @@ export default function App() {
                   lockerReturnSubmittingId={lockerReturnSubmittingId}
                   handleLockerReturn={handleLockerReturn}
                   lockerPanelMessage={lockerPanelMessage}
-                  lockerPanelError={lockerPanelError}
+                  lockerPanelError={effectiveLockerPanelError}
                   members={members}
                 />
               </Suspense>

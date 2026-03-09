@@ -33,10 +33,6 @@ export type AccessPresenceSummary = {
 export function useAccessWorkspaceState() {
   const [accessMemberQuery, setAccessMemberQuery] = useState("");
   const [accessSelectedMemberId, setAccessSelectedMemberId] = useState<number | null>(null);
-  const [accessEvents, setAccessEvents] = useState<AccessEventRecord[]>([]);
-  const [accessPresence, setAccessPresence] = useState<AccessPresenceSummary | null>(null);
-  const [accessEventsLoading, setAccessEventsLoading] = useState(false);
-  const [accessPresenceLoading, setAccessPresenceLoading] = useState(false);
   const [accessActionSubmitting, setAccessActionSubmitting] = useState(false);
   const [accessPanelMessage, setAccessPanelMessage] = useState<string | null>(null);
   const [accessPanelError, setAccessPanelError] = useState<string | null>(null);
@@ -44,10 +40,6 @@ export function useAccessWorkspaceState() {
   function resetAccessWorkspace() {
     setAccessMemberQuery("");
     setAccessSelectedMemberId(null);
-    setAccessEvents([]);
-    setAccessPresence(null);
-    setAccessEventsLoading(false);
-    setAccessPresenceLoading(false);
     setAccessActionSubmitting(false);
     setAccessPanelMessage(null);
     setAccessPanelError(null);
@@ -58,14 +50,6 @@ export function useAccessWorkspaceState() {
     setAccessMemberQuery,
     accessSelectedMemberId,
     setAccessSelectedMemberId,
-    accessEvents,
-    setAccessEvents,
-    accessPresence,
-    setAccessPresence,
-    accessEventsLoading,
-    setAccessEventsLoading,
-    accessPresenceLoading,
-    setAccessPresenceLoading,
     accessActionSubmitting,
     setAccessActionSubmitting,
     accessPanelMessage,
