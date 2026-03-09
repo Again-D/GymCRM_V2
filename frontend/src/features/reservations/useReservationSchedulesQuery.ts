@@ -21,29 +21,33 @@ export function useReservationSchedulesQuery({ formatError }: UseReservationSche
   const [reservationSchedulesLoading, setReservationSchedulesLoading] = useState(false);
   const [reservationSchedulesError, setReservationSchedulesError] = useState<string | null>(null);
   const formatErrorRef = useLatestRef(formatError);
+  const requestIdRef = useRef(0);
 
   async function loadReservationSchedules(shouldCommit?: () => boolean) {
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
     setReservationSchedulesLoading(true);
     setReservationSchedulesError(null);
     try {
       const response = await apiGet<ReservationScheduleSummary[]>("/api/v1/reservations/schedules");
-      if (!canCommitState(shouldCommit)) {
+      if (requestIdRef.current !== requestId || !canCommitState(shouldCommit)) {
         return;
       }
       setReservationSchedules(response.data);
     } catch (error) {
-      if (!canCommitState(shouldCommit)) {
+      if (requestIdRef.current !== requestId || !canCommitState(shouldCommit)) {
         return;
       }
       setReservationSchedulesError(formatErrorRef.current(error));
     } finally {
-      if (canCommitState(shouldCommit)) {
+      if (requestIdRef.current === requestId && canCommitState(shouldCommit)) {
         setReservationSchedulesLoading(false);
       }
     }
   }
 
   function resetReservationSchedulesQuery() {
+    requestIdRef.current += 1;
     setReservationSchedules([]);
     setReservationSchedulesLoading(false);
     setReservationSchedulesError(null);
