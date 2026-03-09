@@ -51,8 +51,6 @@ export const EMPTY_RESERVATION_CREATE_FORM: ReservationCreateFormState = {
 };
 
 export function useReservationWorkspaceState(selectedMemberId: number | null) {
-  const [reservationSchedules, setReservationSchedules] = useState<ReservationScheduleSummary[]>([]);
-  const [reservationSchedulesLoading, setReservationSchedulesLoading] = useState(false);
   const [reservationRowsByMemberId, setReservationRowsByMemberId] = useState<Record<number, ReservationRecord[]>>({});
   const [reservationLoading, setReservationLoading] = useState(false);
   const [reservationCreateForm, setReservationCreateForm] =
@@ -71,8 +69,6 @@ export function useReservationWorkspaceState(selectedMemberId: number | null) {
   }, [selectedMemberId]);
 
   function resetReservationWorkspace() {
-    setReservationSchedules([]);
-    setReservationSchedulesLoading(false);
     setReservationRowsByMemberId({});
     setReservationLoading(false);
     setReservationCreateForm({ ...EMPTY_RESERVATION_CREATE_FORM });
@@ -83,10 +79,6 @@ export function useReservationWorkspaceState(selectedMemberId: number | null) {
   }
 
   return {
-    reservationSchedules,
-    setReservationSchedules,
-    reservationSchedulesLoading,
-    setReservationSchedulesLoading,
     reservationRowsByMemberId,
     setReservationRowsByMemberId,
     reservationLoading,

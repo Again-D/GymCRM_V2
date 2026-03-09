@@ -51,8 +51,6 @@ export function createInitialCrmFilters(): CrmFilters {
 
 export function useCrmWorkspaceState() {
   const [crmFilters, setCrmFilters] = useState<CrmFilters>(createInitialCrmFilters);
-  const [crmHistoryRows, setCrmHistoryRows] = useState<CrmMessageHistoryRow[]>([]);
-  const [crmHistoryLoading, setCrmHistoryLoading] = useState(false);
   const [crmTriggerDaysAhead, setCrmTriggerDaysAhead] = useState("3");
   const [crmTriggerSubmitting, setCrmTriggerSubmitting] = useState(false);
   const [crmProcessSubmitting, setCrmProcessSubmitting] = useState(false);
@@ -61,8 +59,6 @@ export function useCrmWorkspaceState() {
 
   function resetCrmWorkspace() {
     setCrmFilters(createInitialCrmFilters());
-    setCrmHistoryRows([]);
-    setCrmHistoryLoading(false);
     setCrmTriggerDaysAhead("3");
     setCrmTriggerSubmitting(false);
     setCrmProcessSubmitting(false);
@@ -73,10 +69,6 @@ export function useCrmWorkspaceState() {
   return {
     crmFilters,
     setCrmFilters,
-    crmHistoryRows,
-    setCrmHistoryRows,
-    crmHistoryLoading,
-    setCrmHistoryLoading,
     crmTriggerDaysAhead,
     setCrmTriggerDaysAhead,
     crmTriggerSubmitting,
