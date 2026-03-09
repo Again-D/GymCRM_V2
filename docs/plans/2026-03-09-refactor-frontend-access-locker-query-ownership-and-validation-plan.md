@@ -1,7 +1,7 @@
 ---
 title: "refactor: frontend access/locker query ownership and validation follow-up"
 type: refactor
-status: active
+status: completed
 date: 2026-03-09
 ---
 
@@ -276,30 +276,30 @@ PR `#61`까지의 리팩토링으로 `members`, `products`, `reservation schedul
 ## Acceptance Criteria
 
 ### Functional Requirements
-- [ ] `access presence/events` read query가 dedicated hook 또는 조합 hook으로 이동한다.
-- [ ] `locker slots/assignments` read query가 dedicated hook으로 이동한다.
-- [ ] logout/reset 이후 access/locker read query의 late response가 state를 다시 채우지 않는다.
-- [ ] access entry/exit 이후 `presence`와 `events`가 같은 reload contract로 갱신된다.
-- [ ] locker assign/return 이후 `slots`와 `assignments`가 같은 reload contract로 갱신된다.
-- [ ] jwt auth gate 검증 경로가 코드 또는 검증 문서 기준으로 더 명확하게 정리된다.
-- [ ] reservations/settlements long-list rendering guard 적용 여부가 코드 또는 검증 문서로 결정된다.
+- [x] `access presence/events` read query가 dedicated hook 또는 조합 hook으로 이동한다.
+- [x] `locker slots/assignments` read query가 dedicated hook으로 이동한다.
+- [x] logout/reset 이후 access/locker read query의 late response가 state를 다시 채우지 않는다.
+- [x] access entry/exit 이후 `presence`와 `events`가 같은 reload contract로 갱신된다.
+- [x] locker assign/return 이후 `slots`와 `assignments`가 같은 reload contract로 갱신된다.
+- [x] jwt auth gate 검증 경로가 코드 또는 검증 문서 기준으로 더 명확하게 정리된다.
+- [x] reservations/settlements long-list rendering guard 적용 여부가 코드 또는 검증 문서로 결정된다.
 
 ### Non-Functional Requirements
-- [ ] `App.tsx`의 read-side orchestration 코드가 추가로 감소한다.
-- [ ] access/locker stale-write 방지 패턴이 members/products/reservations와 일관된다.
-- [ ] shared `members` source ownership이 lockers refactor 이후에도 변하지 않는다.
-- [ ] 브라우저 검증 문서가 도구 제약과 대체 근거를 명확히 설명한다.
-- [ ] `shouldCommit`는 query hook의 핵심 stale-write 방어가 아니라 상위 조합 guard로만 남는다.
+- [x] `App.tsx`의 read-side orchestration 코드가 추가로 감소한다.
+- [x] access/locker stale-write 방지 패턴이 members/products/reservations와 일관된다.
+- [x] shared `members` source ownership이 lockers refactor 이후에도 변하지 않는다.
+- [x] 브라우저 검증 문서가 도구 제약과 대체 근거를 명확히 설명한다.
+- [x] `shouldCommit`는 query hook의 핵심 stale-write 방어가 아니라 상위 조합 guard로만 남는다.
 
 ### Quality Gates
-- [ ] `cd /Users/abc/projects/GymCRM_V2/frontend && npm test` 통과
-- [ ] `cd /Users/abc/projects/GymCRM_V2/frontend && npm run build` 통과
-- [ ] access query hook regression test 추가
-- [ ] locker query hook regression test 추가
-- [ ] post-reset stale write regression test 추가
-- [ ] jwt auth gate validation note 갱신
-- [ ] long-list follow-up 결과를 검증 문서에 기록
-- [ ] `agent-browser` limitation과 API/session fallback 근거를 같은 검증 문서에 함께 남김
+- [x] `cd /Users/abc/projects/GymCRM_V2/frontend && npm test` 통과
+- [x] `cd /Users/abc/projects/GymCRM_V2/frontend && npm run build` 통과
+- [x] access query hook regression test 추가
+- [x] locker query hook regression test 추가
+- [x] post-reset stale write regression test 추가
+- [x] jwt auth gate validation note 갱신
+- [x] long-list follow-up 결과를 검증 문서에 기록
+- [x] `agent-browser` limitation과 API/session fallback 근거를 같은 검증 문서에 함께 남김
 
 ## Success Metrics
 - `/Users/abc/projects/GymCRM_V2/frontend/src/App.tsx`에서 access/locker read query 구현이 사라지거나 현저히 축소된다.

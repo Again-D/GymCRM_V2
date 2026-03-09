@@ -55,10 +55,6 @@ export function createEmptyLockerAssignForm(): LockerAssignFormState {
 
 export function useLockerWorkspaceState() {
   const [lockerFilters, setLockerFilters] = useState<LockerFilters>({ lockerStatus: "", lockerZone: "" });
-  const [lockerSlots, setLockerSlots] = useState<LockerSlot[]>([]);
-  const [lockerSlotsLoading, setLockerSlotsLoading] = useState(false);
-  const [lockerAssignments, setLockerAssignments] = useState<LockerAssignment[]>([]);
-  const [lockerAssignmentsLoading, setLockerAssignmentsLoading] = useState(false);
   const [lockerAssignForm, setLockerAssignForm] = useState<LockerAssignFormState>(() => createEmptyLockerAssignForm());
   const [lockerAssignSubmitting, setLockerAssignSubmitting] = useState(false);
   const [lockerReturnSubmittingId, setLockerReturnSubmittingId] = useState<number | null>(null);
@@ -67,10 +63,6 @@ export function useLockerWorkspaceState() {
 
   function resetLockerWorkspace() {
     setLockerFilters({ lockerStatus: "", lockerZone: "" });
-    setLockerSlots([]);
-    setLockerSlotsLoading(false);
-    setLockerAssignments([]);
-    setLockerAssignmentsLoading(false);
     setLockerAssignForm(createEmptyLockerAssignForm());
     setLockerAssignSubmitting(false);
     setLockerReturnSubmittingId(null);
@@ -81,14 +73,6 @@ export function useLockerWorkspaceState() {
   return {
     lockerFilters,
     setLockerFilters,
-    lockerSlots,
-    setLockerSlots,
-    lockerSlotsLoading,
-    setLockerSlotsLoading,
-    lockerAssignments,
-    setLockerAssignments,
-    lockerAssignmentsLoading,
-    setLockerAssignmentsLoading,
     lockerAssignForm,
     setLockerAssignForm,
     lockerAssignSubmitting,
