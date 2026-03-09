@@ -8,6 +8,11 @@ import { LoginScreen } from "./features/auth/LoginScreen";
 import { UnknownSecurityScreen } from "./features/auth/UnknownSecurityScreen";
 import { AccessManagementPanels } from "./features/access/AccessManagementPanels";
 import { AccessSection } from "./features/access/AccessSection";
+import {
+  type AccessEventRecord,
+  type AccessPresenceSummary,
+  useAccessWorkspaceState
+} from "./features/access/useAccessWorkspaceState";
 import { DashboardSection } from "./features/dashboard/DashboardSection";
 import { CrmMessagePanels } from "./features/crm/CrmMessagePanels";
 import { CrmSection } from "./features/crm/CrmSection";
@@ -269,36 +274,6 @@ type ProductFormState = {
 type ProductFilters = {
   category: "" | "MEMBERSHIP" | "PT" | "GX" | "ETC";
   status: "" | "ACTIVE" | "INACTIVE";
-};
-
-type AccessEventRecord = {
-  accessEventId: number;
-  centerId: number;
-  memberId: number;
-  membershipId: number | null;
-  reservationId: number | null;
-  processedBy: number;
-  eventType: "ENTRY_GRANTED" | "EXIT" | "ENTRY_DENIED";
-  denyReason: string | null;
-  processedAt: string;
-};
-
-type AccessOpenSession = {
-  accessSessionId: number;
-  memberId: number;
-  memberName: string;
-  phone: string;
-  membershipId: number | null;
-  reservationId: number | null;
-  entryAt: string;
-};
-
-type AccessPresenceSummary = {
-  openSessionCount: number;
-  todayEntryGrantedCount: number;
-  todayExitCount: number;
-  todayEntryDeniedCount: number;
-  openSessions: AccessOpenSession[];
 };
 
 type LockerSlot = {
@@ -740,15 +715,6 @@ export default function App() {
   const [purchaseProductLoading, setPurchaseProductLoading] = useState(false);
   const [memberMembershipsByMemberId, setMemberMembershipsByMemberId] = useState<Record<number, PurchasedMembership[]>>({});
   const [memberPaymentsByMemberId, setMemberPaymentsByMemberId] = useState<Record<number, PurchasePayment[]>>({});
-  const [accessMemberQuery, setAccessMemberQuery] = useState("");
-  const [accessSelectedMemberId, setAccessSelectedMemberId] = useState<number | null>(null);
-  const [accessEvents, setAccessEvents] = useState<AccessEventRecord[]>([]);
-  const [accessPresence, setAccessPresence] = useState<AccessPresenceSummary | null>(null);
-  const [accessEventsLoading, setAccessEventsLoading] = useState(false);
-  const [accessPresenceLoading, setAccessPresenceLoading] = useState(false);
-  const [accessActionSubmitting, setAccessActionSubmitting] = useState(false);
-  const [accessPanelMessage, setAccessPanelMessage] = useState<string | null>(null);
-  const [accessPanelError, setAccessPanelError] = useState<string | null>(null);
   const [lockerFilters, setLockerFilters] = useState<LockerFilters>({ lockerStatus: "", lockerZone: "" });
   const [lockerSlots, setLockerSlots] = useState<LockerSlot[]>([]);
   const [lockerSlotsLoading, setLockerSlotsLoading] = useState(false);
@@ -840,6 +806,27 @@ export default function App() {
     reservationPanelError,
     setReservationPanelError
   } = reservationWorkspace;
+  const accessWorkspace = useAccessWorkspaceState();
+  const {
+    accessMemberQuery,
+    setAccessMemberQuery,
+    accessSelectedMemberId,
+    setAccessSelectedMemberId,
+    accessEvents,
+    setAccessEvents,
+    accessPresence,
+    setAccessPresence,
+    accessEventsLoading,
+    setAccessEventsLoading,
+    accessPresenceLoading,
+    setAccessPresenceLoading,
+    accessActionSubmitting,
+    setAccessActionSubmitting,
+    accessPanelMessage,
+    setAccessPanelMessage,
+    accessPanelError,
+    setAccessPanelError
+  } = accessWorkspace;
 
   const routePreview = useMemo(() => routes.slice(0, 4), []);
   const isPrototypeMode = securityMode === "prototype";
@@ -873,12 +860,7 @@ export default function App() {
     setMemberMembershipsByMemberId({});
     setMemberPaymentsByMemberId({});
     reservationWorkspace.resetReservationWorkspace();
-    setAccessMemberQuery("");
-    setAccessSelectedMemberId(null);
-    setAccessEvents([]);
-    setAccessPresence(null);
-    setAccessPanelMessage(null);
-    setAccessPanelError(null);
+    accessWorkspace.resetAccessWorkspace();
     setLockerFilters({ lockerStatus: "", lockerZone: "" });
     setLockerSlots([]);
     setLockerAssignments([]);
