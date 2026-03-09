@@ -1,7 +1,7 @@
 ---
 title: "feat: Membership and reservation member selection flow"
 type: feat
-status: active
+status: completed
 date: 2026-03-09
 origin: docs/brainstorms/2026-03-09-membership-reservation-member-selection-flow-brainstorm.md
 ---
@@ -212,7 +212,7 @@ type WorkspaceMemberPickerState = {
 - [x] 예약 관리에서 회원 변경 시 예약 생성 폼 stale state 초기화가 계속 보장된다.
 - [x] 회원권 업무에서 회원 변경 시 구매 폼, 미리보기, 관련 메시지 상태가 의도된 정책대로 초기화됨이 문서와 구현에서 일치한다.
 - [x] 회원 검색 결과 없음, 회원 상세 로딩 실패, 예약 가능 회원권 없음 상태가 각각 명확하게 표현된다.
-- [ ] 기존 테마/패널/반응형 레이아웃을 깨지 않고 모바일 좁은 화면에서도 사용 가능하다.
+- [x] 기존 테마/패널/반응형 레이아웃을 깨지 않고 모바일 좁은 화면에서도 사용 가능하다.
 - [x] `frontend/package.json` 기준 빌드가 성공한다.
 - [x] 회원권/예약 주요 진입 동선에 대한 수동 스모크 또는 브라우저 검증 로그가 남는다.
 - [x] 검증 로그에 “업무 탭 직접 진입 검색이 회원관리 탭 상태를 오염시키지 않음”과 “입력 중 회원 변경 시 폼 초기화 동작” 시나리오가 포함된다.
@@ -220,10 +220,10 @@ type WorkspaceMemberPickerState = {
 ### Research Insights
 
 **Quality Gates to Add During Execution:**
-- [ ] 직접 진입 검색 중 연속 입력/빠른 재조회에서도 마지막 검색 결과만 보인다.
-- [ ] 회원 선택 직후 곧바로 다른 회원으로 바꿔도 이전 회원의 예약/구매 데이터가 순간적으로 섞여 보이지 않는다.
-- [ ] 모바일 좁은 화면에서 선택 리스트가 기존 패널 레이아웃을 밀어내지 않고 순차적으로 읽힌다.
-- [ ] `ROLE_DESK` 와 `ROLE_CENTER_ADMIN` 모두에서 직접 진입 흐름이 기존 권한 UX 와 모순되지 않는다.
+- [x] 직접 진입 검색 중 연속 입력/빠른 재조회에서도 마지막 검색 결과만 보인다.
+- [x] 회원 선택 직후 곧바로 다른 회원으로 바꿔도 이전 회원의 예약/구매 데이터가 순간적으로 섞여 보이지 않는다.
+- [x] 모바일 좁은 화면에서 선택 리스트가 기존 패널 레이아웃을 밀어내지 않고 순차적으로 읽힌다.
+- [x] `ROLE_DESK` 와 `ROLE_CENTER_ADMIN` 모두에서 직접 진입 흐름이 기존 권한 UX 와 모순되지 않는다.
 
 ## Success Metrics
 
