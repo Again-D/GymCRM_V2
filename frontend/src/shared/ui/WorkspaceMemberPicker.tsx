@@ -28,6 +28,7 @@ type WorkspaceMemberPickerProps = {
 
 const DEFAULT_SUBMIT_LABEL = "이 회원으로 시작";
 const MAX_VISIBLE_RESULTS = 8;
+const SEARCH_DEBOUNCE_MS = 250;
 
 export function WorkspaceMemberPicker({
   title,
@@ -47,7 +48,26 @@ export function WorkspaceMemberPicker({
   const [error, setError] = useState<string | null>(null);
   const [selectingMemberId, setSelectingMemberId] = useState<number | null>(null);
   const requestIdRef = useRef(0);
+  const loadMembersRef = useRef(loadMembers);
   const deferredQuery = useDeferredValue(query.trim().toLowerCase());
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+
+  useEffect(() => {
+    loadMembersRef.current = loadMembers;
+  }, [loadMembers]);
+
+  useEffect(() => {
+    if (!deferredQuery) {
+      setDebouncedQuery("");
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setDebouncedQuery(deferredQuery);
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [deferredQuery]);
 
   useEffect(() => {
     let mounted = true;
@@ -56,7 +76,7 @@ export function WorkspaceMemberPicker({
     setLoading(true);
     setError(null);
 
-    void loadMembers(deferredQuery || undefined)
+    void loadMembersRef.current(debouncedQuery || undefined)
       .then((nextRows) => {
         if (!mounted || requestIdRef.current !== requestId) {
           return;
@@ -79,7 +99,7 @@ export function WorkspaceMemberPicker({
     return () => {
       mounted = false;
     };
-  }, [deferredQuery, loadMembers]);
+  }, [debouncedQuery]);
 
   const visibleRows = rows.slice(0, MAX_VISIBLE_RESULTS);
 
