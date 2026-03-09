@@ -73,7 +73,15 @@ import {
   useSettlementWorkspaceState
 } from "./features/settlements/useSettlementWorkspaceState";
 import { ApiClientError, apiGet, apiPatch, apiPost, configureApiAuth } from "./shared/api/client";
+import {
+  useAccessWorkspaceLoader,
+  useCrmWorkspaceLoader,
+  useLockerWorkspaceLoader,
+  useReservationsWorkspaceLoader,
+  useSettlementWorkspaceLoader
+} from "./shared/hooks/useWorkspaceLoaders";
 import { useWorkspaceMemberSearchLoader } from "./shared/hooks/useWorkspaceMemberSearchLoader";
+import { detectSystemTheme, useThemePreference } from "./shared/hooks/useThemePreference";
 import { formatCurrency, formatDate, formatDateTime } from "./shared/utils/format";
 
 type NavSectionKey =
@@ -87,8 +95,6 @@ type NavSectionKey =
   | "settlements"
   | "products";
 type SecurityMode = "unknown" | "prototype" | "jwt";
-type ThemePreference = "system" | "light" | "dark";
-type ResolvedTheme = "light" | "dark";
 
 type HealthPayload = {
   status: string;
@@ -289,37 +295,6 @@ function parseRequiredNumber(value: string): number {
   return Number.parseFloat(value.trim());
 }
 
-const THEME_PREFERENCE_STORAGE_KEY = "gymcrm.themePreference";
-
-function normalizeThemePreference(value: string | null): ThemePreference {
-  if (value === "light" || value === "dark" || value === "system") {
-    return value;
-  }
-  return "system";
-}
-
-function detectSystemTheme(): ResolvedTheme {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
-    return "light";
-  }
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-}
-
-function readThemePreference(): ThemePreference {
-  if (typeof window === "undefined") {
-    return "system";
-  }
-  try {
-    return normalizeThemePreference(window.localStorage.getItem(THEME_PREFERENCE_STORAGE_KEY));
-  } catch {
-    return "system";
-  }
-}
-
-function resolveTheme(preference: ThemePreference): ResolvedTheme {
-  return preference === "system" ? detectSystemTheme() : preference;
-}
-
 function memberFormFromDetail(member: MemberDetail): MemberFormState {
   return {
     memberName: member.memberName,
@@ -361,6 +336,10 @@ function errorMessage(error: unknown): string {
     return error.message;
   }
   return "알 수 없는 오류가 발생했습니다.";
+}
+
+function canCommitState(shouldCommit?: () => boolean) {
+  return shouldCommit?.() ?? true;
 }
 
 function buildMemberPayload(form: MemberFormState) {
@@ -515,8 +494,7 @@ function buildResumePreview(membership: PurchasedMembership, draft: MembershipAc
 
 export default function App() {
   const [activeNavSection, setActiveNavSection] = useState<NavSectionKey>("dashboard");
-  const [themePreference, setThemePreference] = useState<ThemePreference>(() => readThemePreference());
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => resolveTheme(readThemePreference()));
+  const { themePreference, setThemePreference, resolvedTheme } = useThemePreference();
   const [securityMode, setSecurityMode] = useState<SecurityMode>("unknown");
   const [prototypeNoAuth, setPrototypeNoAuth] = useState(false);
   const [authBootstrapping, setAuthBootstrapping] = useState(true);
@@ -542,6 +520,7 @@ export default function App() {
   const [memberPanelError, setMemberPanelError] = useState<string | null>(null);
   const [memberFormMessage, setMemberFormMessage] = useState<string | null>(null);
   const [memberFormError, setMemberFormError] = useState<string | null>(null);
+  const membersPreloadPromiseRef = useRef<Promise<void> | null>(null);
   const [purchaseProductDetail, setPurchaseProductDetail] = useState<ProductDetail | null>(null);
   const [purchaseProductLoading, setPurchaseProductLoading] = useState(false);
   const [memberMembershipsByMemberId, setMemberMembershipsByMemberId] = useState<Record<number, PurchasedMembership[]>>({});
@@ -768,6 +747,27 @@ export default function App() {
     }
   }
 
+  async function ensureMembersLoaded() {
+    if (members.length > 0) {
+      return;
+    }
+
+    const inFlight = membersPreloadPromiseRef.current;
+    if (inFlight) {
+      await inFlight;
+      return;
+    }
+
+    const request = loadMembers();
+    membersPreloadPromiseRef.current = request;
+
+    try {
+      await request;
+    } finally {
+      membersPreloadPromiseRef.current = null;
+    }
+  }
+
   async function loadWorkspaceMembers(keyword?: string) {
     return workspaceMemberSearch.load(keyword);
   }
@@ -867,23 +867,31 @@ export default function App() {
     }
   }
 
-  async function loadReservationsForMember(memberId: number) {
+  async function loadReservationsForMember(memberId: number, shouldCommit?: () => boolean) {
     setReservationLoading(true);
     setReservationPanelError(null);
     try {
       const response = await apiGet<ReservationRecord[]>(`/api/v1/reservations?memberId=${memberId}`);
+      if (!canCommitState(shouldCommit)) {
+        return;
+      }
       setReservationRowsByMemberId((prev) => ({
         ...prev,
         [memberId]: response.data
       }));
     } catch (error) {
+      if (!canCommitState(shouldCommit)) {
+        return;
+      }
       setReservationPanelError(errorMessage(error));
     } finally {
-      setReservationLoading(false);
+      if (canCommitState(shouldCommit)) {
+        setReservationLoading(false);
+      }
     }
   }
 
-  async function loadAccessEvents(memberId?: number | null) {
+  async function loadAccessEvents(memberId?: number | null, shouldCommit?: () => boolean) {
     setAccessEventsLoading(true);
     try {
       const params = new URLSearchParams();
@@ -892,28 +900,38 @@ export default function App() {
         params.set("memberId", String(memberId));
       }
       const response = await apiGet<AccessEventRecord[]>(`/api/v1/access/events?${params.toString()}`);
+      if (!canCommitState(shouldCommit)) {
+        return;
+      }
       setAccessEvents(response.data);
     } finally {
-      setAccessEventsLoading(false);
+      if (canCommitState(shouldCommit)) {
+        setAccessEventsLoading(false);
+      }
     }
   }
 
-  async function loadAccessPresence() {
+  async function loadAccessPresence(shouldCommit?: () => boolean) {
     setAccessPresenceLoading(true);
     try {
       const response = await apiGet<AccessPresenceSummary>("/api/v1/access/presence");
+      if (!canCommitState(shouldCommit)) {
+        return;
+      }
       setAccessPresence(response.data);
     } finally {
-      setAccessPresenceLoading(false);
+      if (canCommitState(shouldCommit)) {
+        setAccessPresenceLoading(false);
+      }
     }
   }
 
-  async function reloadAccessData(memberId?: number | null) {
+  async function reloadAccessData(memberId?: number | null, shouldCommit?: () => boolean) {
     setAccessPanelError(null);
-    await Promise.all([loadAccessPresence(), loadAccessEvents(memberId)]);
+    await Promise.all([loadAccessPresence(shouldCommit), loadAccessEvents(memberId, shouldCommit)]);
   }
 
-  async function loadLockerSlots(filters?: LockerFilters) {
+  async function loadLockerSlots(filters?: LockerFilters, shouldCommit?: () => boolean) {
     setLockerSlotsLoading(true);
     setLockerPanelError(null);
     try {
@@ -927,28 +945,44 @@ export default function App() {
       }
       const query = params.toString();
       const response = await apiGet<LockerSlot[]>(`/api/v1/lockers/slots${query ? `?${query}` : ""}`);
+      if (!canCommitState(shouldCommit)) {
+        return;
+      }
       setLockerSlots(response.data);
     } catch (error) {
+      if (!canCommitState(shouldCommit)) {
+        return;
+      }
       setLockerPanelError(errorMessage(error));
     } finally {
-      setLockerSlotsLoading(false);
+      if (canCommitState(shouldCommit)) {
+        setLockerSlotsLoading(false);
+      }
     }
   }
 
-  async function loadLockerAssignments(activeOnly = false) {
+  async function loadLockerAssignments(activeOnly = false, shouldCommit?: () => boolean) {
     setLockerAssignmentsLoading(true);
     setLockerPanelError(null);
     try {
       const response = await apiGet<LockerAssignment[]>(`/api/v1/lockers/assignments?activeOnly=${activeOnly}`);
+      if (!canCommitState(shouldCommit)) {
+        return;
+      }
       setLockerAssignments(response.data);
     } catch (error) {
+      if (!canCommitState(shouldCommit)) {
+        return;
+      }
       setLockerPanelError(errorMessage(error));
     } finally {
-      setLockerAssignmentsLoading(false);
+      if (canCommitState(shouldCommit)) {
+        setLockerAssignmentsLoading(false);
+      }
     }
   }
 
-  async function loadSettlementReport(filters?: SettlementReportFilters) {
+  async function loadSettlementReport(filters?: SettlementReportFilters, shouldCommit?: () => boolean) {
     setSettlementReportLoading(true);
     setSettlementPanelError(null);
     setSettlementPanelMessage(null);
@@ -964,16 +998,24 @@ export default function App() {
         params.set("productKeyword", effectiveFilters.productKeyword.trim());
       }
       const response = await apiGet<SalesSettlementReport>(`/api/v1/settlements/sales-report?${params.toString()}`);
+      if (!canCommitState(shouldCommit)) {
+        return;
+      }
       setSettlementReport(response.data);
       setSettlementPanelMessage(response.message);
     } catch (error) {
+      if (!canCommitState(shouldCommit)) {
+        return;
+      }
       setSettlementPanelError(errorMessage(error));
     } finally {
-      setSettlementReportLoading(false);
+      if (canCommitState(shouldCommit)) {
+        setSettlementReportLoading(false);
+      }
     }
   }
 
-  async function loadCrmHistory(filters?: CrmFilters) {
+  async function loadCrmHistory(filters?: CrmFilters, shouldCommit?: () => boolean) {
     setCrmHistoryLoading(true);
     setCrmPanelError(null);
     try {
@@ -985,11 +1027,19 @@ export default function App() {
         params.set("sendStatus", effectiveFilters.sendStatus);
       }
       const response = await apiGet<CrmMessageHistoryResponse>(`/api/v1/crm/messages?${params.toString()}`);
+      if (!canCommitState(shouldCommit)) {
+        return;
+      }
       setCrmHistoryRows(response.data.rows);
     } catch (error) {
+      if (!canCommitState(shouldCommit)) {
+        return;
+      }
       setCrmPanelError(errorMessage(error));
     } finally {
-      setCrmHistoryLoading(false);
+      if (canCommitState(shouldCommit)) {
+        setCrmHistoryLoading(false);
+      }
     }
   }
 
@@ -1125,13 +1175,6 @@ export default function App() {
   }, [isAuthenticated]);
 
   useEffect(() => {
-    if (!isAuthenticated || !selectedMember || activeNavSection !== "reservations") {
-      return;
-    }
-    void loadReservationsForMember(selectedMember.memberId);
-  }, [isAuthenticated, activeNavSection, selectedMember]);
-
-  useEffect(() => {
     if (activeNavSection !== "members") {
       setMemberFormOpen(false);
     }
@@ -1140,101 +1183,40 @@ export default function App() {
     }
   }, [activeNavSection]);
 
-  useEffect(() => {
-    if (!isAuthenticated || activeNavSection !== "access") {
-      return;
-    }
+  useReservationsWorkspaceLoader({
+    enabled: isAuthenticated && activeNavSection === "reservations",
+    selectedMemberId: selectedMember?.memberId ?? null,
+    loadReservationsForMember,
+    onError: (error) => setReservationPanelError(errorMessage(error))
+  });
 
-    async function initializeAccessWorkspace() {
-      if (members.length === 0) {
-        await loadMembers();
-      }
-      await reloadAccessData(accessSelectedMemberId);
-    }
+  useAccessWorkspaceLoader({
+    enabled: isAuthenticated && activeNavSection === "access",
+    selectedMemberId: accessSelectedMemberId,
+    ensureMembersLoaded,
+    reloadAccessData,
+    onError: (error) => setAccessPanelError(errorMessage(error))
+  });
 
-    void initializeAccessWorkspace().catch((error) => {
-      setAccessPanelError(errorMessage(error));
-    });
-  }, [isAuthenticated, activeNavSection, accessSelectedMemberId]);
+  useLockerWorkspaceLoader({
+    enabled: isAuthenticated && activeNavSection === "lockers",
+    ensureMembersLoaded,
+    loadLockerSlots: (shouldCommit) => loadLockerSlots(undefined, shouldCommit),
+    loadLockerAssignments,
+    onError: (error) => setLockerPanelError(errorMessage(error))
+  });
 
-  useEffect(() => {
-    if (!isAuthenticated || activeNavSection !== "lockers") {
-      return;
-    }
+  useSettlementWorkspaceLoader({
+    enabled: isAuthenticated && activeNavSection === "settlements",
+    load: (shouldCommit) => loadSettlementReport(undefined, shouldCommit),
+    onError: (error) => setSettlementPanelError(errorMessage(error))
+  });
 
-    async function initializeLockerWorkspace() {
-      if (members.length === 0) {
-        await loadMembers();
-      }
-      await Promise.all([loadLockerSlots(), loadLockerAssignments(false)]);
-    }
-
-    void initializeLockerWorkspace().catch((error) => {
-      setLockerPanelError(errorMessage(error));
-    });
-  }, [isAuthenticated, activeNavSection]);
-
-  useEffect(() => {
-    if (!isAuthenticated || activeNavSection !== "settlements") {
-      return;
-    }
-    void loadSettlementReport().catch((error) => {
-      setSettlementPanelError(errorMessage(error));
-    });
-  }, [isAuthenticated, activeNavSection]);
-
-  useEffect(() => {
-    if (!isAuthenticated || activeNavSection !== "crm") {
-      return;
-    }
-    void loadCrmHistory().catch((error) => {
-      setCrmPanelError(errorMessage(error));
-    });
-  }, [isAuthenticated, activeNavSection]);
-
-  useEffect(() => {
-    setResolvedTheme(resolveTheme(themePreference));
-  }, [themePreference]);
-
-  useEffect(() => {
-    if (typeof document === "undefined") {
-      return;
-    }
-    document.documentElement.dataset.theme = resolvedTheme;
-  }, [resolvedTheme]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    try {
-      if (themePreference === "system") {
-        window.localStorage.removeItem(THEME_PREFERENCE_STORAGE_KEY);
-      } else {
-        window.localStorage.setItem(THEME_PREFERENCE_STORAGE_KEY, themePreference);
-      }
-    } catch {
-      // Ignore storage access failures and continue with in-memory theme.
-    }
-  }, [themePreference]);
-
-  useEffect(() => {
-    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
-      return;
-    }
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const handleChange = () => {
-      if (themePreference === "system") {
-        setResolvedTheme(mediaQuery.matches ? "dark" : "light");
-      }
-    };
-    if (typeof mediaQuery.addEventListener === "function") {
-      mediaQuery.addEventListener("change", handleChange);
-      return () => mediaQuery.removeEventListener("change", handleChange);
-    }
-    mediaQuery.addListener(handleChange);
-    return () => mediaQuery.removeListener(handleChange);
-  }, [themePreference]);
+  useCrmWorkspaceLoader({
+    enabled: isAuthenticated && activeNavSection === "crm",
+    load: (shouldCommit) => loadCrmHistory(undefined, shouldCommit),
+    onError: (error) => setCrmPanelError(errorMessage(error))
+  });
 
   async function handleLoginSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { useDeferredValue, useEffect, useRef, useState } from "react";
+import { useState } from "react";
+import { useWorkspaceMemberPickerQuery } from "../hooks/useWorkspaceMemberPickerQuery";
 import { InlineHelpText } from "./InlineHelpText";
 import { NoticeText } from "./NoticeText";
 import { PanelHeader } from "./PanelHeader";
@@ -27,8 +28,6 @@ type WorkspaceMemberPickerProps = {
 };
 
 const DEFAULT_SUBMIT_LABEL = "이 회원으로 시작";
-const MAX_VISIBLE_RESULTS = 8;
-const SEARCH_DEBOUNCE_MS = 250;
 
 export function WorkspaceMemberPicker({
   title,
@@ -42,66 +41,8 @@ export function WorkspaceMemberPicker({
   onSelected,
   submitLabel = DEFAULT_SUBMIT_LABEL
 }: WorkspaceMemberPickerProps) {
-  const [query, setQuery] = useState("");
-  const [rows, setRows] = useState<WorkspaceMemberPickerRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectingMemberId, setSelectingMemberId] = useState<number | null>(null);
-  const requestIdRef = useRef(0);
-  const loadMembersRef = useRef(loadMembers);
-  const deferredQuery = useDeferredValue(query.trim().toLowerCase());
-  const [debouncedQuery, setDebouncedQuery] = useState("");
-
-  useEffect(() => {
-    loadMembersRef.current = loadMembers;
-  }, [loadMembers]);
-
-  useEffect(() => {
-    if (!deferredQuery) {
-      setDebouncedQuery("");
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      setDebouncedQuery(deferredQuery);
-    }, SEARCH_DEBOUNCE_MS);
-
-    return () => window.clearTimeout(timer);
-  }, [deferredQuery]);
-
-  useEffect(() => {
-    let mounted = true;
-    const requestId = requestIdRef.current + 1;
-    requestIdRef.current = requestId;
-    setLoading(true);
-    setError(null);
-
-    void loadMembersRef.current(debouncedQuery || undefined)
-      .then((nextRows) => {
-        if (!mounted || requestIdRef.current !== requestId) {
-          return;
-        }
-        setRows(nextRows);
-      })
-      .catch((loadError: unknown) => {
-        if (!mounted || requestIdRef.current !== requestId) {
-          return;
-        }
-        setError(loadError instanceof Error ? loadError.message : "회원 목록을 불러오지 못했습니다.");
-      })
-      .finally(() => {
-        if (!mounted || requestIdRef.current !== requestId) {
-          return;
-        }
-        setLoading(false);
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, [debouncedQuery]);
-
-  const visibleRows = rows.slice(0, MAX_VISIBLE_RESULTS);
+  const { query, setQuery, visibleRows, loading, error, setError } = useWorkspaceMemberPickerQuery({ loadMembers });
 
   async function handleSelect(memberId: number) {
     setSelectingMemberId(memberId);

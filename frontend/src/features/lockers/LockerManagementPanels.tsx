@@ -151,7 +151,7 @@ export function LockerManagementPanels({
         {lockerPanelMessage ? <NoticeText tone="success">{lockerPanelMessage}</NoticeText> : null}
         {lockerPanelError ? <NoticeText tone="error">{lockerPanelError}</NoticeText> : null}
 
-        <div className="list-shell">
+        <div className="list-shell deferred-list-surface">
           <table>
             <thead>
               <tr>
@@ -262,7 +262,7 @@ export function LockerManagementPanels({
 
       <article className="panel">
         <PanelHeader title="활성 배정 목록" />
-        <div className="list-shell">
+        <div className="list-shell deferred-list-surface">
           <table>
             <thead>
               <tr>
@@ -312,7 +312,7 @@ export function LockerManagementPanels({
 
       <article className="panel">
         <PanelHeader title="최근 반납 이력" />
-        <div className="list-shell">
+        <div className="list-shell deferred-list-surface">
           <table>
             <thead>
               <tr>

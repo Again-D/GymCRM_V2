@@ -1358,6 +1358,11 @@ tbody tr.is-selected {
   gap: 8px;
 }
 
+.deferred-list-surface {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 720px;
+}
+
 .workspace-member-picker-item {
   width: 100%;
   border: 1px solid var(--line);

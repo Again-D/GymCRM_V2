@@ -177,7 +177,7 @@ export function ProductManagementPanels({
         {productPanelMessage ? <NoticeText tone="success">{productPanelMessage}</NoticeText> : null}
         {productPanelError ? <NoticeText tone="error">{productPanelError}</NoticeText> : null}
 
-        <div className="list-shell">
+        <div className="list-shell deferred-list-surface">
           <table className="products-table">
             <thead>
               <tr>
