@@ -59,4 +59,17 @@ public class AuthRefreshTokenQueryRepository {
         entityManager.clear();
         return (int) updated;
     }
+
+    public int revokeActiveByUserId(Long userId, String reason) {
+        long updated = queryFactory.update(authRefreshTokenEntity)
+                .set(authRefreshTokenEntity.revokedAt, OffsetDateTime.now())
+                .set(authRefreshTokenEntity.revokeReason, reason)
+                .where(
+                        authRefreshTokenEntity.userId.eq(userId),
+                        authRefreshTokenEntity.revokedAt.isNull()
+                )
+                .execute();
+        entityManager.clear();
+        return (int) updated;
+    }
 }

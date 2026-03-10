@@ -27,6 +27,16 @@ public class AuthUserRepository {
         return authUserJpaRepository.findByUserIdAndIsDeletedFalse(userId).map(this::toDomain);
     }
 
+    public Optional<AuthUser> findById(Long userId) {
+        entityManager.clear();
+        return authUserJpaRepository.findByUserIdAndIsDeletedFalse(userId).map(this::toDomain);
+    }
+
+    public Optional<AuthUser> findActiveByCenterAndUserId(Long centerId, Long userId) {
+        entityManager.clear();
+        return authUserJpaRepository.findByCenterIdAndUserIdAndIsDeletedFalse(centerId, userId).map(this::toDomain);
+    }
+
     @Transactional
     public int updateLastLoginAt(Long userId) {
         AuthUserEntity entity = authUserJpaRepository.findByUserIdAndIsDeletedFalse(userId).orElse(null);
@@ -49,7 +59,47 @@ public class AuthUserRepository {
                 entity.getDisplayName(),
                 entity.getRoleCode(),
                 entity.getUserStatus(),
-                entity.getLastLoginAt()
+                entity.getLastLoginAt(),
+                entity.getAccessRevokedAfter()
         );
+    }
+
+    @Transactional
+    public int updateAccessRevokedAfter(Long userId, OffsetDateTime revokedAfter, Long updatedBy) {
+        AuthUserEntity entity = authUserJpaRepository.findByUserIdAndIsDeletedFalse(userId).orElse(null);
+        if (entity == null) {
+            return 0;
+        }
+        entity.setAccessRevokedAfter(revokedAfter);
+        entity.setUpdatedAt(OffsetDateTime.now());
+        entity.setUpdatedBy(updatedBy == null ? userId : updatedBy);
+        authUserJpaRepository.saveAndFlush(entity);
+        return 1;
+    }
+
+    @Transactional
+    public int updateRoleCode(Long userId, String roleCode, Long updatedBy) {
+        AuthUserEntity entity = authUserJpaRepository.findByUserIdAndIsDeletedFalse(userId).orElse(null);
+        if (entity == null) {
+            return 0;
+        }
+        entity.setRoleCode(roleCode);
+        entity.setUpdatedAt(OffsetDateTime.now());
+        entity.setUpdatedBy(updatedBy == null ? userId : updatedBy);
+        authUserJpaRepository.saveAndFlush(entity);
+        return 1;
+    }
+
+    @Transactional
+    public int updateUserStatus(Long userId, String userStatus, Long updatedBy) {
+        AuthUserEntity entity = authUserJpaRepository.findByUserIdAndIsDeletedFalse(userId).orElse(null);
+        if (entity == null) {
+            return 0;
+        }
+        entity.setUserStatus(userStatus);
+        entity.setUpdatedAt(OffsetDateTime.now());
+        entity.setUpdatedBy(updatedBy == null ? userId : updatedBy);
+        authUserJpaRepository.saveAndFlush(entity);
+        return 1;
     }
 }

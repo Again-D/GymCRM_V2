@@ -106,6 +106,7 @@ public class JwtTokenService {
                 claims.get("username", String.class),
                 claims.get("role", String.class),
                 claims.getId(),
+                toOffsetDateTime(claims.getIssuedAt()),
                 toOffsetDateTime(claims.getExpiration())
         );
     }
@@ -199,6 +200,7 @@ public class JwtTokenService {
             String username,
             String roleCode,
             String jti,
+            OffsetDateTime issuedAt,
             OffsetDateTime expiresAt
     ) {}
 

@@ -58,6 +58,11 @@ public class AuthRefreshTokenRepository {
         return authRefreshTokenQueryRepository.revokeFamilyIfActive(tokenFamilyId, reason);
     }
 
+    @Transactional
+    public int revokeActiveByUserId(Long userId, String reason) {
+        return authRefreshTokenQueryRepository.revokeActiveByUserId(userId, reason);
+    }
+
     private RefreshTokenRecord toDomain(AuthRefreshTokenEntity entity) {
         return new RefreshTokenRecord(
                 entity.getRefreshTokenId(),

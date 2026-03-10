@@ -29,9 +29,15 @@ public class AuditLogService {
 
     @Transactional
     public AuditLog recordPiiRead(String resourceType, String resourceId, String attributesJson) {
+        return recordEvent("PII_READ", resourceType, resourceId, attributesJson);
+    }
+
+    @Transactional
+    public AuditLog recordEvent(String eventType, String resourceType, String resourceId, String attributesJson) {
+        String normalizedType = normalizeEventType(eventType);
         return auditLogRepository.insert(new AuditLogRepository.InsertCommand(
                 currentUserProvider.currentCenterId(),
-                "PII_READ",
+                normalizedType,
                 currentUserProvider.currentUserId(),
                 resourceType,
                 resourceId,
@@ -95,7 +101,9 @@ public class AuditLogService {
         String normalized = eventType.trim().toUpperCase();
         if (!normalized.equals("PII_READ")
                 && !normalized.equals("MEMBERSHIP_REFUND")
-                && !normalized.equals("ACCOUNT_ROLE_CHANGE")) {
+                && !normalized.equals("ACCOUNT_ROLE_CHANGE")
+                && !normalized.equals("ACCOUNT_STATUS_CHANGE")
+                && !normalized.equals("ACCOUNT_ACCESS_REVOKE")) {
             throw new ApiException(ErrorCode.VALIDATION_ERROR, "eventType is invalid");
         }
         return normalized;
