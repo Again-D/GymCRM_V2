@@ -77,6 +77,61 @@ public class CrmMessageEventRepository {
                 .list();
     }
 
+    public List<CrmMessageEvent> findPendingDispatchable(Long centerId, int limit, OffsetDateTime now) {
+        String sql = """
+                SELECT
+                    crm_message_event_id, center_id, member_id, membership_id,
+                    event_type, channel_type, dedupe_key, payload_json,
+                    send_status, attempt_count, last_attempted_at,
+                    next_attempt_at, sent_at, failed_at, last_error_message,
+                    trace_id, created_at, updated_at
+                FROM crm_message_events
+                WHERE center_id = :centerId
+                  AND is_deleted = FALSE
+                  AND send_status = 'PENDING'
+                  AND (next_attempt_at IS NULL OR next_attempt_at <= :now)
+                ORDER BY crm_message_event_id ASC
+                LIMIT :limit
+                """;
+
+        return jdbcClient.sql(sql)
+                .param("centerId", centerId)
+                .param("now", now)
+                .param("limit", limit)
+                .query(CrmMessageEvent.class)
+                .list();
+    }
+
+    public List<CrmMessageEvent> findRetryDispatchableByIds(Long centerId, List<Long> crmMessageEventIds, OffsetDateTime now) {
+        if (crmMessageEventIds == null || crmMessageEventIds.isEmpty()) {
+            return List.of();
+        }
+
+        String sql = """
+                SELECT
+                    crm_message_event_id, center_id, member_id, membership_id,
+                    event_type, channel_type, dedupe_key, payload_json,
+                    send_status, attempt_count, last_attempted_at,
+                    next_attempt_at, sent_at, failed_at, last_error_message,
+                    trace_id, created_at, updated_at
+                FROM crm_message_events
+                WHERE center_id = :centerId
+                  AND is_deleted = FALSE
+                  AND send_status = 'RETRY_WAIT'
+                  AND crm_message_event_id IN (:crmMessageEventIds)
+                  AND next_attempt_at IS NOT NULL
+                  AND next_attempt_at <= :now
+                ORDER BY crm_message_event_id ASC
+                """;
+
+        return jdbcClient.sql(sql)
+                .param("centerId", centerId)
+                .param("crmMessageEventIds", crmMessageEventIds)
+                .param("now", now)
+                .query(CrmMessageEvent.class)
+                .list();
+    }
+
     public List<CrmMessageEvent> findRecent(Long centerId, String sendStatus, int limit) {
         StringBuilder sql = new StringBuilder("""
                 SELECT

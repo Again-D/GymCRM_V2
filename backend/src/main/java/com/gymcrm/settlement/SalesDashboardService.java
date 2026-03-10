@@ -17,13 +17,16 @@ public class SalesDashboardService {
     private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Seoul");
 
     private final SalesDashboardRepository repository;
+    private final SalesDashboardCacheService salesDashboardCacheService;
     private final CurrentUserProvider currentUserProvider;
 
     public SalesDashboardService(
             SalesDashboardRepository repository,
+            SalesDashboardCacheService salesDashboardCacheService,
             CurrentUserProvider currentUserProvider
     ) {
         this.repository = repository;
+        this.salesDashboardCacheService = salesDashboardCacheService;
         this.currentUserProvider = currentUserProvider;
     }
 
@@ -34,10 +37,16 @@ public class SalesDashboardService {
         if (expiringWithinDays < 0 || expiringWithinDays > MAX_EXPIRING_WITHIN_DAYS) {
             throw new ApiException(ErrorCode.VALIDATION_ERROR, "expiringWithinDays must be between 0 and " + MAX_EXPIRING_WITHIN_DAYS);
         }
+        Long centerId = currentUserProvider.currentCenterId();
 
+        return salesDashboardCacheService.get(centerId, baseDate, expiringWithinDays)
+                .orElseGet(() -> loadAndCache(centerId, baseDate, expiringWithinDays));
+    }
+
+    private SalesDashboardResult loadAndCache(Long centerId, LocalDate baseDate, int expiringWithinDays) {
         SalesDashboardRepository.SalesDashboardAggregateRow row = repository.aggregate(
                 new SalesDashboardRepository.DashboardQueryCommand(
-                        currentUserProvider.currentCenterId(),
+                        centerId,
                         baseDate,
                         baseDate.withDayOfMonth(1),
                         baseDate.withDayOfMonth(1).plusMonths(1),
@@ -45,7 +54,7 @@ public class SalesDashboardService {
                 )
         );
 
-        return new SalesDashboardResult(
+        SalesDashboardResult result = new SalesDashboardResult(
                 baseDate,
                 expiringWithinDays,
                 nullSafe(row.todayNetSales()),
@@ -53,6 +62,8 @@ public class SalesDashboardService {
                 row.newMemberCount() == null ? 0L : row.newMemberCount(),
                 row.expiringMemberCount() == null ? 0L : row.expiringMemberCount()
         );
+        salesDashboardCacheService.put(centerId, result);
+        return result;
     }
 
     private BigDecimal nullSafe(BigDecimal value) {

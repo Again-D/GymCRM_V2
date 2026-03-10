@@ -19,17 +19,23 @@ public class CrmMessageService {
     private final CrmMessageEventRepository eventRepository;
     private final CrmTargetRepository targetRepository;
     private final CrmMessageSender messageSender;
+    private final CrmDispatchClaimService crmDispatchClaimService;
+    private final CrmRetryWheelService crmRetryWheelService;
     private final CurrentUserProvider currentUserProvider;
 
     public CrmMessageService(
             CrmMessageEventRepository eventRepository,
             CrmTargetRepository targetRepository,
             CrmMessageSender messageSender,
+            CrmDispatchClaimService crmDispatchClaimService,
+            CrmRetryWheelService crmRetryWheelService,
             CurrentUserProvider currentUserProvider
     ) {
         this.eventRepository = eventRepository;
         this.targetRepository = targetRepository;
         this.messageSender = messageSender;
+        this.crmDispatchClaimService = crmDispatchClaimService;
+        this.crmRetryWheelService = crmRetryWheelService;
         this.currentUserProvider = currentUserProvider;
     }
 
@@ -180,12 +186,18 @@ public class CrmMessageService {
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         String traceId = TraceIdFilter.currentTraceIdOrGenerate();
 
-        List<CrmMessageEvent> dispatchable = eventRepository.findDispatchable(centerId, limit, now);
+        List<CrmMessageEvent> dispatchable = loadDispatchable(centerId, limit, now);
+        int pickedCount = 0;
         int sentCount = 0;
         int retryWaitCount = 0;
         int deadCount = 0;
 
         for (CrmMessageEvent event : dispatchable) {
+            if (!crmDispatchClaimService.tryClaim(centerId, event.crmMessageEventId())) {
+                continue;
+            }
+
+            pickedCount += 1;
             CrmMessageSender.SendResult sendResult = messageSender.send(event);
             if (sendResult.success()) {
                 eventRepository.markSent(new CrmMessageEventRepository.UpdateSentCommand(
@@ -195,6 +207,7 @@ public class CrmMessageService {
                         traceId,
                         actorUserId
                 ));
+                crmRetryWheelService.remove(centerId, event.crmMessageEventId());
                 sentCount += 1;
                 continue;
             }
@@ -209,22 +222,45 @@ public class CrmMessageService {
                         traceId,
                         actorUserId
                 ));
+                crmRetryWheelService.remove(centerId, event.crmMessageEventId());
                 deadCount += 1;
             } else {
+                OffsetDateTime nextAttemptAt = now;
                 eventRepository.markRetryWait(new CrmMessageEventRepository.UpdateRetryCommand(
                         event.crmMessageEventId(),
                         centerId,
                         now,
-                        now,
+                        nextAttemptAt,
                         sendResult.errorMessage(),
                         traceId,
                         actorUserId
                 ));
+                crmRetryWheelService.schedule(centerId, event.crmMessageEventId(), nextAttemptAt);
                 retryWaitCount += 1;
             }
         }
 
-        return new ProcessResult(dispatchable.size(), sentCount, retryWaitCount, deadCount, MAX_ATTEMPTS);
+        return new ProcessResult(pickedCount, sentCount, retryWaitCount, deadCount, MAX_ATTEMPTS);
+    }
+
+    private List<CrmMessageEvent> loadDispatchable(Long centerId, int limit, OffsetDateTime now) {
+        List<Long> dueRetryIds = crmRetryWheelService.pollDue(centerId, now, limit);
+        if (dueRetryIds.isEmpty()) {
+            return eventRepository.findDispatchable(centerId, limit, now);
+        }
+
+        List<CrmMessageEvent> retryDispatchable = eventRepository.findRetryDispatchableByIds(centerId, dueRetryIds, now);
+        int remaining = Math.max(0, limit - retryDispatchable.size());
+        if (remaining == 0) {
+            return retryDispatchable;
+        }
+
+        List<CrmMessageEvent> pendingDispatchable = eventRepository.findPendingDispatchable(centerId, remaining, now);
+        if (pendingDispatchable.isEmpty()) {
+            return retryDispatchable;
+        }
+
+        return java.util.stream.Stream.concat(retryDispatchable.stream(), pendingDispatchable.stream()).toList();
     }
 
     @Transactional(readOnly = true)

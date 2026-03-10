@@ -26,6 +26,10 @@ class HealthControllerRedisStatusTest {
                 false,
                 new RedisRuntimeProperties.Toggle(true),
                 new RedisRuntimeProperties.ReservationLock(false, Duration.ofMillis(250), Duration.ofSeconds(3)),
+                new RedisRuntimeProperties.CrmDispatchClaim(true, Duration.ofSeconds(30)),
+                new RedisRuntimeProperties.CrmRetryWheel(true),
+                new RedisRuntimeProperties.SettlementDashboardCache(true, Duration.ofSeconds(30)),
+                new RedisRuntimeProperties.SettlementReportCache(true, Duration.ofSeconds(60)),
                 new RedisRuntimeProperties.Toggle(true)
         );
 
@@ -54,6 +58,10 @@ class HealthControllerRedisStatusTest {
                 .containsEntry("startupRequired", false)
                 .containsEntry("qrTokenStoreEnabled", true)
                 .containsEntry("reservationLockEnabled", false)
+                .containsEntry("crmDispatchClaimEnabled", true)
+                .containsEntry("crmRetryWheelEnabled", true)
+                .containsEntry("settlementDashboardCacheEnabled", true)
+                .containsEntry("settlementReportCacheEnabled", true)
                 .containsEntry("authDenylistEnabled", true);
     }
 }

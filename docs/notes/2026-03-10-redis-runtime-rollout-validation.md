@@ -1,6 +1,6 @@
 ---
 title: Redis runtime rollout and validation
-status: active
+status: completed
 date: 2026-03-10
 author: Codex
 origin:
@@ -20,7 +20,7 @@ origin:
 | Reservation lock | `app.redis.reservation-lock.enabled` | implemented | PostgreSQL business state + Redis lock coordinator | disable reservation lock flag | lock contention/unavailable returns conflict |
 | Access denylist | `app.redis.auth-denylist.enabled` | implemented | PostgreSQL refresh token + Redis access denylist | disable auth denylist flag | logout writes denylist, JWT filter rejects denylisted token |
 | Refresh token store migration | none | deferred | PostgreSQL `auth_refresh_tokens` | n/a | explicit non-goal in this milestone |
-| Redis-backed CRM/settlement state | none | deferred | PostgreSQL | n/a | not part of current rollout |
+| Redis-backed CRM/settlement state | `CRM processPending dispatch claim lock`, `sales dashboard short TTL cache`, `sales report export snapshot cache`, `retry backoff scheduler wheel` | implemented | PostgreSQL | Redis lease claim + short TTL caches + retry zset | deferred inventory follow-up track |
 
 ## Rollout Order
 
@@ -128,14 +128,19 @@ origin:
 현재 마일스톤에서 의도적으로 남긴 항목:
 
 - refresh token canonical source Redis 이전
-- Redis 기반 CRM/settlement ephemeral state
+  - `no-go unless clear bottleneck`
 
 구현 완료로 deferred scope에서 제거된 항목:
 
 - 강제 revoke 전용 admin API
 - role downgrade / user deactivation event와 denylist write 연결
+- CRM processPending dispatch claim lock
+- sales dashboard short TTL cache
+- sales report export snapshot cache
+- retry backoff scheduler wheel
 - 상세 validation note:
   - [2026-03-10-auth-operational-revoke-rollout-validation.md](/Users/abc/projects/GymCRM_V2/docs/notes/2026-03-10-auth-operational-revoke-rollout-validation.md)
+  - [2026-03-10-redis-deferred-scope-inventory.md](/Users/abc/projects/GymCRM_V2/docs/notes/2026-03-10-redis-deferred-scope-inventory.md)
 
 ## Cross-Document Status
 
