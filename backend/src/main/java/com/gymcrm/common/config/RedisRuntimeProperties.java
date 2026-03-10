@@ -11,6 +11,7 @@ public record RedisRuntimeProperties(
         Toggle qrTokenStore,
         ReservationLock reservationLock,
         CrmDispatchClaim crmDispatchClaim,
+        CrmRetryWheel crmRetryWheel,
         SettlementDashboardCache settlementDashboardCache,
         SettlementReportCache settlementReportCache,
         Toggle authDenylist
@@ -28,6 +29,11 @@ public record RedisRuntimeProperties(
     public record CrmDispatchClaim(
             boolean enabled,
             Duration leaseTime
+    ) {
+    }
+
+    public record CrmRetryWheel(
+            boolean enabled
     ) {
     }
 

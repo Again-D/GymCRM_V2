@@ -22,6 +22,7 @@ class CrmMessageServiceTest {
         CrmTargetRepository targetRepository = mock(CrmTargetRepository.class);
         CrmMessageSender messageSender = mock(CrmMessageSender.class);
         CrmDispatchClaimService claimService = mock(CrmDispatchClaimService.class);
+        CrmRetryWheelService retryWheelService = mock(CrmRetryWheelService.class);
         CurrentUserProvider currentUserProvider = mock(CurrentUserProvider.class);
 
         CrmMessageService service = new CrmMessageService(
@@ -29,6 +30,7 @@ class CrmMessageServiceTest {
                 targetRepository,
                 messageSender,
                 claimService,
+                retryWheelService,
                 currentUserProvider
         );
 
@@ -56,6 +58,7 @@ class CrmMessageServiceTest {
         CrmTargetRepository targetRepository = mock(CrmTargetRepository.class);
         CrmMessageSender messageSender = mock(CrmMessageSender.class);
         CrmDispatchClaimService claimService = mock(CrmDispatchClaimService.class);
+        CrmRetryWheelService retryWheelService = mock(CrmRetryWheelService.class);
         CurrentUserProvider currentUserProvider = mock(CurrentUserProvider.class);
 
         CrmMessageService service = new CrmMessageService(
@@ -63,6 +66,7 @@ class CrmMessageServiceTest {
                 targetRepository,
                 messageSender,
                 claimService,
+                retryWheelService,
                 currentUserProvider
         );
 
@@ -81,6 +85,38 @@ class CrmMessageServiceTest {
         assertThat(result.sentCount()).isEqualTo(1);
         verify(messageSender).send(second);
         verify(eventRepository).markSent(any());
+    }
+
+    @Test
+    void processPendingSchedulesRetryWheelAfterFailure() {
+        CrmMessageEventRepository eventRepository = mock(CrmMessageEventRepository.class);
+        CrmTargetRepository targetRepository = mock(CrmTargetRepository.class);
+        CrmMessageSender messageSender = mock(CrmMessageSender.class);
+        CrmDispatchClaimService claimService = mock(CrmDispatchClaimService.class);
+        CrmRetryWheelService retryWheelService = mock(CrmRetryWheelService.class);
+        CurrentUserProvider currentUserProvider = mock(CurrentUserProvider.class);
+
+        CrmMessageService service = new CrmMessageService(
+                eventRepository,
+                targetRepository,
+                messageSender,
+                claimService,
+                retryWheelService,
+                currentUserProvider
+        );
+
+        CrmMessageEvent event = sampleEvent(1003L);
+        given(currentUserProvider.currentCenterId()).willReturn(1L);
+        given(currentUserProvider.currentUserId()).willReturn(7L);
+        given(eventRepository.findDispatchable(any(), any(Integer.class), any(OffsetDateTime.class))).willReturn(List.of(event));
+        given(claimService.tryClaim(1L, 1003L)).willReturn(true);
+        given(messageSender.send(event)).willReturn(new CrmMessageSender.SendResult(false, null, "temporary failure"));
+
+        CrmMessageService.ProcessResult result = service.processPending(new CrmMessageService.ProcessRequest(20));
+
+        assertThat(result.retryWaitCount()).isEqualTo(1);
+        verify(eventRepository).markRetryWait(any());
+        verify(retryWheelService).schedule(any(), any(), any());
     }
 
     private CrmMessageEvent sampleEvent(Long eventId) {

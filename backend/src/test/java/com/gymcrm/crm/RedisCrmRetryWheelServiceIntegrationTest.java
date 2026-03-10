@@ -1,6 +1,5 @@
 package com.gymcrm.crm;
 
-import com.gymcrm.common.config.RedisRuntimeProperties;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -10,28 +9,30 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.io.IOException;
 import java.net.Socket;
-import java.time.Duration;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-class RedisCrmDispatchClaimServiceIntegrationTest {
+class RedisCrmRetryWheelServiceIntegrationTest {
 
     private LettuceConnectionFactory connectionFactory;
     private StringRedisTemplate redisTemplate;
-    private RedisCrmDispatchClaimService claimService;
+    private RedisCrmRetryWheelService retryWheelService;
 
     @BeforeEach
     void setUp() {
         assumeTrue(isRedisReachable(), "local redis is not running on localhost:6379");
         RedisStandaloneConfiguration configuration = new RedisStandaloneConfiguration("localhost", 6379);
-        configuration.setDatabase(13);
+        configuration.setDatabase(10);
         connectionFactory = new LettuceConnectionFactory(configuration);
         connectionFactory.afterPropertiesSet();
         redisTemplate = new StringRedisTemplate(connectionFactory);
         redisTemplate.afterPropertiesSet();
         redisTemplate.getConnectionFactory().getConnection().serverCommands().flushDb();
-        claimService = new RedisCrmDispatchClaimService(redisTemplate, redisProps());
+        retryWheelService = new RedisCrmRetryWheelService(redisTemplate);
     }
 
     @AfterEach
@@ -45,27 +46,16 @@ class RedisCrmDispatchClaimServiceIntegrationTest {
     }
 
     @Test
-    void sameEventCanOnlyBeClaimedOnceWithinLeaseWindow() {
-        boolean first = claimService.tryClaim(1L, 101L);
-        boolean second = claimService.tryClaim(1L, 101L);
+    void scheduleAndPollDueReturnsReadyIdsAndRemovesThem() {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        retryWheelService.schedule(1L, 101L, now.minusSeconds(10));
+        retryWheelService.schedule(1L, 102L, now.plusSeconds(30));
 
-        assertThat(first).isTrue();
-        assertThat(second).isFalse();
-        assertThat(claimService.ttlSeconds(101L)).isPositive();
-    }
+        List<Long> due = retryWheelService.pollDue(1L, now, 10);
+        List<Long> secondPoll = retryWheelService.pollDue(1L, now, 10);
 
-    private RedisRuntimeProperties redisProps() {
-        return new RedisRuntimeProperties(
-                true,
-                false,
-                new RedisRuntimeProperties.Toggle(false),
-                new RedisRuntimeProperties.ReservationLock(false, Duration.ofMillis(250), Duration.ofSeconds(3)),
-                new RedisRuntimeProperties.CrmDispatchClaim(true, Duration.ofSeconds(30)),
-                new RedisRuntimeProperties.CrmRetryWheel(false),
-                new RedisRuntimeProperties.SettlementDashboardCache(false, Duration.ofSeconds(30)),
-                new RedisRuntimeProperties.SettlementReportCache(false, Duration.ofSeconds(60)),
-                new RedisRuntimeProperties.Toggle(false)
-        );
+        assertThat(due).containsExactly(101L);
+        assertThat(secondPoll).isEmpty();
     }
 
     private boolean isRedisReachable() {

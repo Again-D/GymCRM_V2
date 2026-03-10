@@ -59,6 +59,10 @@ origin:
   - 장점은 있지만 현재 DB `next_attempt_at`만으로도 기능은 충분하다.
 - 분류:
   - `later`
+ - 실행 상태:
+   - 2026-03-10 구현 완료
+   - feature flag: `app.redis.crm-retry-wheel.enabled`
+   - 정책: Redis zset 기반 due-event discovery, Redis 장애 시 DB scan fallback
 
 ### Settlement candidates
 
@@ -98,19 +102,17 @@ origin:
 - 분류:
   - `reject for now`
 
-## Recommended Next Implementation
+## Remaining Follow-up
 
-다음 실제 구현 대상은 `retry backoff scheduler wheel`이다.
+현재 기준으로 추가 구현이 필요한 `implementable now/later` 후보는 남아 있지 않다.
 
-이유:
-- 이미 적용된 claim lock / settlement cache 다음으로, Redis sorted set이 가장 자연스럽게 맞는 남은 후보다.
-- `RETRY_WAIT` 스캔 부하를 Redis 스케줄 큐로 옮길 수 있다.
-- canonical DB를 유지한 채 dispatch 타이밍 coordinator만 Redis로 분리할 수 있다.
-
-추천 key 방향:
-- `crm:retry-wheel`
-- score = `next_attempt_at epoch millis`
-- member/event canonical state는 DB 유지, Redis는 due event discovery 용도만 담당
+남은 항목:
+- refresh token canonical migration:
+  - `no-go unless clear bottleneck`
+- trigger-time pre-dedupe cache:
+  - `reject`
+- trainer payroll/export job coordination:
+  - `reject for now`
 
 실행 상태:
 - 2026-03-10 구현 완료
@@ -119,3 +121,4 @@ origin:
 - 추가 구현 완료:
   - `sales dashboard short TTL cache`
   - `sales report export snapshot cache`
+  - `retry backoff scheduler wheel`

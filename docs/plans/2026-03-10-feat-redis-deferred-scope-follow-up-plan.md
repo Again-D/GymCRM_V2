@@ -86,3 +86,5 @@ Checklist:
   - Redis feature flag: `app.redis.settlement-dashboard-cache.enabled`
   - 후속 구현으로 `sales report export snapshot cache`를 적용했다.
   - Redis feature flag: `app.redis.settlement-report-cache.enabled`
+  - 후속 구현으로 `retry backoff scheduler wheel`을 적용했다.
+  - Redis feature flag: `app.redis.crm-retry-wheel.enabled`

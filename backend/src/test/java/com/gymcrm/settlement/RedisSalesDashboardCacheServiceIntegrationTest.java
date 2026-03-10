@@ -79,7 +79,9 @@ class RedisSalesDashboardCacheServiceIntegrationTest {
                 new RedisRuntimeProperties.Toggle(false),
                 new RedisRuntimeProperties.ReservationLock(false, Duration.ofMillis(250), Duration.ofSeconds(3)),
                 new RedisRuntimeProperties.CrmDispatchClaim(false, Duration.ofSeconds(30)),
+                new RedisRuntimeProperties.CrmRetryWheel(false),
                 new RedisRuntimeProperties.SettlementDashboardCache(true, Duration.ofSeconds(30)),
+                new RedisRuntimeProperties.SettlementReportCache(false, Duration.ofSeconds(60)),
                 new RedisRuntimeProperties.Toggle(false)
         );
     }

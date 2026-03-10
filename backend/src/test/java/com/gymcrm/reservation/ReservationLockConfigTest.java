@@ -35,6 +35,7 @@ class ReservationLockConfigTest {
                         new com.gymcrm.common.config.RedisRuntimeProperties.Toggle(false),
                         new com.gymcrm.common.config.RedisRuntimeProperties.ReservationLock(true, java.time.Duration.ofMillis(250), java.time.Duration.ofSeconds(3)),
                         new com.gymcrm.common.config.RedisRuntimeProperties.CrmDispatchClaim(false, java.time.Duration.ofSeconds(30)),
+                        new com.gymcrm.common.config.RedisRuntimeProperties.CrmRetryWheel(false),
                         new com.gymcrm.common.config.RedisRuntimeProperties.SettlementDashboardCache(false, java.time.Duration.ofSeconds(30)),
                         new com.gymcrm.common.config.RedisRuntimeProperties.SettlementReportCache(false, java.time.Duration.ofSeconds(60)),
                         new com.gymcrm.common.config.RedisRuntimeProperties.Toggle(false)
