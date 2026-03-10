@@ -154,19 +154,124 @@ class AuthOperationalAccessRevokeIntegrationTest {
                 .single();
         assertThat(revokedRefreshCount).isEqualTo(1);
 
-        Integer auditCount = jdbcClient.sql("""
-                SELECT COUNT(*)
-                FROM audit_logs
-                WHERE center_id = 1
-                  AND event_type = 'ACCOUNT_ACCESS_REVOKE'
-                  AND resource_type = 'USER'
-                  AND resource_id = :resourceId
+        assertAuditEventExists("ACCOUNT_ACCESS_REVOKE");
+    }
+
+    @Test
+    void roleDowngradeRevokesExistingAccessAndRefreshTokens() throws Exception {
+        String adminAccessToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
+        jdbcClient.sql("""
+                UPDATE users
+                SET role_code = 'ROLE_MANAGER',
+                    updated_at = NOW(),
+                    updated_by = 1
+                WHERE user_id = :userId
                 """)
-                .param("resourceId", String.valueOf(targetUserId))
-                .query(Integer.class)
+                .param("userId", targetUserId)
+                .update();
+
+        MvcResult targetLoginResult = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType("application/json")
+                        .content("""
+                                {"loginId":"%s","password":"%s"}
+                                """.formatted(targetLoginId, targetPassword)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String targetAccessToken = AuthControllerIntegrationTest.JsonExtractors.readString(
+                targetLoginResult.getResponse().getContentAsString(),
+                "$.data.accessToken"
+        );
+        String targetRefreshToken = AuthControllerIntegrationTest.CookieExtractors.extractCookieValue(
+                targetLoginResult.getResponse().getHeader(HttpHeaders.SET_COOKIE),
+                AuthCookieSupport.REFRESH_COOKIE_NAME
+        );
+
+        mockMvc.perform(post("/api/v1/auth/users/{userId}/role", targetUserId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .contentType("application/json")
+                        .content("""
+                                {"roleCode":"ROLE_DESK"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.userId").value(targetUserId.intValue()))
+                .andExpect(jsonPath("$.data.roleCode").value("ROLE_DESK"))
+                .andExpect(jsonPath("$.data.revokedRefreshTokenCount").value(1));
+
+        mockMvc.perform(get("/api/v1/auth/me")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + targetAccessToken))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("TOKEN_REVOKED"));
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .cookie(new MockCookie(AuthCookieSupport.REFRESH_COOKIE_NAME, targetRefreshToken)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("TOKEN_REVOKED"));
+
+        String roleCode = jdbcClient.sql("""
+                SELECT role_code
+                FROM users
+                WHERE user_id = :userId
+                """)
+                .param("userId", targetUserId)
+                .query(String.class)
                 .single();
-        assertThat(auditCount).isNotNull();
-        assertThat(auditCount).isGreaterThanOrEqualTo(1);
+        assertThat(roleCode).isEqualTo("ROLE_DESK");
+        assertAuditEventExists("ACCOUNT_ROLE_CHANGE");
+    }
+
+    @Test
+    void deactivationRevokesExistingAccessAndRefreshTokens() throws Exception {
+        String adminAccessToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
+
+        MvcResult targetLoginResult = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType("application/json")
+                        .content("""
+                                {"loginId":"%s","password":"%s"}
+                                """.formatted(targetLoginId, targetPassword)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String targetAccessToken = AuthControllerIntegrationTest.JsonExtractors.readString(
+                targetLoginResult.getResponse().getContentAsString(),
+                "$.data.accessToken"
+        );
+        String targetRefreshToken = AuthControllerIntegrationTest.CookieExtractors.extractCookieValue(
+                targetLoginResult.getResponse().getHeader(HttpHeaders.SET_COOKIE),
+                AuthCookieSupport.REFRESH_COOKIE_NAME
+        );
+
+        mockMvc.perform(post("/api/v1/auth/users/{userId}/status", targetUserId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .contentType("application/json")
+                        .content("""
+                                {"userStatus":"INACTIVE"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.userId").value(targetUserId.intValue()))
+                .andExpect(jsonPath("$.data.userStatus").value("INACTIVE"))
+                .andExpect(jsonPath("$.data.revokedRefreshTokenCount").value(1));
+
+        mockMvc.perform(get("/api/v1/auth/me")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + targetAccessToken))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("TOKEN_REVOKED"));
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .cookie(new MockCookie(AuthCookieSupport.REFRESH_COOKIE_NAME, targetRefreshToken)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("TOKEN_REVOKED"));
+
+        String userStatus = jdbcClient.sql("""
+                SELECT user_status
+                FROM users
+                WHERE user_id = :userId
+                """)
+                .param("userId", targetUserId)
+                .query(String.class)
+                .single();
+        assertThat(userStatus).isEqualTo("INACTIVE");
+        assertAuditEventExists("ACCOUNT_STATUS_CHANGE");
     }
 
     private String loginAndGetAccessToken(String loginId, String password) throws Exception {
@@ -189,5 +294,22 @@ class AuthOperationalAccessRevokeIntegrationTest {
         } catch (IOException ex) {
             return false;
         }
+    }
+
+    private void assertAuditEventExists(String eventType) {
+        Integer auditCount = jdbcClient.sql("""
+                SELECT COUNT(*)
+                FROM audit_logs
+                WHERE center_id = 1
+                  AND event_type = :eventType
+                  AND resource_type = 'USER'
+                  AND resource_id = :resourceId
+                """)
+                .param("eventType", eventType)
+                .param("resourceId", String.valueOf(targetUserId))
+                .query(Integer.class)
+                .single();
+        assertThat(auditCount).isNotNull();
+        assertThat(auditCount).isGreaterThanOrEqualTo(1);
     }
 }

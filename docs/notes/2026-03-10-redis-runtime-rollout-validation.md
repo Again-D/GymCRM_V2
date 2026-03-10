@@ -128,9 +128,14 @@ origin:
 현재 마일스톤에서 의도적으로 남긴 항목:
 
 - refresh token canonical source Redis 이전
+- Redis 기반 CRM/settlement ephemeral state
+
+구현 완료로 deferred scope에서 제거된 항목:
+
 - 강제 revoke 전용 admin API
 - role downgrade / user deactivation event와 denylist write 연결
-- Redis 기반 CRM/settlement ephemeral state
+- 상세 validation note:
+  - [2026-03-10-auth-operational-revoke-rollout-validation.md](/Users/abc/projects/GymCRM_V2/docs/notes/2026-03-10-auth-operational-revoke-rollout-validation.md)
 
 ## Cross-Document Status
 

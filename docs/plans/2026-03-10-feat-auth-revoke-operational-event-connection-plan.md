@@ -1,7 +1,7 @@
 ---
 title: feat: Auth revoke operational event connection
 type: feat
-status: active
+status: completed
 date: 2026-03-10
 origin: docs/brainstorms/2026-03-10-backend-architecture-stack-alignment-remaining-work-brainstorm.md
 ---
@@ -261,9 +261,9 @@ Phase 2 research insights:
 
 Phase 3 checklist:
 - [x] admin-only forced revoke API 또는 동등한 service entry point를 추가한다.
-- [ ] role change 시 revoke-after marker를 갱신한다.
-- [ ] user deactivation 시 revoke-after marker와 refresh revoke를 수행한다.
-- [ ] audit log를 role/status 변경 이벤트에 맞게 연결한다.
+- [x] role change 시 revoke-after marker를 갱신한다.
+- [x] user deactivation 시 revoke-after marker와 refresh revoke를 수행한다.
+- [x] audit log를 role/status 변경 이벤트에 맞게 연결한다.
 
 Phase 3 research insights:
 
@@ -283,10 +283,10 @@ Phase 3 research insights:
   - medium
 
 Phase 4 checklist:
-- [ ] logout denylist와 forced revoke marker가 충돌 없이 동작하는 integration test를 추가한다.
-- [ ] role downgrade 직후 기존 access token이 차단되는 테스트를 추가한다.
-- [ ] deactivation 직후 기존 access token이 차단되는 테스트를 추가한다.
-- [ ] rollout/rollback/validation note를 갱신한다.
+- [x] logout denylist와 forced revoke marker가 충돌 없이 동작하는 integration test를 추가한다.
+- [x] role downgrade 직후 기존 access token이 차단되는 테스트를 추가한다.
+- [x] deactivation 직후 기존 access token이 차단되는 테스트를 추가한다.
+- [x] rollout/rollback/validation note를 갱신한다.
 
 Phase 4 research insights:
 
@@ -411,7 +411,7 @@ Phase 4 research insights:
 
 ### Functional Requirements
 
-- [ ] 운영 이벤트(`forced revoke`, `role downgrade`, `user deactivation`)가 access revoke enforcement와 연결된다.
+- [x] 운영 이벤트(`forced revoke`, `role downgrade`, `user deactivation`)가 access revoke enforcement와 연결된다.
 - [x] logout 기존 경로는 그대로 유지되며 regression이 없다.
 - [x] refresh token canonical source는 계속 PostgreSQL이다.
 - [x] admin 경로는 center scope와 RBAC를 유지한다.
@@ -424,6 +424,10 @@ Phase 4 research insights:
   - Redis read miss는 DB canonical fallback으로 처리하고, Redis runtime exception은 canonical value 기준으로 degrade한다.
   - admin-only `POST /api/v1/auth/users/{userId}/revoke-access` endpoint를 추가했다.
   - forced revoke는 center scope 안의 활성 사용자만 대상으로 하며 `access_revoked_after` 갱신, active refresh token bulk revoke(`FORCED_REVOKE`), audit event(`ACCOUNT_ACCESS_REVOKE`)를 한 흐름으로 묶는다.
+  - admin-only `POST /api/v1/auth/users/{userId}/role` endpoint를 추가했다.
+  - admin-only `POST /api/v1/auth/users/{userId}/status` endpoint를 추가했다.
+  - role change는 `role_code` 변경, revoke-after 갱신, refresh revoke(`ROLE_CHANGED`), audit event(`ACCOUNT_ROLE_CHANGE`)를 한 흐름으로 묶는다.
+  - deactivation은 `user_status` 변경, revoke-after 갱신, refresh revoke(`STATUS_CHANGED`), audit event(`ACCOUNT_STATUS_CHANGE`)를 한 흐름으로 묶는다.
   - 통합 검증:
     - `AuthAccessRevokeAfterIntegrationTest`
     - `AuthOperationalAccessRevokeIntegrationTest`
@@ -431,24 +435,21 @@ Phase 4 research insights:
     - `AuthControllerIntegrationTest`
     - `AuditLogApiIntegrationTest`
     - `./gradlew test`
-  - 남은 범위:
-    - role downgrade revoke 연결
-    - user deactivation revoke 연결
-    - 해당 이벤트별 회귀 테스트 및 rollout note 보강
+    - `docs/notes/2026-03-10-auth-operational-revoke-rollout-validation.md`
 
 ### Non-Functional Requirements
 
-- [ ] revoke enforcement 규칙이 문서화된다.
-- [ ] audit log와 rollback 기준이 함께 정리된다.
-- [ ] Redis failure policy가 운영자가 이해 가능한 수준으로 고정된다.
+- [x] revoke enforcement 규칙이 문서화된다.
+- [x] audit log와 rollback 기준이 함께 정리된다.
+- [x] Redis failure policy가 운영자가 이해 가능한 수준으로 고정된다.
 
 ### Quality Gates
 
-- [ ] forced revoke integration test
-- [ ] role downgrade integration test
-- [ ] deactivation integration test
-- [ ] logout + forced revoke parity test
-- [ ] full `./gradlew test` 통과
+- [x] forced revoke integration test
+- [x] role downgrade integration test
+- [x] deactivation integration test
+- [x] logout + forced revoke parity test
+- [x] full `./gradlew test` 통과
 
 ## Success Metrics
 

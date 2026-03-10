@@ -55,11 +55,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (accessTokenDenylistService.isDenied(claims.jti())) {
                 throw new ApiException(com.gymcrm.common.error.ErrorCode.TOKEN_REVOKED, "무효화된 access token입니다.");
             }
-            AuthUser user = authUserRepository.findActiveById(claims.userId())
-                    .filter(AuthUser::isActive)
+            AuthUser user = authUserRepository.findById(claims.userId())
                     .orElseThrow(() -> new ApiException(com.gymcrm.common.error.ErrorCode.AUTHENTICATION_FAILED, "활성 사용자 정보를 찾을 수 없습니다."));
             if (isRevokedByUserMarker(claims, user)) {
                 throw new ApiException(com.gymcrm.common.error.ErrorCode.TOKEN_REVOKED, "운영 이벤트로 무효화된 access token입니다.");
+            }
+            if (!user.isActive()) {
+                throw new ApiException(com.gymcrm.common.error.ErrorCode.AUTHENTICATION_FAILED, "활성 사용자 정보를 찾을 수 없습니다.");
             }
 
             AuthenticatedUserPrincipal principal = new AuthenticatedUserPrincipal(

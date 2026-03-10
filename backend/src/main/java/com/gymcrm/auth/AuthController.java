@@ -98,6 +98,26 @@ public class AuthController {
         );
     }
 
+    @PostMapping("/users/{userId}/role")
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN)
+    public ApiResponse<UpdateUserRoleResponse> updateRole(@PathVariable Long userId, @Valid @RequestBody UpdateUserRoleRequest request) {
+        AuthAccessRevocationService.UpdateUserRoleResult result = authAccessRevocationService.updateRoleAndRevoke(userId, request.roleCode());
+        return ApiResponse.success(
+                new UpdateUserRoleResponse(result.userId(), result.roleCode(), result.accessRevokedAfter(), result.revokedRefreshTokenCount()),
+                "사용자 역할이 변경되고 기존 토큰이 무효화되었습니다."
+        );
+    }
+
+    @PostMapping("/users/{userId}/status")
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN)
+    public ApiResponse<UpdateUserStatusResponse> updateStatus(@PathVariable Long userId, @Valid @RequestBody UpdateUserStatusRequest request) {
+        AuthAccessRevocationService.UpdateUserStatusResult result = authAccessRevocationService.updateStatusAndRevoke(userId, request.userStatus());
+        return ApiResponse.success(
+                new UpdateUserStatusResponse(result.userId(), result.userStatus(), result.accessRevokedAfter(), result.revokedRefreshTokenCount()),
+                "사용자 상태가 변경되고 기존 토큰이 무효화되었습니다."
+        );
+    }
+
     private boolean isProdProfileActive() {
         return Arrays.stream(environment.getActiveProfiles()).anyMatch("prod"::equalsIgnoreCase);
     }
@@ -152,6 +172,36 @@ public class AuthController {
 
     public record ForceRevokeAccessResponse(
             Long userId,
+            OffsetDateTime accessRevokedAfter,
+            int revokedRefreshTokenCount
+    ) {}
+
+    public record UpdateUserRoleRequest(
+            @jakarta.validation.constraints.Pattern(
+                    regexp = "^(?i)(ROLE_CENTER_ADMIN|ROLE_MANAGER|ROLE_TRAINER|ROLE_DESK)$",
+                    message = "roleCode is invalid"
+            )
+            String roleCode
+    ) {}
+
+    public record UpdateUserRoleResponse(
+            Long userId,
+            String roleCode,
+            OffsetDateTime accessRevokedAfter,
+            int revokedRefreshTokenCount
+    ) {}
+
+    public record UpdateUserStatusRequest(
+            @jakarta.validation.constraints.Pattern(
+                    regexp = "^(?i)(ACTIVE|INACTIVE)$",
+                    message = "userStatus is invalid"
+            )
+            String userStatus
+    ) {}
+
+    public record UpdateUserStatusResponse(
+            Long userId,
+            String userStatus,
             OffsetDateTime accessRevokedAfter,
             int revokedRefreshTokenCount
     ) {}
