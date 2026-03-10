@@ -3,6 +3,7 @@ package com.gymcrm.auth;
 import com.gymcrm.common.api.ApiResponse;
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
+import com.gymcrm.common.security.AccessPolicies;
 import com.gymcrm.common.security.CurrentUserProvider;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -10,8 +11,10 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.HttpHeaders;
 import org.springframework.core.env.Environment;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,6 +28,7 @@ import java.util.Arrays;
 @Validated
 public class AuthController {
     private final AuthService authService;
+    private final AuthAccessRevocationService authAccessRevocationService;
     private final AuthCookieSupport authCookieSupport;
     private final JwtTokenService jwtTokenService;
     private final CurrentUserProvider currentUserProvider;
@@ -32,12 +36,14 @@ public class AuthController {
 
     public AuthController(
             AuthService authService,
+            AuthAccessRevocationService authAccessRevocationService,
             AuthCookieSupport authCookieSupport,
             JwtTokenService jwtTokenService,
             CurrentUserProvider currentUserProvider,
             Environment environment
     ) {
         this.authService = authService;
+        this.authAccessRevocationService = authAccessRevocationService;
         this.authCookieSupport = authCookieSupport;
         this.jwtTokenService = jwtTokenService;
         this.currentUserProvider = currentUserProvider;
@@ -80,6 +86,16 @@ public class AuthController {
     public ApiResponse<AuthMeResponse> me() {
         AuthService.UserSession session = authService.me(currentUserProvider.currentUserId());
         return ApiResponse.success(AuthMeResponse.from(session), "현재 사용자 정보입니다.");
+    }
+
+    @PostMapping("/users/{userId}/revoke-access")
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN)
+    public ApiResponse<ForceRevokeAccessResponse> revokeAccess(@PathVariable Long userId) {
+        AuthAccessRevocationService.ForceRevokeResult result = authAccessRevocationService.forceRevokeUserAccess(userId);
+        return ApiResponse.success(
+                new ForceRevokeAccessResponse(result.userId(), result.accessRevokedAfter(), result.revokedRefreshTokenCount()),
+                "사용자 access token이 강제 무효화되었습니다."
+        );
     }
 
     private boolean isProdProfileActive() {
@@ -130,7 +146,13 @@ public class AuthController {
                     session.loginId(),
                     session.displayName(),
                     session.roleCode()
-            );
+                );
         }
     }
+
+    public record ForceRevokeAccessResponse(
+            Long userId,
+            OffsetDateTime accessRevokedAfter,
+            int revokedRefreshTokenCount
+    ) {}
 }

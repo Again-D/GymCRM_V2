@@ -38,6 +38,9 @@ public class AuthUserEntity {
     @Column(name = "last_login_at")
     private OffsetDateTime lastLoginAt;
 
+    @Column(name = "access_revoked_after")
+    private OffsetDateTime accessRevokedAfter;
+
     @Column(name = "is_deleted", nullable = false)
     private boolean isDeleted;
 
@@ -77,6 +80,8 @@ public class AuthUserEntity {
     public void setUserStatus(String userStatus) { this.userStatus = userStatus; }
     public OffsetDateTime getLastLoginAt() { return lastLoginAt; }
     public void setLastLoginAt(OffsetDateTime lastLoginAt) { this.lastLoginAt = lastLoginAt; }
+    public OffsetDateTime getAccessRevokedAfter() { return accessRevokedAfter; }
+    public void setAccessRevokedAfter(OffsetDateTime accessRevokedAfter) { this.accessRevokedAfter = accessRevokedAfter; }
     public boolean isDeleted() { return isDeleted; }
     public void setDeleted(boolean deleted) { isDeleted = deleted; }
     public OffsetDateTime getDeletedAt() { return deletedAt; }

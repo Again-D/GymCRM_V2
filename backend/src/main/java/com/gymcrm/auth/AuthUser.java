@@ -10,7 +10,8 @@ public record AuthUser(
         String displayName,
         String roleCode,
         String userStatus,
-        OffsetDateTime lastLoginAt
+        OffsetDateTime lastLoginAt,
+        OffsetDateTime accessRevokedAfter
 ) {
     public boolean isActive() {
         return "ACTIVE".equals(userStatus);

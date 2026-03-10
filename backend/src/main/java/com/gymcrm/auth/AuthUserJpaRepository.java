@@ -6,5 +6,6 @@ import java.util.Optional;
 
 public interface AuthUserJpaRepository extends JpaRepository<AuthUserEntity, Long> {
     Optional<AuthUserEntity> findByCenterIdAndLoginIdAndIsDeletedFalse(Long centerId, String loginId);
+    Optional<AuthUserEntity> findByCenterIdAndUserIdAndIsDeletedFalse(Long centerId, Long userId);
     Optional<AuthUserEntity> findByUserIdAndIsDeletedFalse(Long userId);
 }
