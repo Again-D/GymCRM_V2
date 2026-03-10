@@ -1,3 +1,12 @@
+---
+title: Auth operational revoke rollout validation
+status: completed
+date: 2026-03-10
+origin:
+  - docs/plans/2026-03-10-feat-auth-revoke-operational-event-connection-plan.md
+  - docs/notes/2026-03-10-redis-runtime-rollout-validation.md
+---
+
 # Auth Operational Revoke Rollout Validation
 
 ## Scope

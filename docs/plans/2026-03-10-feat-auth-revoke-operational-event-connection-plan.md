@@ -118,15 +118,16 @@ Found brainstorm from 2026-03-10: backend architecture stack alignment remaining
   - [RedisAccessTokenDenylistService.java](/Users/abc/projects/GymCRM_V2/backend/src/main/java/com/gymcrm/auth/RedisAccessTokenDenylistService.java)
 - logout은 현재 access token만 best-effort revoke한다.
   - [AuthService.java](/Users/abc/projects/GymCRM_V2/backend/src/main/java/com/gymcrm/auth/AuthService.java)
-- JWT filter는 token claim 기반 role을 그대로 principal에 넣고 있다.
+- JWT filter는 denylist, revoke-after, current user state를 함께 확인하고 현재 DB role을 principal에 반영한다.
   - [JwtAuthenticationFilter.java](/Users/abc/projects/GymCRM_V2/backend/src/main/java/com/gymcrm/auth/JwtAuthenticationFilter.java)
 - 사용자 상태는 이미 `users.role_code`, `users.user_status`로 모델링돼 있다.
   - [AuthUserEntity.java](/Users/abc/projects/GymCRM_V2/backend/src/main/java/com/gymcrm/auth/AuthUserEntity.java)
 - audit는 이미 `ACCOUNT_ROLE_CHANGE`를 다룰 수 있다.
   - [AuditLogService.java](/Users/abc/projects/GymCRM_V2/backend/src/main/java/com/gymcrm/audit/AuditLogService.java)
   - [AuditLogController.java](/Users/abc/projects/GymCRM_V2/backend/src/main/java/com/gymcrm/audit/AuditLogController.java)
-- 하지만 현재 사용자 role/status를 바꾸는 admin API는 없다.
-  - 코드 검색 기준 `users.role_code`, `users.user_status` update controller/service 부재
+- 현재 사용자 role/status를 바꾸는 admin API가 추가됐다.
+  - `POST /api/v1/auth/users/{userId}/role`
+  - `POST /api/v1/auth/users/{userId}/status`
 
 ### Institutional learnings
 
@@ -344,13 +345,13 @@ Phase 4 research insights:
 ### Interaction Graph
 
 - admin forced revoke
-  - `AdminAuthController -> AuthAdminService -> AuthUserRepository + AuthRefreshTokenRepository + RevokeMarkerService -> Redis/PostgreSQL`
+  - `AuthController -> AuthAccessRevocationService -> AuthUserRepository + AuthRefreshTokenRepository + AccessRevocationMarkerService -> Redis/PostgreSQL`
 - role downgrade
-  - `AdminUserController/Service -> AuthUserRepository.updateRole -> RevokeMarkerService -> AuditLogService`
+  - `AuthController -> AuthAccessRevocationService.updateRoleAndRevoke -> AuthUserRepository.updateRoleCode -> AccessRevocationMarkerService -> AuthRefreshTokenRepository -> AuditLogService`
 - deactivation
-  - `AdminUserController/Service -> AuthUserRepository.updateStatus -> RevokeMarkerService -> AuthRefreshTokenRepository -> AuditLogService`
+  - `AuthController -> AuthAccessRevocationService.updateStatusAndRevoke -> AuthUserRepository.updateUserStatus -> AccessRevocationMarkerService -> AuthRefreshTokenRepository -> AuditLogService`
 - request auth
-  - `JwtAuthenticationFilter -> JwtTokenService.parse -> jti denylist check -> revoke-after check -> AuthUserRepository.findActiveById`
+  - `JwtAuthenticationFilter -> JwtTokenService.parse -> jti denylist check -> revoke-after check -> AuthUserRepository.findById`
 
 ### Error & Failure Propagation
 
