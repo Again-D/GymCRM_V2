@@ -1,56 +1,55 @@
 package com.gymcrm.auth;
 
-import org.springframework.jdbc.core.simple.JdbcClient;
+import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.OffsetDateTime;
 import java.util.Optional;
 
 @Repository
 public class AuthUserRepository {
-    private final JdbcClient jdbcClient;
+    private final AuthUserJpaRepository authUserJpaRepository;
+    private final EntityManager entityManager;
 
-    public AuthUserRepository(JdbcClient jdbcClient) {
-        this.jdbcClient = jdbcClient;
+    public AuthUserRepository(AuthUserJpaRepository authUserJpaRepository, EntityManager entityManager) {
+        this.authUserJpaRepository = authUserJpaRepository;
+        this.entityManager = entityManager;
     }
 
     public Optional<AuthUser> findActiveByCenterAndLoginId(Long centerId, String loginId) {
-        return jdbcClient.sql("""
-                SELECT
-                    user_id, center_id, login_id, password_hash, display_name, role_code, user_status, last_login_at
-                FROM users
-                WHERE center_id = :centerId
-                  AND login_id = :loginId
-                  AND is_deleted = FALSE
-                """)
-                .param("centerId", centerId)
-                .param("loginId", loginId)
-                .query(AuthUser.class)
-                .optional();
+        entityManager.clear();
+        return authUserJpaRepository.findByCenterIdAndLoginIdAndIsDeletedFalse(centerId, loginId).map(this::toDomain);
     }
 
     public Optional<AuthUser> findActiveById(Long userId) {
-        return jdbcClient.sql("""
-                SELECT
-                    user_id, center_id, login_id, password_hash, display_name, role_code, user_status, last_login_at
-                FROM users
-                WHERE user_id = :userId
-                  AND is_deleted = FALSE
-                """)
-                .param("userId", userId)
-                .query(AuthUser.class)
-                .optional();
+        entityManager.clear();
+        return authUserJpaRepository.findByUserIdAndIsDeletedFalse(userId).map(this::toDomain);
     }
 
+    @Transactional
     public int updateLastLoginAt(Long userId) {
-        return jdbcClient.sql("""
-                UPDATE users
-                SET last_login_at = CURRENT_TIMESTAMP,
-                    updated_at = CURRENT_TIMESTAMP,
-                    updated_by = :userId
-                WHERE user_id = :userId
-                  AND is_deleted = FALSE
-                """)
-                .param("userId", userId)
-                .update();
+        AuthUserEntity entity = authUserJpaRepository.findByUserIdAndIsDeletedFalse(userId).orElse(null);
+        if (entity == null) {
+            return 0;
+        }
+        entity.setLastLoginAt(OffsetDateTime.now());
+        entity.setUpdatedAt(OffsetDateTime.now());
+        entity.setUpdatedBy(userId);
+        authUserJpaRepository.saveAndFlush(entity);
+        return 1;
+    }
+
+    private AuthUser toDomain(AuthUserEntity entity) {
+        return new AuthUser(
+                entity.getUserId(),
+                entity.getCenterId(),
+                entity.getLoginId(),
+                entity.getPasswordHash(),
+                entity.getDisplayName(),
+                entity.getRoleCode(),
+                entity.getUserStatus(),
+                entity.getLastLoginAt()
+        );
     }
 }

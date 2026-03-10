@@ -1,192 +1,188 @@
 package com.gymcrm.reservation;
 
-import org.springframework.jdbc.core.simple.JdbcClient;
+import com.querydsl.jpa.impl.JPAQueryFactory;
+import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
-import java.util.List;
 import java.util.Optional;
+
+import static com.gymcrm.reservation.QReservationEntity.reservationEntity;
 
 @Repository
 public class ReservationRepository {
-    private final JdbcClient jdbcClient;
+    private final ReservationJpaRepository reservationJpaRepository;
+    private final ReservationQueryRepository reservationQueryRepository;
+    private final JPAQueryFactory queryFactory;
+    private final EntityManager entityManager;
 
-    public ReservationRepository(JdbcClient jdbcClient) {
-        this.jdbcClient = jdbcClient;
+    public ReservationRepository(
+            ReservationJpaRepository reservationJpaRepository,
+            ReservationQueryRepository reservationQueryRepository,
+            JPAQueryFactory queryFactory,
+            EntityManager entityManager
+    ) {
+        this.reservationJpaRepository = reservationJpaRepository;
+        this.reservationQueryRepository = reservationQueryRepository;
+        this.queryFactory = queryFactory;
+        this.entityManager = entityManager;
     }
 
+    @Transactional
     public Reservation insert(ReservationCreateCommand command) {
-        return jdbcClient.sql("""
-                INSERT INTO reservations (
-                    center_id, member_id, membership_id, schedule_id,
-                    reservation_status, reserved_at, memo,
-                    created_by, updated_by
-                )
-                VALUES (
-                    :centerId, :memberId, :membershipId, :scheduleId,
-                    :reservationStatus, :reservedAt, :memo,
-                    :actorUserId, :actorUserId
-                )
-                """ + returningClause())
-                .paramSource(command)
-                .query(Reservation.class)
-                .single();
+        ReservationEntity entity = new ReservationEntity();
+        entity.setCenterId(command.centerId());
+        entity.setMemberId(command.memberId());
+        entity.setMembershipId(command.membershipId());
+        entity.setScheduleId(command.scheduleId());
+        entity.setReservationStatus(command.reservationStatus());
+        entity.setReservedAt(command.reservedAt());
+        entity.setMemo(command.memo());
+        entity.setDeleted(false);
+        entity.setCreatedAt(command.reservedAt());
+        entity.setCreatedBy(command.actorUserId());
+        entity.setUpdatedAt(command.reservedAt());
+        entity.setUpdatedBy(command.actorUserId());
+        ReservationEntity saved = reservationJpaRepository.saveAndFlush(entity);
+        entityManager.refresh(saved);
+        return toDomain(saved);
     }
 
     public Optional<Reservation> findById(Long reservationId, Long centerId) {
-        return jdbcClient.sql(baseSelect() + """
-                WHERE reservation_id = :reservationId
-                  AND center_id = :centerId
-                  AND is_deleted = FALSE
-                """)
-                .param("reservationId", reservationId)
-                .param("centerId", centerId)
-                .query(Reservation.class)
-                .optional();
+        entityManager.clear();
+        return reservationJpaRepository.findByReservationIdAndCenterIdAndIsDeletedFalse(reservationId, centerId)
+                .map(this::toDomain);
     }
 
-    public List<Reservation> findAll(Long centerId, Long memberId, Long scheduleId, String reservationStatus) {
-        StringBuilder sql = new StringBuilder(baseSelect())
-                .append("""
-                        WHERE center_id = :centerId
-                          AND is_deleted = FALSE
-                        """);
-        if (memberId != null) {
-            sql.append(" AND member_id = :memberId");
-        }
-        if (scheduleId != null) {
-            sql.append(" AND schedule_id = :scheduleId");
-        }
-        if (reservationStatus != null) {
-            sql.append(" AND reservation_status = :reservationStatus");
-        }
-        sql.append(" ORDER BY reservation_id DESC");
-
-        JdbcClient.StatementSpec statement = jdbcClient.sql(sql.toString())
-                .param("centerId", centerId);
-        if (memberId != null) {
-            statement = statement.param("memberId", memberId);
-        }
-        if (scheduleId != null) {
-            statement = statement.param("scheduleId", scheduleId);
-        }
-        if (reservationStatus != null) {
-            statement = statement.param("reservationStatus", reservationStatus);
-        }
-        return statement.query(Reservation.class).list();
+    public java.util.List<Reservation> findAll(Long centerId, Long memberId, Long scheduleId, String reservationStatus) {
+        entityManager.clear();
+        return reservationQueryRepository.findAll(centerId, memberId, scheduleId, reservationStatus);
     }
 
     public boolean existsConfirmedByMemberAndSchedule(Long memberId, Long scheduleId) {
-        Boolean exists = jdbcClient.sql("""
-                SELECT EXISTS (
-                    SELECT 1
-                    FROM reservations
-                    WHERE member_id = :memberId
-                      AND schedule_id = :scheduleId
-                      AND reservation_status = 'CONFIRMED'
-                      AND is_deleted = FALSE
-                )
-                """)
-                .param("memberId", memberId)
-                .param("scheduleId", scheduleId)
-                .query(Boolean.class)
-                .single();
-        return Boolean.TRUE.equals(exists);
+        entityManager.clear();
+        return reservationQueryRepository.existsConfirmedByMemberAndSchedule(memberId, scheduleId);
     }
 
+    @Transactional
     public Optional<Reservation> markCancelledIfCurrent(ReservationCancelCommand command) {
-        return jdbcClient.sql("""
-                UPDATE reservations
-                SET
-                    reservation_status = 'CANCELLED',
-                    cancelled_at = :cancelledAt,
-                    cancel_reason = :cancelReason,
-                    updated_at = CURRENT_TIMESTAMP,
-                    updated_by = :actorUserId
-                WHERE reservation_id = :reservationId
-                  AND center_id = :centerId
-                  AND reservation_status = :expectedStatus
-                  AND is_deleted = FALSE
-                """ + returningClause())
-                .paramSource(command)
-                .query(Reservation.class)
-                .optional();
+        long updated = queryFactory.update(reservationEntity)
+                .set(reservationEntity.reservationStatus, "CANCELLED")
+                .set(reservationEntity.cancelledAt, command.cancelledAt())
+                .set(reservationEntity.cancelReason, command.cancelReason())
+                .set(reservationEntity.updatedAt, OffsetDateTime.now())
+                .set(reservationEntity.updatedBy, command.actorUserId())
+                .where(
+                        reservationEntity.reservationId.eq(command.reservationId()),
+                        reservationEntity.centerId.eq(command.centerId()),
+                        reservationEntity.reservationStatus.eq(command.expectedStatus()),
+                        reservationEntity.isDeleted.isFalse()
+                )
+                .execute();
+        if (updated == 0) {
+            return Optional.empty();
+        }
+        entityManager.clear();
+        return reservationJpaRepository.findByReservationIdAndCenterIdAndIsDeletedFalse(
+                command.reservationId(),
+                command.centerId()
+        ).map(this::toDomain);
     }
 
+    @Transactional
     public Optional<Reservation> markCompletedIfCurrent(ReservationCompleteCommand command) {
-        return jdbcClient.sql("""
-                UPDATE reservations
-                SET
-                    reservation_status = 'COMPLETED',
-                    completed_at = :completedAt,
-                    updated_at = CURRENT_TIMESTAMP,
-                    updated_by = :actorUserId
-                WHERE reservation_id = :reservationId
-                  AND center_id = :centerId
-                  AND reservation_status = :expectedStatus
-                  AND is_deleted = FALSE
-                """ + returningClause())
-                .paramSource(command)
-                .query(Reservation.class)
-                .optional();
+        long updated = queryFactory.update(reservationEntity)
+                .set(reservationEntity.reservationStatus, "COMPLETED")
+                .set(reservationEntity.completedAt, command.completedAt())
+                .set(reservationEntity.updatedAt, OffsetDateTime.now())
+                .set(reservationEntity.updatedBy, command.actorUserId())
+                .where(
+                        reservationEntity.reservationId.eq(command.reservationId()),
+                        reservationEntity.centerId.eq(command.centerId()),
+                        reservationEntity.reservationStatus.eq(command.expectedStatus()),
+                        reservationEntity.isDeleted.isFalse()
+                )
+                .execute();
+        if (updated == 0) {
+            return Optional.empty();
+        }
+        entityManager.clear();
+        return reservationJpaRepository.findByReservationIdAndCenterIdAndIsDeletedFalse(
+                command.reservationId(),
+                command.centerId()
+        ).map(this::toDomain);
     }
 
+    @Transactional
     public Optional<Reservation> markCheckedInIfEligible(ReservationCheckInCommand command) {
-        return jdbcClient.sql("""
-                UPDATE reservations
-                SET
-                    checked_in_at = :checkedInAt,
-                    updated_at = CURRENT_TIMESTAMP,
-                    updated_by = :actorUserId
-                WHERE reservation_id = :reservationId
-                  AND center_id = :centerId
-                  AND reservation_status = :expectedStatus
-                  AND checked_in_at IS NULL
-                  AND is_deleted = FALSE
-                """ + returningClause())
-                .paramSource(command)
-                .query(Reservation.class)
-                .optional();
+        long updated = queryFactory.update(reservationEntity)
+                .set(reservationEntity.checkedInAt, command.checkedInAt())
+                .set(reservationEntity.updatedAt, OffsetDateTime.now())
+                .set(reservationEntity.updatedBy, command.actorUserId())
+                .where(
+                        reservationEntity.reservationId.eq(command.reservationId()),
+                        reservationEntity.centerId.eq(command.centerId()),
+                        reservationEntity.reservationStatus.eq(command.expectedStatus()),
+                        reservationEntity.checkedInAt.isNull(),
+                        reservationEntity.isDeleted.isFalse()
+                )
+                .execute();
+        if (updated == 0) {
+            return Optional.empty();
+        }
+        entityManager.clear();
+        return reservationJpaRepository.findByReservationIdAndCenterIdAndIsDeletedFalse(
+                command.reservationId(),
+                command.centerId()
+        ).map(this::toDomain);
     }
 
+    @Transactional
     public Optional<Reservation> markNoShowIfCurrent(ReservationNoShowCommand command) {
-        return jdbcClient.sql("""
-                UPDATE reservations
-                SET
-                    reservation_status = 'NO_SHOW',
-                    no_show_at = :noShowAt,
-                    updated_at = CURRENT_TIMESTAMP,
-                    updated_by = :actorUserId
-                WHERE reservation_id = :reservationId
-                  AND center_id = :centerId
-                  AND reservation_status = :expectedStatus
-                  AND checked_in_at IS NULL
-                  AND is_deleted = FALSE
-                """ + returningClause())
-                .paramSource(command)
-                .query(Reservation.class)
-                .optional();
+        long updated = queryFactory.update(reservationEntity)
+                .set(reservationEntity.reservationStatus, "NO_SHOW")
+                .set(reservationEntity.noShowAt, command.noShowAt())
+                .set(reservationEntity.updatedAt, OffsetDateTime.now())
+                .set(reservationEntity.updatedBy, command.actorUserId())
+                .where(
+                        reservationEntity.reservationId.eq(command.reservationId()),
+                        reservationEntity.centerId.eq(command.centerId()),
+                        reservationEntity.reservationStatus.eq(command.expectedStatus()),
+                        reservationEntity.checkedInAt.isNull(),
+                        reservationEntity.isDeleted.isFalse()
+                )
+                .execute();
+        if (updated == 0) {
+            return Optional.empty();
+        }
+        entityManager.clear();
+        return reservationJpaRepository.findByReservationIdAndCenterIdAndIsDeletedFalse(
+                command.reservationId(),
+                command.centerId()
+        ).map(this::toDomain);
     }
 
-    private String baseSelect() {
-        return """
-                SELECT
-                    reservation_id, center_id, member_id, membership_id, schedule_id,
-                    reservation_status, reserved_at, cancelled_at, completed_at, no_show_at, checked_in_at,
-                    cancel_reason, memo,
-                    created_at, created_by, updated_at, updated_by
-                FROM reservations
-                """;
-    }
-
-    private String returningClause() {
-        return """
-                RETURNING
-                    reservation_id, center_id, member_id, membership_id, schedule_id,
-                    reservation_status, reserved_at, cancelled_at, completed_at, no_show_at, checked_in_at,
-                    cancel_reason, memo,
-                    created_at, created_by, updated_at, updated_by
-                """;
+    private Reservation toDomain(ReservationEntity entity) {
+        return new Reservation(
+                entity.getReservationId(),
+                entity.getCenterId(),
+                entity.getMemberId(),
+                entity.getMembershipId(),
+                entity.getScheduleId(),
+                entity.getReservationStatus(),
+                entity.getReservedAt(),
+                entity.getCancelledAt(),
+                entity.getCompletedAt(),
+                entity.getNoShowAt(),
+                entity.getCheckedInAt(),
+                entity.getCancelReason(),
+                entity.getMemo(),
+                entity.getCreatedAt(),
+                entity.getCreatedBy(),
+                entity.getUpdatedAt(),
+                entity.getUpdatedBy()
+        );
     }
 
     public record ReservationCreateCommand(

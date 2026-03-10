@@ -1,61 +1,69 @@
 package com.gymcrm.membership;
 
-import org.springframework.jdbc.core.simple.JdbcClient;
+import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Repository;
 
+import java.time.OffsetDateTime;
 import java.util.Optional;
 
 @Repository
 public class PaymentRepository {
-    private final JdbcClient jdbcClient;
+    private final PaymentJpaRepository paymentJpaRepository;
+    private final EntityManager entityManager;
 
-    public PaymentRepository(JdbcClient jdbcClient) {
-        this.jdbcClient = jdbcClient;
+    public PaymentRepository(PaymentJpaRepository paymentJpaRepository, EntityManager entityManager) {
+        this.paymentJpaRepository = paymentJpaRepository;
+        this.entityManager = entityManager;
     }
 
     public Payment insert(PaymentCreateCommand command) {
-        return jdbcClient.sql("""
-                INSERT INTO payments (
-                    center_id, member_id, membership_id,
-                    payment_type, payment_status, payment_method,
-                    amount, paid_at, approval_ref, memo,
-                    created_by, updated_by
-                )
-                VALUES (
-                    :centerId, :memberId, :membershipId,
-                    :paymentType, :paymentStatus, :paymentMethod,
-                    :amount, :paidAt, :approvalRef, :memo,
-                    :actorUserId, :actorUserId
-                )
-                RETURNING
-                    payment_id, center_id, member_id, membership_id,
-                    payment_type, payment_status, payment_method,
-                    amount, paid_at, approval_ref, memo,
-                    created_at, created_by, updated_at, updated_by
-                """)
-                .paramSource(command)
-                .query(Payment.class)
-                .single();
+        PaymentEntity entity = new PaymentEntity();
+        entity.setCenterId(command.centerId());
+        entity.setMemberId(command.memberId());
+        entity.setMembershipId(command.membershipId());
+        entity.setPaymentType(command.paymentType());
+        entity.setPaymentStatus(command.paymentStatus());
+        entity.setPaymentMethod(command.paymentMethod());
+        entity.setAmount(command.amount());
+        entity.setPaidAt(command.paidAt());
+        entity.setApprovalRef(command.approvalRef());
+        entity.setMemo(command.memo());
+        entity.setDeleted(false);
+        entity.setCreatedAt(command.paidAt());
+        entity.setCreatedBy(command.actorUserId());
+        entity.setUpdatedAt(command.paidAt());
+        entity.setUpdatedBy(command.actorUserId());
+        PaymentEntity saved = paymentJpaRepository.saveAndFlush(entity);
+        entityManager.refresh(saved);
+        return toDomain(saved);
     }
 
     public Optional<Payment> findLatestCompletedPurchaseByMembershipId(Long membershipId) {
-        return jdbcClient.sql("""
-                SELECT
-                    payment_id, center_id, member_id, membership_id,
-                    payment_type, payment_status, payment_method,
-                    amount, paid_at, approval_ref, memo,
-                    created_at, created_by, updated_at, updated_by
-                FROM payments
-                WHERE membership_id = :membershipId
-                  AND payment_type = 'PURCHASE'
-                  AND payment_status = 'COMPLETED'
-                  AND is_deleted = FALSE
-                ORDER BY payment_id DESC
-                LIMIT 1
-                """)
-                .param("membershipId", membershipId)
-                .query(Payment.class)
-                .optional();
+        return paymentJpaRepository.findFirstByMembershipIdAndPaymentTypeAndPaymentStatusAndIsDeletedFalseOrderByPaymentIdDesc(
+                membershipId,
+                "PURCHASE",
+                "COMPLETED"
+        ).map(this::toDomain);
+    }
+
+    private Payment toDomain(PaymentEntity entity) {
+        return new Payment(
+                entity.getPaymentId(),
+                entity.getCenterId(),
+                entity.getMemberId(),
+                entity.getMembershipId(),
+                entity.getPaymentType(),
+                entity.getPaymentStatus(),
+                entity.getPaymentMethod(),
+                entity.getAmount(),
+                entity.getPaidAt(),
+                entity.getApprovalRef(),
+                entity.getMemo(),
+                entity.getCreatedAt(),
+                entity.getCreatedBy(),
+                entity.getUpdatedAt(),
+                entity.getUpdatedBy()
+        );
     }
 
     public record PaymentCreateCommand(

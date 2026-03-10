@@ -1,53 +1,58 @@
 package com.gymcrm.audit;
 
-import org.springframework.jdbc.core.simple.JdbcClient;
+import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Repository
 public class AuditRetentionJobRunRepository {
-    private final JdbcClient jdbcClient;
+    private final AuditRetentionJobRunJpaRepository jpaRepository;
+    private final AuditRetentionJobRunQueryRepository queryRepository;
+    private final EntityManager entityManager;
 
-    public AuditRetentionJobRunRepository(JdbcClient jdbcClient) {
-        this.jdbcClient = jdbcClient;
+    public AuditRetentionJobRunRepository(
+            AuditRetentionJobRunJpaRepository jpaRepository,
+            AuditRetentionJobRunQueryRepository queryRepository,
+            EntityManager entityManager
+    ) {
+        this.jpaRepository = jpaRepository;
+        this.queryRepository = queryRepository;
+        this.entityManager = entityManager;
     }
 
+    @Transactional
     public AuditRetentionJobRun insert(InsertCommand command) {
-        return jdbcClient.sql("""
-                INSERT INTO audit_retention_job_runs (
-                    job_name, status, started_at, completed_at, details_json, created_by
-                ) VALUES (
-                    :jobName, :status, :startedAt, :completedAt, :detailsJson, :createdBy
-                )
-                RETURNING
-                    audit_retention_job_run_id, job_name, status, started_at, completed_at,
-                    details_json, created_by, created_at
-                """)
-                .paramSource(command)
-                .query(AuditRetentionJobRun.class)
-                .single();
+        AuditRetentionJobRunEntity entity = new AuditRetentionJobRunEntity();
+        entity.setJobName(command.jobName());
+        entity.setStatus(command.status());
+        entity.setStartedAt(command.startedAt());
+        entity.setCompletedAt(command.completedAt());
+        entity.setDetailsJson(command.detailsJson());
+        entity.setCreatedBy(command.createdBy());
+        entity.setCreatedAt(command.completedAt());
+        AuditRetentionJobRunEntity saved = jpaRepository.saveAndFlush(entity);
+        entityManager.refresh(saved);
+        return toDomain(saved);
     }
 
     public List<AuditRetentionJobRun> findRecent(String jobName, int limit) {
-        StringBuilder sql = new StringBuilder("""
-                SELECT
-                    audit_retention_job_run_id, job_name, status, started_at, completed_at,
-                    details_json, created_by, created_at
-                FROM audit_retention_job_runs
-                WHERE 1=1
-                """);
-        if (jobName != null) {
-            sql.append(" AND job_name = :jobName ");
-        }
-        sql.append(" ORDER BY completed_at DESC, audit_retention_job_run_id DESC LIMIT :limit");
+        entityManager.clear();
+        return queryRepository.findRecent(jobName, limit);
+    }
 
-        JdbcClient.StatementSpec statement = jdbcClient.sql(sql.toString())
-                .param("limit", limit);
-        if (jobName != null) {
-            statement = statement.param("jobName", jobName);
-        }
-        return statement.query(AuditRetentionJobRun.class).list();
+    private AuditRetentionJobRun toDomain(AuditRetentionJobRunEntity entity) {
+        return new AuditRetentionJobRun(
+                entity.getAuditRetentionJobRunId(),
+                entity.getJobName(),
+                entity.getStatus(),
+                entity.getStartedAt(),
+                entity.getCompletedAt(),
+                entity.getDetailsJson(),
+                entity.getCreatedBy(),
+                entity.getCreatedAt()
+        );
     }
 
     public record InsertCommand(
