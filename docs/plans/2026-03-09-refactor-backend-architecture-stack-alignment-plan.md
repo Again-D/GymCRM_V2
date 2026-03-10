@@ -1,11 +1,22 @@
 ---
 title: refactor: Align Backend Implementation With Architecture Stack Detail
 type: refactor
-status: active
+status: completed
 date: 2026-03-09
 ---
 
 # refactor: Align Backend Implementation With Architecture Stack Detail
+
+## Status Update (2026-03-10)
+
+이 문서는 최초 작성 시점의 umbrella plan으로 유지한다. 현재 기준으로는 `JPA + QueryDSL + SpringDoc/OpenAPI` 축은 이미 구현/머지까지 완료되었고, 남은 후속 실행 축은 Redis 런타임 도입으로 분리되었다.
+
+현재 해석 기준:
+
+- 이 문서는 상위 맥락과 전환 배경을 설명하는 umbrella plan이다.
+- 현재 상태 정리는 `docs/notes/2026-03-10-backend-architecture-stack-alignment-umbrella-plan-status.md`를 따른다.
+- 다음 실제 구현 기준은 `docs/plans/2026-03-10-feat-redis-runtime-adoption-execution-plan.md`를 따른다.
+- `docs/02_시스템_아키텍처_설계서.md`는 목표 상태 문서로 유지하며, 현재 구현 상태와의 갭은 실행계획/상태 메모 문서에서 관리한다.
 
 ## Overview
 

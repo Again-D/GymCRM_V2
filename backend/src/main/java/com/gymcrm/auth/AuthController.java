@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import org.springframework.http.HttpHeaders;
 import org.springframework.core.env.Environment;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -70,7 +71,7 @@ public class AuthController {
     @PostMapping("/logout")
     public ApiResponse<Void> logout(HttpServletRequest request, HttpServletResponse response) {
         String refreshToken = authCookieSupport.extractRefreshToken(request);
-        authService.logout(refreshToken);
+        authService.logout(refreshToken, extractAccessToken(request));
         authCookieSupport.clearRefreshTokenCookie(response, isProdProfileActive());
         return ApiResponse.success(null, "로그아웃되었습니다.");
     }
@@ -83,6 +84,15 @@ public class AuthController {
 
     private boolean isProdProfileActive() {
         return Arrays.stream(environment.getActiveProfiles()).anyMatch("prod"::equalsIgnoreCase);
+    }
+
+    private String extractAccessToken(HttpServletRequest request) {
+        String authorization = request.getHeader(HttpHeaders.AUTHORIZATION);
+        if (authorization == null || !authorization.startsWith("Bearer ")) {
+            return null;
+        }
+        String token = authorization.substring("Bearer ".length()).trim();
+        return token.isBlank() ? null : token;
     }
 
     public record LoginRequest(

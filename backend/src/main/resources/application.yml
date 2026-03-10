@@ -7,6 +7,15 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5433/gymcrm_dev}
     username: ${DB_USERNAME:gymcrm}
     password: ${DB_PASSWORD:gymcrm}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      database: ${REDIS_DATABASE:0}
+      connect-timeout: ${REDIS_CONNECT_TIMEOUT:2s}
+      timeout: ${REDIS_COMMAND_TIMEOUT:2s}
+      repositories:
+        enabled: false
   jpa:
     open-in-view: false
     hibernate:
@@ -31,6 +40,9 @@ management:
     health:
       probes:
         enabled: true
+  health:
+    redis:
+      enabled: ${APP_REDIS_ENABLED:false}
   metrics:
     tags:
       application: ${spring.application.name}
@@ -58,6 +70,17 @@ app:
   access:
     qr:
       ttl-seconds: ${APP_ACCESS_QR_TTL_SECONDS:30}
+  redis:
+    enabled: ${APP_REDIS_ENABLED:false}
+    startup-required: ${APP_REDIS_STARTUP_REQUIRED:false}
+    qr-token-store:
+      enabled: ${APP_REDIS_QR_TOKEN_STORE_ENABLED:false}
+    reservation-lock:
+      enabled: ${APP_REDIS_RESERVATION_LOCK_ENABLED:false}
+      wait-time: ${APP_REDIS_RESERVATION_LOCK_WAIT_TIME:250ms}
+      lease-time: ${APP_REDIS_RESERVATION_LOCK_LEASE_TIME:3s}
+    auth-denylist:
+      enabled: ${APP_REDIS_AUTH_DENYLIST_ENABLED:false}
   security:
     mode: ${APP_SECURITY_MODE:prototype}
     pii:
@@ -92,6 +115,8 @@ springdoc:
   swagger-ui:
     enabled: true
 app:
+  redis:
+    enabled: ${APP_REDIS_ENABLED:false}
   prototype:
     no-auth-enabled: ${APP_PROTOTYPE_NO_AUTH_ENABLED:true}
 
@@ -101,6 +126,8 @@ spring:
     activate:
       on-profile: staging
 app:
+  redis:
+    enabled: ${APP_REDIS_ENABLED:false}
   prototype:
     no-auth-enabled: ${APP_PROTOTYPE_NO_AUTH_ENABLED:true}
 
@@ -110,5 +137,7 @@ spring:
     activate:
       on-profile: prod
 app:
+  redis:
+    enabled: ${APP_REDIS_ENABLED:true}
   prototype:
     no-auth-enabled: false

@@ -20,10 +20,16 @@ import java.util.List;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtTokenService jwtTokenService;
     private final AuthUserRepository authUserRepository;
+    private final AccessTokenDenylistService accessTokenDenylistService;
 
-    public JwtAuthenticationFilter(JwtTokenService jwtTokenService, AuthUserRepository authUserRepository) {
+    public JwtAuthenticationFilter(
+            JwtTokenService jwtTokenService,
+            AuthUserRepository authUserRepository,
+            AccessTokenDenylistService accessTokenDenylistService
+    ) {
         this.jwtTokenService = jwtTokenService;
         this.authUserRepository = authUserRepository;
+        this.accessTokenDenylistService = accessTokenDenylistService;
     }
 
     @Override
@@ -43,6 +49,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         try {
             JwtTokenService.AccessTokenClaims claims = jwtTokenService.parseAccessToken(token);
+            if (accessTokenDenylistService.isDenied(claims.jti())) {
+                throw new ApiException(com.gymcrm.common.error.ErrorCode.TOKEN_REVOKED, "무효화된 access token입니다.");
+            }
             AuthUser user = authUserRepository.findActiveById(claims.userId())
                     .filter(AuthUser::isActive)
                     .orElseThrow(() -> new ApiException(com.gymcrm.common.error.ErrorCode.AUTHENTICATION_FAILED, "활성 사용자 정보를 찾을 수 없습니다."));

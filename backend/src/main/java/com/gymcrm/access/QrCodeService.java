@@ -74,7 +74,12 @@ public class QrCodeService {
 
         Long centerId = currentUserProvider.currentCenterId();
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-        QrTokenStore.ConsumedToken consumed = qrTokenStore.consume(centerId, request.qrToken().trim(), now);
+        QrTokenStore.ConsumedToken consumed;
+        try {
+            consumed = qrTokenStore.consume(centerId, request.qrToken().trim(), now);
+        } catch (QrTokenStoreUnavailableException ex) {
+            return VerifyResult.denied("A104", "QR_STORE_UNAVAILABLE", "QR 저장소 검증에 실패했습니다.", null, request.deviceId());
+        }
 
         if (!consumed.matchesCenter(centerId)) {
             return VerifyResult.denied("A002", "QR_INVALID", "유효하지 않은 QR 코드입니다.", null, request.deviceId());
