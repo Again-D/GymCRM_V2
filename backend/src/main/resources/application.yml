@@ -82,6 +82,9 @@ app:
     crm-dispatch-claim:
       enabled: ${APP_REDIS_CRM_DISPATCH_CLAIM_ENABLED:false}
       lease-time: ${APP_REDIS_CRM_DISPATCH_CLAIM_LEASE_TIME:30s}
+    settlement-dashboard-cache:
+      enabled: ${APP_REDIS_SETTLEMENT_DASHBOARD_CACHE_ENABLED:false}
+      ttl: ${APP_REDIS_SETTLEMENT_DASHBOARD_CACHE_TTL:30s}
     auth-denylist:
       enabled: ${APP_REDIS_AUTH_DENYLIST_ENABLED:false}
   security:

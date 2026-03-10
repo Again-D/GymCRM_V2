@@ -1,5 +1,6 @@
-package com.gymcrm.crm;
+package com.gymcrm.settlement;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gymcrm.common.config.RedisRuntimeProperties;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
@@ -10,29 +11,30 @@ import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class CrmDispatchClaimConfigTest {
+class SalesDashboardCacheConfigTest {
 
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(RedisAutoConfiguration.class))
-            .withUserConfiguration(CrmDispatchClaimConfig.class);
+            .withUserConfiguration(SalesDashboardCacheConfig.class)
+            .withBean(ObjectMapper.class, ObjectMapper::new);
 
     @Test
-    void fallsBackToNoOpWhenDispatchClaimFlagIsDisabled() {
+    void fallsBackToNoOpWhenSettlementDashboardCacheFlagIsDisabled() {
         contextRunner
                 .withPropertyValues(
                         "app.redis.enabled=false",
-                        "app.redis.crm-dispatch-claim.enabled=false"
+                        "app.redis.settlement-dashboard-cache.enabled=false"
                 )
-                .run(context -> assertThat(context.getBean(CrmDispatchClaimService.class))
-                        .isInstanceOf(NoOpCrmDispatchClaimService.class));
+                .run(context -> assertThat(context.getBean(SalesDashboardCacheService.class))
+                        .isInstanceOf(NoOpSalesDashboardCacheService.class));
     }
 
     @Test
-    void selectsRedisClaimServiceWhenRedisAndDispatchClaimFlagsAreEnabled() {
+    void selectsRedisCacheServiceWhenRedisAndSettlementDashboardFlagsAreEnabled() {
         contextRunner
                 .withPropertyValues(
                         "app.redis.enabled=true",
-                        "app.redis.crm-dispatch-claim.enabled=true",
+                        "app.redis.settlement-dashboard-cache.enabled=true",
                         "spring.data.redis.host=localhost",
                         "spring.data.redis.port=6379"
                 )
@@ -41,11 +43,11 @@ class CrmDispatchClaimConfigTest {
                         false,
                         new RedisRuntimeProperties.Toggle(false),
                         new RedisRuntimeProperties.ReservationLock(false, Duration.ofMillis(250), Duration.ofSeconds(3)),
-                        new RedisRuntimeProperties.CrmDispatchClaim(true, Duration.ofSeconds(30)),
-                        new RedisRuntimeProperties.SettlementDashboardCache(false, Duration.ofSeconds(30)),
+                        new RedisRuntimeProperties.CrmDispatchClaim(false, Duration.ofSeconds(30)),
+                        new RedisRuntimeProperties.SettlementDashboardCache(true, Duration.ofSeconds(30)),
                         new RedisRuntimeProperties.Toggle(false)
                 ))
-                .run(context -> assertThat(context.getBean(CrmDispatchClaimService.class))
-                        .isInstanceOf(RedisCrmDispatchClaimService.class));
+                .run(context -> assertThat(context.getBean(SalesDashboardCacheService.class))
+                        .isInstanceOf(RedisSalesDashboardCacheService.class));
     }
 }

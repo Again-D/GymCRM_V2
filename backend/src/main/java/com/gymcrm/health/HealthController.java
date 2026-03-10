@@ -59,6 +59,7 @@ public class HealthController {
         payload.put("qrTokenStoreEnabled", redisRuntimeProperties.qrTokenStore().enabled());
         payload.put("reservationLockEnabled", redisRuntimeProperties.reservationLock().enabled());
         payload.put("crmDispatchClaimEnabled", redisRuntimeProperties.crmDispatchClaim().enabled());
+        payload.put("settlementDashboardCacheEnabled", redisRuntimeProperties.settlementDashboardCache().enabled());
         payload.put("authDenylistEnabled", redisRuntimeProperties.authDenylist().enabled());
         return payload;
     }

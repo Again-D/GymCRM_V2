@@ -83,6 +83,10 @@ origin:
   - 캐시는 가능하지만 canonical state 분리 효과보다 단순 조회 최적화에 가깝다.
 - 분류:
   - `later`
+ - 실행 상태:
+   - 2026-03-10 구현 완료
+   - feature flag: `app.redis.settlement-dashboard-cache.enabled`
+   - 정책: short TTL read-through cache, Redis 장애 시 `fail-open`
 
 3. trainer payroll/export job coordination
 - 평가:
@@ -109,3 +113,5 @@ origin:
 - 2026-03-10 구현 완료
 - feature flag: `app.redis.crm-dispatch-claim.enabled`
 - 동작 정책: claim 획득 성공 시에만 send 진행, Redis 장애 시 `fail-open`
+- 추가 구현 완료:
+  - `sales dashboard short TTL cache`

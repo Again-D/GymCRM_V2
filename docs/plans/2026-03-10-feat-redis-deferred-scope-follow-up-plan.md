@@ -82,3 +82,5 @@ Checklist:
   - inventory note: [2026-03-10-redis-deferred-scope-inventory.md](/Users/abc/projects/GymCRM_V2/docs/notes/2026-03-10-redis-deferred-scope-inventory.md)
   - 후속 구현으로 `CRM processPending dispatch claim lock`을 적용했다.
   - Redis feature flag: `app.redis.crm-dispatch-claim.enabled`
+  - 후속 구현으로 `sales dashboard short TTL cache`를 적용했다.
+  - Redis feature flag: `app.redis.settlement-dashboard-cache.enabled`
