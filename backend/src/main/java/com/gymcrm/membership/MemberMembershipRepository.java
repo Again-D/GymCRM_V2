@@ -1,90 +1,76 @@
 package com.gymcrm.membership;
 
-import org.springframework.jdbc.core.simple.JdbcClient;
+import com.querydsl.jpa.impl.JPAQueryFactory;
+import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.Optional;
+
+import static com.gymcrm.membership.QMemberMembershipEntity.memberMembershipEntity;
 
 @Repository
 public class MemberMembershipRepository {
-    private final JdbcClient jdbcClient;
+    private final MemberMembershipJpaRepository memberMembershipJpaRepository;
+    private final JPAQueryFactory queryFactory;
+    private final EntityManager entityManager;
 
-    public MemberMembershipRepository(JdbcClient jdbcClient) {
-        this.jdbcClient = jdbcClient;
+    public MemberMembershipRepository(
+            MemberMembershipJpaRepository memberMembershipJpaRepository,
+            JPAQueryFactory queryFactory,
+            EntityManager entityManager
+    ) {
+        this.memberMembershipJpaRepository = memberMembershipJpaRepository;
+        this.queryFactory = queryFactory;
+        this.entityManager = entityManager;
     }
 
     public MemberMembership insert(MemberMembershipCreateCommand command) {
-        return jdbcClient.sql("""
-                INSERT INTO member_memberships (
-                    center_id, member_id, product_id, membership_status,
-                    product_name_snapshot, product_category_snapshot, product_type_snapshot,
-                    price_amount_snapshot, purchased_at, start_date, end_date,
-                    total_count, remaining_count, used_count,
-                    hold_days_used, hold_count_used, memo,
-                    created_by, updated_by
-                )
-                VALUES (
-                    :centerId, :memberId, :productId, :membershipStatus,
-                    :productNameSnapshot, :productCategorySnapshot, :productTypeSnapshot,
-                    :priceAmountSnapshot, :purchasedAt, :startDate, :endDate,
-                    :totalCount, :remainingCount, :usedCount,
-                    :holdDaysUsed, :holdCountUsed, :memo,
-                    :actorUserId, :actorUserId
-                )
-                RETURNING
-                    membership_id, center_id, member_id, product_id, membership_status,
-                    product_name_snapshot, product_category_snapshot, product_type_snapshot,
-                    price_amount_snapshot, purchased_at, start_date, end_date,
-                    total_count, remaining_count, used_count,
-                    hold_days_used, hold_count_used, memo,
-                    created_at, created_by, updated_at, updated_by
-                """)
-                .paramSource(command)
-                .query(MemberMembership.class)
-                .single();
+        MemberMembershipEntity entity = new MemberMembershipEntity();
+        entity.setCenterId(command.centerId());
+        entity.setMemberId(command.memberId());
+        entity.setProductId(command.productId());
+        entity.setMembershipStatus(command.membershipStatus());
+        entity.setProductNameSnapshot(command.productNameSnapshot());
+        entity.setProductCategorySnapshot(command.productCategorySnapshot());
+        entity.setProductTypeSnapshot(command.productTypeSnapshot());
+        entity.setPriceAmountSnapshot(command.priceAmountSnapshot());
+        entity.setPurchasedAt(command.purchasedAt());
+        entity.setStartDate(command.startDate());
+        entity.setEndDate(command.endDate());
+        entity.setTotalCount(command.totalCount());
+        entity.setRemainingCount(command.remainingCount());
+        entity.setUsedCount(command.usedCount());
+        entity.setHoldDaysUsed(command.holdDaysUsed());
+        entity.setHoldCountUsed(command.holdCountUsed());
+        entity.setMemo(command.memo());
+        entity.setDeleted(false);
+        entity.setCreatedAt(command.purchasedAt());
+        entity.setCreatedBy(command.actorUserId());
+        entity.setUpdatedAt(command.purchasedAt());
+        entity.setUpdatedBy(command.actorUserId());
+        MemberMembershipEntity saved = memberMembershipJpaRepository.saveAndFlush(entity);
+        entityManager.refresh(saved);
+        return toDomain(saved);
     }
 
     public Optional<MemberMembership> findById(Long membershipId) {
-        return jdbcClient.sql("""
-                SELECT
-                    membership_id, center_id, member_id, product_id, membership_status,
-                    product_name_snapshot, product_category_snapshot, product_type_snapshot,
-                    price_amount_snapshot, purchased_at, start_date, end_date,
-                    total_count, remaining_count, used_count,
-                    hold_days_used, hold_count_used, memo,
-                    created_at, created_by, updated_at, updated_by
-                FROM member_memberships
-                WHERE membership_id = :membershipId
-                  AND is_deleted = FALSE
-                """)
-                .param("membershipId", membershipId)
-                .query(MemberMembership.class)
-                .optional();
+        // Phase 4 coexistence: JDBC-based writers still update this table in the same request/test flows.
+        // Clear the persistence context before reads so repository callers do not observe stale entities.
+        entityManager.clear();
+        return memberMembershipJpaRepository.findByMembershipIdAndIsDeletedFalse(membershipId).map(this::toDomain);
     }
 
     public MemberMembership updateStatus(Long membershipId, String membershipStatus, Long actorUserId) {
-        return jdbcClient.sql("""
-                UPDATE member_memberships
-                SET
-                    membership_status = :membershipStatus,
-                    updated_at = CURRENT_TIMESTAMP,
-                    updated_by = :actorUserId
-                WHERE membership_id = :membershipId
-                  AND is_deleted = FALSE
-                RETURNING
-                    membership_id, center_id, member_id, product_id, membership_status,
-                    product_name_snapshot, product_category_snapshot, product_type_snapshot,
-                    price_amount_snapshot, purchased_at, start_date, end_date,
-                    total_count, remaining_count, used_count,
-                    hold_days_used, hold_count_used, memo,
-                    created_at, created_by, updated_at, updated_by
-                """)
-                .param("membershipId", membershipId)
-                .param("membershipStatus", membershipStatus)
-                .param("actorUserId", actorUserId)
-                .query(MemberMembership.class)
-                .single();
+        MemberMembershipEntity entity = memberMembershipJpaRepository.findByMembershipIdAndIsDeletedFalse(membershipId)
+                .orElseThrow();
+        entity.setMembershipStatus(membershipStatus);
+        entity.setUpdatedAt(OffsetDateTime.now());
+        entity.setUpdatedBy(actorUserId);
+        MemberMembershipEntity saved = memberMembershipJpaRepository.saveAndFlush(entity);
+        entityManager.refresh(saved);
+        return toDomain(saved);
     }
 
     public Optional<MemberMembership> updateStatusIfCurrent(
@@ -93,82 +79,92 @@ public class MemberMembershipRepository {
             String membershipStatus,
             Long actorUserId
     ) {
-        return jdbcClient.sql("""
-                UPDATE member_memberships
-                SET
-                    membership_status = :membershipStatus,
-                    updated_at = CURRENT_TIMESTAMP,
-                    updated_by = :actorUserId
-                WHERE membership_id = :membershipId
-                  AND membership_status = :expectedStatus
-                  AND is_deleted = FALSE
-                RETURNING
-                    membership_id, center_id, member_id, product_id, membership_status,
-                    product_name_snapshot, product_category_snapshot, product_type_snapshot,
-                    price_amount_snapshot, purchased_at, start_date, end_date,
-                    total_count, remaining_count, used_count,
-                    hold_days_used, hold_count_used, memo,
-                    created_at, created_by, updated_at, updated_by
-                """)
-                .param("membershipId", membershipId)
-                .param("expectedStatus", expectedStatus)
-                .param("membershipStatus", membershipStatus)
-                .param("actorUserId", actorUserId)
-                .query(MemberMembership.class)
-                .optional();
+        long updated = queryFactory.update(memberMembershipEntity)
+                .set(memberMembershipEntity.membershipStatus, membershipStatus)
+                .set(memberMembershipEntity.updatedAt, OffsetDateTime.now())
+                .set(memberMembershipEntity.updatedBy, actorUserId)
+                .where(
+                        memberMembershipEntity.membershipId.eq(membershipId),
+                        memberMembershipEntity.membershipStatus.eq(expectedStatus),
+                        memberMembershipEntity.isDeleted.isFalse()
+                )
+                .execute();
+        if (updated == 0) {
+            return Optional.empty();
+        }
+        entityManager.clear();
+        return memberMembershipJpaRepository.findByMembershipIdAndIsDeletedFalse(membershipId).map(this::toDomain);
     }
 
     public MemberMembership updateAfterResume(MembershipResumeUpdateCommand command) {
-        return jdbcClient.sql("""
-                UPDATE member_memberships
-                SET
-                    membership_status = :membershipStatus,
-                    end_date = :endDate,
-                    hold_days_used = :holdDaysUsed,
-                    hold_count_used = :holdCountUsed,
-                    updated_at = CURRENT_TIMESTAMP,
-                    updated_by = :actorUserId
-                WHERE membership_id = :membershipId
-                  AND is_deleted = FALSE
-                RETURNING
-                    membership_id, center_id, member_id, product_id, membership_status,
-                    product_name_snapshot, product_category_snapshot, product_type_snapshot,
-                    price_amount_snapshot, purchased_at, start_date, end_date,
-                    total_count, remaining_count, used_count,
-                    hold_days_used, hold_count_used, memo,
-                    created_at, created_by, updated_at, updated_by
-                """)
-                .paramSource(command)
-                .query(MemberMembership.class)
-                .single();
+        long updated = queryFactory.update(memberMembershipEntity)
+                .set(memberMembershipEntity.membershipStatus, command.membershipStatus())
+                .set(memberMembershipEntity.endDate, command.endDate())
+                .set(memberMembershipEntity.holdDaysUsed, command.holdDaysUsed())
+                .set(memberMembershipEntity.holdCountUsed, command.holdCountUsed())
+                .set(memberMembershipEntity.updatedAt, OffsetDateTime.now())
+                .set(memberMembershipEntity.updatedBy, command.actorUserId())
+                .where(
+                        memberMembershipEntity.membershipId.eq(command.membershipId()),
+                        memberMembershipEntity.isDeleted.isFalse()
+                )
+                .execute();
+        if (updated == 0) {
+            throw new IllegalStateException("Membership updateAfterResume target not found: " + command.membershipId());
+        }
+        entityManager.clear();
+        return memberMembershipJpaRepository.findByMembershipIdAndIsDeletedFalse(command.membershipId())
+                .map(this::toDomain)
+                .orElseThrow();
     }
 
     public Optional<MemberMembership> consumeOneCountIfEligible(Long membershipId, Long actorUserId) {
-        return jdbcClient.sql("""
-                UPDATE member_memberships
-                SET
-                    remaining_count = remaining_count - 1,
-                    used_count = used_count + 1,
-                    updated_at = CURRENT_TIMESTAMP,
-                    updated_by = :actorUserId
-                WHERE membership_id = :membershipId
-                  AND membership_status = 'ACTIVE'
-                  AND product_type_snapshot = 'COUNT'
-                  AND remaining_count IS NOT NULL
-                  AND remaining_count > 0
-                  AND is_deleted = FALSE
-                RETURNING
-                    membership_id, center_id, member_id, product_id, membership_status,
-                    product_name_snapshot, product_category_snapshot, product_type_snapshot,
-                    price_amount_snapshot, purchased_at, start_date, end_date,
-                    total_count, remaining_count, used_count,
-                    hold_days_used, hold_count_used, memo,
-                    created_at, created_by, updated_at, updated_by
-                """)
-                .param("membershipId", membershipId)
-                .param("actorUserId", actorUserId)
-                .query(MemberMembership.class)
-                .optional();
+        long updated = queryFactory.update(memberMembershipEntity)
+                .set(memberMembershipEntity.remainingCount, memberMembershipEntity.remainingCount.subtract(1))
+                .set(memberMembershipEntity.usedCount, memberMembershipEntity.usedCount.add(1))
+                .set(memberMembershipEntity.updatedAt, OffsetDateTime.now())
+                .set(memberMembershipEntity.updatedBy, actorUserId)
+                .where(
+                        memberMembershipEntity.membershipId.eq(membershipId),
+                        memberMembershipEntity.membershipStatus.eq("ACTIVE"),
+                        memberMembershipEntity.productTypeSnapshot.eq("COUNT"),
+                        memberMembershipEntity.remainingCount.isNotNull(),
+                        memberMembershipEntity.remainingCount.gt(0),
+                        memberMembershipEntity.isDeleted.isFalse()
+                )
+                .execute();
+        if (updated == 0) {
+            return Optional.empty();
+        }
+        entityManager.clear();
+        return memberMembershipJpaRepository.findByMembershipIdAndIsDeletedFalse(membershipId).map(this::toDomain);
+    }
+
+    private MemberMembership toDomain(MemberMembershipEntity entity) {
+        return new MemberMembership(
+                entity.getMembershipId(),
+                entity.getCenterId(),
+                entity.getMemberId(),
+                entity.getProductId(),
+                entity.getMembershipStatus(),
+                entity.getProductNameSnapshot(),
+                entity.getProductCategorySnapshot(),
+                entity.getProductTypeSnapshot(),
+                entity.getPriceAmountSnapshot(),
+                entity.getPurchasedAt(),
+                entity.getStartDate(),
+                entity.getEndDate(),
+                entity.getTotalCount(),
+                entity.getRemainingCount(),
+                entity.getUsedCount(),
+                entity.getHoldDaysUsed(),
+                entity.getHoldCountUsed(),
+                entity.getMemo(),
+                entity.getCreatedAt(),
+                entity.getCreatedBy(),
+                entity.getUpdatedAt(),
+                entity.getUpdatedBy()
+        );
     }
 
     public record MemberMembershipCreateCommand(

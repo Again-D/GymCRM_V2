@@ -1,7 +1,8 @@
 package com.gymcrm.reservation;
 
-import org.springframework.jdbc.core.simple.JdbcClient;
+import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -9,102 +10,79 @@ import java.util.Optional;
 
 @Repository
 public class TrainerScheduleRepository {
-    private final JdbcClient jdbcClient;
+    private final TrainerScheduleJpaRepository trainerScheduleJpaRepository;
+    private final TrainerScheduleQueryRepository trainerScheduleQueryRepository;
+    private final EntityManager entityManager;
 
-    public TrainerScheduleRepository(JdbcClient jdbcClient) {
-        this.jdbcClient = jdbcClient;
+    public TrainerScheduleRepository(
+            TrainerScheduleJpaRepository trainerScheduleJpaRepository,
+            TrainerScheduleQueryRepository trainerScheduleQueryRepository,
+            EntityManager entityManager
+    ) {
+        this.trainerScheduleJpaRepository = trainerScheduleJpaRepository;
+        this.trainerScheduleQueryRepository = trainerScheduleQueryRepository;
+        this.entityManager = entityManager;
     }
 
     public Optional<TrainerSchedule> findById(Long scheduleId) {
-        return jdbcClient.sql(baseSelect() + """
-                WHERE schedule_id = :scheduleId
-                  AND is_deleted = FALSE
-                """)
-                .param("scheduleId", scheduleId)
-                .query(TrainerSchedule.class)
-                .optional();
+        entityManager.clear();
+        return trainerScheduleJpaRepository.findByScheduleIdAndIsDeletedFalse(scheduleId).map(this::toDomain);
     }
 
     public List<TrainerSchedule> findAll(Long centerId) {
-        return jdbcClient.sql(baseSelect() + """
-                WHERE center_id = :centerId
-                  AND is_deleted = FALSE
-                ORDER BY start_at ASC, schedule_id ASC
-                """)
-                .param("centerId", centerId)
-                .query(TrainerSchedule.class)
-                .list();
+        entityManager.clear();
+        return trainerScheduleQueryRepository.findAll(centerId);
     }
 
+    @Transactional
     public Optional<TrainerSchedule> incrementCurrentCountIfAvailable(Long scheduleId, Long actorUserId) {
-        return jdbcClient.sql("""
-                UPDATE trainer_schedules
-                SET
-                    current_count = current_count + 1,
-                    updated_at = CURRENT_TIMESTAMP,
-                    updated_by = :actorUserId
-                WHERE schedule_id = :scheduleId
-                  AND is_deleted = FALSE
-                  AND current_count < capacity
-                """ + returningClause())
-                .param("scheduleId", scheduleId)
-                .param("actorUserId", actorUserId)
-                .query(TrainerSchedule.class)
-                .optional();
+        return trainerScheduleQueryRepository.incrementCurrentCountIfAvailable(scheduleId, actorUserId);
     }
 
+    @Transactional
     public Optional<TrainerSchedule> decrementCurrentCountIfPositive(Long scheduleId, Long actorUserId) {
-        return jdbcClient.sql("""
-                UPDATE trainer_schedules
-                SET
-                    current_count = current_count - 1,
-                    updated_at = CURRENT_TIMESTAMP,
-                    updated_by = :actorUserId
-                WHERE schedule_id = :scheduleId
-                  AND is_deleted = FALSE
-                  AND current_count > 0
-                """ + returningClause())
-                .param("scheduleId", scheduleId)
-                .param("actorUserId", actorUserId)
-                .query(TrainerSchedule.class)
-                .optional();
+        return trainerScheduleQueryRepository.decrementCurrentCountIfPositive(scheduleId, actorUserId);
     }
 
+    @Transactional
     public TrainerSchedule insert(TrainerScheduleCreateCommand command) {
-        return jdbcClient.sql("""
-                INSERT INTO trainer_schedules (
-                    center_id, schedule_type, trainer_name, slot_title,
-                    start_at, end_at, capacity, current_count, memo,
-                    created_by, updated_by
-                )
-                VALUES (
-                    :centerId, :scheduleType, :trainerName, :slotTitle,
-                    :startAt, :endAt, :capacity, :currentCount, :memo,
-                    :actorUserId, :actorUserId
-                )
-                """ + returningClause())
-                .paramSource(command)
-                .query(TrainerSchedule.class)
-                .single();
+        TrainerScheduleEntity entity = new TrainerScheduleEntity();
+        entity.setCenterId(command.centerId());
+        entity.setScheduleType(command.scheduleType());
+        entity.setTrainerName(command.trainerName());
+        entity.setSlotTitle(command.slotTitle());
+        entity.setStartAt(command.startAt());
+        entity.setEndAt(command.endAt());
+        entity.setCapacity(command.capacity());
+        entity.setCurrentCount(command.currentCount());
+        entity.setMemo(command.memo());
+        entity.setDeleted(false);
+        entity.setCreatedAt(command.startAt());
+        entity.setCreatedBy(command.actorUserId());
+        entity.setUpdatedAt(command.startAt());
+        entity.setUpdatedBy(command.actorUserId());
+        TrainerScheduleEntity saved = trainerScheduleJpaRepository.saveAndFlush(entity);
+        entityManager.refresh(saved);
+        return toDomain(saved);
     }
 
-    private String baseSelect() {
-        return """
-                SELECT
-                    schedule_id, center_id, schedule_type, trainer_name, slot_title,
-                    start_at, end_at, capacity, current_count, memo,
-                    created_at, created_by, updated_at, updated_by
-                FROM trainer_schedules
-                """;
-    }
-
-    private String returningClause() {
-        return """
-                RETURNING
-                    schedule_id, center_id, schedule_type, trainer_name, slot_title,
-                    start_at, end_at, capacity, current_count, memo,
-                    created_at, created_by, updated_at, updated_by
-                """;
+    private TrainerSchedule toDomain(TrainerScheduleEntity entity) {
+        return new TrainerSchedule(
+                entity.getScheduleId(),
+                entity.getCenterId(),
+                entity.getScheduleType(),
+                entity.getTrainerName(),
+                entity.getSlotTitle(),
+                entity.getStartAt(),
+                entity.getEndAt(),
+                entity.getCapacity(),
+                entity.getCurrentCount(),
+                entity.getMemo(),
+                entity.getCreatedAt(),
+                entity.getCreatedBy(),
+                entity.getUpdatedAt(),
+                entity.getUpdatedBy()
+        );
     }
 
     public record TrainerScheduleCreateCommand(

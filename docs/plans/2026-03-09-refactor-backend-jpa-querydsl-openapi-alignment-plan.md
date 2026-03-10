@@ -167,7 +167,7 @@ Phase 1 checklist:
 Phase 1 execution note (2026-03-09):
 - `./gradlew clean compileJava`로 새 의존성 및 QueryDSL annotation processing 기동을 검증했다.
 - `OpenApiExposureIntegrationTest`, `ActuatorSecurityIntegrationTest` targeted validation으로 `dev` 노출 / `prod` 비노출을 확인했다.
-- 전체 `./gradlew test`는 기존 `AccessServiceIntegrationTest`의 공유 dev DB 의존성 때문에 실패하며, 이 문제는 `main`에서도 동일하게 재현된다.
+- `AccessServiceIntegrationTest` DB 격리 보수 후 전체 `./gradlew test` 기준선을 복구했다.
 
 Phase 1 research insights:
 - `application.yml`의 multi-document profile block으로 `springdoc.api-docs.enabled` / `springdoc.swagger-ui.enabled`를 `dev=true`, `staging/prod=false`로 분리하는 것이 가장 단순하다.
@@ -186,10 +186,14 @@ Phase 1 research insights:
   - enum / nullability / timezone / optimistic locking 기준 문서화
 
 Phase 2 checklist:
-- [ ] 엔티티 공통 규칙(`@Entity`, `@Table`, PK, soft delete, timestamp`)을 문서화한다.
-- [ ] `JdbcClient Repository -> JPA Repository + Query Repository` 패턴 예시를 1개 만든다.
-- [ ] 트랜잭션 경계가 서비스 계층에 남도록 규칙을 고정한다.
-- [ ] 기존 DTO/서비스가 엔티티에 과하게 결합되지 않도록 anti-corruption 원칙을 정한다.
+- [x] 엔티티 공통 규칙(`@Entity`, `@Table`, PK, soft delete, timestamp`)을 문서화한다.
+- [x] `JdbcClient Repository -> JPA Repository + Query Repository` 패턴 예시를 1개 만든다.
+- [x] 트랜잭션 경계가 서비스 계층에 남도록 규칙을 고정한다.
+- [x] 기존 DTO/서비스가 엔티티에 과하게 결합되지 않도록 anti-corruption 원칙을 정한다.
+
+Phase 2 execution note (2026-03-10):
+- Mapping baseline and repository split rules: `docs/notes/2026-03-10-jpa-querydsl-phase2-mapping-rules.md`
+- Phase 2 intentionally stopped at documentation and boundary fixing. Domain migration starts in Phase 3.
 
 Phase 2 research insights:
 - soft delete가 이미 설계 규칙으로 존재하므로, JPA 전환 시 `@SQLDelete`/`@Where` 같은 ORM 기능을 쓸지 아니면 repository explicit predicate를 유지할지 먼저 결정해야 한다.
@@ -208,10 +212,22 @@ Phase 2 research insights:
   - 생성/수정/삭제/검색 integration test 통과
 
 Phase 3 checklist:
-- [ ] `member` 도메인을 첫 전환 대상으로 사용해 조회/저장/검색을 분리 전환한다.
-- [ ] `product`, `locker` 도메인에 같은 패턴을 반복 적용한다.
-- [ ] 기존 `JdbcClient` 결과와 새 저장소 결과를 비교하는 parity 테스트를 추가한다.
-- [ ] 각 도메인 전환 후 남은 JDBC 코드와 제거 가능한 코드를 표시한다.
+- [x] `member` 도메인을 첫 전환 대상으로 사용해 조회/저장/검색을 분리 전환한다.
+- [x] `product`, `locker` 도메인에 같은 패턴을 반복 적용한다.
+- [x] 기존 `JdbcClient` 결과와 새 저장소 결과를 비교하는 parity 테스트를 추가한다.
+- [x] 각 도메인 전환 후 남은 JDBC 코드와 제거 가능한 코드를 표시한다.
+
+Phase 3 execution note (2026-03-10):
+- `member` 저장/단건조회는 JPA(`MemberEntity`, `MemberJpaRepository`)로 전환했고, 검색/목록은 `MemberQueryRepository`로 분리했다.
+- 회원 요약 목록은 `CTE + DISTINCT ON` 특성 때문에 Query Repository 내부 native SQL 예외로 유지했다. 이 예외는 Phase 6 문서 동기화 시 Backend 문서에 명시한다.
+- JPA 저장 직후 DB default(`member_code`)를 안정적으로 반영하기 위해 `EntityManager.refresh(...)`를 사용했고, 기본 트랜잭션 매니저는 `JpaTransactionManager`로 전환했다.
+- 회귀 검증: `./gradlew test --tests com.gymcrm.member.MemberServiceTest --tests com.gymcrm.member.MemberSummaryApiIntegrationTest --tests com.gymcrm.member.MemberSummaryQueryPerformanceIntegrationTest` 및 전체 `./gradlew test` 통과.
+- `product` 저장/단건조회/상태변경은 JPA(`ProductEntity`, `ProductJpaRepository`)로 전환했고, 목록 필터는 `ProductQueryRepository`로 분리했다.
+- `product`는 DB canonical `NUMERIC(12,2)` 스케일을 유지하도록 저장 후 `EntityManager.refresh(...)`를 적용했고, 실체인 검증을 위해 `ProductApiIntegrationTest`를 추가했다.
+- `locker`는 `LockerSlot`/`LockerAssignment` 모두 JPA 엔티티 + Query Repository 패턴으로 전환했다. 상태 전이(`AVAILABLE -> ASSIGNED`, `ACTIVE -> RETURNED`)는 기존 조건부 SQL 의미를 유지하기 위해 bulk update + `EntityManager.clear()` 후 재조회 방식으로 구현했다.
+- `locker`/`product`/`member` 전환 이후 전체 `./gradlew test` 기준선까지 재검증 완료.
+- parity 검증은 `Phase3RepositoryParityIntegrationTest`로 고정했다. `member` 요약, `product` 목록/상세, `locker` 슬롯/배정 목록에 대해 직접 SQL 결과와 현재 저장소 결과를 같은 fixture 기준으로 비교한다.
+- 남은 `JdbcClient`/native SQL 인벤토리와 제거 후보는 `docs/notes/2026-03-10-phase3-jdbc-native-sql-inventory.md`에 기록했다.
 
 Phase 3 research insights:
 - `member`는 이미 검색/요약/만료임박 같은 조건 조합이 많아 Querydsl 효과를 검증하기 좋은 첫 대상이다.
@@ -230,10 +246,25 @@ Phase 3 research insights:
   - 예약/출입 시나리오 integration test 통과
 
 Phase 4 checklist:
-- [ ] `membership` 상태 전이와 usage event 기록 흐름을 먼저 보호 테스트로 고정한다.
-- [ ] `reservation` 저장소 전환 시 capacity/current_count semantics를 유지한다.
-- [ ] `access` 저장소 전환 시 QR/입장 이벤트 정책이 유지되는지 검증한다.
-- [ ] 이 단계에서는 Redis를 넣지 않고 현재 메모리/PostgreSQL 경계를 유지한다.
+- [x] `membership` 상태 전이와 usage event 기록 흐름을 먼저 보호 테스트로 고정한다.
+- [x] `reservation` 저장소 전환 시 capacity/current_count semantics를 유지한다.
+- [x] `access` 저장소 전환 시 QR/입장 이벤트 정책이 유지되는지 검증한다.
+- [x] 이 단계에서는 Redis를 넣지 않고 현재 메모리/PostgreSQL 경계를 유지한다.
+
+Phase 4 execution note (2026-03-10):
+- `MemberMembershipRepository`는 JPA(`MemberMembershipEntity`, `MemberMembershipJpaRepository`) + QueryDSL bulk update 조합으로 전환했다. 상태 전이(`updateStatusIfCurrent`, `updateAfterResume`)와 횟수 차감(`consumeOneCountIfEligible`)은 기존 조건부 SQL semantics를 유지하기 위해 bulk update 후 재조회 방식으로 구현했다.
+- `PaymentRepository`는 JPA(`PaymentEntity`, `PaymentJpaRepository`)로 전환했고, 구매 결제 이력 조회는 membership/refund 흐름과 동일 계약을 유지했다.
+- membership 상태/usage event 흐름은 기존 `MembershipPurchaseServiceIntegrationTest`, `MembershipHoldServiceIntegrationTest`, `MembershipRefundServiceIntegrationTest`, `ReservationServiceIntegrationTest`로 회귀를 고정했다.
+- JPA와 JDBC가 공존하는 전환 단계의 stale read를 피하기 위해 `MemberMembershipRepository.findById(...)`는 read 전에 persistence context를 clear 하도록 두었다. 이 임시 공존 규칙은 `reservation`/`access` 저장소까지 전환된 뒤 재검토한다.
+- 회귀 검증: `./gradlew test --tests com.gymcrm.membership.MembershipPurchaseServiceIntegrationTest --tests com.gymcrm.membership.MembershipHoldServiceIntegrationTest --tests com.gymcrm.membership.MembershipRefundServiceIntegrationTest`, `./gradlew test --tests com.gymcrm.reservation.ReservationServiceIntegrationTest`, 전체 `./gradlew test` 통과.
+- `ReservationRepository`는 JPA(`ReservationEntity`, `ReservationJpaRepository`) + `ReservationQueryRepository`로 전환했다. 목록/중복예약 확인은 QueryDSL 조회로 옮기고, 취소/완료/체크인/노쇼 상태 전이는 모두 QueryDSL bulk update 후 재조회로 유지했다.
+- `TrainerScheduleRepository`는 JPA(`TrainerScheduleEntity`, `TrainerScheduleJpaRepository`) + `TrainerScheduleQueryRepository`로 전환했다. `current_count < capacity`, `current_count > 0` 조건은 optimistic read-modify-write 대신 bulk update predicate로 유지해 기존 정원 semantics를 보존했다.
+- API fixture가 서비스 계층 밖에서 repository write를 직접 호출하므로, `TrainerScheduleRepository.insert(...)`와 reservation write 메서드는 최소 범위 `@Transactional`로 기존 호출 계약을 유지했다.
+- reservation 회귀 검증: `./gradlew test --tests com.gymcrm.reservation.ReservationServiceIntegrationTest --tests com.gymcrm.reservation.ReservationApiIntegrationTest`, 전체 `./gradlew test` 통과.
+- `AccessEventRepository`는 JPA(`AccessEventEntity`, `AccessEventJpaRepository`) + `AccessEventQueryRepository`로 전환했다. 이벤트 목록, 당일 집계, denied reason 집계, 반복 거부 회원 조회를 QueryDSL로 옮겼고, 알림 시간 윈도우는 Java에서 UTC 경계로 계산해 SQL 함수 의존을 줄였다.
+- `MemberAccessSessionRepository`는 JPA(`MemberAccessSessionEntity`, `MemberAccessSessionJpaRepository`) + `MemberAccessSessionQueryRepository`로 전환했다. 오픈 세션 단건/목록 조회는 member join 기반 QueryDSL 조회로 옮기고, `closeSession`은 `exited_at IS NULL` predicate를 유지한 bulk update 후 재조회로 구현했다.
+- QR 토큰은 계획대로 `InMemoryQrTokenStore`를 그대로 유지했고, Redis/외부 캐시 경계는 이번 phase에서 건드리지 않았다.
+- access 회귀 검증: `./gradlew test --tests com.gymcrm.access.AccessServiceIntegrationTest --tests com.gymcrm.access.AccessApiIntegrationTest --tests com.gymcrm.access.AccessQrApiIntegrationTest`, 전체 `./gradlew test` 통과.
 
 #### Phase 5: Auth and Operational Domain Migration
 
@@ -247,10 +278,23 @@ Phase 4 checklist:
   - `auth_refresh_tokens` 저장 정책이 기존 PostgreSQL canonical과 동일 동작
 
 Phase 5 checklist:
-- [ ] `AuthUser`와 `auth_refresh_tokens`를 JPA 전환 대상으로 포함한다 (see brainstorm: `docs/brainstorms/2026-03-09-backend-architecture-stack-alignment-brainstorm.md`).
-- [ ] Phase 5 JWT 계획의 PostgreSQL canonical 결정을 유지하면서 저장소 기술만 바꾼다.
-- [ ] `audit`/`integration` 계열도 운영 조회 중심 저장소 패턴으로 정리한다.
-- [ ] OpenAPI에 bearer auth, role matrix, 공통 에러 응답을 반영한다.
+- [x] `AuthUser`와 `auth_refresh_tokens`를 JPA 전환 대상으로 포함한다 (see brainstorm: `docs/brainstorms/2026-03-09-backend-architecture-stack-alignment-brainstorm.md`).
+- [x] Phase 5 JWT 계획의 PostgreSQL canonical 결정을 유지하면서 저장소 기술만 바꾼다.
+- [x] `audit`/`integration` 계열도 운영 조회 중심 저장소 패턴으로 정리한다.
+- [x] OpenAPI에 bearer auth, role matrix, 공통 에러 응답을 반영한다.
+
+Phase 5 execution note (2026-03-10):
+- `AuthUserRepository`는 JPA(`AuthUserEntity`, `AuthUserJpaRepository`)로 전환했다. 로그인 시 `last_login_at` 갱신은 JPA write로 옮기되, JWT filter/read path에서 JDBC와의 공존 stale read를 피하기 위해 조회 전 `EntityManager.clear()`를 적용했다.
+- `AuthRefreshTokenRepository`는 JPA(`AuthRefreshTokenEntity`, `AuthRefreshTokenJpaRepository`) + `AuthRefreshTokenQueryRepository`로 전환했다. `findByTokenHash`는 JPA 조회로 옮기고, `revokeIfActive`, `revokeByTokenHashIfActive`, `revokeFamilyIfActive`는 기존 token rotation/replay semantics를 유지하기 위해 QueryDSL bulk update로 구현했다.
+- PostgreSQL canonical 정책은 그대로 유지했다. 즉 refresh token 계약(`auth_refresh_tokens` schema, hash/jti/family 기반 lookup/revoke)은 바꾸지 않고 저장소 기술만 JDBC -> JPA/QueryDSL로 변경했다.
+- auth 회귀 검증: `./gradlew test --tests com.gymcrm.auth.AuthControllerIntegrationTest --tests com.gymcrm.auth.RbacAuthorizationIntegrationTest --tests com.gymcrm.auth.ActuatorSecurityIntegrationTest`, 전체 `./gradlew test` 통과.
+- `AuditLogRepository`는 JPA(`AuditLogEntity`, `AuditLogJpaRepository`) + `AuditLogQueryRepository`로 전환했다. 감사로그 저장은 JPA insert로, 최근 이벤트 조회는 QueryDSL 정렬/필터 조회로 옮겼다.
+- `AuditRetentionJobRunRepository`는 JPA(`AuditRetentionJobRunEntity`, `AuditRetentionJobRunJpaRepository`) + `AuditRetentionJobRunQueryRepository`로 전환했다. 보존 작업 실행기록 저장/최근 조회 경로를 새 패턴으로 정렬했다.
+- `ExternalIntegrationActivationPolicyRepository`는 JPA(`ExternalIntegrationActivationPolicyEntity`, `ExternalIntegrationActivationPolicyJpaRepository`) + `ExternalIntegrationActivationPolicyQueryRepository`로 전환했다. `findByCenterId`는 JPA 조회로 옮기고, activation flag 갱신/드릴 상태 갱신은 QueryDSL bulk update를 사용했다. upsert는 `updateExisting -> insertNew` 순서로 구현해 기존 API 계약을 유지했다.
+- audit/integration 회귀 검증: `./gradlew test --tests com.gymcrm.audit.AuditLogApiIntegrationTest --tests com.gymcrm.integration.ExternalIntegrationActivationApiIntegrationTest --tests com.gymcrm.integration.ExternalIntegrationReadinessServiceIntegrationTest`, 전체 `./gradlew test` 통과.
+- `OpenApiConfig`는 전역 bearer JWT scheme를 유지하되, `AuthController.login/refresh/logout`와 `HealthController.health`는 public operation으로 security requirement를 제거하도록 정리했다.
+- OpenAPI operation extension에 `x-role-policy`, `x-role-matrix`를 추가해 `@PreAuthorize(AccessPolicies...)` 기준 role matrix를 노출했고, 공통 에러 응답(`400/401/403/404/409/422/500`)과 `ErrorResponse`/`ApiError` schema를 components에 등록했다.
+- OpenAPI 회귀 검증: `./gradlew test --tests com.gymcrm.common.config.OpenApiExposureIntegrationTest --tests com.gymcrm.auth.AuthControllerIntegrationTest --tests com.gymcrm.auth.RbacAuthorizationIntegrationTest`, 전체 `./gradlew test` 통과.
 
 Phase 5 research insights:
 - 인증 저장소는 기술만 JPA로 바꾸고 데이터 계약(`auth_refresh_tokens`)은 유지해야 한다. schema 의미까지 바꾸면 이번 계획 범위를 넘는다.
@@ -269,10 +313,16 @@ Phase 5 research insights:
   - 예외 목록이 문서화됨
 
 Phase 6 checklist:
-- [ ] `settlement` 조회를 QueryDSL로 옮길 수 있는 부분과 native SQL 유지 부분을 구분한다.
-- [ ] CRM history/search 도메인도 같은 기준으로 정리한다.
-- [ ] `EXPLAIN` 또는 기존 성능 프로브 기준으로 회귀 여부를 검증한다.
-- [ ] “문서 기준 미달”이 아니라 “의도적 예외” 목록을 남긴다.
+- [x] `settlement` 조회를 QueryDSL로 옮길 수 있는 부분과 native SQL 유지 부분을 구분한다.
+- [x] CRM history/search 도메인도 같은 기준으로 정리한다.
+- [x] `EXPLAIN` 또는 기존 성능 프로브 기준으로 회귀 여부를 검증한다.
+- [x] “문서 기준 미달”이 아니라 “의도적 예외” 목록을 남긴다.
+
+Phase 6 execution note (2026-03-10):
+- heavy query boundary and intentional exceptions were documented in `docs/notes/2026-03-10-phase6-heavy-query-boundary-and-exceptions.md`.
+- `settlement`에서는 `TrainerPayrollSettlementRepository`를 QueryDSL 우선 후보로 분류했고, `SalesDashboardRepository`, `SalesSettlementReportRepository`는 conditional aggregate, timezone/date cast, derived aggregate ordering 특성 때문에 native SQL 예외로 남겼다.
+- CRM에서는 `CrmTargetRepository`, `CrmMessageTemplateRepository`를 JPA/QueryDSL 후보로 분류했고, `CrmMessageEventRepository`는 `ON CONFLICT`, retry/dead-letter 전이, attempt counter semantics 때문에 native SQL 예외로 유지했다.
+- 작업 환경에 `psql`이 없어 직접 `EXPLAIN` CLI 검증은 수행하지 못했다. 대신 기존 서비스 통합 테스트(`SalesDashboardServiceIntegrationTest`, `SalesSettlementReportServiceIntegrationTest`, `TrainerPayrollSettlementServiceIntegrationTest`, `CrmMessageServiceIntegrationTest`, `CrmMessageTemplateServiceIntegrationTest`)를 2026-03-10 KST에 재실행해 behavioral/performance probe 기준선으로 사용했다.
 
 Phase 6 research insights:
 - Querydsl은 동적 필터 조합에 강하지만, 대규모 집계/윈도우 함수/DB별 최적화가 섞이면 native SQL이 더 명확할 수 있다.
@@ -292,9 +342,13 @@ Phase 6 research insights:
 
 Phase 7 checklist:
 - [ ] `docs/02_시스템_아키텍처_설계서.md`의 Backend/레이어/보안/OpenAPI 항목을 실제 상태로 동기화한다.
-- [ ] 남은 JDBC/native SQL 예외 목록을 문서에 남긴다.
-- [ ] 관련 todo와 검증 문서를 같은 마일스톤에서 정리한다.
-- [ ] plan 상태와 acceptance criteria를 실제 구현 상태에 맞춰 즉시 갱신한다.
+- [x] 남은 JDBC/native SQL 예외 목록을 문서에 남긴다.
+- [x] 관련 todo와 검증 문서를 같은 마일스톤에서 정리한다.
+- [x] plan 상태와 acceptance criteria를 실제 구현 상태에 맞춰 즉시 갱신한다.
+
+Phase 7 execution note (2026-03-10):
+- `docs/02_시스템_아키텍처_설계서.md` 동기화 초안은 검토했지만, 사용자 요청으로 문서는 원본 상태로 복구했다. 따라서 아키텍처 문서 동기화는 별도 후속 작업으로 남겨 둔다.
+- native SQL 예외 목록과 heavy query 경계는 `docs/notes/2026-03-10-phase6-heavy-query-boundary-and-exceptions.md`, 전환 인벤토리는 `docs/notes/2026-03-10-phase3-jdbc-native-sql-inventory.md`에 연결했다.
 
 ## System-Wide Impact
 
@@ -333,23 +387,30 @@ Phase 7 checklist:
 
 ### Functional Requirements
 
-- [ ] `JPA + QueryDSL + SpringDoc OpenAPI` 의존성이 백엔드에 도입된다.
-- [ ] `member`, `product`, `locker`, `membership`, `reservation`, `access`, `auth`, `audit`, `integration` 도메인 중 예외를 제외한 저장소가 새 패턴으로 전환된다.
-- [ ] 인증 영역(`AuthUser`, `auth_refresh_tokens`)도 전환 범위에 포함된다.
-- [ ] OpenAPI 문서가 `dev` 환경에서만 제공된다.
-- [ ] 정산/리포트 도메인의 QueryDSL 전환 또는 native SQL 예외 정책이 명시된다.
+- [x] `JPA + QueryDSL + SpringDoc OpenAPI` 의존성이 백엔드에 도입된다.
+- [x] `member`, `product`, `locker`, `membership`, `reservation`, `access`, `auth`, `audit`, `integration` 도메인 중 예외를 제외한 저장소가 새 패턴으로 전환된다.
+- [x] 인증 영역(`AuthUser`, `auth_refresh_tokens`)도 전환 범위에 포함된다.
+- [x] OpenAPI 문서가 `dev` 환경에서만 제공된다.
+- [x] 정산/리포트 도메인의 QueryDSL 전환 또는 native SQL 예외 정책이 명시된다.
 
 ### Non-Functional Requirements
 
-- [ ] 기존 API 계약과 RBAC 정책에 회귀가 없다.
-- [ ] 전환 후 핵심 조회 성능이 허용 범위 내로 유지된다.
-- [ ] `prototype` / `jwt` 실행 모드 모두 startup 및 핵심 테스트가 유지된다.
+- [x] 기존 API 계약과 RBAC 정책에 회귀가 없다.
+- [x] 전환 후 핵심 조회 성능이 허용 범위 내로 유지된다.
+- [x] `prototype` / `jwt` 실행 모드 모두 startup 및 핵심 테스트가 유지된다.
 
 ### Quality Gates
 
-- [ ] 각 단계마다 integration test 또는 parity test가 추가된다.
-- [ ] 문서-코드 드리프트를 같은 마일스톤에서 같이 닫는다.
-- [ ] 남겨진 JDBC/native SQL은 의도적 예외로 문서화된다.
+- [x] 각 단계마다 integration test 또는 parity test가 추가된다.
+- [x] 문서-코드 드리프트를 같은 마일스톤에서 같이 닫는다.
+- [x] 남겨진 JDBC/native SQL은 의도적 예외로 문서화된다.
+
+Runtime mode validation note (2026-03-10):
+- `PrototypeModeStartupIntegrationTest`를 추가해 `app.security.mode=prototype` + `dev` 프로파일에서 health endpoint와 no-auth protected route chain이 정상 기동하는지 검증했다.
+- `JwtModeStartupIntegrationTest`를 추가해 `app.security.mode=jwt` + `dev` 프로파일에서 public health, protected route unauthorized, login -> me 핵심 체인이 정상 기동하는지 검증했다.
+- 검증 명령:
+  - `./gradlew test --tests com.gymcrm.common.config.PrototypeModeStartupIntegrationTest --tests com.gymcrm.auth.JwtModeStartupIntegrationTest`
+  - `./gradlew test`
 
 ## Success Metrics
 

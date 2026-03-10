@@ -1,6 +1,5 @@
 package com.gymcrm.locker;
 
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import java.time.OffsetDateTime;
@@ -9,111 +8,63 @@ import java.util.Optional;
 
 @Repository
 public class LockerSlotRepository {
-    private final JdbcClient jdbcClient;
+    private final LockerSlotJpaRepository lockerSlotJpaRepository;
+    private final LockerSlotQueryRepository lockerSlotQueryRepository;
 
-    public LockerSlotRepository(JdbcClient jdbcClient) {
-        this.jdbcClient = jdbcClient;
+    public LockerSlotRepository(
+            LockerSlotJpaRepository lockerSlotJpaRepository,
+            LockerSlotQueryRepository lockerSlotQueryRepository
+    ) {
+        this.lockerSlotJpaRepository = lockerSlotJpaRepository;
+        this.lockerSlotQueryRepository = lockerSlotQueryRepository;
     }
 
     public LockerSlot insert(InsertCommand command) {
-        return jdbcClient.sql("""
-                INSERT INTO locker_slots (
-                    center_id, locker_code, locker_zone, locker_grade, locker_status,
-                    memo, created_by, updated_by
-                )
-                VALUES (
-                    :centerId, :lockerCode, :lockerZone, :lockerGrade, :lockerStatus,
-                    :memo, :actorUserId, :actorUserId
-                )
-                RETURNING
-                    locker_slot_id, center_id, locker_code, locker_zone, locker_grade,
-                    locker_status, memo, created_at, updated_at
-                """)
-                .paramSource(command)
-                .query(LockerSlot.class)
-                .single();
+        OffsetDateTime now = OffsetDateTime.now();
+        LockerSlotEntity entity = new LockerSlotEntity();
+        entity.setCenterId(command.centerId());
+        entity.setLockerCode(command.lockerCode());
+        entity.setLockerZone(command.lockerZone());
+        entity.setLockerGrade(command.lockerGrade());
+        entity.setLockerStatus(command.lockerStatus());
+        entity.setMemo(command.memo());
+        entity.setDeleted(false);
+        entity.setCreatedAt(now);
+        entity.setCreatedBy(command.actorUserId());
+        entity.setUpdatedAt(now);
+        entity.setUpdatedBy(command.actorUserId());
+        return toDomain(lockerSlotJpaRepository.saveAndFlush(entity));
     }
 
     public Optional<LockerSlot> findById(Long lockerSlotId, Long centerId) {
-        return jdbcClient.sql("""
-                SELECT
-                    locker_slot_id, center_id, locker_code, locker_zone, locker_grade,
-                    locker_status, memo, created_at, updated_at
-                FROM locker_slots
-                WHERE locker_slot_id = :lockerSlotId
-                  AND center_id = :centerId
-                  AND is_deleted = FALSE
-                """)
-                .param("lockerSlotId", lockerSlotId)
-                .param("centerId", centerId)
-                .query(LockerSlot.class)
-                .optional();
+        return lockerSlotJpaRepository.findByLockerSlotIdAndCenterIdAndIsDeletedFalse(lockerSlotId, centerId)
+                .map(this::toDomain);
     }
 
     public List<LockerSlot> findAll(Long centerId, String lockerStatus, String lockerZone) {
-        StringBuilder sql = new StringBuilder("""
-                SELECT
-                    locker_slot_id, center_id, locker_code, locker_zone, locker_grade,
-                    locker_status, memo, created_at, updated_at
-                FROM locker_slots
-                WHERE center_id = :centerId
-                  AND is_deleted = FALSE
-                """);
-        if (lockerStatus != null) {
-            sql.append(" AND locker_status = :lockerStatus");
-        }
-        if (lockerZone != null) {
-            sql.append(" AND locker_zone = :lockerZone");
-        }
-        sql.append(" ORDER BY locker_code ASC");
-
-        JdbcClient.StatementSpec statement = jdbcClient.sql(sql.toString())
-                .param("centerId", centerId);
-        if (lockerStatus != null) {
-            statement = statement.param("lockerStatus", lockerStatus);
-        }
-        if (lockerZone != null) {
-            statement = statement.param("lockerZone", lockerZone);
-        }
-        return statement.query(LockerSlot.class).list();
+        return lockerSlotQueryRepository.findAll(centerId, lockerStatus, lockerZone);
     }
 
     public Optional<LockerSlot> markAssignedIfAvailable(UpdateStatusCommand command) {
-        return jdbcClient.sql("""
-                UPDATE locker_slots
-                SET locker_status = 'ASSIGNED',
-                    updated_at = :now,
-                    updated_by = :actorUserId
-                WHERE locker_slot_id = :lockerSlotId
-                  AND center_id = :centerId
-                  AND is_deleted = FALSE
-                  AND locker_status = 'AVAILABLE'
-                RETURNING
-                    locker_slot_id, center_id, locker_code, locker_zone, locker_grade,
-                    locker_status, memo, created_at, updated_at
-                """)
-                .paramSource(command)
-                .query(LockerSlot.class)
-                .optional();
+        return lockerSlotQueryRepository.markAssignedIfAvailable(command);
     }
 
     public Optional<LockerSlot> markAvailableIfAssigned(UpdateStatusCommand command) {
-        return jdbcClient.sql("""
-                UPDATE locker_slots
-                SET locker_status = 'AVAILABLE',
-                    updated_at = :now,
-                    updated_by = :actorUserId
-                WHERE locker_slot_id = :lockerSlotId
-                  AND center_id = :centerId
-                  AND is_deleted = FALSE
-                  AND locker_status = 'ASSIGNED'
-                RETURNING
-                    locker_slot_id, center_id, locker_code, locker_zone, locker_grade,
-                    locker_status, memo, created_at, updated_at
-                """)
-                .paramSource(command)
-                .query(LockerSlot.class)
-                .optional();
+        return lockerSlotQueryRepository.markAvailableIfAssigned(command);
+    }
+
+    private LockerSlot toDomain(LockerSlotEntity entity) {
+        return new LockerSlot(
+                entity.getLockerSlotId(),
+                entity.getCenterId(),
+                entity.getLockerCode(),
+                entity.getLockerZone(),
+                entity.getLockerGrade(),
+                entity.getLockerStatus(),
+                entity.getMemo(),
+                entity.getCreatedAt(),
+                entity.getUpdatedAt()
+        );
     }
 
     public record InsertCommand(

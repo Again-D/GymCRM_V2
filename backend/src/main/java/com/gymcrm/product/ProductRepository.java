@@ -1,141 +1,116 @@
 package com.gymcrm.product;
 
-import org.springframework.jdbc.core.simple.JdbcClient;
+import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Repository;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
 @Repository
 public class ProductRepository {
-    private final JdbcClient jdbcClient;
+    private final ProductJpaRepository productJpaRepository;
+    private final ProductQueryRepository productQueryRepository;
+    private final EntityManager entityManager;
 
-    public ProductRepository(JdbcClient jdbcClient) {
-        this.jdbcClient = jdbcClient;
+    public ProductRepository(
+            ProductJpaRepository productJpaRepository,
+            ProductQueryRepository productQueryRepository,
+            EntityManager entityManager
+    ) {
+        this.productJpaRepository = productJpaRepository;
+        this.productQueryRepository = productQueryRepository;
+        this.entityManager = entityManager;
     }
 
     public Product insert(ProductCreateCommand command) {
-        return jdbcClient.sql("""
-                INSERT INTO products (
-                    center_id, product_name, product_category, product_type, price_amount,
-                    validity_days, total_count, allow_hold, max_hold_days, max_hold_count,
-                    allow_transfer, product_status, description,
-                    created_by, updated_by
-                )
-                VALUES (
-                    :centerId, :productName, :productCategory, :productType, :priceAmount,
-                    :validityDays, :totalCount, :allowHold, :maxHoldDays, :maxHoldCount,
-                    :allowTransfer, :productStatus, :description,
-                    :actorUserId, :actorUserId
-                )
-                RETURNING
-                    product_id, center_id, product_name, product_category, product_type, price_amount,
-                    validity_days, total_count, allow_hold, max_hold_days, max_hold_count,
-                    allow_transfer, product_status, description,
-                    created_at, created_by, updated_at, updated_by
-                """)
-                .paramSource(command)
-                .query(Product.class)
-                .single();
+        OffsetDateTime now = OffsetDateTime.now();
+        ProductEntity entity = new ProductEntity();
+        entity.setCenterId(command.centerId());
+        entity.setProductName(command.productName());
+        entity.setProductCategory(command.productCategory());
+        entity.setProductType(command.productType());
+        entity.setPriceAmount(command.priceAmount());
+        entity.setValidityDays(command.validityDays());
+        entity.setTotalCount(command.totalCount());
+        entity.setAllowHold(Boolean.TRUE.equals(command.allowHold()));
+        entity.setMaxHoldDays(command.maxHoldDays());
+        entity.setMaxHoldCount(command.maxHoldCount());
+        entity.setAllowTransfer(Boolean.TRUE.equals(command.allowTransfer()));
+        entity.setProductStatus(command.productStatus());
+        entity.setDescription(command.description());
+        entity.setDeleted(false);
+        entity.setCreatedAt(now);
+        entity.setCreatedBy(command.actorUserId());
+        entity.setUpdatedAt(now);
+        entity.setUpdatedBy(command.actorUserId());
+        ProductEntity saved = productJpaRepository.saveAndFlush(entity);
+        entityManager.refresh(saved);
+        return toDomain(saved);
     }
 
     public Optional<Product> findById(Long productId) {
-        return jdbcClient.sql("""
-                SELECT
-                    product_id, center_id, product_name, product_category, product_type, price_amount,
-                    validity_days, total_count, allow_hold, max_hold_days, max_hold_count,
-                    allow_transfer, product_status, description,
-                    created_at, created_by, updated_at, updated_by
-                FROM products
-                WHERE product_id = :productId
-                  AND is_deleted = FALSE
-                """)
-                .param("productId", productId)
-                .query(Product.class)
-                .optional();
+        return productJpaRepository.findByProductIdAndIsDeletedFalse(productId).map(this::toDomain);
     }
 
     public List<Product> findAll(Long centerId, String category, String status) {
-        StringBuilder sql = new StringBuilder("""
-                SELECT
-                    product_id, center_id, product_name, product_category, product_type, price_amount,
-                    validity_days, total_count, allow_hold, max_hold_days, max_hold_count,
-                    allow_transfer, product_status, description,
-                    created_at, created_by, updated_at, updated_by
-                FROM products
-                WHERE center_id = :centerId
-                  AND is_deleted = FALSE
-                """);
-
-        if (category != null && !category.isBlank()) {
-            sql.append(" AND product_category = :category ");
-        }
-        if (status != null && !status.isBlank()) {
-            sql.append(" AND product_status = :status ");
-        }
-        sql.append(" ORDER BY product_id DESC LIMIT 100 ");
-
-        JdbcClient.StatementSpec spec = jdbcClient.sql(sql.toString()).param("centerId", centerId);
-        if (category != null && !category.isBlank()) {
-            spec = spec.param("category", category);
-        }
-        if (status != null && !status.isBlank()) {
-            spec = spec.param("status", status);
-        }
-        return spec.query(Product.class).list();
+        return productQueryRepository.findAll(centerId, category, status);
     }
 
     public Product update(ProductUpdateCommand command) {
-        return jdbcClient.sql("""
-                UPDATE products
-                SET
-                    product_name = :productName,
-                    product_category = :productCategory,
-                    product_type = :productType,
-                    price_amount = :priceAmount,
-                    validity_days = :validityDays,
-                    total_count = :totalCount,
-                    allow_hold = :allowHold,
-                    max_hold_days = :maxHoldDays,
-                    max_hold_count = :maxHoldCount,
-                    allow_transfer = :allowTransfer,
-                    product_status = :productStatus,
-                    description = :description,
-                    updated_at = CURRENT_TIMESTAMP,
-                    updated_by = :actorUserId
-                WHERE product_id = :productId
-                  AND is_deleted = FALSE
-                RETURNING
-                    product_id, center_id, product_name, product_category, product_type, price_amount,
-                    validity_days, total_count, allow_hold, max_hold_days, max_hold_count,
-                    allow_transfer, product_status, description,
-                    created_at, created_by, updated_at, updated_by
-                """)
-                .paramSource(command)
-                .query(Product.class)
-                .single();
+        ProductEntity entity = productJpaRepository.findByProductIdAndIsDeletedFalse(command.productId())
+                .orElseThrow();
+        entity.setProductName(command.productName());
+        entity.setProductCategory(command.productCategory());
+        entity.setProductType(command.productType());
+        entity.setPriceAmount(command.priceAmount());
+        entity.setValidityDays(command.validityDays());
+        entity.setTotalCount(command.totalCount());
+        entity.setAllowHold(Boolean.TRUE.equals(command.allowHold()));
+        entity.setMaxHoldDays(command.maxHoldDays());
+        entity.setMaxHoldCount(command.maxHoldCount());
+        entity.setAllowTransfer(Boolean.TRUE.equals(command.allowTransfer()));
+        entity.setProductStatus(command.productStatus());
+        entity.setDescription(command.description());
+        entity.setUpdatedAt(OffsetDateTime.now());
+        entity.setUpdatedBy(command.actorUserId());
+        ProductEntity saved = productJpaRepository.saveAndFlush(entity);
+        entityManager.refresh(saved);
+        return toDomain(saved);
     }
 
     public Product updateStatus(Long productId, String productStatus, Long actorUserId) {
-        return jdbcClient.sql("""
-                UPDATE products
-                SET
-                    product_status = :productStatus,
-                    updated_at = CURRENT_TIMESTAMP,
-                    updated_by = :actorUserId
-                WHERE product_id = :productId
-                  AND is_deleted = FALSE
-                RETURNING
-                    product_id, center_id, product_name, product_category, product_type, price_amount,
-                    validity_days, total_count, allow_hold, max_hold_days, max_hold_count,
-                    allow_transfer, product_status, description,
-                    created_at, created_by, updated_at, updated_by
-                """)
-                .param("productId", productId)
-                .param("productStatus", productStatus)
-                .param("actorUserId", actorUserId)
-                .query(Product.class)
-                .single();
+        ProductEntity entity = productJpaRepository.findByProductIdAndIsDeletedFalse(productId)
+                .orElseThrow();
+        entity.setProductStatus(productStatus);
+        entity.setUpdatedAt(OffsetDateTime.now());
+        entity.setUpdatedBy(actorUserId);
+        ProductEntity saved = productJpaRepository.saveAndFlush(entity);
+        entityManager.refresh(saved);
+        return toDomain(saved);
+    }
+
+    private Product toDomain(ProductEntity entity) {
+        return new Product(
+                entity.getProductId(),
+                entity.getCenterId(),
+                entity.getProductName(),
+                entity.getProductCategory(),
+                entity.getProductType(),
+                entity.getPriceAmount(),
+                entity.getValidityDays(),
+                entity.getTotalCount(),
+                entity.isAllowHold(),
+                entity.getMaxHoldDays(),
+                entity.getMaxHoldCount(),
+                entity.isAllowTransfer(),
+                entity.getProductStatus(),
+                entity.getDescription(),
+                entity.getCreatedAt(),
+                entity.getCreatedBy(),
+                entity.getUpdatedAt(),
+                entity.getUpdatedBy()
+        );
     }
 
     public record ProductCreateCommand(

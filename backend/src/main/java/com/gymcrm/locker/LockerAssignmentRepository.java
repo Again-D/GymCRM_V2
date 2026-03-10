@@ -1,6 +1,7 @@
 package com.gymcrm.locker;
 
-import org.springframework.jdbc.core.simple.JdbcClient;
+import com.querydsl.jpa.impl.JPAQueryFactory;
+import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
@@ -9,100 +10,99 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import static com.gymcrm.locker.QLockerAssignmentEntity.lockerAssignmentEntity;
+
 @Repository
 public class LockerAssignmentRepository {
-    private final JdbcClient jdbcClient;
+    private final LockerAssignmentJpaRepository lockerAssignmentJpaRepository;
+    private final LockerAssignmentQueryRepository lockerAssignmentQueryRepository;
+    private final JPAQueryFactory queryFactory;
+    private final EntityManager entityManager;
 
-    public LockerAssignmentRepository(JdbcClient jdbcClient) {
-        this.jdbcClient = jdbcClient;
+    public LockerAssignmentRepository(
+            LockerAssignmentJpaRepository lockerAssignmentJpaRepository,
+            LockerAssignmentQueryRepository lockerAssignmentQueryRepository,
+            JPAQueryFactory queryFactory,
+            EntityManager entityManager
+    ) {
+        this.lockerAssignmentJpaRepository = lockerAssignmentJpaRepository;
+        this.lockerAssignmentQueryRepository = lockerAssignmentQueryRepository;
+        this.queryFactory = queryFactory;
+        this.entityManager = entityManager;
     }
 
     public LockerAssignment insertActive(InsertCommand command) {
-        return jdbcClient.sql("""
-                INSERT INTO locker_assignments (
-                    center_id, locker_slot_id, member_id, assignment_status,
-                    assigned_at, start_date, end_date, memo,
-                    created_by, updated_by
-                )
-                VALUES (
-                    :centerId, :lockerSlotId, :memberId, 'ACTIVE',
-                    :assignedAt, :startDate, :endDate, :memo,
-                    :actorUserId, :actorUserId
-                )
-                RETURNING
-                    locker_assignment_id, center_id, locker_slot_id, member_id,
-                    assignment_status, assigned_at, start_date, end_date,
-                    returned_at, refund_amount, return_reason, memo,
-                    created_at, updated_at
-                """)
-                .paramSource(command)
-                .query(LockerAssignment.class)
-                .single();
+        LockerAssignmentEntity entity = new LockerAssignmentEntity();
+        entity.setCenterId(command.centerId());
+        entity.setLockerSlotId(command.lockerSlotId());
+        entity.setMemberId(command.memberId());
+        entity.setAssignmentStatus("ACTIVE");
+        entity.setAssignedAt(command.assignedAt());
+        entity.setStartDate(command.startDate());
+        entity.setEndDate(command.endDate());
+        entity.setMemo(command.memo());
+        entity.setDeleted(false);
+        entity.setCreatedAt(command.assignedAt());
+        entity.setCreatedBy(command.actorUserId());
+        entity.setUpdatedAt(command.assignedAt());
+        entity.setUpdatedBy(command.actorUserId());
+        return toDomain(lockerAssignmentJpaRepository.saveAndFlush(entity));
     }
 
     public Optional<LockerAssignment> findById(Long lockerAssignmentId, Long centerId) {
-        return jdbcClient.sql("""
-                SELECT
-                    locker_assignment_id, center_id, locker_slot_id, member_id,
-                    assignment_status, assigned_at, start_date, end_date,
-                    returned_at, refund_amount, return_reason, memo,
-                    created_at, updated_at
-                FROM locker_assignments
-                WHERE locker_assignment_id = :lockerAssignmentId
-                  AND center_id = :centerId
-                  AND is_deleted = FALSE
-                """)
-                .param("lockerAssignmentId", lockerAssignmentId)
-                .param("centerId", centerId)
-                .query(LockerAssignment.class)
-                .optional();
+        return lockerAssignmentJpaRepository.findByLockerAssignmentIdAndCenterIdAndIsDeletedFalse(lockerAssignmentId, centerId)
+                .map(this::toDomain);
     }
 
     public List<LockerAssignment> findAll(Long centerId, boolean activeOnly) {
-        StringBuilder sql = new StringBuilder("""
-                SELECT
-                    locker_assignment_id, center_id, locker_slot_id, member_id,
-                    assignment_status, assigned_at, start_date, end_date,
-                    returned_at, refund_amount, return_reason, memo,
-                    created_at, updated_at
-                FROM locker_assignments
-                WHERE center_id = :centerId
-                  AND is_deleted = FALSE
-                """);
-        if (activeOnly) {
-            sql.append(" AND assignment_status = 'ACTIVE'");
-        }
-        sql.append(" ORDER BY assigned_at DESC, locker_assignment_id DESC");
-
-        return jdbcClient.sql(sql.toString())
-                .param("centerId", centerId)
-                .query(LockerAssignment.class)
-                .list();
+        return lockerAssignmentQueryRepository.findAll(centerId, activeOnly);
     }
 
     public Optional<LockerAssignment> closeAssignment(CloseCommand command) {
-        return jdbcClient.sql("""
-                UPDATE locker_assignments
-                SET assignment_status = 'RETURNED',
-                    returned_at = :returnedAt,
-                    refund_amount = :refundAmount,
-                    return_reason = :returnReason,
-                    memo = COALESCE(:memo, memo),
-                    updated_at = :returnedAt,
-                    updated_by = :actorUserId
-                WHERE locker_assignment_id = :lockerAssignmentId
-                  AND center_id = :centerId
-                  AND is_deleted = FALSE
-                  AND assignment_status = 'ACTIVE'
-                RETURNING
-                    locker_assignment_id, center_id, locker_slot_id, member_id,
-                    assignment_status, assigned_at, start_date, end_date,
-                    returned_at, refund_amount, return_reason, memo,
-                    created_at, updated_at
-                """)
-                .paramSource(command)
-                .query(LockerAssignment.class)
-                .optional();
+        var updateClause = queryFactory.update(lockerAssignmentEntity)
+                .set(lockerAssignmentEntity.assignmentStatus, "RETURNED")
+                .set(lockerAssignmentEntity.returnedAt, command.returnedAt())
+                .set(lockerAssignmentEntity.refundAmount, command.refundAmount())
+                .set(lockerAssignmentEntity.returnReason, command.returnReason())
+                .set(lockerAssignmentEntity.updatedAt, command.returnedAt())
+                .set(lockerAssignmentEntity.updatedBy, command.actorUserId())
+                .where(
+                        lockerAssignmentEntity.lockerAssignmentId.eq(command.lockerAssignmentId()),
+                        lockerAssignmentEntity.centerId.eq(command.centerId()),
+                        lockerAssignmentEntity.isDeleted.isFalse(),
+                        lockerAssignmentEntity.assignmentStatus.eq("ACTIVE")
+                );
+        if (command.memo() != null) {
+            updateClause.set(lockerAssignmentEntity.memo, command.memo());
+        }
+        long updated = updateClause.execute();
+        if (updated == 0) {
+            return Optional.empty();
+        }
+        entityManager.clear();
+        return lockerAssignmentJpaRepository.findByLockerAssignmentIdAndCenterIdAndIsDeletedFalse(
+                command.lockerAssignmentId(),
+                command.centerId()
+        ).map(this::toDomain);
+    }
+
+    private LockerAssignment toDomain(LockerAssignmentEntity entity) {
+        return new LockerAssignment(
+                entity.getLockerAssignmentId(),
+                entity.getCenterId(),
+                entity.getLockerSlotId(),
+                entity.getMemberId(),
+                entity.getAssignmentStatus(),
+                entity.getAssignedAt(),
+                entity.getStartDate(),
+                entity.getEndDate(),
+                entity.getReturnedAt(),
+                entity.getRefundAmount(),
+                entity.getReturnReason(),
+                entity.getMemo(),
+                entity.getCreatedAt(),
+                entity.getUpdatedAt()
+        );
     }
 
     public record InsertCommand(
