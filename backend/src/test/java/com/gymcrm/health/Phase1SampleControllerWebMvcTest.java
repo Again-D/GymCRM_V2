@@ -4,6 +4,7 @@ import com.gymcrm.auth.JwtAuthenticationFilter;
 import com.gymcrm.auth.RestAccessDeniedHandler;
 import com.gymcrm.auth.RestAuthenticationEntryPoint;
 import com.gymcrm.common.config.PrototypeModeSettings;
+import com.gymcrm.common.config.RedisRuntimeProperties;
 import com.gymcrm.common.config.SecurityModeSettings;
 import com.gymcrm.common.error.GlobalExceptionHandler;
 import com.gymcrm.common.security.CurrentUserProvider;
@@ -35,6 +36,9 @@ class Phase1SampleControllerWebMvcTest {
     private PrototypeModeSettings prototypeModeSettings;
 
     @MockBean
+    private RedisRuntimeProperties redisRuntimeProperties;
+
+    @MockBean
     private SecurityModeSettings securityModeSettings;
 
     @MockBean
@@ -54,6 +58,11 @@ class Phase1SampleControllerWebMvcTest {
         given(securityModeSettings.mode()).willReturn("prototype");
         given(securityModeSettings.isPrototypeMode()).willReturn(true);
         given(securityModeSettings.isJwtMode()).willReturn(false);
+        given(redisRuntimeProperties.enabled()).willReturn(false);
+        given(redisRuntimeProperties.startupRequired()).willReturn(false);
+        given(redisRuntimeProperties.qrTokenStore()).willReturn(new RedisRuntimeProperties.Toggle(false));
+        given(redisRuntimeProperties.reservationLock()).willReturn(new RedisRuntimeProperties.ReservationLock(false, java.time.Duration.ofMillis(250), java.time.Duration.ofSeconds(3)));
+        given(redisRuntimeProperties.authDenylist()).willReturn(new RedisRuntimeProperties.Toggle(false));
     }
 
     @Test

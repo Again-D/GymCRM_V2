@@ -9,7 +9,7 @@
 기동:
 
 ```bash
-docker compose up -d postgres
+docker compose up -d postgres redis
 ```
 
 상태 확인:
@@ -17,12 +17,14 @@ docker compose up -d postgres
 ```bash
 docker compose ps
 docker compose logs -f postgres
+docker compose logs -f redis
 ```
 
 중지:
 
 ```bash
 docker compose stop postgres
+docker compose stop redis
 ```
 
 리셋(데이터 삭제 포함):
@@ -66,6 +68,19 @@ SPRING_PROFILES_ACTIVE=dev ./gradlew bootRun
 - QueryDSL generated source는 `build/generated/sources/annotationProcessor/java/main`에 생성된다.
 - 생성 확인이 필요하면 `./gradlew clean compileJava`를 사용한다.
 - OpenAPI/Swagger UI는 `dev`에서만 노출되며 경로는 `/v3/api-docs`, `/swagger-ui`다.
+- Redis foundation은 기본 비활성화 상태다. Redis 관련 단계 검증 시 아래 env를 함께 사용한다.
+
+```bash
+export APP_REDIS_ENABLED=true
+export REDIS_HOST=localhost
+export REDIS_PORT=6379
+```
+
+- 책임별 Redis feature flag:
+  - `APP_REDIS_QR_TOKEN_STORE_ENABLED`
+  - `APP_REDIS_RESERVATION_LOCK_ENABLED`
+  - `APP_REDIS_AUTH_DENYLIST_ENABLED`
+- Actuator Redis health는 `APP_REDIS_ENABLED=true`일 때만 포함된다.
 
 ### Backend (JWT Mode - Phase 5)
 

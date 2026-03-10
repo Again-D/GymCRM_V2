@@ -173,16 +173,25 @@ canonical source는 다음처럼 유지한다.
   - dev/staging connection verified
 
 Phase 1 checklist:
-- [ ] `backend/build.gradle`에 Spring Data Redis 및 Redisson 의존성을 추가한다.
-- [ ] `application.yml`에 Redis 연결, timeout, profile별 enable/disable 설정을 추가한다.
-- [ ] 책임별 feature flag(`qr-token-store`, `reservation-lock`, `auth-denylist`)를 정의한다.
-- [ ] Redis health indicator, timeout, logging 정책과 로컬 실행 문서를 갱신한다.
+- [x] `backend/build.gradle`에 Spring Data Redis 및 Redisson 의존성을 추가한다.
+- [x] `application.yml`에 Redis 연결, timeout, profile별 enable/disable 설정을 추가한다.
+- [x] 책임별 feature flag(`qr-token-store`, `reservation-lock`, `auth-denylist`)를 정의한다.
+- [x] Redis health indicator, timeout, logging 정책과 로컬 실행 문서를 갱신한다.
 
 Phase 1 research insights:
 - `spring.data.redis` 연결 설정과 actuator health visibility를 foundation 단계에서 먼저 추가하는 것이 후속 책임 분리에 유리하다.
 - feature flag는 단일 `redis.enabled`보다 `app.redis.qr-token-store.enabled`, `app.redis.reservation-lock.enabled`, `app.redis.auth-denylist.enabled`처럼 responsibility별로 나누는 편이 rollback이 쉽다.
 - connection timeout과 command timeout을 분리해 두고, 로그에는 responsibility 이름과 exception class를 같이 남겨야 운영에서 원인 분리가 쉽다.
 - local/staging 문서에는 “Redis down일 때 startup 허용 여부”와 “runtime degrade 정책”을 분리해서 적는 것이 좋다.
+
+Phase 1 execution notes (2026-03-10):
+- `backend/build.gradle`에 `spring-boot-starter-data-redis`, `org.redisson:redisson`을 추가했다.
+- `application.yml`에 `spring.data.redis.*`, `management.health.redis.enabled`, `app.redis.*` feature flag를 추가했다.
+- `compose.yaml`에 `redis` 서비스를 추가했고, `README.md`, `docs/notes/local-run-phase1.md`를 Redis foundation 기준으로 갱신했다.
+- `HealthController` payload에 Redis feature flag 상태를 노출해 앱 레벨에서 foundation enable/disable을 확인할 수 있게 했다.
+- 검증:
+  - `./gradlew test --tests com.gymcrm.health.HealthControllerRedisStatusTest --tests com.gymcrm.health.Phase1SampleControllerWebMvcTest --tests com.gymcrm.auth.ActuatorSecurityIntegrationTest --tests com.gymcrm.common.config.OpenApiExposureIntegrationTest`
+  - `./gradlew test`
 
 ### Phase 2: QR Token Store Redis Migration
 
