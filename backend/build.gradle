@@ -61,6 +61,8 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+    systemProperty 'spring.datasource.hikari.maximum-pool-size', '2'
+    systemProperty 'spring.datasource.hikari.minimum-idle', '0'
 }
 
 tasks.named('compileJava') {

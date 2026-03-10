@@ -1,7 +1,7 @@
 ---
 title: feat: Redis Runtime Adoption Execution
 type: feat
-status: active
+status: completed
 date: 2026-03-10
 origin: docs/brainstorms/2026-03-10-backend-architecture-stack-alignment-remaining-work-brainstorm.md
 ---
@@ -277,16 +277,26 @@ Phase 3 execution notes (2026-03-10):
   - refresh token canonical unchanged
 
 Phase 4 checklist:
-- [ ] refresh token canonical은 PostgreSQL에 유지한다.
-- [ ] Redis는 access denylist 전용 책임으로 시작한다.
-- [ ] logout/forced revoke path와 JWT filter denylist check를 연결한다.
-- [ ] Redis 장애 시 즉시 revoke guarantee가 어떻게 degrade되는지 문서화한다.
+- [x] refresh token canonical은 PostgreSQL에 유지한다.
+- [x] Redis는 access denylist 전용 책임으로 시작한다.
+- [x] logout/forced revoke path와 JWT filter denylist check를 연결한다.
+- [x] Redis 장애 시 즉시 revoke guarantee가 어떻게 degrade되는지 문서화한다.
 
 Phase 4 research insights:
 - denylist key는 raw token 저장보다 `jti` 또는 token hash 기반 key가 더 안전하다.
 - TTL은 access token 전체 수명이 아니라 “현재 시점 기준 남은 수명”과 정렬해야 한다.
 - denylist write 후보는 `logout`뿐 아니라 `forced revoke`, `role downgrade`, `user deactivation`까지 같이 분류해 두는 편이 이후 확장에 유리하다.
 - Redis unavailable 시에는 refresh token canonical은 유지되지만 access token 즉시 revoke 보장은 약해진다는 점을 운영/보안 언어로 분리해서 적어야 한다.
+
+Phase 4 execution notes (2026-03-10):
+- `AccessTokenDenylistService`를 추가하고, 기본 구현은 `NoOpAccessTokenDenylistService`, flag 활성 시 구현은 `RedisAccessTokenDenylistService`로 분리했다.
+- denylist key는 `auth:denylist:access:{jti}`로 고정했고, TTL은 access token 만료시각 기준 남은 수명과 정렬한다.
+- `AuthService.logout(...)`는 refresh token revoke canonical을 PostgreSQL에 유지한 채, access token은 best-effort로 denylist에 기록한다.
+- `JwtAuthenticationFilter`는 access token parse 후 denylist를 확인하고, denylisted token이면 `TOKEN_REVOKED`로 차단한다.
+- denylist read 실패는 degraded open, denylist write 실패는 best-effort swallow 정책으로 정리했다.
+- 검증:
+  - `./gradlew test --tests com.gymcrm.auth.AccessTokenDenylistConfigTest --tests com.gymcrm.auth.RedisAccessTokenDenylistServiceIntegrationTest --tests com.gymcrm.auth.AuthAccessDenylistIntegrationTest --tests com.gymcrm.auth.AuthControllerIntegrationTest --tests com.gymcrm.auth.ActuatorSecurityIntegrationTest`
+  - `./gradlew test`
 
 ### Phase 5: Rollout, Rollback, and Closure
 
@@ -301,15 +311,21 @@ Phase 4 research insights:
   - same-milestone docs/tests/validation synced
 
 Phase 5 checklist:
-- [ ] responsibility별 `enabled / deferred / canonical source` 상태표를 남긴다.
-- [ ] rollout 순서(`QR -> reservation -> auth denylist`)와 rollback trigger를 정의한다.
-- [ ] validation window/owner/healthy signal/failure signal을 문서화한다.
-- [ ] umbrella architecture alignment plan과 Redis boundary plan의 상태를 후속 정리한다.
+- [x] responsibility별 `enabled / deferred / canonical source` 상태표를 남긴다.
+- [x] rollout 순서(`QR -> reservation -> auth denylist`)와 rollback trigger를 정의한다.
+- [x] validation window/owner/healthy signal/failure signal을 문서화한다.
+- [x] umbrella architecture alignment plan과 Redis boundary plan의 상태를 후속 정리한다.
 
 Phase 5 research insights:
 - rollout은 responsibility별로 독립 배포가 가능해야 하므로, 각 단계의 feature flag off 상태가 rollback 기본값이어야 한다.
 - validation 항목은 로그/메트릭/기능 smoke를 함께 써야 한다. Redis 도입은 “연결됨”만으로는 검증이 부족하다.
 - umbrella plan은 역사 문서로 남기고, 이 문서를 실제 execution source로 승격하는 편이 이후 follow-up 관리가 쉽다.
+
+Phase 5 execution notes (2026-03-10):
+- rollout/rollback/validation 기준을 [2026-03-10-redis-runtime-rollout-validation.md](/Users/abc/projects/GymCRM_V2/docs/notes/2026-03-10-redis-runtime-rollout-validation.md)로 분리했다.
+- responsibility별 status matrix에 `implemented / deferred / canonical source / rollback action`을 정리했다.
+- rollout order는 `QR -> reservation -> auth denylist`로 고정했고, 각 단계는 feature flag off를 기본 rollback 수단으로 정의했다.
+- architecture 문서는 목표 상태 문서로 유지하고, umbrella plan과 boundary plan은 context/reference 문서로 두는 원칙을 다시 고정했다.
 
 ## Alternative Approaches Considered
 
@@ -354,22 +370,22 @@ Phase 5 research insights:
 
 ### Functional Requirements
 
-- [ ] Redis foundation이 애플리케이션 설정과 observability에 도입된다.
-- [ ] QR token one-time consume이 Redis 구현으로 이전된다.
-- [ ] reservation distributed lock이 Redis 기반으로 도입된다.
-- [ ] auth denylist가 refresh token canonical을 바꾸지 않고 추가된다.
+- [x] Redis foundation이 애플리케이션 설정과 observability에 도입된다.
+- [x] QR token one-time consume이 Redis 구현으로 이전된다.
+- [x] reservation distributed lock이 Redis 기반으로 도입된다.
+- [x] auth denylist가 refresh token canonical을 바꾸지 않고 추가된다.
 
 ### Non-Functional Requirements
 
-- [ ] Redis 장애 시 책임별 failure mode가 문서와 테스트로 고정된다.
-- [ ] PostgreSQL canonical business/auth source는 유지된다.
-- [ ] rollout/rollback 기준이 운영자가 실행 가능한 수준으로 정리된다.
+- [x] Redis 장애 시 책임별 failure mode가 문서와 테스트로 고정된다.
+- [x] PostgreSQL canonical business/auth source는 유지된다.
+- [x] rollout/rollback 기준이 운영자가 실행 가능한 수준으로 정리된다.
 
 ### Quality Gates
 
-- [ ] QR, reservation, auth denylist 각각에 대해 integration 또는 outage test가 있다.
-- [ ] feature flag로 책임별 enable/disable이 가능하다.
-- [ ] validation note, runbook, deferred state table이 같은 마일스톤에 정리된다.
+- [x] QR, reservation, auth denylist 각각에 대해 integration 또는 outage test가 있다.
+- [x] feature flag로 책임별 enable/disable이 가능하다.
+- [x] validation note, runbook, deferred state table이 같은 마일스톤에 정리된다.
 
 ## Success Metrics
 

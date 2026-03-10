@@ -14,17 +14,20 @@ public class AuthService {
 
     private final AuthUserRepository authUserRepository;
     private final AuthRefreshTokenRepository refreshTokenRepository;
+    private final AccessTokenDenylistService accessTokenDenylistService;
     private final JwtTokenService jwtTokenService;
     private final PasswordEncoder passwordEncoder;
 
     public AuthService(
             AuthUserRepository authUserRepository,
             AuthRefreshTokenRepository refreshTokenRepository,
+            AccessTokenDenylistService accessTokenDenylistService,
             JwtTokenService jwtTokenService,
             PasswordEncoder passwordEncoder
     ) {
         this.authUserRepository = authUserRepository;
         this.refreshTokenRepository = refreshTokenRepository;
+        this.accessTokenDenylistService = accessTokenDenylistService;
         this.jwtTokenService = jwtTokenService;
         this.passwordEncoder = passwordEncoder;
     }
@@ -110,8 +113,9 @@ public class AuthService {
     }
 
     @Transactional
-    public void logout(String rawRefreshToken) {
+    public void logout(String rawRefreshToken, String rawAccessToken) {
         if (rawRefreshToken == null || rawRefreshToken.isBlank()) {
+            revokeAccessTokenBestEffort(rawAccessToken);
             return;
         }
         try {
@@ -120,6 +124,7 @@ public class AuthService {
         } catch (RuntimeException ignored) {
             // Logout is best-effort to keep client flow stable even with malformed/stale cookies.
         }
+        revokeAccessTokenBestEffort(rawAccessToken);
     }
 
     @Transactional(readOnly = true)
@@ -135,6 +140,18 @@ public class AuthService {
             throw new ApiException(ErrorCode.VALIDATION_ERROR, field + " is required");
         }
         return value.trim();
+    }
+
+    private void revokeAccessTokenBestEffort(String rawAccessToken) {
+        if (rawAccessToken == null || rawAccessToken.isBlank()) {
+            return;
+        }
+        try {
+            JwtTokenService.AccessTokenClaims accessClaims = jwtTokenService.parseAccessToken(rawAccessToken);
+            accessTokenDenylistService.deny(accessClaims.jti(), accessClaims.expiresAt(), "LOGOUT");
+        } catch (RuntimeException ignored) {
+            // Access token denylist is best-effort; refresh token canonical remains PostgreSQL.
+        }
     }
 
     public record LoginCommand(String loginId, String password) {}
