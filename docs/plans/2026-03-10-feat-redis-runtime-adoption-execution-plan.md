@@ -206,10 +206,10 @@ Phase 1 execution notes (2026-03-10):
   - reuse/expiry/invalid/outage scenarios pass
 
 Phase 2 checklist:
-- [ ] `InMemoryQrTokenStore`와 동일 의미를 가진 Redis 구현체를 추가한다.
-- [ ] member active token replacement 정책과 reuse marker grace window를 TTL로 재현한다.
-- [ ] `QrCodeService`가 feature flag로 메모리/Redis 구현을 선택할 수 있게 한다.
-- [ ] Redis 장애 시 gate verify path의 기본 정책을 `fail-closed`로 고정하고 예외 운영 기준을 문서화한다.
+- [x] `InMemoryQrTokenStore`와 동일 의미를 가진 Redis 구현체를 추가한다.
+- [x] member active token replacement 정책과 reuse marker grace window를 TTL로 재현한다.
+- [x] `QrCodeService`가 feature flag로 메모리/Redis 구현을 선택할 수 있게 한다.
+- [x] Redis 장애 시 gate verify path의 기본 정책을 `fail-closed`로 고정하고 예외 운영 기준을 문서화한다.
 
 Phase 2 research insights:
 - QR token key space는 최소한 세 가지로 나누는 편이 명확하다.
@@ -219,6 +219,15 @@ Phase 2 research insights:
 - `reused` marker TTL은 현재 메모리 구현의 grace window와 같게 두고, token payload TTL은 QR 만료 시각과 정렬해야 한다.
 - member active token 교체는 old token 제거와 new active pointer set이 논리적으로 하나의 unit처럼 보여야 하므로, Redis transaction/script 필요성을 초기에 평가해야 한다.
 - outage policy는 gate path 보안 특성상 기본 `fail-closed`가 맞고, fail-safe는 센터별 명시 정책이 없는 한 기본값으로 두지 않는다.
+
+Phase 2 execution notes (2026-03-10):
+- `RedisQrTokenStore`를 추가해 `qr:token:{token}`, `qr:member-active:{centerId}:{memberId}`, `qr:reused:{token}` key space를 구현했다.
+- valid consume는 Redis Lua script로 처리해 token delete + member active pointer clear + reused marker set을 한 번에 수행한다.
+- `QrTokenStoreConfig`를 추가해 `app.redis.enabled=true`, `app.redis.qr-token-store.enabled=true`일 때 Redis 구현을 선택하고, 그 외에는 메모리 구현으로 fallback 하도록 정리했다.
+- `QrCodeService`는 `QrTokenStoreUnavailableException`을 `A104 / QR_STORE_UNAVAILABLE`로 변환해 verify path를 `fail-closed`로 처리한다.
+- 검증:
+  - `./gradlew test --tests com.gymcrm.access.QrCodeServiceTest --tests com.gymcrm.access.QrTokenStoreConfigTest --tests com.gymcrm.access.RedisQrTokenStoreIntegrationTest --tests com.gymcrm.access.AccessQrApiIntegrationTest`
+  - `./gradlew test`
 
 ### Phase 3: Reservation Lock Adoption
 

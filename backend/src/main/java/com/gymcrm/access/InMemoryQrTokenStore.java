@@ -1,13 +1,10 @@
 package com.gymcrm.access;
 
-import org.springframework.stereotype.Component;
-
 import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-@Component
 public class InMemoryQrTokenStore implements QrTokenStore {
     private static final int REUSED_MARKER_GRACE_SECONDS = 10;
 
