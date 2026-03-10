@@ -64,6 +64,7 @@ class Phase1SampleControllerWebMvcTest {
         given(redisRuntimeProperties.reservationLock()).willReturn(new RedisRuntimeProperties.ReservationLock(false, java.time.Duration.ofMillis(250), java.time.Duration.ofSeconds(3)));
         given(redisRuntimeProperties.crmDispatchClaim()).willReturn(new RedisRuntimeProperties.CrmDispatchClaim(false, java.time.Duration.ofSeconds(30)));
         given(redisRuntimeProperties.settlementDashboardCache()).willReturn(new RedisRuntimeProperties.SettlementDashboardCache(false, java.time.Duration.ofSeconds(30)));
+        given(redisRuntimeProperties.settlementReportCache()).willReturn(new RedisRuntimeProperties.SettlementReportCache(false, java.time.Duration.ofSeconds(60)));
         given(redisRuntimeProperties.authDenylist()).willReturn(new RedisRuntimeProperties.Toggle(false));
     }
 
@@ -81,6 +82,7 @@ class Phase1SampleControllerWebMvcTest {
                 .andExpect(jsonPath("$.data.currentUserId").value(1))
                 .andExpect(jsonPath("$.data.redis.crmDispatchClaimEnabled").value(false))
                 .andExpect(jsonPath("$.data.redis.settlementDashboardCacheEnabled").value(false))
+                .andExpect(jsonPath("$.data.redis.settlementReportCacheEnabled").value(false))
                 .andExpect(jsonPath("$.error").doesNotExist());
     }
 

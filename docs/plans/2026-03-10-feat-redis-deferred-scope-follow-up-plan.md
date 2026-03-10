@@ -84,3 +84,5 @@ Checklist:
   - Redis feature flag: `app.redis.crm-dispatch-claim.enabled`
   - 후속 구현으로 `sales dashboard short TTL cache`를 적용했다.
   - Redis feature flag: `app.redis.settlement-dashboard-cache.enabled`
+  - 후속 구현으로 `sales report export snapshot cache`를 적용했다.
+  - Redis feature flag: `app.redis.settlement-report-cache.enabled`

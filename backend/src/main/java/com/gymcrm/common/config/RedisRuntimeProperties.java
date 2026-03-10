@@ -12,6 +12,7 @@ public record RedisRuntimeProperties(
         ReservationLock reservationLock,
         CrmDispatchClaim crmDispatchClaim,
         SettlementDashboardCache settlementDashboardCache,
+        SettlementReportCache settlementReportCache,
         Toggle authDenylist
 ) {
     public record Toggle(boolean enabled) {
@@ -31,6 +32,12 @@ public record RedisRuntimeProperties(
     }
 
     public record SettlementDashboardCache(
+            boolean enabled,
+            Duration ttl
+    ) {
+    }
+
+    public record SettlementReportCache(
             boolean enabled,
             Duration ttl
     ) {

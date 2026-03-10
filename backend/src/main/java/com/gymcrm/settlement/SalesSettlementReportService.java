@@ -15,13 +15,16 @@ import java.util.List;
 @Service
 public class SalesSettlementReportService {
     private final SalesSettlementReportRepository reportRepository;
+    private final SalesSettlementReportCacheService reportCacheService;
     private final CurrentUserProvider currentUserProvider;
 
     public SalesSettlementReportService(
             SalesSettlementReportRepository reportRepository,
+            SalesSettlementReportCacheService reportCacheService,
             CurrentUserProvider currentUserProvider
     ) {
         this.reportRepository = reportRepository;
+        this.reportCacheService = reportCacheService;
         this.currentUserProvider = currentUserProvider;
     }
 
@@ -38,13 +41,25 @@ public class SalesSettlementReportService {
 
         String paymentMethod = normalizePaymentMethod(query.paymentMethod());
         String productKeyword = normalizeKeyword(query.productKeyword());
+        Long centerId = currentUserProvider.currentCenterId();
 
+        return reportCacheService.get(centerId, startDate, endDate, paymentMethod, productKeyword)
+                .orElseGet(() -> loadAndCache(centerId, startDate, endDate, paymentMethod, productKeyword));
+    }
+
+    private SalesReportResult loadAndCache(
+            Long centerId,
+            LocalDate startDate,
+            LocalDate endDate,
+            String paymentMethod,
+            String productKeyword
+    ) {
         OffsetDateTime startAt = startDate.atStartOfDay().atOffset(ZoneOffset.UTC);
         OffsetDateTime endExclusiveAt = endDate.plusDays(1).atStartOfDay().atOffset(ZoneOffset.UTC);
 
         List<SalesSettlementReportRepository.SalesAggregateRow> rows = reportRepository.findSalesRows(
                 new SalesSettlementReportRepository.QueryCommand(
-                        currentUserProvider.currentCenterId(),
+                        centerId,
                         startAt,
                         endExclusiveAt,
                         paymentMethod,
@@ -67,7 +82,7 @@ public class SalesSettlementReportService {
                 ))
                 .toList();
 
-        return new SalesReportResult(
+        SalesReportResult result = new SalesReportResult(
                 startDate,
                 endDate,
                 paymentMethod,
@@ -77,6 +92,8 @@ public class SalesSettlementReportService {
                 totalNetSales,
                 reportRows
         );
+        reportCacheService.put(centerId, result);
+        return result;
     }
 
     private BigDecimal sum(

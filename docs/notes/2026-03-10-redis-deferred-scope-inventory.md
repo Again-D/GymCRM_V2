@@ -72,6 +72,10 @@ origin:
   - 현재는 동기 export 문자열 생성뿐이고 job handoff/state machine이 없다.
 - 분류:
   - `later`
+ - 실행 상태:
+   - 2026-03-10 구현 완료
+   - feature flag: `app.redis.settlement-report-cache.enabled`
+   - 정책: short TTL report snapshot cache, Redis 장애 시 `fail-open`
 
 2. sales dashboard short TTL cache
 - 위치:
@@ -96,18 +100,17 @@ origin:
 
 ## Recommended Next Implementation
 
-다음 실제 구현 대상은 `CRM processPending dispatch claim lock`이다.
+다음 실제 구현 대상은 `retry backoff scheduler wheel`이다.
 
 이유:
-- canonical DB를 바꾸지 않는다.
-- 기존 CRM 메시지 이벤트 모델을 그대로 유지한다.
-- Redis의 짧은 TTL lock/claim 역할과 가장 잘 맞는다.
-- 다중 worker 중복 발송 리스크를 직접 줄일 수 있다.
+- 이미 적용된 claim lock / settlement cache 다음으로, Redis sorted set이 가장 자연스럽게 맞는 남은 후보다.
+- `RETRY_WAIT` 스캔 부하를 Redis 스케줄 큐로 옮길 수 있다.
+- canonical DB를 유지한 채 dispatch 타이밍 coordinator만 Redis로 분리할 수 있다.
 
 추천 key 방향:
-- `crm:dispatch:claim:{crmMessageEventId}`
-- 짧은 TTL lease 기반 claim
-- send 완료/실패 후 명시 해제보다 TTL 만료를 기본으로 두고, 상태 최종 기록은 DB canonical로 유지
+- `crm:retry-wheel`
+- score = `next_attempt_at epoch millis`
+- member/event canonical state는 DB 유지, Redis는 due event discovery 용도만 담당
 
 실행 상태:
 - 2026-03-10 구현 완료
@@ -115,3 +118,4 @@ origin:
 - 동작 정책: claim 획득 성공 시에만 send 진행, Redis 장애 시 `fail-open`
 - 추가 구현 완료:
   - `sales dashboard short TTL cache`
+  - `sales report export snapshot cache`

@@ -60,6 +60,7 @@ public class HealthController {
         payload.put("reservationLockEnabled", redisRuntimeProperties.reservationLock().enabled());
         payload.put("crmDispatchClaimEnabled", redisRuntimeProperties.crmDispatchClaim().enabled());
         payload.put("settlementDashboardCacheEnabled", redisRuntimeProperties.settlementDashboardCache().enabled());
+        payload.put("settlementReportCacheEnabled", redisRuntimeProperties.settlementReportCache().enabled());
         payload.put("authDenylistEnabled", redisRuntimeProperties.authDenylist().enabled());
         return payload;
     }
