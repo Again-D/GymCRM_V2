@@ -25,6 +25,7 @@ public class ReservationService {
     private final MemberMembershipRepository memberMembershipRepository;
     private final TrainerScheduleRepository trainerScheduleRepository;
     private final ReservationRepository reservationRepository;
+    private final ReservationLockService reservationLockService;
     private final ReservationStatusTransitionService reservationStatusTransitionService;
     private final CurrentUserProvider currentUserProvider;
     private final MembershipUsageEventRepository membershipUsageEventRepository;
@@ -34,6 +35,7 @@ public class ReservationService {
             MemberMembershipRepository memberMembershipRepository,
             TrainerScheduleRepository trainerScheduleRepository,
             ReservationRepository reservationRepository,
+            ReservationLockService reservationLockService,
             ReservationStatusTransitionService reservationStatusTransitionService,
             CurrentUserProvider currentUserProvider,
             MembershipUsageEventRepository membershipUsageEventRepository
@@ -42,6 +44,7 @@ public class ReservationService {
         this.memberMembershipRepository = memberMembershipRepository;
         this.trainerScheduleRepository = trainerScheduleRepository;
         this.reservationRepository = reservationRepository;
+        this.reservationLockService = reservationLockService;
         this.reservationStatusTransitionService = reservationStatusTransitionService;
         this.currentUserProvider = currentUserProvider;
         this.membershipUsageEventRepository = membershipUsageEventRepository;
@@ -56,35 +59,38 @@ public class ReservationService {
         MemberMembership membership = getMembership(request.membershipId());
         TrainerSchedule schedule = getSchedule(request.scheduleId());
         validateCreateEligibility(member, membership, schedule, actorCenterId);
-        if (reservationRepository.existsConfirmedByMemberAndSchedule(member.memberId(), schedule.scheduleId())) {
-            throw new ApiException(ErrorCode.CONFLICT, "동일 회원의 동일 슬롯 중복 예약은 허용되지 않습니다.");
-        }
 
         Long actorUserId = currentUserProvider.currentUserId();
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
 
-        try {
-            TrainerSchedule updatedSchedule = trainerScheduleRepository.incrementCurrentCountIfAvailable(schedule.scheduleId(), actorUserId)
-                    .orElseThrow(() -> new ApiException(ErrorCode.CONFLICT, "예약 가능한 정원이 없습니다."));
+        return reservationLockService.execute(actorCenterId, schedule.scheduleId(), () -> {
+            try {
+                if (reservationRepository.existsConfirmedByMemberAndSchedule(member.memberId(), schedule.scheduleId())) {
+                    throw new ApiException(ErrorCode.CONFLICT, "동일 회원의 동일 슬롯 중복 예약은 허용되지 않습니다.");
+                }
 
-            if (updatedSchedule.currentCount() == null || updatedSchedule.capacity() == null
-                    || updatedSchedule.currentCount() > updatedSchedule.capacity()) {
-                throw new ApiException(ErrorCode.CONFLICT, "예약 가능한 정원이 없습니다.");
+                TrainerSchedule updatedSchedule = trainerScheduleRepository.incrementCurrentCountIfAvailable(schedule.scheduleId(), actorUserId)
+                        .orElseThrow(() -> new ApiException(ErrorCode.CONFLICT, "예약 가능한 정원이 없습니다."));
+
+                if (updatedSchedule.currentCount() == null || updatedSchedule.capacity() == null
+                        || updatedSchedule.currentCount() > updatedSchedule.capacity()) {
+                    throw new ApiException(ErrorCode.CONFLICT, "예약 가능한 정원이 없습니다.");
+                }
+
+                return reservationRepository.insert(new ReservationRepository.ReservationCreateCommand(
+                        actorCenterId,
+                        member.memberId(),
+                        membership.membershipId(),
+                        schedule.scheduleId(),
+                        ReservationStatus.CONFIRMED.name(),
+                        now,
+                        trimToNull(request.memo()),
+                        actorUserId
+                ));
+            } catch (DataAccessException ex) {
+                throw mapCreateDataAccessException(ex);
             }
-
-            return reservationRepository.insert(new ReservationRepository.ReservationCreateCommand(
-                    actorCenterId,
-                    member.memberId(),
-                    membership.membershipId(),
-                    schedule.scheduleId(),
-                    ReservationStatus.CONFIRMED.name(),
-                    now,
-                    trimToNull(request.memo()),
-                    actorUserId
-            ));
-        } catch (DataAccessException ex) {
-            throw mapCreateDataAccessException(ex);
-        }
+        });
     }
 
     @Transactional(readOnly = true)
@@ -120,28 +126,31 @@ public class ReservationService {
             throw new ApiException(ErrorCode.VALIDATION_ERROR, "reservationId is required");
         }
 
-        Reservation reservation = getReservation(request.reservationId());
-        reservationStatusTransitionService.assertTransitionAllowed(
-                ReservationStatus.valueOf(reservation.reservationStatus()),
-                ReservationStatus.CANCELLED
-        );
-
         Long actorUserId = currentUserProvider.currentUserId();
-        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        Reservation reservation = getReservation(request.reservationId());
 
-        Reservation updated = reservationRepository.markCancelledIfCurrent(new ReservationRepository.ReservationCancelCommand(
-                reservation.reservationId(),
-                reservation.centerId(),
-                reservation.reservationStatus(),
-                now,
-                trimToNull(request.cancelReason()),
-                actorUserId
-        )).orElseThrow(() -> new ApiException(ErrorCode.CONFLICT, "예약 상태가 변경되어 취소를 처리할 수 없습니다."));
+        return reservationLockService.execute(reservation.centerId(), reservation.scheduleId(), () -> {
+            Reservation lockedReservation = getReservation(request.reservationId());
+            reservationStatusTransitionService.assertTransitionAllowed(
+                    ReservationStatus.valueOf(lockedReservation.reservationStatus()),
+                    ReservationStatus.CANCELLED
+            );
 
-        trainerScheduleRepository.decrementCurrentCountIfPositive(reservation.scheduleId(), actorUserId)
-                .orElseThrow(() -> new ApiException(ErrorCode.CONFLICT, "스케줄 정원 카운트 상태가 일치하지 않습니다."));
+            OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+            Reservation updated = reservationRepository.markCancelledIfCurrent(new ReservationRepository.ReservationCancelCommand(
+                    lockedReservation.reservationId(),
+                    lockedReservation.centerId(),
+                    lockedReservation.reservationStatus(),
+                    now,
+                    trimToNull(request.cancelReason()),
+                    actorUserId
+            )).orElseThrow(() -> new ApiException(ErrorCode.CONFLICT, "예약 상태가 변경되어 취소를 처리할 수 없습니다."));
 
-        return updated;
+            trainerScheduleRepository.decrementCurrentCountIfPositive(lockedReservation.scheduleId(), actorUserId)
+                    .orElseThrow(() -> new ApiException(ErrorCode.CONFLICT, "스케줄 정원 카운트 상태가 일치하지 않습니다."));
+
+            return updated;
+        });
     }
 
     @Transactional
@@ -150,48 +159,51 @@ public class ReservationService {
             throw new ApiException(ErrorCode.VALIDATION_ERROR, "reservationId is required");
         }
 
-        Reservation reservation = getReservation(request.reservationId());
-        reservationStatusTransitionService.assertTransitionAllowed(
-                ReservationStatus.valueOf(reservation.reservationStatus()),
-                ReservationStatus.COMPLETED
-        );
-
-        MemberMembership membership = getMembership(reservation.membershipId());
-        validateReservationMembershipConsistency(reservation, membership);
-
         Long actorUserId = currentUserProvider.currentUserId();
-        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        Reservation reservation = getReservation(request.reservationId());
 
-        Reservation updatedReservation = reservationRepository.markCompletedIfCurrent(new ReservationRepository.ReservationCompleteCommand(
-                reservation.reservationId(),
-                reservation.centerId(),
-                reservation.reservationStatus(),
-                now,
-                actorUserId
-        )).orElseThrow(() -> new ApiException(ErrorCode.CONFLICT, "예약 상태가 변경되어 완료를 처리할 수 없습니다."));
+        return reservationLockService.execute(reservation.centerId(), reservation.scheduleId(), () -> {
+            Reservation lockedReservation = getReservation(request.reservationId());
+            reservationStatusTransitionService.assertTransitionAllowed(
+                    ReservationStatus.valueOf(lockedReservation.reservationStatus()),
+                    ReservationStatus.COMPLETED
+            );
 
-        trainerScheduleRepository.decrementCurrentCountIfPositive(reservation.scheduleId(), actorUserId)
-                .orElseThrow(() -> new ApiException(ErrorCode.CONFLICT, "스케줄 정원 카운트 상태가 일치하지 않습니다."));
+            MemberMembership membership = getMembership(lockedReservation.membershipId());
+            validateReservationMembershipConsistency(lockedReservation, membership);
 
-        MemberMembership updatedMembership = membership;
-        boolean countDeducted = false;
-        if ("COUNT".equals(membership.productTypeSnapshot())) {
-            updatedMembership = memberMembershipRepository.consumeOneCountIfEligible(membership.membershipId(), actorUserId)
-                    .orElseThrow(() -> new ApiException(ErrorCode.CONFLICT, "차감 가능한 횟수제 회원권이 없습니다."));
-            membershipUsageEventRepository.insert(new MembershipUsageEventRepository.InsertCommand(
-                    reservation.centerId(),
-                    membership.membershipId(),
-                    reservation.reservationId(),
-                    "RESERVATION_COMPLETE",
-                    -1,
+            OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+            Reservation updatedReservation = reservationRepository.markCompletedIfCurrent(new ReservationRepository.ReservationCompleteCommand(
+                    lockedReservation.reservationId(),
+                    lockedReservation.centerId(),
+                    lockedReservation.reservationStatus(),
                     now,
-                    actorUserId,
-                    "예약 완료에 따른 횟수 차감"
-            ));
-            countDeducted = true;
-        }
+                    actorUserId
+            )).orElseThrow(() -> new ApiException(ErrorCode.CONFLICT, "예약 상태가 변경되어 완료를 처리할 수 없습니다."));
 
-        return new CompleteResult(updatedReservation, updatedMembership, countDeducted);
+            trainerScheduleRepository.decrementCurrentCountIfPositive(lockedReservation.scheduleId(), actorUserId)
+                    .orElseThrow(() -> new ApiException(ErrorCode.CONFLICT, "스케줄 정원 카운트 상태가 일치하지 않습니다."));
+
+            MemberMembership updatedMembership = membership;
+            boolean countDeducted = false;
+            if ("COUNT".equals(membership.productTypeSnapshot())) {
+                updatedMembership = memberMembershipRepository.consumeOneCountIfEligible(membership.membershipId(), actorUserId)
+                        .orElseThrow(() -> new ApiException(ErrorCode.CONFLICT, "차감 가능한 횟수제 회원권이 없습니다."));
+                membershipUsageEventRepository.insert(new MembershipUsageEventRepository.InsertCommand(
+                        lockedReservation.centerId(),
+                        membership.membershipId(),
+                        lockedReservation.reservationId(),
+                        "RESERVATION_COMPLETE",
+                        -1,
+                        now,
+                        actorUserId,
+                        "예약 완료에 따른 횟수 차감"
+                ));
+                countDeducted = true;
+            }
+
+            return new CompleteResult(updatedReservation, updatedMembership, countDeducted);
+        });
     }
 
     @Transactional
@@ -226,34 +238,38 @@ public class ReservationService {
             throw new ApiException(ErrorCode.VALIDATION_ERROR, "reservationId is required");
         }
 
-        Reservation reservation = getReservation(request.reservationId());
-        reservationStatusTransitionService.assertTransitionAllowed(
-                ReservationStatus.valueOf(reservation.reservationStatus()),
-                ReservationStatus.NO_SHOW
-        );
-        if (reservation.checkedInAt() != null) {
-            throw new ApiException(ErrorCode.BUSINESS_RULE, "체크인된 예약은 노쇼 처리할 수 없습니다.");
-        }
-
-        TrainerSchedule schedule = getSchedule(reservation.scheduleId());
-        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-        if (schedule.endAt() == null || now.isBefore(schedule.endAt())) {
-            throw new ApiException(ErrorCode.BUSINESS_RULE, "노쇼 처리는 수업 종료 시간 이후에만 가능합니다.");
-        }
-
         Long actorUserId = currentUserProvider.currentUserId();
-        Reservation updated = reservationRepository.markNoShowIfCurrent(new ReservationRepository.ReservationNoShowCommand(
-                reservation.reservationId(),
-                reservation.centerId(),
-                reservation.reservationStatus(),
-                now,
-                actorUserId
-        )).orElseThrow(() -> new ApiException(ErrorCode.CONFLICT, "예약 상태가 변경되어 노쇼 처리를 할 수 없습니다."));
+        Reservation reservation = getReservation(request.reservationId());
 
-        trainerScheduleRepository.decrementCurrentCountIfPositive(reservation.scheduleId(), actorUserId)
-                .orElseThrow(() -> new ApiException(ErrorCode.CONFLICT, "스케줄 정원 카운트 상태가 일치하지 않습니다."));
+        return reservationLockService.execute(reservation.centerId(), reservation.scheduleId(), () -> {
+            Reservation lockedReservation = getReservation(request.reservationId());
+            reservationStatusTransitionService.assertTransitionAllowed(
+                    ReservationStatus.valueOf(lockedReservation.reservationStatus()),
+                    ReservationStatus.NO_SHOW
+            );
+            if (lockedReservation.checkedInAt() != null) {
+                throw new ApiException(ErrorCode.BUSINESS_RULE, "체크인된 예약은 노쇼 처리할 수 없습니다.");
+            }
 
-        return updated;
+            TrainerSchedule schedule = getSchedule(lockedReservation.scheduleId());
+            OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+            if (schedule.endAt() == null || now.isBefore(schedule.endAt())) {
+                throw new ApiException(ErrorCode.BUSINESS_RULE, "노쇼 처리는 수업 종료 시간 이후에만 가능합니다.");
+            }
+
+            Reservation updated = reservationRepository.markNoShowIfCurrent(new ReservationRepository.ReservationNoShowCommand(
+                    lockedReservation.reservationId(),
+                    lockedReservation.centerId(),
+                    lockedReservation.reservationStatus(),
+                    now,
+                    actorUserId
+            )).orElseThrow(() -> new ApiException(ErrorCode.CONFLICT, "예약 상태가 변경되어 노쇼 처리를 할 수 없습니다."));
+
+            trainerScheduleRepository.decrementCurrentCountIfPositive(lockedReservation.scheduleId(), actorUserId)
+                    .orElseThrow(() -> new ApiException(ErrorCode.CONFLICT, "스케줄 정원 카운트 상태가 일치하지 않습니다."));
+
+            return updated;
+        });
     }
 
     private void validateCreateRequest(CreateRequest request) {

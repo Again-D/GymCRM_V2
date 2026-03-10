@@ -243,16 +243,25 @@ Phase 2 execution notes (2026-03-10):
   - unlock/timeout behavior verified
 
 Phase 3 checklist:
-- [ ] lock 대상 API/service path를 확정한다.
-- [ ] lock key granularity를 `center + schedule` 기준으로 시작할지 결정한다.
-- [ ] `tryLock(waitTime, leaseTime)` 정책을 business timeout과 정렬한다.
-- [ ] Redis 장애 시 예약 생성/변경 요청의 block 또는 degraded mode 정책을 문서화한다.
+- [x] lock 대상 API/service path를 확정한다.
+- [x] lock key granularity를 `center + schedule` 기준으로 시작할지 결정한다.
+- [x] `tryLock(waitTime, leaseTime)` 정책을 business timeout과 정렬한다.
+- [x] Redis 장애 시 예약 생성/변경 요청의 block 또는 degraded mode 정책을 문서화한다.
 
 Phase 3 research insights:
 - Redisson `tryLock(waitTime, leaseTime, unit)`을 기본 패턴으로 두되, lock hold 시간이 짧고 예측 가능하면 explicit `leaseTime`이, hold 시간이 불확실하면 watchdog 기반 `lock()`이 더 적합하다.
 - 이 시스템에서는 예약 write path가 request/transaction 경계 안에서 짧게 끝나는 편이므로, 1차 구현은 explicit `leaseTime` 기반이 운영 설명에 더 유리하다.
 - lock key는 너무 넓으면 throughput이 떨어지고 너무 좁으면 race를 막지 못하므로 1차 기준은 `reservation:{centerId}:{scheduleId}`가 가장 현실적이다.
 - unlock은 항상 `finally` 블록에서 `isHeldByCurrentThread()` 확인 후 수행하는 규칙을 plan에 고정하는 것이 좋다.
+
+Phase 3 execution notes (2026-03-10):
+- `ReservationLockService`를 도입하고, 기본 구현은 `NoOpReservationLockService`, flag 활성 시 구현은 `RedissonReservationLockService`로 분리했다.
+- lock key는 `reservation:{centerId}:{scheduleId}`로 고정했고, 설정값은 `app.redis.reservation-lock.wait-time`, `app.redis.reservation-lock.lease-time`을 사용한다.
+- 예약 생성/취소/완료/노쇼처럼 `current_count`를 변경하는 경로만 schedule lock으로 감쌌고, `check-in`은 락 대상에서 제외했다.
+- lock contention과 Redis unavailable은 모두 요청 block 정책으로 처리하며, API에서는 `CONFLICT`로 응답한다.
+- 검증:
+  - `./gradlew test --tests com.gymcrm.reservation.RedissonReservationLockServiceTest --tests com.gymcrm.reservation.ReservationLockConfigTest --tests com.gymcrm.reservation.ReservationServiceIntegrationTest --tests com.gymcrm.reservation.ReservationApiIntegrationTest`
+  - `./gradlew test`
 
 ### Phase 4: Auth Denylist Extension
 
