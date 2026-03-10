@@ -62,6 +62,7 @@ class Phase1SampleControllerWebMvcTest {
         given(redisRuntimeProperties.startupRequired()).willReturn(false);
         given(redisRuntimeProperties.qrTokenStore()).willReturn(new RedisRuntimeProperties.Toggle(false));
         given(redisRuntimeProperties.reservationLock()).willReturn(new RedisRuntimeProperties.ReservationLock(false, java.time.Duration.ofMillis(250), java.time.Duration.ofSeconds(3)));
+        given(redisRuntimeProperties.crmDispatchClaim()).willReturn(new RedisRuntimeProperties.CrmDispatchClaim(false, java.time.Duration.ofSeconds(30)));
         given(redisRuntimeProperties.authDenylist()).willReturn(new RedisRuntimeProperties.Toggle(false));
     }
 
@@ -77,6 +78,7 @@ class Phase1SampleControllerWebMvcTest {
                 .andExpect(jsonPath("$.data.securityMode").value("prototype"))
                 .andExpect(jsonPath("$.data.prototypeNoAuth").value(true))
                 .andExpect(jsonPath("$.data.currentUserId").value(1))
+                .andExpect(jsonPath("$.data.redis.crmDispatchClaimEnabled").value(false))
                 .andExpect(jsonPath("$.error").doesNotExist());
     }
 

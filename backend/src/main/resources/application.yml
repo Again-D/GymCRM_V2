@@ -79,6 +79,9 @@ app:
       enabled: ${APP_REDIS_RESERVATION_LOCK_ENABLED:false}
       wait-time: ${APP_REDIS_RESERVATION_LOCK_WAIT_TIME:250ms}
       lease-time: ${APP_REDIS_RESERVATION_LOCK_LEASE_TIME:3s}
+    crm-dispatch-claim:
+      enabled: ${APP_REDIS_CRM_DISPATCH_CLAIM_ENABLED:false}
+      lease-time: ${APP_REDIS_CRM_DISPATCH_CLAIM_LEASE_TIME:30s}
     auth-denylist:
       enabled: ${APP_REDIS_AUTH_DENYLIST_ENABLED:false}
   security:

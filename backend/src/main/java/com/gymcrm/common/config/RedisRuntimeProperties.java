@@ -10,6 +10,7 @@ public record RedisRuntimeProperties(
         boolean startupRequired,
         Toggle qrTokenStore,
         ReservationLock reservationLock,
+        CrmDispatchClaim crmDispatchClaim,
         Toggle authDenylist
 ) {
     public record Toggle(boolean enabled) {
@@ -18,6 +19,12 @@ public record RedisRuntimeProperties(
     public record ReservationLock(
             boolean enabled,
             Duration waitTime,
+            Duration leaseTime
+    ) {
+    }
+
+    public record CrmDispatchClaim(
+            boolean enabled,
             Duration leaseTime
     ) {
     }

@@ -19,17 +19,20 @@ public class CrmMessageService {
     private final CrmMessageEventRepository eventRepository;
     private final CrmTargetRepository targetRepository;
     private final CrmMessageSender messageSender;
+    private final CrmDispatchClaimService crmDispatchClaimService;
     private final CurrentUserProvider currentUserProvider;
 
     public CrmMessageService(
             CrmMessageEventRepository eventRepository,
             CrmTargetRepository targetRepository,
             CrmMessageSender messageSender,
+            CrmDispatchClaimService crmDispatchClaimService,
             CurrentUserProvider currentUserProvider
     ) {
         this.eventRepository = eventRepository;
         this.targetRepository = targetRepository;
         this.messageSender = messageSender;
+        this.crmDispatchClaimService = crmDispatchClaimService;
         this.currentUserProvider = currentUserProvider;
     }
 
@@ -181,11 +184,17 @@ public class CrmMessageService {
         String traceId = TraceIdFilter.currentTraceIdOrGenerate();
 
         List<CrmMessageEvent> dispatchable = eventRepository.findDispatchable(centerId, limit, now);
+        int pickedCount = 0;
         int sentCount = 0;
         int retryWaitCount = 0;
         int deadCount = 0;
 
         for (CrmMessageEvent event : dispatchable) {
+            if (!crmDispatchClaimService.tryClaim(centerId, event.crmMessageEventId())) {
+                continue;
+            }
+
+            pickedCount += 1;
             CrmMessageSender.SendResult sendResult = messageSender.send(event);
             if (sendResult.success()) {
                 eventRepository.markSent(new CrmMessageEventRepository.UpdateSentCommand(
@@ -224,7 +233,7 @@ public class CrmMessageService {
             }
         }
 
-        return new ProcessResult(dispatchable.size(), sentCount, retryWaitCount, deadCount, MAX_ATTEMPTS);
+        return new ProcessResult(pickedCount, sentCount, retryWaitCount, deadCount, MAX_ATTEMPTS);
     }
 
     @Transactional(readOnly = true)

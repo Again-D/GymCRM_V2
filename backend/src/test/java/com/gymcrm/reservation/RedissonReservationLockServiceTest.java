@@ -69,6 +69,7 @@ class RedissonReservationLockServiceTest {
                 false,
                 new RedisRuntimeProperties.Toggle(false),
                 new RedisRuntimeProperties.ReservationLock(true, Duration.ofMillis(250), Duration.ofSeconds(3)),
+                new RedisRuntimeProperties.CrmDispatchClaim(false, Duration.ofSeconds(30)),
                 new RedisRuntimeProperties.Toggle(false)
         );
     }
