@@ -211,11 +211,11 @@ date: 2026-03-11
 ## Acceptance Criteria
 - [x] `/Users/abc/projects/GymCRM_V2/frontend/package.json`에 `react-router-dom`이 추가된다.
 - [x] `/Users/abc/projects/GymCRM_V2/frontend/src/main.tsx`가 router provider로 앱을 감싼다.
-- [ ] `/dashboard`, `/members`, `/memberships`, `/reservations`, `/access`, `/lockers`, `/products`, `/crm`, `/settlements` 진입이 가능하다.
+- [x] `/dashboard`, `/members`, `/memberships`, `/reservations`, `/access`, `/lockers`, `/products`, `/crm`, `/settlements` 진입이 가능하다.
 - [x] 잘못된 경로는 `/dashboard`로 보정된다.
 - [x] sidebar navigation이 URL을 변경한다.
 - [x] dashboard quick action도 같은 route navigation을 사용한다.
-- [ ] refresh 후 같은 section이 유지된다.
+- [x] refresh 후 같은 section이 유지된다.
 - [x] `selectedMemberId`와 modal/filter state는 URL에 저장되지 않는다.
 - [x] JWT 모드에서 unauthenticated 상태는 protected section 대신 login/auth gate로 이어진다.
 - [x] prototype 모드에서는 `/login` 없이 section route 진입이 가능하다.
@@ -225,11 +225,11 @@ date: 2026-03-11
 ### Quality Gates
 - [x] 최소한 route fallback 동작 검증
 - [x] sidebar와 dashboard가 같은 route surface를 쓰는지 검증
-- [ ] prototype/jwt 모드에서 refresh 진입 검증
+- [x] prototype/jwt 모드에서 refresh 진입 검증
 - [x] `activeNavSection` 이중 source of truth 제거 여부 확인
-- [ ] browser back/forward가 section 전환과 일치하는지 확인
+- [x] browser back/forward가 section 전환과 일치하는지 확인
 - [x] JWT unauthenticated 상태에서 redirect loop가 없는지 확인
-- [ ] section route 전환만으로 `selectedMember`가 불필요하게 reset되지 않는지 확인
+- [x] section route 전환만으로 `selectedMember`가 불필요하게 reset되지 않는지 확인
 - [ ] `/login`과 protected route 사이 auth bootstrap 시각 차이로 flicker/flash redirect가 없는지 확인
 
 ### Testing Notes
