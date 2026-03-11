@@ -1304,6 +1304,8 @@ export default function App() {
       );
 
       patchSessionMembership(selectedMember.memberId, response.data.membership);
+      invalidateWorkspaceMemberSearchCache();
+      await loadMembers();
       setMembershipActionMessageById((prev) => ({ ...prev, [membership.membershipId]: response.message }));
       setMembershipActionDrafts((prev) => ({
         ...prev,
@@ -1348,6 +1350,8 @@ export default function App() {
       );
 
       patchSessionMembership(selectedMember.memberId, response.data.membership);
+      invalidateWorkspaceMemberSearchCache();
+      await loadMembers();
       setMembershipActionMessageById((prev) => ({ ...prev, [membership.membershipId]: response.message }));
     } catch (error) {
       setMembershipActionErrorById((prev) => ({ ...prev, [membership.membershipId]: errorMessage(error) }));
