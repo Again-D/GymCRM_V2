@@ -41,6 +41,8 @@ type MemberManagementPanelsProps = {
   setMemberTrainerFilter: (value: string) => void;
   memberProductFilter: string;
   setMemberProductFilter: (value: string) => void;
+  memberMembershipStatusFilter: string;
+  setMemberMembershipStatusFilter: (value: string) => void;
   memberDateFilter: MembershipDateFilterState;
   applyMemberDatePreset: (preset: MembershipPeriodPreset) => void;
   setMemberDateFrom: (value: string) => void;
@@ -53,6 +55,7 @@ type MemberManagementPanelsProps = {
     phone?: string;
     trainerId?: string;
     productId?: string;
+    membershipOperationalStatus?: string;
     dateFrom?: string;
     dateTo?: string;
   }) => Promise<void>;
@@ -129,6 +132,8 @@ export function MemberManagementPanels({
   setMemberTrainerFilter,
   memberProductFilter,
   setMemberProductFilter,
+  memberMembershipStatusFilter,
+  setMemberMembershipStatusFilter,
   memberDateFilter,
   applyMemberDatePreset,
   setMemberDateFrom,
@@ -208,6 +213,22 @@ export function MemberManagementPanels({
               ))}
             </select>
           </label>
+          <label>
+            회원권 상태
+            <select
+              value={memberMembershipStatusFilter}
+              onChange={(event) =>
+                setMemberMembershipStatusFilter(event.target.value)
+              }
+            >
+              <option value="">전체</option>
+              <option value="정상">정상</option>
+              <option value="홀딩중">홀딩중</option>
+              <option value="만료임박">만료임박</option>
+              <option value="만료">만료</option>
+              <option value="없음">없음</option>
+            </select>
+          </label>
           <MembershipPeriodFilter
             value={memberDateFilter}
             onPresetChange={applyMemberDatePreset}
@@ -227,6 +248,7 @@ export function MemberManagementPanels({
                 setMemberSearchPhone("");
                 setMemberTrainerFilter(nextTrainerFilter);
                 setMemberProductFilter("");
+                setMemberMembershipStatusFilter("");
                 applyMemberDatePreset("");
                 setMemberDateFrom("");
                 setMemberDateTo("");
@@ -235,6 +257,7 @@ export function MemberManagementPanels({
                   phone: "",
                   trainerId: nextTrainerFilter,
                   productId: "",
+                  membershipOperationalStatus: "",
                   dateFrom: "",
                   dateTo: ""
                 });

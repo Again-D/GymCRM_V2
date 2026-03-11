@@ -277,6 +277,56 @@ class MemberSummaryApiIntegrationTest {
     }
 
     @Test
+    void memberListCanFilterByMembershipOperationalStatus() throws Exception {
+        LocalDate today = LocalDate.now();
+
+        ensureDeskUser();
+        String token = loginAndGetAccessToken(DESK_LOGIN_ID, DESK_PASSWORD);
+
+        long durationProductId = insertProductFixture("STATUS-FILTER-" + shortId(), "MEMBERSHIP", "DURATION");
+
+        long holdingMemberId = insertMemberFixture("상태필터홀딩-" + shortId());
+        insertMembershipFixture(holdingMemberId, durationProductId, "HOLDING", "MEMBERSHIP", "DURATION",
+                today.plusDays(15), null, null);
+
+        long expiringMemberId = insertMemberFixture("상태필터임박-" + shortId());
+        insertMembershipFixture(expiringMemberId, durationProductId, "ACTIVE", "MEMBERSHIP", "DURATION",
+                today.plusDays(3), null, null);
+
+        long noneMemberId = insertMemberFixture("상태필터없음-" + shortId());
+
+        MvcResult holdingResult = mockMvc.perform(get("/api/v1/members")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .param("membershipOperationalStatus", "홀딩중"))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode holdingData = objectMapper.readTree(holdingResult.getResponse().getContentAsString()).path("data");
+        assertEquals("홀딩중", findMember(holdingData, holdingMemberId).path("membershipOperationalStatus").asText());
+        assertMemberMissing(holdingData, expiringMemberId);
+        assertMemberMissing(holdingData, noneMemberId);
+
+        MvcResult noneResult = mockMvc.perform(get("/api/v1/members")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .param("membershipOperationalStatus", "없음"))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode noneData = objectMapper.readTree(noneResult.getResponse().getContentAsString()).path("data");
+        assertEquals("없음", findMember(noneData, noneMemberId).path("membershipOperationalStatus").asText());
+        assertMemberMissing(noneData, holdingMemberId);
+        assertMemberMissing(noneData, expiringMemberId);
+
+        MvcResult expiringResult = mockMvc.perform(get("/api/v1/members")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .param("membershipOperationalStatus", "만료임박"))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode expiringData = objectMapper.readTree(expiringResult.getResponse().getContentAsString()).path("data");
+        assertEquals("만료임박", findMember(expiringData, expiringMemberId).path("membershipOperationalStatus").asText());
+        assertMemberMissing(expiringData, holdingMemberId);
+        assertMemberMissing(expiringData, noneMemberId);
+    }
+
+    @Test
     void memberListShowsHoldingAfterHoldAction() throws Exception {
         ensureDeskUser();
         String token = loginAndGetAccessToken(DESK_LOGIN_ID, DESK_PASSWORD);

@@ -73,6 +73,7 @@ public class MemberQueryRepository {
             String phoneKeyword,
             Long trainerId,
             Long productId,
+            String membershipOperationalStatus,
             LocalDate dateFrom,
             LocalDate dateTo,
             LocalDate referenceDate
@@ -180,7 +181,13 @@ public class MemberQueryRepository {
                     sumRemainingPtCount(visibleRows)
             ));
         }
-        return result;
+        if (!hasText(membershipOperationalStatus)) {
+            return result;
+        }
+        String normalizedStatus = membershipOperationalStatus.trim();
+        return result.stream()
+                .filter(member -> normalizedStatus.equals(member.membershipOperationalStatus()))
+                .toList();
     }
 
     private com.querydsl.core.types.Predicate containsIgnoreCase(

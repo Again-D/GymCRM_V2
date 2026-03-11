@@ -18,6 +18,7 @@ export type MemberQueryFilters = {
   phone: string;
   trainerId: string;
   productId: string;
+  membershipOperationalStatus: string;
   dateFrom: string;
   dateTo: string;
 };
@@ -57,6 +58,8 @@ export function useMembersQuery({
       const phone = filters?.phone ?? defaults.phone;
       const trainerId = filters?.trainerId ?? defaults.trainerId;
       const productId = filters?.productId ?? defaults.productId;
+      const membershipOperationalStatus =
+        filters?.membershipOperationalStatus ?? defaults.membershipOperationalStatus;
       const dateFrom = filters?.dateFrom ?? defaults.dateFrom;
       const dateTo = filters?.dateTo ?? defaults.dateTo;
       const params = new URLSearchParams();
@@ -71,6 +74,12 @@ export function useMembersQuery({
       }
       if (productId.trim()) {
         params.set("productId", productId.trim());
+      }
+      if (membershipOperationalStatus.trim()) {
+        params.set(
+          "membershipOperationalStatus",
+          membershipOperationalStatus.trim(),
+        );
       }
       if (dateFrom.trim()) {
         params.set("dateFrom", dateFrom.trim());

@@ -59,6 +59,7 @@ public class MemberController {
             @RequestParam(required = false) String phone,
             @RequestParam(required = false) Long trainerId,
             @RequestParam(required = false) Long productId,
+            @RequestParam(required = false) String membershipOperationalStatus,
             @RequestParam(required = false) LocalDate dateFrom,
             @RequestParam(required = false) LocalDate dateTo
     ) {
@@ -69,6 +70,7 @@ public class MemberController {
                         phone,
                         trainerId,
                         productId,
+                        membershipOperationalStatus,
                         dateFrom,
                         dateTo
                 ).stream()

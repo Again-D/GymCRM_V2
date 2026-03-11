@@ -509,6 +509,7 @@ export default function App() {
   const [memberSearchPhone, setMemberSearchPhone] = useState("");
   const [memberTrainerFilter, setMemberTrainerFilter] = useState("");
   const [memberProductFilter, setMemberProductFilter] = useState("");
+  const [memberMembershipStatusFilter, setMemberMembershipStatusFilter] = useState("");
   const [trainerOptions, setTrainerOptions] = useState<TrainerSummary[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
   const [selectedMember, setSelectedMember] = useState<MemberDetail | null>(null);
@@ -682,6 +683,7 @@ export default function App() {
       phone: memberSearchPhone,
       trainerId: memberTrainerFilter,
       productId: memberProductFilter,
+      membershipOperationalStatus: memberMembershipStatusFilter,
       dateFrom: memberDateFilter.dateFrom,
       dateTo: memberDateFilter.dateTo
     }),
@@ -756,6 +758,7 @@ export default function App() {
     setMemberSearchPhone("");
     setMemberTrainerFilter("");
     setMemberProductFilter("");
+    setMemberMembershipStatusFilter("");
     resetMemberDateFilter();
     setTrainerOptions([]);
     membershipWorkspace.resetMembershipWorkspace();
@@ -823,6 +826,7 @@ export default function App() {
     phone?: string;
     trainerId?: string;
     productId?: string;
+    membershipOperationalStatus?: string;
     dateFrom?: string;
     dateTo?: string;
   }) {
@@ -2033,6 +2037,8 @@ export default function App() {
             setMemberTrainerFilter={setMemberTrainerFilter}
             memberProductFilter={memberProductFilter}
             setMemberProductFilter={setMemberProductFilter}
+            memberMembershipStatusFilter={memberMembershipStatusFilter}
+            setMemberMembershipStatusFilter={setMemberMembershipStatusFilter}
             memberDateFilter={memberDateFilter}
             applyMemberDatePreset={applyMemberDatePreset}
             setMemberDateFrom={setMemberDateFrom}

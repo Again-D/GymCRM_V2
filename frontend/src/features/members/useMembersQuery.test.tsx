@@ -48,7 +48,15 @@ describe("useMembersQuery", () => {
 
     const { result } = renderHook(() =>
       useMembersQuery({
-        getDefaultFilters: () => ({ name: "Kim", phone: "", trainerId: "", productId: "", dateFrom: "", dateTo: "" }),
+        getDefaultFilters: () => ({
+          name: "Kim",
+          phone: "",
+          trainerId: "",
+          productId: "",
+          membershipOperationalStatus: "",
+          dateFrom: "",
+          dateTo: ""
+        }),
         formatError: () => "load failed"
       })
     );
@@ -83,7 +91,15 @@ describe("useMembersQuery", () => {
 
     const { result } = renderHook(() =>
       useMembersQuery({
-        getDefaultFilters: () => ({ name: "", phone: "", trainerId: "", productId: "", dateFrom: "", dateTo: "" }),
+        getDefaultFilters: () => ({
+          name: "",
+          phone: "",
+          trainerId: "",
+          productId: "",
+          membershipOperationalStatus: "",
+          dateFrom: "",
+          dateTo: ""
+        }),
         formatError: () => "load failed"
       })
     );
@@ -130,6 +146,7 @@ describe("useMembersQuery", () => {
           phone: "",
           trainerId: "11",
           productId: "22",
+          membershipOperationalStatus: "홀딩중",
           dateFrom: "2026-03-10",
           dateTo: "2026-04-10"
         }),
@@ -142,7 +159,7 @@ describe("useMembersQuery", () => {
     });
 
     expect(apiGetMock).toHaveBeenCalledWith(
-      "/api/v1/members?trainerId=11&productId=22&dateFrom=2026-03-10&dateTo=2026-04-10"
+      "/api/v1/members?trainerId=11&productId=22&membershipOperationalStatus=%ED%99%80%EB%94%A9%EC%A4%91&dateFrom=2026-03-10&dateTo=2026-04-10"
     );
   });
 });

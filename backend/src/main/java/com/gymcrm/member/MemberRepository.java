@@ -67,6 +67,7 @@ public class MemberRepository {
             String phoneKeyword,
             Long trainerId,
             Long productId,
+            String membershipOperationalStatus,
             LocalDate dateFrom,
             LocalDate dateTo,
             LocalDate referenceDate
@@ -79,6 +80,7 @@ public class MemberRepository {
                 phoneKeyword,
                 trainerId,
                 productId,
+                membershipOperationalStatus,
                 dateFrom,
                 dateTo,
                 referenceDate
