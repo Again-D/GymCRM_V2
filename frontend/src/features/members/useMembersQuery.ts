@@ -8,7 +8,7 @@ export type MemberSummary = {
   phone: string;
   memberStatus: "ACTIVE" | "INACTIVE";
   joinDate: string | null;
-  membershipOperationalStatus: "정상" | "만료임박" | "만료" | "없음";
+  membershipOperationalStatus: "정상" | "홀딩중" | "만료임박" | "만료" | "없음";
   membershipExpiryDate: string | null;
   remainingPtCount: number | null;
 };
@@ -33,10 +33,15 @@ function useLatestRef<T>(value: T) {
   return ref;
 }
 
-export function useMembersQuery({ getDefaultFilters, formatError }: UseMembersQueryOptions) {
+export function useMembersQuery({
+  getDefaultFilters,
+  formatError,
+}: UseMembersQueryOptions) {
   const [members, setMembers] = useState<MemberSummary[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
-  const [membersQueryError, setMembersQueryError] = useState<string | null>(null);
+  const [membersQueryError, setMembersQueryError] = useState<string | null>(
+    null,
+  );
   const getDefaultFiltersRef = useLatestRef(getDefaultFilters);
   const formatErrorRef = useLatestRef(formatError);
   const requestIdRef = useRef(0);
@@ -74,7 +79,9 @@ export function useMembersQuery({ getDefaultFilters, formatError }: UseMembersQu
         params.set("dateTo", dateTo.trim());
       }
       const query = params.toString();
-      const response = await apiGet<MemberSummary[]>(`/api/v1/members${query ? `?${query}` : ""}`);
+      const response = await apiGet<MemberSummary[]>(
+        `/api/v1/members${query ? `?${query}` : ""}`,
+      );
       if (requestIdRef.current !== requestId) {
         return;
       }
@@ -103,6 +110,6 @@ export function useMembersQuery({ getDefaultFilters, formatError }: UseMembersQu
     membersLoading,
     membersQueryError,
     loadMembers,
-    resetMembersQuery
+    resetMembersQuery,
   } as const;
 }

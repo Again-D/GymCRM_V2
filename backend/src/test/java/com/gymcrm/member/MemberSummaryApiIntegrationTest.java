@@ -118,6 +118,16 @@ class MemberSummaryApiIntegrationTest {
         insertMembershipFixture(normalMemberId, durationProductId, "ACTIVE", "MEMBERSHIP", "DURATION",
                 today.plusDays(8), null, null);
 
+        long holdingMemberId = insertMemberFixture("요약홀딩-" + shortId());
+        insertMembershipFixture(holdingMemberId, durationProductId, "HOLDING", "MEMBERSHIP", "DURATION",
+                today.plusDays(12), null, null);
+
+        long holdingPriorityMemberId = insertMemberFixture("요약홀딩우선-" + shortId());
+        insertMembershipFixture(holdingPriorityMemberId, durationProductId, "ACTIVE", "MEMBERSHIP", "DURATION",
+                today.plusDays(3), null, null);
+        insertMembershipFixture(holdingPriorityMemberId, durationProductId, "HOLDING", "MEMBERSHIP", "DURATION",
+                today.plusDays(20), null, null);
+
         long tieBreakMemberId = insertMemberFixture("요약대표선정-" + shortId());
         insertMembershipFixture(tieBreakMemberId, durationProductId, "ACTIVE", "MEMBERSHIP", "DURATION",
                 today.plusDays(20), null, null);
@@ -171,6 +181,14 @@ class MemberSummaryApiIntegrationTest {
         JsonNode normal = findMember(data, normalMemberId);
         assertEquals("정상", normal.path("membershipOperationalStatus").asText());
         assertEquals(today.plusDays(8).toString(), normal.path("membershipExpiryDate").asText());
+
+        JsonNode holding = findMember(data, holdingMemberId);
+        assertEquals("홀딩중", holding.path("membershipOperationalStatus").asText());
+        assertEquals(today.plusDays(12).toString(), holding.path("membershipExpiryDate").asText());
+
+        JsonNode holdingPriority = findMember(data, holdingPriorityMemberId);
+        assertEquals("홀딩중", holdingPriority.path("membershipOperationalStatus").asText());
+        assertEquals(today.plusDays(20).toString(), holdingPriority.path("membershipExpiryDate").asText());
 
         JsonNode tieBreak = findMember(data, tieBreakMemberId);
         assertEquals("만료임박", tieBreak.path("membershipOperationalStatus").asText());

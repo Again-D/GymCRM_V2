@@ -11,7 +11,7 @@ export type WorkspaceMemberPickerRow = {
   memberName: string;
   phone: string;
   memberStatus: "ACTIVE" | "INACTIVE";
-  membershipOperationalStatus?: "정상" | "만료임박" | "만료" | "없음";
+  membershipOperationalStatus?: "정상" | "홀딩중" | "만료임박" | "만료" | "없음";
 };
 
 type WorkspaceMemberPickerProps = {
@@ -57,6 +57,22 @@ export function WorkspaceMemberPicker({
     } finally {
       setSelectingMemberId(null);
     }
+  }
+
+  function membershipStatusPillClass(status: WorkspaceMemberPickerRow["membershipOperationalStatus"]) {
+    if (status === "정상") {
+      return "pill ok";
+    }
+    if (status === "홀딩중") {
+      return "pill hold";
+    }
+    if (status === "만료임박") {
+      return "pill warn";
+    }
+    if (status === "만료") {
+      return "pill danger";
+    }
+    return "pill muted";
   }
 
   return (
@@ -105,7 +121,9 @@ export function WorkspaceMemberPicker({
                         {member.memberStatus}
                       </span>
                       {member.membershipOperationalStatus ? (
-                        <span className="pill muted">{member.membershipOperationalStatus}</span>
+                        <span className={membershipStatusPillClass(member.membershipOperationalStatus)}>
+                          {member.membershipOperationalStatus}
+                        </span>
                       ) : null}
                     </span>
                     <span className="workspace-member-picker-cta">

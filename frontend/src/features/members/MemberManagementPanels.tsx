@@ -13,7 +13,7 @@ type MemberSummaryRow = {
   phone: string;
   memberStatus: "ACTIVE" | "INACTIVE";
   joinDate: string | null;
-  membershipOperationalStatus: "정상" | "만료임박" | "만료" | "없음";
+  membershipOperationalStatus: "정상" | "홀딩중" | "만료임박" | "만료" | "없음";
   membershipExpiryDate: string | null;
   remainingPtCount: number | null;
 };
@@ -106,6 +106,9 @@ function CalendarIcon() {
 function operationalStatusPillClass(status: MemberSummaryRow["membershipOperationalStatus"]) {
   if (status === "정상") {
     return "pill ok";
+  }
+  if (status === "홀딩중") {
+    return "pill hold";
   }
   if (status === "만료임박") {
     return "pill warn";
