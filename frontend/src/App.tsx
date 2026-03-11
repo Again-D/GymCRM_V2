@@ -59,6 +59,7 @@ import {
   useReservationWorkspaceState
 } from "./features/reservations/useReservationWorkspaceState";
 import { useReservationSchedulesQuery } from "./features/reservations/useReservationSchedulesQuery";
+import { useReservationTargetsQuery } from "./features/reservations/useReservationTargetsQuery";
 import { SettlementsSection } from "./features/settlements/SettlementsSection";
 import {
   type SettlementReportFilters,
@@ -703,6 +704,17 @@ export default function App() {
     formatError: errorMessage
   });
   const {
+    reservationTargets,
+    reservationTargetsKeyword,
+    setReservationTargetsKeyword,
+    reservationTargetsLoading,
+    reservationTargetsError,
+    loadReservationTargets,
+    resetReservationTargetsQuery
+  } = useReservationTargetsQuery({
+    formatError: errorMessage
+  });
+  const {
     settlementReport,
     settlementReportLoading,
     settlementReportError,
@@ -748,6 +760,7 @@ export default function App() {
     setMemberPaymentsByMemberId({});
     reservationWorkspace.resetReservationWorkspace();
     resetReservationSchedulesQuery();
+    resetReservationTargetsQuery();
     accessWorkspace.resetAccessWorkspace();
     resetAccessQueries();
     lockerWorkspace.resetLockerWorkspace();
@@ -785,7 +798,7 @@ export default function App() {
     [products]
   );
   const effectiveMemberPanelError = memberPanelError ?? membersQueryError;
-  const effectiveReservationPanelError = reservationPanelError ?? reservationSchedulesError;
+  const effectiveReservationPanelError = reservationPanelError ?? reservationTargetsError ?? reservationSchedulesError;
   const effectiveAccessPanelError = accessPanelError ?? accessQueryError;
   const effectiveLockerPanelError = lockerPanelError ?? lockerQueryError;
   const effectiveSettlementPanelMessage = settlementPanelMessage ?? settlementReportMessage;
@@ -853,6 +866,15 @@ export default function App() {
     return workspaceMemberSearch.load(keyword);
   }
 
+  async function loadMemberMemberships(memberId: number) {
+    const response = await apiGet<PurchasedMembership[]>(`/api/v1/members/${memberId}/memberships`);
+    setMemberMembershipsByMemberId((prev) => ({
+      ...prev,
+      [memberId]: response.data
+    }));
+    return response.data;
+  }
+
   function invalidateWorkspaceMemberSearchCache() {
     workspaceMemberSearch.invalidate();
   }
@@ -869,6 +891,7 @@ export default function App() {
         return false;
       }
       setSelectedMember(response.data);
+      await loadMemberMemberships(memberId);
       if (options?.syncForm !== false) {
         setMemberForm(memberFormFromDetail(response.data));
         setMemberFormMode("edit");
@@ -987,6 +1010,13 @@ export default function App() {
     void loadTrainerOptions();
     void loadReservationSchedules();
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated || activeNavSection !== "reservations") {
+      return;
+    }
+    void loadReservationTargets();
+  }, [isAuthenticated, activeNavSection]);
 
   useEffect(() => {
     if (authUser?.roleCode === "ROLE_TRAINER") {
@@ -1856,13 +1886,32 @@ export default function App() {
             </MembershipsSection>
           ) : activeNavSection === "reservations" ? (
             <ReservationsSection
-              selectedMember={selectedMember ? { memberId: selectedMember.memberId, memberName: selectedMember.memberName } : null}
+              selectedMember={
+                selectedMember
+                  ? {
+                      memberId: selectedMember.memberId,
+                      memberName: selectedMember.memberName,
+                      phone: selectedMember.phone,
+                      memberStatus: selectedMember.memberStatus,
+                      membershipExpiryDate:
+                        reservationTargets.find((target) => target.memberId === selectedMember.memberId)?.membershipExpiryDate ?? null
+                    }
+                  : null
+              }
+              reservationTargets={reservationTargets}
+              reservationTargetsLoading={reservationTargetsLoading}
+              reservationTargetsKeyword={reservationTargetsKeyword}
+              onReservationTargetsKeywordChange={setReservationTargetsKeyword}
+              onReservationTargetsSearch={() => void loadReservationTargets()}
+              onSelectReservationTarget={(memberId) => {
+                void loadMemberDetail(memberId, { syncForm: false });
+              }}
               selectedMemberReservationsCount={selectedMemberReservations.length}
               reservableMembershipsCount={reservableMemberships.length}
+              reservableMemberships={reservableMemberships}
+              selectedMemberReservations={selectedMemberReservations}
               reservationPanelMessage={reservationPanelMessage}
               reservationPanelError={effectiveReservationPanelError}
-              loadWorkspaceMembers={loadWorkspaceMembers}
-              onSelectWorkspaceMember={(memberId) => loadMemberDetail(memberId, { syncForm: false })}
               onGoMembers={() => setActiveNavSection("members")}
             >
               <Suspense fallback={<WorkspacePanelFallback />}>

@@ -17,6 +17,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Set;
 
 @Service
@@ -109,6 +110,19 @@ public class MembershipPurchaseService {
         }
     }
 
+    @Transactional(readOnly = true)
+    public List<MemberMembership> listMemberships(Long memberId) {
+        if (memberId == null) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "memberId is required");
+        }
+        Member member = memberService.get(memberId);
+        return memberMembershipRepository.findVisibleByMemberId(
+                member.centerId(),
+                member.memberId(),
+                resolveTrainerScopedActorId()
+        );
+    }
+
     PurchaseCalculation calculatePurchase(Product product, LocalDate requestedStartDate) {
         LocalDate startDate = requestedStartDate == null ? LocalDate.now() : requestedStartDate;
 
@@ -160,6 +174,18 @@ public class MembershipPurchaseService {
         }
 
         return trainer.userId();
+    }
+
+    private Long resolveTrainerScopedActorId() {
+        try {
+            return authUserRepository.findActiveById(currentUserProvider.currentUserId())
+                    .filter(AuthUser::isActive)
+                    .filter(user -> "ROLE_TRAINER".equals(user.roleCode()))
+                    .map(AuthUser::userId)
+                    .orElse(null);
+        } catch (IllegalStateException ex) {
+            return null;
+        }
     }
 
     private String normalizePaymentMethod(String paymentMethod) {

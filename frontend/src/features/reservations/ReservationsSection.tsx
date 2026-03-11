@@ -1,78 +1,178 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { NoticeText } from "../../shared/ui/NoticeText";
+import { OverlayPanel } from "../../shared/ui/OverlayPanel";
 import { PanelHeader } from "../../shared/ui/PanelHeader";
-import { WorkspaceMemberPicker, type WorkspaceMemberPickerRow } from "../../shared/ui/WorkspaceMemberPicker";
+import { formatDate, formatDateTime } from "../../shared/utils/format";
+import { EmptyTableRow } from "../../shared/ui/EmptyTableRow";
 
 type SelectedMemberSummary = {
   memberId: number;
   memberName: string;
+  phone: string;
+  memberStatus: "ACTIVE" | "INACTIVE";
+  membershipExpiryDate: string | null;
+};
+
+type ReservationTargetSummary = {
+  memberId: number;
+  memberCode: string;
+  memberName: string;
+  phone: string;
+  reservableMembershipCount: number;
+  membershipExpiryDate: string | null;
+  confirmedReservationCount: number;
+};
+
+type ReservableMembershipRow = {
+  membershipId: number;
+  productNameSnapshot: string;
+  productTypeSnapshot: "DURATION" | "COUNT";
+  remainingCount: number | null;
+  endDate: string | null;
+};
+
+type ReservationRow = {
+  reservationId: number;
+  membershipId: number;
+  scheduleId: number;
+  reservationStatus: "CONFIRMED" | "CANCELLED" | "COMPLETED" | "NO_SHOW";
+  reservedAt: string;
+  cancelledAt: string | null;
+  completedAt: string | null;
+  noShowAt: string | null;
+  checkedInAt: string | null;
 };
 
 type ReservationsSectionProps = {
   selectedMember: SelectedMemberSummary | null;
+  reservationTargets: ReservationTargetSummary[];
+  reservationTargetsLoading: boolean;
+  reservationTargetsKeyword: string;
+  onReservationTargetsKeywordChange: (value: string) => void;
+  onReservationTargetsSearch: () => void;
+  onSelectReservationTarget: (memberId: number) => void;
   selectedMemberReservationsCount: number;
   reservableMembershipsCount: number;
+  reservableMemberships: ReservableMembershipRow[];
+  selectedMemberReservations: ReservationRow[];
   reservationPanelMessage: string | null;
   reservationPanelError: string | null;
-  loadWorkspaceMembers: () => Promise<WorkspaceMemberPickerRow[]>;
-  onSelectWorkspaceMember: (memberId: number) => Promise<boolean>;
   onGoMembers: () => void;
   children: ReactNode;
 };
 
 export function ReservationsSection({
   selectedMember,
+  reservationTargets,
+  reservationTargetsLoading,
+  reservationTargetsKeyword,
+  onReservationTargetsKeywordChange,
+  onReservationTargetsSearch,
+  onSelectReservationTarget,
   selectedMemberReservationsCount,
   reservableMembershipsCount,
+  reservableMemberships,
+  selectedMemberReservations,
   reservationPanelMessage,
   reservationPanelError,
-  loadWorkspaceMembers,
-  onSelectWorkspaceMember,
   onGoMembers,
   children
 }: ReservationsSectionProps) {
-  const [isPickerOpen, setIsPickerOpen] = useState(selectedMember == null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   useEffect(() => {
-    setIsPickerOpen(selectedMember == null);
+    if (!selectedMember) {
+      setIsDetailOpen(false);
+    }
   }, [selectedMember]);
+
+  const selectedTarget = useMemo(
+    () => reservationTargets.find((target) => target.memberId === selectedMember?.memberId) ?? null,
+    [reservationTargets, selectedMember]
+  );
 
   return (
     <section className="membership-ops-shell" aria-label="예약 관리 화면">
-      {!selectedMember || isPickerOpen ? (
-        <WorkspaceMemberPicker
-          title={selectedMember ? "예약 대상 회원 변경" : "회원 선택 필요"}
-          description={
-            selectedMember
-              ? "다른 회원으로 예약 대상을 바꿉니다. 선택을 완료하면 이 화면에서 바로 예약 업무를 이어갈 수 있습니다."
-              : "예약 관리는 선택된 회원 기준으로 동작합니다. 이 화면에서 바로 회원을 검색하고 예약 업무를 시작할 수 있습니다."
-          }
-          queryPlaceholder="예: 김민수, 010-1234, 102"
-          emptyMessage="검색 결과 회원이 없습니다."
-          warningText={
-            selectedMember
-              ? "회원을 변경하면 입력 중인 예약 생성 폼과 관련 메시지가 초기화됩니다."
-              : undefined
-          }
-          loadMembers={loadWorkspaceMembers}
-          onSelectMember={onSelectWorkspaceMember}
-          onSelected={() => setIsPickerOpen(false)}
-          submitLabel={selectedMember ? "이 회원으로 변경" : "이 회원으로 시작"}
+      <article className="panel">
+        <PanelHeader
+          title="예약권 보유 회원 리스트"
           actions={
-            <button type="button" className="secondary-button" onClick={onGoMembers}>
-              회원 관리 열기
-            </button>
+            <div className="panel-header-actions">
+              <button type="button" className="secondary-button" onClick={onReservationTargetsSearch}>
+                {reservationTargetsLoading ? "조회 중..." : "조회"}
+              </button>
+              <button type="button" className="secondary-button" onClick={onGoMembers}>
+                회원 관리 열기
+              </button>
+            </div>
           }
         />
-      ) : (
+        <div className="toolbar-row">
+          <label className="toolbar-field">
+            검색
+            <input
+              value={reservationTargetsKeyword}
+              onChange={(event) => onReservationTargetsKeywordChange(event.target.value)}
+              placeholder="예: 김민수, 010-1234, 102"
+            />
+          </label>
+        </div>
+        <div className="list-shell deferred-list-surface">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>회원코드</th>
+                <th>회원명</th>
+                <th>연락처</th>
+                <th>예약 가능 회원권</th>
+                <th>확정 예약</th>
+                <th>만료일</th>
+                <th>액션</th>
+              </tr>
+            </thead>
+            <tbody>
+              {reservationTargets.length === 0 ? (
+                <EmptyTableRow colSpan={8} message="예약 대상 회원이 없습니다." />
+              ) : (
+                reservationTargets.map((target) => (
+                  <tr
+                    key={target.memberId}
+                    className={selectedMember?.memberId === target.memberId ? "is-selected" : undefined}
+                  >
+                    <td>{target.memberId}</td>
+                    <td>{target.memberCode}</td>
+                    <td>{target.memberName}</td>
+                    <td>{target.phone}</td>
+                    <td>{target.reservableMembershipCount}</td>
+                    <td>{target.confirmedReservationCount}</td>
+                    <td>{target.membershipExpiryDate ? formatDate(target.membershipExpiryDate) : "-"}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={() => onSelectReservationTarget(target.memberId)}
+                      >
+                        {selectedMember?.memberId === target.memberId ? "선택됨" : "선택"}
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      {selectedMember ? (
         <>
           <article className="panel">
             <PanelHeader
-              title="예약 대상 회원"
+              title="선택 회원 예약 상세"
               actions={
                 <div className="panel-header-actions">
-                  <button type="button" className="secondary-button" onClick={() => setIsPickerOpen(true)}>
-                    회원 변경
+                  <button type="button" className="secondary-button" onClick={() => setIsDetailOpen(true)}>
+                    상세 모달
                   </button>
                   <button type="button" className="secondary-button" onClick={onGoMembers}>
                     회원 관리 열기
@@ -90,12 +190,24 @@ export function ReservationsSection({
                 <dd>{selectedMember.memberName}</dd>
               </div>
               <div>
+                <dt>연락처</dt>
+                <dd>{selectedMember.phone}</dd>
+              </div>
+              <div>
+                <dt>회원 상태</dt>
+                <dd>{selectedMember.memberStatus}</dd>
+              </div>
+              <div>
                 <dt>예약 수(세션)</dt>
                 <dd>{selectedMemberReservationsCount}</dd>
               </div>
               <div>
                 <dt>예약 가능 회원권</dt>
                 <dd>{reservableMembershipsCount}</dd>
+              </div>
+              <div>
+                <dt>대표 만료일</dt>
+                <dd>{selectedTarget?.membershipExpiryDate ? formatDate(selectedTarget.membershipExpiryDate) : "-"}</dd>
               </div>
             </dl>
             {reservationPanelMessage ? (
@@ -111,7 +223,100 @@ export function ReservationsSection({
           </article>
 
           {children}
+
+          <OverlayPanel open={isDetailOpen} title="예약 회원 상세" onClose={() => setIsDetailOpen(false)}>
+            <section className="overlay-stack">
+              <dl className="detail-grid compact-detail-grid">
+                <div>
+                  <dt>회원 ID</dt>
+                  <dd>{selectedMember.memberId}</dd>
+                </div>
+                <div>
+                  <dt>회원명</dt>
+                  <dd>{selectedMember.memberName}</dd>
+                </div>
+                <div>
+                  <dt>연락처</dt>
+                  <dd>{selectedMember.phone}</dd>
+                </div>
+                <div>
+                  <dt>회원 상태</dt>
+                  <dd>{selectedMember.memberStatus}</dd>
+                </div>
+              </dl>
+
+              <article className="panel">
+                <PanelHeader title="예약 가능 회원권" />
+                <div className="list-shell">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>회원권 ID</th>
+                        <th>상품</th>
+                        <th>유형</th>
+                        <th>잔여</th>
+                        <th>만료일</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {reservableMemberships.length === 0 ? (
+                        <EmptyTableRow colSpan={5} message="예약 가능한 회원권이 없습니다." />
+                      ) : (
+                        reservableMemberships.map((membership) => (
+                          <tr key={membership.membershipId}>
+                            <td>{membership.membershipId}</td>
+                            <td>{membership.productNameSnapshot}</td>
+                            <td>{membership.productTypeSnapshot}</td>
+                            <td>{membership.remainingCount ?? "-"}</td>
+                            <td>{membership.endDate ? formatDate(membership.endDate) : "-"}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </article>
+
+              <article className="panel">
+                <PanelHeader title="예약 이력" />
+                <div className="list-shell">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>스케줄ID</th>
+                        <th>회원권ID</th>
+                        <th>상태</th>
+                        <th>예약시각</th>
+                        <th>체크인</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedMemberReservations.length === 0 ? (
+                        <EmptyTableRow colSpan={6} message="예약 이력이 없습니다." />
+                      ) : (
+                        selectedMemberReservations.map((reservation) => (
+                          <tr key={reservation.reservationId}>
+                            <td>{reservation.reservationId}</td>
+                            <td>{reservation.scheduleId}</td>
+                            <td>{reservation.membershipId}</td>
+                            <td>{reservation.reservationStatus}</td>
+                            <td>{formatDateTime(reservation.reservedAt)}</td>
+                            <td>{formatDateTime(reservation.checkedInAt)}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </article>
+            </section>
+          </OverlayPanel>
         </>
+      ) : (
+        <article className="panel">
+          <NoticeText compact>회원을 선택하면 상세 패널과 예약 조정 화면이 열립니다.</NoticeText>
+        </article>
       )}
     </section>
   );

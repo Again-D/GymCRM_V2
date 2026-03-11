@@ -1059,6 +1059,28 @@ tbody tr.is-selected {
   background: var(--table-row-selected-bg);
 }
 
+.toolbar-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.toolbar-field {
+  display: grid;
+  gap: 6px;
+  min-width: 220px;
+}
+
+.toolbar-field input,
+.toolbar-field select {
+  width: 100%;
+}
+
+.overlay-stack {
+  display: grid;
+  gap: 16px;
+}
+
 .member-select-cell {
   text-align: center;
 }

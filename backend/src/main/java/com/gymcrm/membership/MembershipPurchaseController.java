@@ -8,6 +8,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -26,6 +27,15 @@ public class MembershipPurchaseController {
 
     public MembershipPurchaseController(MembershipPurchaseService membershipPurchaseService) {
         this.membershipPurchaseService = membershipPurchaseService;
+    }
+
+    @GetMapping
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER)
+    public ApiResponse<java.util.List<MembershipResponse>> list(@PathVariable Long memberId) {
+        return ApiResponse.success(
+                membershipPurchaseService.listMemberships(memberId).stream().map(MembershipResponse::from).toList(),
+                "회원권 목록 조회 성공"
+        );
     }
 
     @PostMapping

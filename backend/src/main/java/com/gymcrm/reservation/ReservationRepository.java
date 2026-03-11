@@ -55,9 +55,15 @@ public class ReservationRepository {
                 .map(this::toDomain);
     }
 
-    public java.util.List<Reservation> findAll(Long centerId, Long memberId, Long scheduleId, String reservationStatus) {
+    public java.util.List<Reservation> findAll(
+            Long centerId,
+            Long memberId,
+            Long scheduleId,
+            String reservationStatus,
+            Long trainerUserId
+    ) {
         entityManager.clear();
-        return reservationQueryRepository.findAll(centerId, memberId, scheduleId, reservationStatus);
+        return reservationQueryRepository.findAll(centerId, memberId, scheduleId, reservationStatus, trainerUserId);
     }
 
     public boolean existsConfirmedByMemberAndSchedule(Long memberId, Long scheduleId) {
