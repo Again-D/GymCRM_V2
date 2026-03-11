@@ -1903,9 +1903,9 @@ export default function App() {
               reservationTargetsKeyword={reservationTargetsKeyword}
               onReservationTargetsKeywordChange={setReservationTargetsKeyword}
               onReservationTargetsSearch={() => void loadReservationTargets()}
-              onSelectReservationTarget={(memberId) => {
-                void loadMemberDetail(memberId, { syncForm: false });
-              }}
+              onSelectReservationTarget={(memberId) => 
+                loadMemberDetail(memberId, { syncForm: false })
+              }
               selectedMemberReservationsCount={selectedMemberReservations.length}
               reservableMembershipsCount={reservableMemberships.length}
               reservableMemberships={reservableMemberships}

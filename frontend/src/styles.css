@@ -1173,6 +1173,12 @@ tbody tr.is-selected {
   border-color: #bfe8d5;
 }
 
+.pill.hold {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, white);
+  border-color: color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
 .pill.muted {
   color: var(--pill-muted-ink);
   background: var(--pill-muted-bg);

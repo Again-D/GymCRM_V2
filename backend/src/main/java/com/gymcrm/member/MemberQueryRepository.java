@@ -1,16 +1,21 @@
 package com.gymcrm.member;
 
 import com.querydsl.core.types.Projections;
+import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.Query;
 import org.springframework.stereotype.Repository;
 
-import java.sql.Date;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 import static com.gymcrm.member.QMemberEntity.memberEntity;
+import static com.gymcrm.membership.QMemberMembershipEntity.memberMembershipEntity;
 
 @Repository
 public class MemberQueryRepository {
@@ -74,204 +79,84 @@ public class MemberQueryRepository {
     ) {
         LocalDate expiringThresholdDate = referenceDate.plusDays(7);
         boolean hasMembershipFilters = trainerId != null || productId != null || dateFrom != null || dateTo != null;
-        StringBuilder sql = new StringBuilder("""
-                WITH base_members AS (
-                    SELECT
-                        m.member_id,
-                        m.center_id,
-                        m.member_code,
-                        m.member_name,
-                        m.phone,
-                        m.member_status,
-                        m.join_date
-                    FROM members m
-                    WHERE m.center_id = :centerId
-                      AND m.is_deleted = FALSE
-                """);
-
-        if (hasText(keyword)) {
-            sql.append("""
-                     AND (
-                        CAST(m.member_id AS TEXT) ILIKE :keyword
-                        OR m.member_code ILIKE :keyword
-                        OR m.member_name ILIKE :keyword
-                        OR m.phone ILIKE :keyword
-                        OR m.member_status ILIKE :keyword
-                     )
-                    """);
-        }
-        if (hasText(memberCodeKeyword)) {
-            sql.append(" AND m.member_code ILIKE :memberCodeKeyword ");
-        }
-        if (hasText(nameKeyword)) {
-            sql.append(" AND m.member_name ILIKE :nameKeyword ");
-        }
-        if (hasText(phoneKeyword)) {
-            sql.append(" AND m.phone ILIKE :phoneKeyword ");
-        }
-
-        sql.append("""
-                    ORDER BY m.member_id DESC
-                    LIMIT 100
+        List<BaseMemberRow> baseMembers = queryFactory
+                .select(Projections.constructor(
+                        BaseMemberRow.class,
+                        memberEntity.memberId,
+                        memberEntity.centerId,
+                        memberEntity.memberCode,
+                        memberEntity.memberName,
+                        memberEntity.phone,
+                        memberEntity.memberStatus,
+                        memberEntity.joinDate
+                ))
+                .from(memberEntity)
+                .where(
+                        memberEntity.centerId.eq(centerId),
+                        memberEntity.isDeleted.isFalse(),
+                        containsSummaryKeyword(keyword),
+                        containsIgnoreCase(memberEntity.memberCode, memberCodeKeyword),
+                        containsIgnoreCase(memberEntity.memberName, nameKeyword),
+                        containsIgnoreCase(memberEntity.phone, phoneKeyword)
                 )
-                ,
-                filtered_memberships AS (
-                    SELECT
-                        mm.member_id,
-                        mm.membership_id,
-                        mm.end_date,
-                        mm.remaining_count,
-                        mm.product_category_snapshot,
-                        mm.product_type_snapshot
-                    FROM member_memberships mm
-                    JOIN base_members bm ON bm.member_id = mm.member_id
-                    WHERE mm.center_id = :centerId
-                      AND mm.is_deleted = FALSE
-                      AND mm.membership_status = 'ACTIVE'
-                """);
+                .orderBy(memberEntity.memberId.desc())
+                .limit(100)
+                .fetch();
 
-        if (trainerId != null) {
-            sql.append(" AND mm.assigned_trainer_id = :trainerId ");
-        }
-        if (productId != null) {
-            sql.append(" AND mm.product_id = :productId ");
-        }
-        if (dateFrom != null) {
-            sql.append(" AND (mm.end_date IS NULL OR mm.end_date >= :dateFrom) ");
-        }
-        if (dateTo != null) {
-            sql.append(" AND mm.start_date <= :dateTo ");
+        if (baseMembers.isEmpty()) {
+            return List.of();
         }
 
-        sql.append("""
-                ),
-                scoped_members AS (
-                    SELECT bm.*
-                    FROM base_members bm
-                """);
-
-        if (hasMembershipFilters) {
-            sql.append("""
-                    WHERE EXISTS (
-                        SELECT 1
-                        FROM filtered_memberships fm
-                        WHERE fm.member_id = bm.member_id
-                    )
-                    """);
-        }
-
-        sql.append("""
-                ),
-                representative_memberships AS (
-                    SELECT DISTINCT ON (mm.member_id)
-                        mm.member_id,
-                        mm.end_date
-                    FROM filtered_memberships mm
-                    JOIN scoped_members bm ON bm.member_id = mm.member_id
-                    ORDER BY mm.member_id, mm.end_date NULLS LAST, mm.membership_id ASC
-                ),
-                pt_remaining_summary AS (
-                    SELECT
-                        mm.member_id,
-                        NULLIF(SUM(
-                            CASE
-                                WHEN mm.remaining_count IS NOT NULL AND mm.remaining_count > 0
-                                    THEN mm.remaining_count
-                                ELSE 0
-                            END
-                        ), 0) AS remaining_pt_count
-                    FROM filtered_memberships mm
-                    JOIN scoped_members bm ON bm.member_id = mm.member_id
-                    WHERE 1 = 1
-                      AND mm.product_category_snapshot = 'PT'
-                      AND mm.product_type_snapshot = 'COUNT'
-                    GROUP BY mm.member_id
+        List<Long> memberIds = baseMembers.stream().map(BaseMemberRow::memberId).toList();
+        List<MembershipSummaryRow> filteredMemberships = queryFactory
+                .select(Projections.constructor(
+                        MembershipSummaryRow.class,
+                        memberMembershipEntity.memberId,
+                        memberMembershipEntity.membershipId,
+                        memberMembershipEntity.membershipStatus,
+                        memberMembershipEntity.endDate,
+                        memberMembershipEntity.remainingCount,
+                        memberMembershipEntity.productCategorySnapshot,
+                        memberMembershipEntity.productTypeSnapshot
+                ))
+                .from(memberMembershipEntity)
+                .where(
+                        memberMembershipEntity.centerId.eq(centerId),
+                        memberMembershipEntity.memberId.in(memberIds),
+                        memberMembershipEntity.isDeleted.isFalse(),
+                        memberMembershipEntity.membershipStatus.in("ACTIVE", "HOLDING"),
+                        trainerId == null ? null : memberMembershipEntity.assignedTrainerId.eq(trainerId),
+                        productId == null ? null : memberMembershipEntity.productId.eq(productId),
+                        dateFrom == null ? null : memberMembershipEntity.endDate.isNull().or(memberMembershipEntity.endDate.goe(dateFrom)),
+                        dateTo == null ? null : memberMembershipEntity.startDate.loe(dateTo)
                 )
-                SELECT
-                    bm.member_id,
-                    bm.center_id,
-                    bm.member_code,
-                    bm.member_name,
-                    bm.phone,
-                    bm.member_status,
-                    bm.join_date,
-                    CASE
-                        WHEN rm.member_id IS NULL THEN '없음'
-                        WHEN rm.end_date IS NULL THEN '정상'
-                        WHEN rm.end_date < :referenceDate THEN '만료'
-                        WHEN rm.end_date <= :expiringThresholdDate THEN '만료임박'
-                        ELSE '정상'
-                    END AS membership_operational_status,
-                    rm.end_date AS membership_expiry_date,
-                    pts.remaining_pt_count
-                FROM scoped_members bm
-                LEFT JOIN representative_memberships rm ON rm.member_id = bm.member_id
-                LEFT JOIN pt_remaining_summary pts ON pts.member_id = bm.member_id
-                ORDER BY bm.member_id DESC
-                """);
+                .fetch();
 
-        Query query = entityManager.createNativeQuery(sql.toString());
-        query.setParameter("centerId", centerId);
-        query.setParameter("referenceDate", referenceDate);
-        query.setParameter("expiringThresholdDate", expiringThresholdDate);
-        if (hasText(keyword)) {
-            query.setParameter("keyword", "%" + keyword.trim() + "%");
-        }
-        if (hasText(memberCodeKeyword)) {
-            query.setParameter("memberCodeKeyword", "%" + memberCodeKeyword.trim() + "%");
-        }
-        if (hasText(nameKeyword)) {
-            query.setParameter("nameKeyword", "%" + nameKeyword.trim() + "%");
-        }
-        if (hasText(phoneKeyword)) {
-            query.setParameter("phoneKeyword", "%" + phoneKeyword.trim() + "%");
-        }
-        if (trainerId != null) {
-            query.setParameter("trainerId", trainerId);
-        }
-        if (productId != null) {
-            query.setParameter("productId", productId);
-        }
-        if (dateFrom != null) {
-            query.setParameter("dateFrom", dateFrom);
-        }
-        if (dateTo != null) {
-            query.setParameter("dateTo", dateTo);
-        }
+        Map<Long, List<MembershipSummaryRow>> membershipsByMemberId = filteredMemberships.stream()
+                .collect(Collectors.groupingBy(MembershipSummaryRow::memberId));
 
-        @SuppressWarnings("unchecked")
-        List<Object[]> rows = query.getResultList();
-        return rows.stream()
-                .map(this::toSummaryProjection)
-                .toList();
-    }
+        List<MemberRepository.MemberSummaryProjection> result = new ArrayList<>();
+        for (BaseMemberRow member : baseMembers) {
+            List<MembershipSummaryRow> memberships = membershipsByMemberId.getOrDefault(member.memberId(), List.of());
+            if (hasMembershipFilters && memberships.isEmpty()) {
+                continue;
+            }
 
-    private MemberRepository.MemberSummaryProjection toSummaryProjection(Object[] row) {
-        return new MemberRepository.MemberSummaryProjection(
-                ((Number) row[0]).longValue(),
-                ((Number) row[1]).longValue(),
-                (String) row[2],
-                (String) row[3],
-                (String) row[4],
-                (String) row[5],
-                toLocalDate(row[6]),
-                (String) row[7],
-                toLocalDate(row[8]),
-                row[9] == null ? null : ((Number) row[9]).intValue()
-        );
-    }
-
-    private LocalDate toLocalDate(Object value) {
-        if (value == null) {
-            return null;
+            MembershipSummaryRow representativeMembership = selectRepresentativeMembership(memberships);
+            result.add(new MemberRepository.MemberSummaryProjection(
+                    member.memberId(),
+                    member.centerId(),
+                    member.memberCode(),
+                    member.memberName(),
+                    member.phone(),
+                    member.memberStatus(),
+                    member.joinDate(),
+                    deriveMembershipOperationalStatus(memberships, representativeMembership, referenceDate, expiringThresholdDate),
+                    representativeMembership == null ? null : representativeMembership.endDate(),
+                    sumRemainingPtCount(memberships)
+            ));
         }
-        if (value instanceof LocalDate localDate) {
-            return localDate;
-        }
-        if (value instanceof Date date) {
-            return date.toLocalDate();
-        }
-        return LocalDate.parse(value.toString());
+        return result;
     }
 
     private com.querydsl.core.types.Predicate containsIgnoreCase(
@@ -283,6 +168,75 @@ public class MemberQueryRepository {
 
     private boolean hasText(String value) {
         return value != null && !value.isBlank();
+    }
+
+    private BooleanExpression containsSummaryKeyword(String keyword) {
+        if (!hasText(keyword)) {
+            return null;
+        }
+        String trimmed = keyword.trim();
+        return memberEntity.memberId.stringValue().containsIgnoreCase(trimmed)
+                .or(memberEntity.memberCode.containsIgnoreCase(trimmed))
+                .or(memberEntity.memberName.containsIgnoreCase(trimmed))
+                .or(memberEntity.phone.containsIgnoreCase(trimmed))
+                .or(memberEntity.memberStatus.containsIgnoreCase(trimmed));
+    }
+
+    private MembershipSummaryRow selectRepresentativeMembership(List<MembershipSummaryRow> memberships) {
+        if (memberships.isEmpty()) {
+            return null;
+        }
+        List<MembershipSummaryRow> holdingMemberships = memberships.stream()
+                .filter(membership -> "HOLDING".equals(membership.membershipStatus()))
+                .toList();
+        List<MembershipSummaryRow> representativePool = holdingMemberships.isEmpty() ? memberships : holdingMemberships;
+        return representativePool.stream()
+                .sorted(membershipSummaryComparator())
+                .findFirst()
+                .orElse(null);
+    }
+
+    private Comparator<MembershipSummaryRow> membershipSummaryComparator() {
+        return Comparator
+                .comparing(MembershipSummaryRow::endDate, Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(MembershipSummaryRow::membershipId);
+    }
+
+    private String deriveMembershipOperationalStatus(
+            List<MembershipSummaryRow> memberships,
+            MembershipSummaryRow representativeMembership,
+            LocalDate referenceDate,
+            LocalDate expiringThresholdDate
+    ) {
+        if (memberships.isEmpty() || representativeMembership == null) {
+            return "없음";
+        }
+        if (memberships.stream().anyMatch(membership -> "HOLDING".equals(membership.membershipStatus()))) {
+            return "홀딩중";
+        }
+        if (representativeMembership.endDate() == null) {
+            return "정상";
+        }
+        if (representativeMembership.endDate().isBefore(referenceDate)) {
+            return "만료";
+        }
+        if (!representativeMembership.endDate().isAfter(expiringThresholdDate)) {
+            return "만료임박";
+        }
+        return "정상";
+    }
+
+    private Integer sumRemainingPtCount(List<MembershipSummaryRow> memberships) {
+        int sum = memberships.stream()
+                .filter(membership -> "ACTIVE".equals(membership.membershipStatus()))
+                .filter(membership -> "PT".equals(membership.productCategorySnapshot()))
+                .filter(membership -> "COUNT".equals(membership.productTypeSnapshot()))
+                .map(MembershipSummaryRow::remainingCount)
+                .filter(Objects::nonNull)
+                .filter(remaining -> remaining > 0)
+                .mapToInt(Integer::intValue)
+                .sum();
+        return sum == 0 ? null : sum;
     }
 
     public boolean existsActiveTrainerScopedMembership(Long centerId, Long memberId, Long trainerUserId) {
@@ -300,5 +254,117 @@ public class MemberQueryRepository {
                 .setParameter("trainerUserId", trainerUserId)
                 .getSingleResult();
         return count != null && count.longValue() > 0;
+    }
+
+    public static final class BaseMemberRow {
+        private final Long memberId;
+        private final Long centerId;
+        private final String memberCode;
+        private final String memberName;
+        private final String phone;
+        private final String memberStatus;
+        private final LocalDate joinDate;
+
+        public BaseMemberRow(
+                Long memberId,
+                Long centerId,
+                String memberCode,
+                String memberName,
+                String phone,
+                String memberStatus,
+                LocalDate joinDate
+        ) {
+            this.memberId = memberId;
+            this.centerId = centerId;
+            this.memberCode = memberCode;
+            this.memberName = memberName;
+            this.phone = phone;
+            this.memberStatus = memberStatus;
+            this.joinDate = joinDate;
+        }
+
+        public Long memberId() {
+            return memberId;
+        }
+
+        public Long centerId() {
+            return centerId;
+        }
+
+        public String memberCode() {
+            return memberCode;
+        }
+
+        public String memberName() {
+            return memberName;
+        }
+
+        public String phone() {
+            return phone;
+        }
+
+        public String memberStatus() {
+            return memberStatus;
+        }
+
+        public LocalDate joinDate() {
+            return joinDate;
+        }
+    }
+
+    public static final class MembershipSummaryRow {
+        private final Long memberId;
+        private final Long membershipId;
+        private final String membershipStatus;
+        private final LocalDate endDate;
+        private final Integer remainingCount;
+        private final String productCategorySnapshot;
+        private final String productTypeSnapshot;
+
+        public MembershipSummaryRow(
+                Long memberId,
+                Long membershipId,
+                String membershipStatus,
+                LocalDate endDate,
+                Integer remainingCount,
+                String productCategorySnapshot,
+                String productTypeSnapshot
+        ) {
+            this.memberId = memberId;
+            this.membershipId = membershipId;
+            this.membershipStatus = membershipStatus;
+            this.endDate = endDate;
+            this.remainingCount = remainingCount;
+            this.productCategorySnapshot = productCategorySnapshot;
+            this.productTypeSnapshot = productTypeSnapshot;
+        }
+
+        public Long memberId() {
+            return memberId;
+        }
+
+        public Long membershipId() {
+            return membershipId;
+        }
+
+        public String membershipStatus() {
+            return membershipStatus;
+        }
+
+        public LocalDate endDate() {
+            return endDate;
+        }
+
+        public Integer remainingCount() {
+            return remainingCount;
+        }
+
+        public String productCategorySnapshot() {
+            return productCategorySnapshot;
+        }
+
+        public String productTypeSnapshot() {
+            return productTypeSnapshot;
+        }
     }
 }
