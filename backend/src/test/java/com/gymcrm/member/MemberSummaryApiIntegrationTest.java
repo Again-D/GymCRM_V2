@@ -253,6 +253,7 @@ class MemberSummaryApiIntegrationTest {
 
         long matchingMemberId = insertMemberFixture("필터매칭-" + shortId());
         insertMembershipFixture(matchingMemberId, ptProductId, trainerUserId, "ACTIVE", "PT", "COUNT", today.plusDays(20), 10, 4);
+        insertMembershipFixture(matchingMemberId, gxProductId, trainerUserId, "HOLDING", "GX", "DURATION", today.plusDays(40), null, null);
 
         long otherTrainerMemberId = insertMemberFixture("필터타트레이너-" + shortId());
         insertMembershipFixture(otherTrainerMemberId, ptProductId, null, "ACTIVE", "PT", "COUNT", today.plusDays(20), 10, 4);
@@ -271,7 +272,8 @@ class MemberSummaryApiIntegrationTest {
                         .param("dateTo", today.plusDays(30).toString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(1))
-                .andExpect(jsonPath("$.data[0].memberId").value(matchingMemberId));
+                .andExpect(jsonPath("$.data[0].memberId").value(matchingMemberId))
+                .andExpect(jsonPath("$.data[0].membershipOperationalStatus").value("홀딩중"));
     }
 
     @Test

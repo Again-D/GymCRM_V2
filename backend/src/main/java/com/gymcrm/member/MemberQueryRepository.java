@@ -108,6 +108,27 @@ public class MemberQueryRepository {
         }
 
         List<Long> memberIds = baseMembers.stream().map(BaseMemberRow::memberId).toList();
+        List<MembershipSummaryRow> visibleMemberships = queryFactory
+                .select(Projections.constructor(
+                        MembershipSummaryRow.class,
+                        memberMembershipEntity.memberId,
+                        memberMembershipEntity.membershipId,
+                        memberMembershipEntity.membershipStatus,
+                        memberMembershipEntity.endDate,
+                        memberMembershipEntity.remainingCount,
+                        memberMembershipEntity.productCategorySnapshot,
+                        memberMembershipEntity.productTypeSnapshot
+                ))
+                .from(memberMembershipEntity)
+                .where(
+                        memberMembershipEntity.centerId.eq(centerId),
+                        memberMembershipEntity.memberId.in(memberIds),
+                        memberMembershipEntity.isDeleted.isFalse(),
+                        memberMembershipEntity.membershipStatus.in("ACTIVE", "HOLDING"),
+                        trainerId == null ? null : memberMembershipEntity.assignedTrainerId.eq(trainerId)
+                )
+                .fetch();
+
         List<MembershipSummaryRow> filteredMemberships = queryFactory
                 .select(Projections.constructor(
                         MembershipSummaryRow.class,
@@ -132,17 +153,20 @@ public class MemberQueryRepository {
                 )
                 .fetch();
 
-        Map<Long, List<MembershipSummaryRow>> membershipsByMemberId = filteredMemberships.stream()
+        Map<Long, List<MembershipSummaryRow>> visibleMembershipsByMemberId = visibleMemberships.stream()
+                .collect(Collectors.groupingBy(MembershipSummaryRow::memberId));
+        Map<Long, List<MembershipSummaryRow>> filteredMembershipsByMemberId = filteredMemberships.stream()
                 .collect(Collectors.groupingBy(MembershipSummaryRow::memberId));
 
         List<MemberRepository.MemberSummaryProjection> result = new ArrayList<>();
         for (BaseMemberRow member : baseMembers) {
-            List<MembershipSummaryRow> memberships = membershipsByMemberId.getOrDefault(member.memberId(), List.of());
-            if (hasMembershipFilters && memberships.isEmpty()) {
+            List<MembershipSummaryRow> visibleRows = visibleMembershipsByMemberId.getOrDefault(member.memberId(), List.of());
+            List<MembershipSummaryRow> filteredRows = filteredMembershipsByMemberId.getOrDefault(member.memberId(), List.of());
+            if (hasMembershipFilters && filteredRows.isEmpty()) {
                 continue;
             }
 
-            MembershipSummaryRow representativeMembership = selectRepresentativeMembership(memberships);
+            MembershipSummaryRow representativeMembership = selectRepresentativeMembership(visibleRows);
             result.add(new MemberRepository.MemberSummaryProjection(
                     member.memberId(),
                     member.centerId(),
@@ -151,9 +175,9 @@ public class MemberQueryRepository {
                     member.phone(),
                     member.memberStatus(),
                     member.joinDate(),
-                    deriveMembershipOperationalStatus(memberships, representativeMembership, referenceDate, expiringThresholdDate),
+                    deriveMembershipOperationalStatus(visibleRows, representativeMembership, referenceDate, expiringThresholdDate),
                     representativeMembership == null ? null : representativeMembership.endDate(),
-                    sumRemainingPtCount(memberships)
+                    sumRemainingPtCount(visibleRows)
             ));
         }
         return result;
