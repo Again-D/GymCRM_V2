@@ -234,6 +234,9 @@ date: 2026-03-11
 
 ### Testing Notes
 - 단위/컴포넌트 테스트:
+  - `/Users/abc/projects/GymCRM_V2/frontend/src/App.routing.test.tsx`로 `/`, unknown path, JWT unauth protected route redirect 확인
+  - `/Users/abc/projects/GymCRM_V2/frontend/src/components/layout/SidebarNav.test.tsx`로 sidebar link surface 확인
+  - `/Users/abc/projects/GymCRM_V2/frontend/src/features/dashboard/DashboardSection.test.tsx`로 dashboard quick action link surface 확인
   - `MemoryRouter`로 `/dashboard`, `/members`, `/reservations` seed 진입 확인
   - unknown path 진입 시 fallback 확인
   - JWT unauthenticated 조건에서 protected route 접근 시 auth gate 확인
