@@ -137,7 +137,7 @@ class Phase3RepositoryParityIntegrationTest {
                 ))
                 .list();
 
-        List<MemberParityRow> actual = memberRepository.findAllSummaries(CENTER_ID, null, null, null, null, today).stream()
+        List<MemberParityRow> actual = memberRepository.findAllSummaries(CENTER_ID, null, null, null, null, null, null, null, null, today).stream()
                 .filter(row -> row.memberId().equals(activeMemberId) || row.memberId().equals(inactiveMemberId))
                 .map(row -> new MemberParityRow(
                         row.memberId(),

@@ -1,9 +1,11 @@
 import type { Dispatch, FormEvent, SetStateAction } from "react";
 import { EmptyTableRow } from "../../shared/ui/EmptyTableRow";
+import { MembershipPeriodFilter } from "../../shared/ui/MembershipPeriodFilter";
 import { NoticeText } from "../../shared/ui/NoticeText";
 import { OverlayPanel } from "../../shared/ui/OverlayPanel";
 import { PanelHeader } from "../../shared/ui/PanelHeader";
 import { formatDate } from "../../shared/utils/format";
+import type { MembershipDateFilterState, MembershipPeriodPreset } from "../../shared/hooks/useMembershipDateFilter";
 
 type MemberSummaryRow = {
   memberId: number;
@@ -35,7 +37,25 @@ type MemberManagementPanelsProps = {
   setMemberSearchName: (value: string) => void;
   memberSearchPhone: string;
   setMemberSearchPhone: (value: string) => void;
-  loadMembers: (filters?: { name?: string; phone?: string }) => Promise<void>;
+  memberTrainerFilter: string;
+  setMemberTrainerFilter: (value: string) => void;
+  memberProductFilter: string;
+  setMemberProductFilter: (value: string) => void;
+  memberDateFilter: MembershipDateFilterState;
+  applyMemberDatePreset: (preset: MembershipPeriodPreset) => void;
+  setMemberDateFrom: (value: string) => void;
+  setMemberDateTo: (value: string) => void;
+  trainerOptions: Array<{ userId: number; displayName: string }>;
+  productOptions: Array<{ productId: number; productName: string; productType: string }>;
+  trainerFilterDisabled: boolean;
+  loadMembers: (filters?: {
+    name?: string;
+    phone?: string;
+    trainerId?: string;
+    productId?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  }) => Promise<void>;
   membersLoading: boolean;
   memberPanelMessage: string | null;
   memberPanelError: string | null;
@@ -102,6 +122,17 @@ export function MemberManagementPanels({
   setMemberSearchName,
   memberSearchPhone,
   setMemberSearchPhone,
+  memberTrainerFilter,
+  setMemberTrainerFilter,
+  memberProductFilter,
+  setMemberProductFilter,
+  memberDateFilter,
+  applyMemberDatePreset,
+  setMemberDateFrom,
+  setMemberDateTo,
+  trainerOptions,
+  productOptions,
+  trainerFilterDisabled,
   loadMembers,
   membersLoading,
   memberPanelMessage,
@@ -148,6 +179,38 @@ export function MemberManagementPanels({
             연락처 검색
             <input value={memberSearchPhone} onChange={(e) => setMemberSearchPhone(e.target.value)} />
           </label>
+          <label>
+            담당 트레이너
+            <select
+              value={memberTrainerFilter}
+              onChange={(event) => setMemberTrainerFilter(event.target.value)}
+              disabled={trainerFilterDisabled}
+            >
+              <option value="">전체</option>
+              {trainerOptions.map((trainer) => (
+                <option key={trainer.userId} value={trainer.userId}>
+                  {trainer.displayName}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            상품
+            <select value={memberProductFilter} onChange={(event) => setMemberProductFilter(event.target.value)}>
+              <option value="">전체</option>
+              {productOptions.map((product) => (
+                <option key={product.productId} value={product.productId}>
+                  #{product.productId} · {product.productName} ({product.productType})
+                </option>
+              ))}
+            </select>
+          </label>
+          <MembershipPeriodFilter
+            value={memberDateFilter}
+            onPresetChange={applyMemberDatePreset}
+            onDateFromChange={setMemberDateFrom}
+            onDateToChange={setMemberDateTo}
+          />
           <div className="toolbar-actions">
             <button type="submit" className="primary-button" disabled={membersLoading}>
               {membersLoading ? "조회 중..." : "조회"}
@@ -156,9 +219,22 @@ export function MemberManagementPanels({
               type="button"
               className="secondary-button"
               onClick={() => {
+                const nextTrainerFilter = trainerFilterDisabled ? memberTrainerFilter : "";
                 setMemberSearchName("");
                 setMemberSearchPhone("");
-                void loadMembers({ name: "", phone: "" });
+                setMemberTrainerFilter(nextTrainerFilter);
+                setMemberProductFilter("");
+                applyMemberDatePreset("");
+                setMemberDateFrom("");
+                setMemberDateTo("");
+                void loadMembers({
+                  name: "",
+                  phone: "",
+                  trainerId: nextTrainerFilter,
+                  productId: "",
+                  dateFrom: "",
+                  dateTo: ""
+                });
               }}
             >
               초기화

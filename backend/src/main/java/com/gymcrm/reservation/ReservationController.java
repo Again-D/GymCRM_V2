@@ -62,6 +62,15 @@ public class ReservationController {
         return ApiResponse.success(items, "예약 스케줄 목록 조회 성공");
     }
 
+    @GetMapping("/targets")
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER)
+    public ApiResponse<List<ReservationTargetResponse>> listTargets(@RequestParam(required = false) String keyword) {
+        List<ReservationTargetResponse> items = reservationService.listTargets(keyword).stream()
+                .map(ReservationTargetResponse::from)
+                .toList();
+        return ApiResponse.success(items, "예약 대상 회원 목록 조회 성공");
+    }
+
     @GetMapping("/{reservationId}")
     @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER)
     public ApiResponse<ReservationResponse> detail(@PathVariable Long reservationId) {
@@ -189,6 +198,28 @@ public class ReservationController {
                     result.membership().remainingCount(),
                     result.membership().usedCount(),
                     result.countDeducted()
+            );
+        }
+    }
+
+    public record ReservationTargetResponse(
+            Long memberId,
+            String memberCode,
+            String memberName,
+            String phone,
+            Integer reservableMembershipCount,
+            java.time.LocalDate membershipExpiryDate,
+            Integer confirmedReservationCount
+    ) {
+        static ReservationTargetResponse from(ReservationService.ReservationTarget target) {
+            return new ReservationTargetResponse(
+                    target.memberId(),
+                    target.memberCode(),
+                    target.memberName(),
+                    target.phone(),
+                    target.reservableMembershipCount(),
+                    target.membershipExpiryDate(),
+                    target.confirmedReservationCount()
             );
         }
     }

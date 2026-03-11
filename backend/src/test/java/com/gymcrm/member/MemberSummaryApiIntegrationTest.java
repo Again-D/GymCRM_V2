@@ -38,6 +38,8 @@ class MemberSummaryApiIntegrationTest {
     private static final long CENTER_ID = 1L;
     private static final String DESK_LOGIN_ID = "desk-user";
     private static final String DESK_PASSWORD = "desk-user-1234!";
+    private static final String TRAINER_LOGIN_ID = "trainer-user";
+    private static final String TRAINER_PASSWORD = "trainer-user-1234!";
 
     @Autowired
     private MockMvc mockMvc;
@@ -222,6 +224,88 @@ class MemberSummaryApiIntegrationTest {
     }
 
     @Test
+    void memberListCanFilterByTrainerProductAndMembershipDateWindow() throws Exception {
+        ensureDeskUser();
+        long trainerUserId = ensureTrainerUser();
+        String token = loginAndGetAccessToken(DESK_LOGIN_ID, DESK_PASSWORD);
+        LocalDate today = LocalDate.now();
+
+        long ptProductId = insertProductFixture("FILTER-PT-" + shortId(), "PT", "COUNT");
+        long gxProductId = insertProductFixture("FILTER-GX-" + shortId(), "GX", "DURATION");
+
+        long matchingMemberId = insertMemberFixture("필터매칭-" + shortId());
+        insertMembershipFixture(matchingMemberId, ptProductId, trainerUserId, "ACTIVE", "PT", "COUNT", today.plusDays(20), 10, 4);
+
+        long otherTrainerMemberId = insertMemberFixture("필터타트레이너-" + shortId());
+        insertMembershipFixture(otherTrainerMemberId, ptProductId, null, "ACTIVE", "PT", "COUNT", today.plusDays(20), 10, 4);
+
+        long otherProductMemberId = insertMemberFixture("필터타상품-" + shortId());
+        insertMembershipFixture(otherProductMemberId, gxProductId, trainerUserId, "ACTIVE", "GX", "DURATION", today.plusDays(20), null, null);
+
+        long outOfRangeMemberId = insertMemberFixture("필터기간밖-" + shortId());
+        insertMembershipFixture(outOfRangeMemberId, ptProductId, trainerUserId, "ACTIVE", "PT", "COUNT", today.plusDays(2), 10, 2);
+
+        mockMvc.perform(get("/api/v1/members")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .param("trainerId", String.valueOf(trainerUserId))
+                        .param("productId", String.valueOf(ptProductId))
+                        .param("dateFrom", today.plusDays(10).toString())
+                        .param("dateTo", today.plusDays(30).toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].memberId").value(matchingMemberId));
+    }
+
+    @Test
+    void trainerListAndDetailAreRestrictedToAssignedMembers() throws Exception {
+        long trainerUserId = ensureTrainerUser();
+        String trainerToken = loginAndGetAccessToken(TRAINER_LOGIN_ID, TRAINER_PASSWORD);
+        LocalDate today = LocalDate.now();
+
+        long productId = insertProductFixture("TRAINER-SCOPE-" + shortId(), "PT", "COUNT");
+        long visibleMemberId = insertMemberFixture("트레이너가보는회원-" + shortId());
+        insertMembershipFixture(visibleMemberId, productId, trainerUserId, "ACTIVE", "PT", "COUNT", today.plusDays(15), 10, 5);
+
+        long hiddenMemberId = insertMemberFixture("트레이너가못보는회원-" + shortId());
+        insertMembershipFixture(hiddenMemberId, productId, null, "ACTIVE", "PT", "COUNT", today.plusDays(15), 10, 5);
+
+        MvcResult trainerListResult = mockMvc.perform(get("/api/v1/members")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + trainerToken))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode trainerList = objectMapper.readTree(trainerListResult.getResponse().getContentAsString()).path("data");
+        findMember(trainerList, visibleMemberId);
+        assertMemberMissing(trainerList, hiddenMemberId);
+
+        MvcResult explicitTrainerFilterResult = mockMvc.perform(get("/api/v1/members")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + trainerToken)
+                        .param("trainerId", String.valueOf(trainerUserId)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode explicitTrainerList = objectMapper.readTree(explicitTrainerFilterResult.getResponse().getContentAsString()).path("data");
+        findMember(explicitTrainerList, visibleMemberId);
+        assertMemberMissing(explicitTrainerList, hiddenMemberId);
+
+        mockMvc.perform(get("/api/v1/members")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + trainerToken)
+                        .param("trainerId", String.valueOf(trainerUserId + 999)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("ACCESS_DENIED"));
+
+        mockMvc.perform(get("/api/v1/members/{memberId}", visibleMemberId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + trainerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.memberId").value(visibleMemberId));
+
+        mockMvc.perform(get("/api/v1/members/{memberId}", hiddenMemberId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + trainerToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("ACCESS_DENIED"));
+    }
+
+    @Test
     void representativeMembershipUsesMembershipIdTieBreakWhenExpiryDatesEqual() {
         LocalDate targetEndDate = LocalDate.now().plusDays(12);
         long durationProductId = insertProductFixture("SUMMARY-TIE-" + shortId(), "MEMBERSHIP", "DURATION");
@@ -276,6 +360,14 @@ class MemberSummaryApiIntegrationTest {
         throw new AssertionError("Member not found in response. memberId=" + memberId);
     }
 
+    private void assertMemberMissing(JsonNode data, long memberId) {
+        for (JsonNode item : data) {
+            if (item.path("memberId").asLong() == memberId) {
+                throw new AssertionError("Member should not be visible in response. memberId=" + memberId);
+            }
+        }
+    }
+
     private void ensureDeskUser() {
         int updated = jdbcClient.sql("""
                 UPDATE users
@@ -314,6 +406,57 @@ class MemberSummaryApiIntegrationTest {
                     .param("displayName", "Desk User")
                     .update();
         }
+    }
+
+    private long ensureTrainerUser() {
+        Integer existingUserId = jdbcClient.sql("""
+                SELECT user_id
+                FROM users
+                WHERE center_id = :centerId
+                  AND login_id = :loginId
+                  AND is_deleted = FALSE
+                """)
+                .param("centerId", CENTER_ID)
+                .param("loginId", TRAINER_LOGIN_ID)
+                .query(Integer.class)
+                .optional()
+                .orElse(null);
+
+        if (existingUserId != null) {
+            jdbcClient.sql("""
+                    UPDATE users
+                    SET password_hash = :passwordHash,
+                        display_name = :displayName,
+                        role_code = 'ROLE_TRAINER',
+                        user_status = 'ACTIVE',
+                        updated_at = CURRENT_TIMESTAMP,
+                        updated_by = 0
+                    WHERE user_id = :userId
+                    """)
+                    .param("passwordHash", passwordEncoder.encode(TRAINER_PASSWORD))
+                    .param("displayName", "Trainer User")
+                    .param("userId", existingUserId.longValue())
+                    .update();
+            return existingUserId.longValue();
+        }
+
+        return jdbcClient.sql("""
+                INSERT INTO users (
+                    center_id, login_id, password_hash, display_name, role_code, user_status,
+                    created_by, updated_by
+                )
+                VALUES (
+                    :centerId, :loginId, :passwordHash, :displayName, 'ROLE_TRAINER', 'ACTIVE',
+                    0, 0
+                )
+                RETURNING user_id
+                """)
+                .param("centerId", CENTER_ID)
+                .param("loginId", TRAINER_LOGIN_ID)
+                .param("passwordHash", passwordEncoder.encode(TRAINER_PASSWORD))
+                .param("displayName", "Trainer User")
+                .query(Long.class)
+                .single();
     }
 
     private String loginAndGetAccessToken(String loginId, String password) throws Exception {
@@ -398,6 +541,7 @@ class MemberSummaryApiIntegrationTest {
     private long insertMembershipFixture(
             long memberId,
             long productId,
+            Long assignedTrainerId,
             String membershipStatus,
             String category,
             String type,
@@ -407,7 +551,7 @@ class MemberSummaryApiIntegrationTest {
     ) {
         return jdbcClient.sql("""
                 INSERT INTO member_memberships (
-                    center_id, member_id, product_id, membership_status,
+                    center_id, member_id, product_id, assigned_trainer_id, membership_status,
                     product_name_snapshot, product_category_snapshot, product_type_snapshot,
                     price_amount_snapshot, purchased_at, start_date, end_date,
                     total_count, remaining_count, used_count,
@@ -415,7 +559,7 @@ class MemberSummaryApiIntegrationTest {
                     created_by, updated_by
                 )
                 VALUES (
-                    :centerId, :memberId, :productId, :membershipStatus,
+                    :centerId, :memberId, :productId, :assignedTrainerId, :membershipStatus,
                     :productNameSnapshot, :category, :type,
                     :priceAmountSnapshot, CURRENT_TIMESTAMP, CURRENT_DATE, :endDate,
                     :totalCount, :remainingCount, 0,
@@ -427,6 +571,7 @@ class MemberSummaryApiIntegrationTest {
                 .param("centerId", CENTER_ID)
                 .param("memberId", memberId)
                 .param("productId", productId)
+                .param("assignedTrainerId", assignedTrainerId)
                 .param("membershipStatus", membershipStatus)
                 .param("productNameSnapshot", "SNAP-" + shortId())
                 .param("category", category)
@@ -438,6 +583,19 @@ class MemberSummaryApiIntegrationTest {
                 .param("memo", "fixture")
                 .query(Long.class)
                 .single();
+    }
+
+    private long insertMembershipFixture(
+            long memberId,
+            long productId,
+            String membershipStatus,
+            String category,
+            String type,
+            LocalDate endDate,
+            Integer totalCount,
+            Integer remainingCount
+    ) {
+        return insertMembershipFixture(memberId, productId, null, membershipStatus, category, type, endDate, totalCount, remainingCount);
     }
 
     private String shortId() {

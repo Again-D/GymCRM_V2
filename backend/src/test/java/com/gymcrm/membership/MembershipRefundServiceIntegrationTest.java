@@ -68,6 +68,7 @@ class MembershipRefundServiceIntegrationTest {
         MembershipPurchaseService.PurchaseResult purchase = purchaseService.purchase(new MembershipPurchaseService.PurchaseRequest(
                 member.memberId(),
                 product.productId(),
+                null,
                 LocalDate.of(2026, 2, 1),
                 new BigDecimal("100000"),
                 "CARD",
@@ -113,6 +114,7 @@ class MembershipRefundServiceIntegrationTest {
         MembershipPurchaseService.PurchaseResult purchase = purchaseService.purchase(new MembershipPurchaseService.PurchaseRequest(
                 member.memberId(),
                 product.productId(),
+                null,
                 LocalDate.of(2026, 2, 1),
                 new BigDecimal("100000"),
                 "CASH",
@@ -146,6 +148,7 @@ class MembershipRefundServiceIntegrationTest {
         MembershipPurchaseService.PurchaseResult purchase = purchaseService.purchase(new MembershipPurchaseService.PurchaseRequest(
                 member.memberId(),
                 product.productId(),
+                null,
                 LocalDate.of(2026, 2, 1),
                 new BigDecimal("100000"),
                 "CASH",
@@ -182,6 +185,7 @@ class MembershipRefundServiceIntegrationTest {
         MembershipPurchaseService.PurchaseResult purchase = purchaseService.purchase(new MembershipPurchaseService.PurchaseRequest(
                 member.memberId(),
                 product.productId(),
+                null,
                 LocalDate.of(2026, 2, 1),
                 new BigDecimal("100000"),
                 "CASH",

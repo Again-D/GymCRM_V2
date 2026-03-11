@@ -16,6 +16,10 @@ export type MemberSummary = {
 export type MemberQueryFilters = {
   name: string;
   phone: string;
+  trainerId: string;
+  productId: string;
+  dateFrom: string;
+  dateTo: string;
 };
 
 type UseMembersQueryOptions = {
@@ -46,12 +50,28 @@ export function useMembersQuery({ getDefaultFilters, formatError }: UseMembersQu
       const defaults = getDefaultFiltersRef.current();
       const name = filters?.name ?? defaults.name;
       const phone = filters?.phone ?? defaults.phone;
+      const trainerId = filters?.trainerId ?? defaults.trainerId;
+      const productId = filters?.productId ?? defaults.productId;
+      const dateFrom = filters?.dateFrom ?? defaults.dateFrom;
+      const dateTo = filters?.dateTo ?? defaults.dateTo;
       const params = new URLSearchParams();
       if (name.trim()) {
         params.set("name", name.trim());
       }
       if (phone.trim()) {
         params.set("phone", phone.trim());
+      }
+      if (trainerId.trim()) {
+        params.set("trainerId", trainerId.trim());
+      }
+      if (productId.trim()) {
+        params.set("productId", productId.trim());
+      }
+      if (dateFrom.trim()) {
+        params.set("dateFrom", dateFrom.trim());
+      }
+      if (dateTo.trim()) {
+        params.set("dateTo", dateTo.trim());
       }
       const query = params.toString();
       const response = await apiGet<MemberSummary[]>(`/api/v1/members${query ? `?${query}` : ""}`);

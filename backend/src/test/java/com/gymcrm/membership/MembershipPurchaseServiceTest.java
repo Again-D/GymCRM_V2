@@ -1,5 +1,6 @@
 package com.gymcrm.membership;
 
+import com.gymcrm.auth.AuthUserRepository;
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
@@ -23,6 +24,7 @@ class MembershipPurchaseServiceTest {
     private final MembershipPurchaseService service = new MembershipPurchaseService(
             mock(MemberService.class),
             mock(ProductService.class),
+            mock(AuthUserRepository.class),
             mock(MemberMembershipRepository.class),
             mock(PaymentRepository.class),
             mock(CurrentUserProvider.class)

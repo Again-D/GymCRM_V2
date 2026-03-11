@@ -1,5 +1,7 @@
 package com.gymcrm.member;
 
+import com.gymcrm.auth.AuthUser;
+import com.gymcrm.auth.AuthUserRepository;
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
@@ -19,17 +21,20 @@ public class MemberService {
     private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Seoul");
 
     private final MemberRepository memberRepository;
+    private final AuthUserRepository authUserRepository;
     private final CurrentUserProvider currentUserProvider;
     private final PiiEncryptionService piiEncryptionService;
     private final int piiKeyVersion;
 
     public MemberService(
             MemberRepository memberRepository,
+            AuthUserRepository authUserRepository,
             CurrentUserProvider currentUserProvider,
             PiiEncryptionService piiEncryptionService,
             @Value("${app.security.pii.key-version:1}") int piiKeyVersion
     ) {
         this.memberRepository = memberRepository;
+        this.authUserRepository = authUserRepository;
         this.currentUserProvider = currentUserProvider;
         this.piiEncryptionService = piiEncryptionService;
         this.piiKeyVersion = piiKeyVersion;
@@ -71,9 +76,30 @@ public class MemberService {
     }
 
     @Transactional(readOnly = true)
-    public List<MemberSummary> list(String keyword, String memberCodeKeyword, String nameKeyword, String phoneKeyword) {
+    public List<MemberSummary> list(
+            String keyword,
+            String memberCodeKeyword,
+            String nameKeyword,
+            String phoneKeyword,
+            Long trainerId,
+            Long productId,
+            LocalDate dateFrom,
+            LocalDate dateTo
+    ) {
         LocalDate businessDate = LocalDate.now(BUSINESS_ZONE);
-        return memberRepository.findAllSummaries(DEFAULT_CENTER_ID, keyword, memberCodeKeyword, nameKeyword, phoneKeyword, businessDate).stream()
+        Long effectiveTrainerId = resolveTrainerScopedFilter(trainerId);
+        return memberRepository.findAllSummaries(
+                        DEFAULT_CENTER_ID,
+                        keyword,
+                        memberCodeKeyword,
+                        nameKeyword,
+                        phoneKeyword,
+                        effectiveTrainerId,
+                        productId,
+                        dateFrom,
+                        dateTo,
+                        businessDate
+                ).stream()
                 .map(summary -> new MemberSummary(
                         summary.memberId(),
                         summary.centerId(),
@@ -91,6 +117,7 @@ public class MemberService {
 
     @Transactional(readOnly = true)
     public Member get(Long memberId) {
+        guardTrainerMemberAccess(memberId);
         return memberRepository.findById(memberId)
                 .map(this::resolvePii)
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "회원을 찾을 수 없습니다. memberId=" + memberId));
@@ -217,6 +244,37 @@ public class MemberService {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private Long resolveTrainerScopedFilter(Long requestedTrainerId) {
+        AuthUser actor = currentActorOrNull();
+        if (actor == null || !"ROLE_TRAINER".equals(actor.roleCode())) {
+            return requestedTrainerId;
+        }
+        if (requestedTrainerId != null && !requestedTrainerId.equals(actor.userId())) {
+            throw new ApiException(ErrorCode.ACCESS_DENIED, "트레이너는 본인 담당 회원만 조회할 수 있습니다.");
+        }
+        return actor.userId();
+    }
+
+    private void guardTrainerMemberAccess(Long memberId) {
+        AuthUser actor = currentActorOrNull();
+        if (actor == null || !"ROLE_TRAINER".equals(actor.roleCode())) {
+            return;
+        }
+        boolean visible = memberRepository.existsActiveTrainerScopedMembership(actor.centerId(), memberId, actor.userId());
+        if (!visible) {
+            throw new ApiException(ErrorCode.ACCESS_DENIED, "트레이너는 본인 담당 회원만 조회할 수 있습니다.");
+        }
+    }
+
+    private AuthUser currentActorOrNull() {
+        try {
+            Long userId = currentUserProvider.currentUserId();
+            return authUserRepository.findActiveById(userId).orElse(null);
+        } catch (IllegalStateException ex) {
+            return null;
+        }
     }
 
     public record MemberCreateRequest(

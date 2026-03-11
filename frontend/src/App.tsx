@@ -58,7 +58,9 @@ import {
   type ReservationRecord,
   useReservationWorkspaceState
 } from "./features/reservations/useReservationWorkspaceState";
+import { isMembershipReservableOn } from "./features/reservations/reservableMemberships";
 import { useReservationSchedulesQuery } from "./features/reservations/useReservationSchedulesQuery";
+import { useReservationTargetsQuery } from "./features/reservations/useReservationTargetsQuery";
 import { SettlementsSection } from "./features/settlements/SettlementsSection";
 import {
   type SettlementReportFilters,
@@ -67,6 +69,7 @@ import {
 import { useSettlementReportQuery } from "./features/settlements/useSettlementReportQuery";
 import { ApiClientError, apiGet, apiPatch, apiPost } from "./shared/api/client";
 import { type AuthTokenResponse, type AuthUserSession, type SecurityMode, useAuthSession } from "./shared/hooks/useAuthSession";
+import { useMembershipDateFilter } from "./shared/hooks/useMembershipDateFilter";
 import {
   useAccessWorkspaceLoader,
   useCrmWorkspaceLoader,
@@ -108,6 +111,13 @@ type MemberDetail = {
   memo: string | null;
 };
 
+type TrainerSummary = {
+  userId: number;
+  centerId: number;
+  loginId: string;
+  displayName: string;
+};
+
 const LazyMembershipOperationsPanels = lazy(async () => ({
   default: (await import("./features/memberships/MembershipOperationsPanels")).MembershipOperationsPanels
 }));
@@ -135,6 +145,7 @@ type PurchasedMembership = {
   centerId: number;
   memberId: number;
   productId: number;
+  assignedTrainerId: number | null;
   membershipStatus: "ACTIVE" | "HOLDING" | "REFUNDED" | "EXPIRED";
   productNameSnapshot: string;
   productCategorySnapshot: "MEMBERSHIP" | "PT" | "GX" | "ETC";
@@ -480,11 +491,22 @@ function buildResumePreview(membership: PurchasedMembership, draft: MembershipAc
 export default function App() {
   const [activeNavSection, setActiveNavSection] = useState<NavSectionKey>("dashboard");
   const { themePreference, setThemePreference, resolvedTheme } = useThemePreference();
+  const membershipDateFilter = useMembershipDateFilter();
+  const {
+    dateFilter: memberDateFilter,
+    applyPreset: applyMemberDatePreset,
+    setDateFrom: setMemberDateFrom,
+    setDateTo: setMemberDateTo,
+    reset: resetMemberDateFilter
+  } = membershipDateFilter;
   const [loginIdInput, setLoginIdInput] = useState("center-admin");
   const [loginPasswordInput, setLoginPasswordInput] = useState("dev-admin-1234!");
 
   const [memberSearchName, setMemberSearchName] = useState("");
   const [memberSearchPhone, setMemberSearchPhone] = useState("");
+  const [memberTrainerFilter, setMemberTrainerFilter] = useState("");
+  const [memberProductFilter, setMemberProductFilter] = useState("");
+  const [trainerOptions, setTrainerOptions] = useState<TrainerSummary[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
   const [selectedMember, setSelectedMember] = useState<MemberDetail | null>(null);
   const [memberForm, setMemberForm] = useState<MemberFormState>(EMPTY_MEMBER_FORM);
@@ -652,7 +674,14 @@ export default function App() {
     setProductFormError
   } = productWorkspace;
   const { members, setMembers, membersLoading, membersQueryError, loadMembers: runMembersQuery, resetMembersQuery } = useMembersQuery({
-    getDefaultFilters: () => ({ name: memberSearchName, phone: memberSearchPhone }),
+    getDefaultFilters: () => ({
+      name: memberSearchName,
+      phone: memberSearchPhone,
+      trainerId: memberTrainerFilter,
+      productId: memberProductFilter,
+      dateFrom: memberDateFilter.dateFrom,
+      dateTo: memberDateFilter.dateTo
+    }),
     formatError: errorMessage
   });
   const {
@@ -673,6 +702,17 @@ export default function App() {
     loadReservationSchedules,
     resetReservationSchedulesQuery
   } = useReservationSchedulesQuery({
+    formatError: errorMessage
+  });
+  const {
+    reservationTargets,
+    reservationTargetsKeyword,
+    setReservationTargetsKeyword,
+    reservationTargetsLoading,
+    reservationTargetsError,
+    loadReservationTargets,
+    resetReservationTargetsQuery
+  } = useReservationTargetsQuery({
     formatError: errorMessage
   });
   const {
@@ -711,12 +751,17 @@ export default function App() {
     setMemberFormError(null);
     setMemberSearchName("");
     setMemberSearchPhone("");
+    setMemberTrainerFilter("");
+    setMemberProductFilter("");
+    resetMemberDateFilter();
+    setTrainerOptions([]);
     membershipWorkspace.resetMembershipWorkspace();
     setPurchaseProductDetail(null);
     setMemberMembershipsByMemberId({});
     setMemberPaymentsByMemberId({});
     reservationWorkspace.resetReservationWorkspace();
     resetReservationSchedulesQuery();
+    resetReservationTargetsQuery();
     accessWorkspace.resetAccessWorkspace();
     resetAccessQueries();
     lockerWorkspace.resetLockerWorkspace();
@@ -754,21 +799,42 @@ export default function App() {
     [products]
   );
   const effectiveMemberPanelError = memberPanelError ?? membersQueryError;
-  const effectiveReservationPanelError = reservationPanelError ?? reservationSchedulesError;
+  const effectiveReservationPanelError = reservationPanelError ?? reservationTargetsError ?? reservationSchedulesError;
   const effectiveAccessPanelError = accessPanelError ?? accessQueryError;
   const effectiveLockerPanelError = lockerPanelError ?? lockerQueryError;
   const effectiveSettlementPanelMessage = settlementPanelMessage ?? settlementReportMessage;
   const effectiveSettlementPanelError = settlementPanelError ?? settlementReportError;
   const effectiveCrmPanelError = crmPanelError ?? crmHistoryError;
   const effectiveProductPanelError = productPanelError ?? productsQueryError;
+  const memberTrainerOptions =
+    authUser?.roleCode === "ROLE_TRAINER"
+      ? [{ userId: authUser.userId, centerId: authUser.centerId, loginId: authUser.loginId, displayName: authUser.displayName }]
+      : trainerOptions;
   const purchasePreview = useMemo(
     () => buildPurchasePreview(purchaseProductDetail, purchaseForm),
     [purchaseProductDetail, purchaseForm]
   );
 
-  async function loadMembers(filters?: { name?: string; phone?: string }) {
+  async function loadMembers(filters?: {
+    name?: string;
+    phone?: string;
+    trainerId?: string;
+    productId?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  }) {
     setMemberPanelError(null);
     await runMembersQuery(filters);
+  }
+
+  async function loadTrainerOptions() {
+    try {
+      const response = await apiGet<TrainerSummary[]>("/api/v1/auth/trainers");
+      setTrainerOptions(response.data);
+    } catch (error) {
+      setTrainerOptions([]);
+      setMemberPanelError(errorMessage(error));
+    }
   }
 
   async function loadProducts(filters?: ProductFilters) {
@@ -801,6 +867,15 @@ export default function App() {
     return workspaceMemberSearch.load(keyword);
   }
 
+  async function loadMemberMemberships(memberId: number) {
+    const response = await apiGet<PurchasedMembership[]>(`/api/v1/members/${memberId}/memberships`);
+    setMemberMembershipsByMemberId((prev) => ({
+      ...prev,
+      [memberId]: response.data
+    }));
+    return response.data;
+  }
+
   function invalidateWorkspaceMemberSearchCache() {
     workspaceMemberSearch.invalidate();
   }
@@ -817,6 +892,7 @@ export default function App() {
         return false;
       }
       setSelectedMember(response.data);
+      await loadMemberMemberships(memberId);
       if (options?.syncForm !== false) {
         setMemberForm(memberFormFromDetail(response.data));
         setMemberFormMode("edit");
@@ -932,8 +1008,24 @@ export default function App() {
     }
     void loadMembers();
     void loadProducts();
+    void loadTrainerOptions();
     void loadReservationSchedules();
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated || activeNavSection !== "reservations") {
+      return;
+    }
+    void loadReservationTargets();
+  }, [isAuthenticated, activeNavSection]);
+
+  useEffect(() => {
+    if (authUser?.roleCode === "ROLE_TRAINER") {
+      setMemberTrainerFilter(String(authUser.userId));
+      return;
+    }
+    setMemberTrainerFilter("");
+  }, [authUser]);
 
   useEffect(() => {
     if (activeNavSection !== "members") {
@@ -1626,10 +1718,9 @@ export default function App() {
   const selectedMemberMemberships = selectedMember ? (memberMembershipsByMemberId[selectedMember.memberId] ?? []) : [];
   const selectedMemberPayments = selectedMember ? (memberPaymentsByMemberId[selectedMember.memberId] ?? []) : [];
   const selectedMemberReservations = selectedMember ? (reservationRowsByMemberId[selectedMember.memberId] ?? []) : [];
+  const reservationBusinessDateText = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
   const reservableMemberships = selectedMemberMemberships.filter(
-    (membership) =>
-      membership.membershipStatus === "ACTIVE" &&
-      (membership.productTypeSnapshot !== "COUNT" || (membership.remainingCount ?? 0) > 0)
+    (membership) => isMembershipReservableOn(membership, reservationBusinessDateText)
   );
   const isDeskRole = authUser?.roleCode === "ROLE_DESK";
   const canManageProducts = !isJwtMode || authUser?.roleCode === "ROLE_CENTER_ADMIN";
@@ -1795,13 +1886,32 @@ export default function App() {
             </MembershipsSection>
           ) : activeNavSection === "reservations" ? (
             <ReservationsSection
-              selectedMember={selectedMember ? { memberId: selectedMember.memberId, memberName: selectedMember.memberName } : null}
+              selectedMember={
+                selectedMember
+                  ? {
+                      memberId: selectedMember.memberId,
+                      memberName: selectedMember.memberName,
+                      phone: selectedMember.phone,
+                      memberStatus: selectedMember.memberStatus,
+                      membershipExpiryDate:
+                        reservationTargets.find((target) => target.memberId === selectedMember.memberId)?.membershipExpiryDate ?? null
+                    }
+                  : null
+              }
+              reservationTargets={reservationTargets}
+              reservationTargetsLoading={reservationTargetsLoading}
+              reservationTargetsKeyword={reservationTargetsKeyword}
+              onReservationTargetsKeywordChange={setReservationTargetsKeyword}
+              onReservationTargetsSearch={() => void loadReservationTargets()}
+              onSelectReservationTarget={(memberId) => {
+                void loadMemberDetail(memberId, { syncForm: false });
+              }}
               selectedMemberReservationsCount={selectedMemberReservations.length}
               reservableMembershipsCount={reservableMemberships.length}
+              reservableMemberships={reservableMemberships}
+              selectedMemberReservations={selectedMemberReservations}
               reservationPanelMessage={reservationPanelMessage}
               reservationPanelError={effectiveReservationPanelError}
-              loadWorkspaceMembers={loadWorkspaceMembers}
-              onSelectWorkspaceMember={(memberId) => loadMemberDetail(memberId, { syncForm: false })}
               onGoMembers={() => setActiveNavSection("members")}
             >
               <Suspense fallback={<WorkspacePanelFallback />}>
@@ -1912,6 +2022,17 @@ export default function App() {
             setMemberSearchName={setMemberSearchName}
             memberSearchPhone={memberSearchPhone}
             setMemberSearchPhone={setMemberSearchPhone}
+            memberTrainerFilter={memberTrainerFilter}
+            setMemberTrainerFilter={setMemberTrainerFilter}
+            memberProductFilter={memberProductFilter}
+            setMemberProductFilter={setMemberProductFilter}
+            memberDateFilter={memberDateFilter}
+            applyMemberDatePreset={applyMemberDatePreset}
+            setMemberDateFrom={setMemberDateFrom}
+            setMemberDateTo={setMemberDateTo}
+            trainerOptions={memberTrainerOptions}
+            productOptions={products}
+            trainerFilterDisabled={authUser?.roleCode === "ROLE_TRAINER"}
             loadMembers={loadMembers}
             membersLoading={membersLoading}
             memberPanelMessage={memberPanelMessage}

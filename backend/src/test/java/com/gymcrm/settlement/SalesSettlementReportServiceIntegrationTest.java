@@ -56,6 +56,7 @@ class SalesSettlementReportServiceIntegrationTest {
         MembershipPurchaseService.PurchaseResult purchase1 = purchaseService.purchase(new MembershipPurchaseService.PurchaseRequest(
                 member1.memberId(),
                 productCard.productId(),
+                null,
                 LocalDate.now(),
                 null,
                 "CARD",
@@ -77,6 +78,7 @@ class SalesSettlementReportServiceIntegrationTest {
         purchaseService.purchase(new MembershipPurchaseService.PurchaseRequest(
                 member2.memberId(),
                 productCash.productId(),
+                null,
                 LocalDate.now(),
                 null,
                 "CASH",

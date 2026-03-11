@@ -8,6 +8,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -28,6 +29,15 @@ public class MembershipPurchaseController {
         this.membershipPurchaseService = membershipPurchaseService;
     }
 
+    @GetMapping
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER)
+    public ApiResponse<java.util.List<MembershipResponse>> list(@PathVariable Long memberId) {
+        return ApiResponse.success(
+                membershipPurchaseService.listMemberships(memberId).stream().map(MembershipResponse::from).toList(),
+                "회원권 목록 조회 성공"
+        );
+    }
+
     @PostMapping
     @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
     public ApiResponse<PurchaseMembershipResponse> purchase(
@@ -38,6 +48,7 @@ public class MembershipPurchaseController {
                 new MembershipPurchaseService.PurchaseRequest(
                         memberId,
                         request.productId(),
+                        request.assignedTrainerId(),
                         request.startDate(),
                         request.paidAmount(),
                         request.paymentMethod(),
@@ -52,6 +63,7 @@ public class MembershipPurchaseController {
     public record PurchaseMembershipRequest(
             @NotNull(message = "productId is required")
             Long productId,
+            Long assignedTrainerId,
             LocalDate startDate,
             @DecimalMin(value = "0", inclusive = true, message = "paidAmount must be >= 0")
             BigDecimal paidAmount,
@@ -80,6 +92,7 @@ public class MembershipPurchaseController {
             Long centerId,
             Long memberId,
             Long productId,
+            Long assignedTrainerId,
             String membershipStatus,
             String productNameSnapshot,
             String productCategorySnapshot,
@@ -101,6 +114,7 @@ public class MembershipPurchaseController {
                     membership.centerId(),
                     membership.memberId(),
                     membership.productId(),
+                    membership.assignedTrainerId(),
                     membership.membershipStatus(),
                     membership.productNameSnapshot(),
                     membership.productCategorySnapshot(),

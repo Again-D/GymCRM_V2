@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.OffsetDateTime;
 import java.util.Arrays;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -86,6 +87,15 @@ public class AuthController {
     public ApiResponse<AuthMeResponse> me() {
         AuthService.UserSession session = authService.me(currentUserProvider.currentUserId());
         return ApiResponse.success(AuthMeResponse.from(session), "현재 사용자 정보입니다.");
+    }
+
+    @GetMapping("/trainers")
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER)
+    public ApiResponse<List<TrainerSummaryResponse>> trainers() {
+        List<TrainerSummaryResponse> items = authService.listActiveTrainers(currentUserProvider.currentCenterId()).stream()
+                .map(TrainerSummaryResponse::from)
+                .toList();
+        return ApiResponse.success(items, "트레이너 목록 조회 성공");
     }
 
     @PostMapping("/users/{userId}/revoke-access")
@@ -175,6 +185,17 @@ public class AuthController {
             OffsetDateTime accessRevokedAfter,
             int revokedRefreshTokenCount
     ) {}
+
+    public record TrainerSummaryResponse(
+            Long userId,
+            Long centerId,
+            String loginId,
+            String displayName
+    ) {
+        static TrainerSummaryResponse from(AuthUser user) {
+            return new TrainerSummaryResponse(user.userId(), user.centerId(), user.loginId(), user.displayName());
+        }
+    }
 
     public record UpdateUserRoleRequest(
             @jakarta.validation.constraints.Pattern(

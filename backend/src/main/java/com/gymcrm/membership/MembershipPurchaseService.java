@@ -1,5 +1,7 @@
 package com.gymcrm.membership;
 
+import com.gymcrm.auth.AuthUser;
+import com.gymcrm.auth.AuthUserRepository;
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
@@ -15,6 +17,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Set;
 
 @Service
@@ -23,6 +26,7 @@ public class MembershipPurchaseService {
 
     private final MemberService memberService;
     private final ProductService productService;
+    private final AuthUserRepository authUserRepository;
     private final MemberMembershipRepository memberMembershipRepository;
     private final PaymentRepository paymentRepository;
     private final CurrentUserProvider currentUserProvider;
@@ -30,12 +34,14 @@ public class MembershipPurchaseService {
     public MembershipPurchaseService(
             MemberService memberService,
             ProductService productService,
+            AuthUserRepository authUserRepository,
             MemberMembershipRepository memberMembershipRepository,
             PaymentRepository paymentRepository,
             CurrentUserProvider currentUserProvider
     ) {
         this.memberService = memberService;
         this.productService = productService;
+        this.authUserRepository = authUserRepository;
         this.memberMembershipRepository = memberMembershipRepository;
         this.paymentRepository = paymentRepository;
         this.currentUserProvider = currentUserProvider;
@@ -53,6 +59,7 @@ public class MembershipPurchaseService {
         Member member = memberService.get(request.memberId());
         Product product = productService.get(request.productId());
         validatePurchaseEligibility(member, product);
+        Long assignedTrainerId = validateAssignedTrainer(member.centerId(), request.assignedTrainerId());
 
         PurchaseCalculation calculation = calculatePurchase(product, request.startDate());
         String paymentMethod = normalizePaymentMethod(request.paymentMethod());
@@ -65,6 +72,7 @@ public class MembershipPurchaseService {
                     member.centerId(),
                     member.memberId(),
                     product.productId(),
+                    assignedTrainerId,
                     MembershipStatus.ACTIVE.name(),
                     product.productName(),
                     product.productCategory(),
@@ -100,6 +108,19 @@ public class MembershipPurchaseService {
         } catch (DataAccessException ex) {
             throw mapDataAccessException(ex);
         }
+    }
+
+    @Transactional(readOnly = true)
+    public List<MemberMembership> listMemberships(Long memberId) {
+        if (memberId == null) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "memberId is required");
+        }
+        Member member = memberService.get(memberId);
+        return memberMembershipRepository.findVisibleByMemberId(
+                member.centerId(),
+                member.memberId(),
+                resolveTrainerScopedActorId()
+        );
     }
 
     PurchaseCalculation calculatePurchase(Product product, LocalDate requestedStartDate) {
@@ -139,6 +160,34 @@ public class MembershipPurchaseService {
         }
     }
 
+    private Long validateAssignedTrainer(Long centerId, Long assignedTrainerId) {
+        if (assignedTrainerId == null) {
+            return null;
+        }
+
+        AuthUser trainer = authUserRepository.findActiveByCenterAndUserId(centerId, assignedTrainerId)
+                .filter(AuthUser::isActive)
+                .orElseThrow(() -> new ApiException(ErrorCode.BUSINESS_RULE, "담당 트레이너를 찾을 수 없습니다."));
+
+        if (!"ROLE_TRAINER".equals(trainer.roleCode())) {
+            throw new ApiException(ErrorCode.BUSINESS_RULE, "담당 트레이너는 ROLE_TRAINER 사용자여야 합니다.");
+        }
+
+        return trainer.userId();
+    }
+
+    private Long resolveTrainerScopedActorId() {
+        try {
+            return authUserRepository.findActiveById(currentUserProvider.currentUserId())
+                    .filter(AuthUser::isActive)
+                    .filter(user -> "ROLE_TRAINER".equals(user.roleCode()))
+                    .map(AuthUser::userId)
+                    .orElse(null);
+        } catch (IllegalStateException ex) {
+            return null;
+        }
+    }
+
     private String normalizePaymentMethod(String paymentMethod) {
         String normalized = paymentMethod == null || paymentMethod.isBlank() ? "CASH" : paymentMethod.trim().toUpperCase();
         if (!PAYMENT_METHODS.contains(normalized)) {
@@ -170,6 +219,7 @@ public class MembershipPurchaseService {
     public record PurchaseRequest(
             Long memberId,
             Long productId,
+            Long assignedTrainerId,
             LocalDate startDate,
             BigDecimal paidAmount,
             String paymentMethod,

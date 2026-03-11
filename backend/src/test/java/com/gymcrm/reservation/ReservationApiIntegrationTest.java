@@ -17,6 +17,8 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -37,6 +39,8 @@ class ReservationApiIntegrationTest {
     private static final long CENTER_ID = 1L;
     private static final String DESK_LOGIN_ID = "desk-user";
     private static final String DESK_PASSWORD = "desk-user-1234!";
+    private static final String TRAINER_LOGIN_ID = "trainer-user";
+    private static final String TRAINER_PASSWORD = "trainer-user-1234!";
 
     @Autowired
     private MockMvc mockMvc;
@@ -216,6 +220,89 @@ class ReservationApiIntegrationTest {
     }
 
     @Test
+    void trainerRoleOnlySeesAssignedReservationTargetsAndCannotCreateForOthers() throws Exception {
+        ensureTrainerUser();
+        String trainerToken = loginAndGetAccessToken(TRAINER_LOGIN_ID, TRAINER_PASSWORD);
+
+        long trainerUserId = jdbcClient.sql("""
+                SELECT user_id
+                FROM users
+                WHERE center_id = :centerId
+                  AND login_id = :loginId
+                  AND is_deleted = FALSE
+                """)
+                .param("centerId", CENTER_ID)
+                .param("loginId", TRAINER_LOGIN_ID)
+                .query(Long.class)
+                .single();
+
+        long assignedMemberId = insertMemberFixture("P10트레이너회원");
+        long assignedProductId = insertProductFixture("PT", "COUNT");
+        long assignedMembershipId = insertMembershipFixture(
+                CENTER_ID,
+                assignedMemberId,
+                assignedProductId,
+                "PT",
+                "COUNT",
+                5,
+                5,
+                0,
+                trainerUserId
+        );
+        TrainerSchedule assignedSchedule = createFutureSchedule("PT", 2);
+        long assignedReservationId = jsonLong(mockMvc.perform(post("/api/v1/reservations")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + trainerToken)
+                        .contentType("application/json")
+                        .content("""
+                                {"memberId": %d, "membershipId": %d, "scheduleId": %d}
+                                """.formatted(assignedMemberId, assignedMembershipId, assignedSchedule.scheduleId())))
+                .andExpect(status().isOk())
+                .andReturn(), "/data/reservationId");
+
+        long otherMemberId = insertMemberFixture("P10비담당회원");
+        long otherProductId = insertProductFixture("PT", "COUNT");
+        long otherMembershipId = insertMembershipFixture(
+                CENTER_ID,
+                otherMemberId,
+                otherProductId,
+                "PT",
+                "COUNT",
+                5,
+                5,
+                0,
+                null
+        );
+        TrainerSchedule otherSchedule = createFutureSchedule("PT", 4);
+
+        mockMvc.perform(get("/api/v1/reservations/targets")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + trainerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[*].memberId", hasItem((int) assignedMemberId)))
+                .andExpect(jsonPath("$.data[*].memberId", not(hasItem((int) otherMemberId))));
+
+        mockMvc.perform(get("/api/v1/reservations")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + trainerToken)
+                        .param("memberId", String.valueOf(assignedMemberId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].reservationId").value(assignedReservationId));
+
+        mockMvc.perform(get("/api/v1/reservations")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + trainerToken)
+                        .param("memberId", String.valueOf(otherMemberId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(0));
+
+        mockMvc.perform(post("/api/v1/reservations")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + trainerToken)
+                        .contentType("application/json")
+                        .content("""
+                                {"memberId": %d, "membershipId": %d, "scheduleId": %d}
+                                """.formatted(otherMemberId, otherMembershipId, otherSchedule.scheduleId())))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("ACCESS_DENIED"));
+    }
+
+    @Test
     void deskRoleCannotReadOrMutateReservationFromAnotherCenter() throws Exception {
         ensureDeskUser();
         String deskToken = loginAndGetAccessToken(DESK_LOGIN_ID, DESK_PASSWORD);
@@ -283,6 +370,47 @@ class ReservationApiIntegrationTest {
                 .param("loginId", DESK_LOGIN_ID)
                 .param("passwordHash", passwordEncoder.encode(DESK_PASSWORD))
                 .param("displayName", "Desk User")
+                .update();
+    }
+
+    private void ensureTrainerUser() {
+        int updated = jdbcClient.sql("""
+                UPDATE users
+                SET password_hash = :passwordHash,
+                    display_name = :displayName,
+                    role_code = 'ROLE_TRAINER',
+                    user_status = 'ACTIVE',
+                    is_deleted = FALSE,
+                    deleted_at = NULL,
+                    deleted_by = NULL,
+                    updated_at = CURRENT_TIMESTAMP,
+                    updated_by = 0
+                WHERE center_id = :centerId
+                  AND login_id = :loginId
+                """)
+                .param("centerId", CENTER_ID)
+                .param("loginId", TRAINER_LOGIN_ID)
+                .param("passwordHash", passwordEncoder.encode(TRAINER_PASSWORD))
+                .param("displayName", "Trainer User")
+                .update();
+        if (updated > 0) {
+            return;
+        }
+
+        jdbcClient.sql("""
+                INSERT INTO users (
+                    center_id, login_id, password_hash, display_name, role_code, user_status,
+                    created_by, updated_by
+                )
+                VALUES (
+                    :centerId, :loginId, :passwordHash, :displayName, 'ROLE_TRAINER', 'ACTIVE',
+                    0, 0
+                )
+                """)
+                .param("centerId", CENTER_ID)
+                .param("loginId", TRAINER_LOGIN_ID)
+                .param("passwordHash", passwordEncoder.encode(TRAINER_PASSWORD))
+                .param("displayName", "Trainer User")
                 .update();
     }
 
@@ -393,11 +521,12 @@ class ReservationApiIntegrationTest {
             String productType,
             Integer totalCount,
             Integer remainingCount,
-            int usedCount
+            int usedCount,
+            Long assignedTrainerId
     ) {
         return jdbcClient.sql("""
                 INSERT INTO member_memberships (
-                    center_id, member_id, product_id, membership_status,
+                    center_id, member_id, product_id, assigned_trainer_id, membership_status,
                     product_name_snapshot, product_category_snapshot, product_type_snapshot,
                     price_amount_snapshot, purchased_at, start_date, end_date,
                     total_count, remaining_count, used_count,
@@ -405,7 +534,7 @@ class ReservationApiIntegrationTest {
                     created_by, updated_by
                 )
                 VALUES (
-                    :centerId, :memberId, :productId, 'ACTIVE',
+                    :centerId, :memberId, :productId, :assignedTrainerId, 'ACTIVE',
                     :productNameSnapshot, :productCategorySnapshot, :productTypeSnapshot,
                     :priceAmountSnapshot, CURRENT_TIMESTAMP, CURRENT_DATE, CURRENT_DATE + INTERVAL '30 days',
                     :totalCount, :remainingCount, :usedCount,
@@ -417,6 +546,7 @@ class ReservationApiIntegrationTest {
                 .param("centerId", centerId)
                 .param("memberId", memberId)
                 .param("productId", productId)
+                .param("assignedTrainerId", assignedTrainerId)
                 .param("productNameSnapshot", "P7API회원권")
                 .param("productCategorySnapshot", productCategory)
                 .param("productTypeSnapshot", productType)
@@ -429,6 +559,7 @@ class ReservationApiIntegrationTest {
     }
 
     private long insertMembershipFixture(
+            long centerId,
             long memberId,
             long productId,
             String productCategory,
@@ -437,7 +568,29 @@ class ReservationApiIntegrationTest {
             Integer remainingCount,
             int usedCount
     ) {
-        return insertMembershipFixture(CENTER_ID, memberId, productId, productCategory, productType, totalCount, remainingCount, usedCount);
+        return insertMembershipFixture(
+                centerId,
+                memberId,
+                productId,
+                productCategory,
+                productType,
+                totalCount,
+                remainingCount,
+                usedCount,
+                null
+        );
+    }
+
+    private long insertMembershipFixture(
+            long memberId,
+            long productId,
+            String productCategory,
+            String productType,
+            Integer totalCount,
+            Integer remainingCount,
+            int usedCount
+    ) {
+        return insertMembershipFixture(CENTER_ID, memberId, productId, productCategory, productType, totalCount, remainingCount, usedCount, null);
     }
 
     private long insertCenterFixture() {

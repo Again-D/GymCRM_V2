@@ -9,6 +9,7 @@ public record MemberMembership(
         Long centerId,
         Long memberId,
         Long productId,
+        Long assignedTrainerId,
         String membershipStatus,
         String productNameSnapshot,
         String productCategorySnapshot,

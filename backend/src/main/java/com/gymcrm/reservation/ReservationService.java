@@ -1,5 +1,7 @@
 package com.gymcrm.reservation;
 
+import com.gymcrm.auth.AuthUser;
+import com.gymcrm.auth.AuthUserRepository;
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
@@ -12,6 +14,7 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -22,9 +25,11 @@ public class ReservationService {
     private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Seoul");
 
     private final MemberService memberService;
+    private final AuthUserRepository authUserRepository;
     private final MemberMembershipRepository memberMembershipRepository;
     private final TrainerScheduleRepository trainerScheduleRepository;
     private final ReservationRepository reservationRepository;
+    private final ReservationQueryRepository reservationQueryRepository;
     private final ReservationLockService reservationLockService;
     private final ReservationStatusTransitionService reservationStatusTransitionService;
     private final CurrentUserProvider currentUserProvider;
@@ -32,18 +37,22 @@ public class ReservationService {
 
     public ReservationService(
             MemberService memberService,
+            AuthUserRepository authUserRepository,
             MemberMembershipRepository memberMembershipRepository,
             TrainerScheduleRepository trainerScheduleRepository,
             ReservationRepository reservationRepository,
+            ReservationQueryRepository reservationQueryRepository,
             ReservationLockService reservationLockService,
             ReservationStatusTransitionService reservationStatusTransitionService,
             CurrentUserProvider currentUserProvider,
             MembershipUsageEventRepository membershipUsageEventRepository
     ) {
         this.memberService = memberService;
+        this.authUserRepository = authUserRepository;
         this.memberMembershipRepository = memberMembershipRepository;
         this.trainerScheduleRepository = trainerScheduleRepository;
         this.reservationRepository = reservationRepository;
+        this.reservationQueryRepository = reservationQueryRepository;
         this.reservationLockService = reservationLockService;
         this.reservationStatusTransitionService = reservationStatusTransitionService;
         this.currentUserProvider = currentUserProvider;
@@ -59,6 +68,7 @@ public class ReservationService {
         MemberMembership membership = getMembership(request.membershipId());
         TrainerSchedule schedule = getSchedule(request.scheduleId());
         validateCreateEligibility(member, membership, schedule, actorCenterId);
+        guardTrainerMembershipAccess(membership);
 
         Long actorUserId = currentUserProvider.currentUserId();
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
@@ -96,6 +106,7 @@ public class ReservationService {
     @Transactional(readOnly = true)
     public List<Reservation> list(Long memberId, Long scheduleId, String status) {
         Long actorCenterId = currentUserProvider.currentCenterId();
+        Long trainerScopedUserId = resolveTrainerScopedActorId();
         String normalizedStatus = status == null || status.isBlank() ? null : status.trim().toUpperCase();
         if (normalizedStatus != null) {
             try {
@@ -104,7 +115,27 @@ public class ReservationService {
                 throw new ApiException(ErrorCode.VALIDATION_ERROR, "status filter is invalid");
             }
         }
-        return reservationRepository.findAll(actorCenterId, memberId, scheduleId, normalizedStatus);
+        return reservationRepository.findAll(actorCenterId, memberId, scheduleId, normalizedStatus, trainerScopedUserId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ReservationTarget> listTargets(String keyword) {
+        return reservationQueryRepository.findReservationTargets(
+                        currentUserProvider.currentCenterId(),
+                        keyword,
+                        resolveTrainerScopedActorId(),
+                        LocalDate.now(BUSINESS_ZONE)
+                ).stream()
+                .map(target -> new ReservationTarget(
+                        target.memberId(),
+                        target.memberCode(),
+                        target.memberName(),
+                        target.phone(),
+                        target.reservableMembershipCount(),
+                        target.membershipExpiryDate(),
+                        target.confirmedReservationCount()
+                ))
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -300,6 +331,10 @@ public class ReservationService {
         if (!"ACTIVE".equals(membership.membershipStatus())) {
             throw new ApiException(ErrorCode.BUSINESS_RULE, "ACTIVE 상태 회원권만 예약에 사용할 수 있습니다.");
         }
+        LocalDate businessDate = LocalDate.now(BUSINESS_ZONE);
+        if (membership.endDate() != null && membership.endDate().isBefore(businessDate)) {
+            throw new ApiException(ErrorCode.BUSINESS_RULE, "만료된 회원권은 예약에 사용할 수 없습니다.");
+        }
         if ("COUNT".equals(membership.productTypeSnapshot()) && (membership.remainingCount() == null || membership.remainingCount() <= 0)) {
             throw new ApiException(ErrorCode.BUSINESS_RULE, "잔여 횟수가 없는 횟수제 회원권은 예약에 사용할 수 없습니다.");
         }
@@ -322,8 +357,10 @@ public class ReservationService {
     }
 
     private Reservation getReservation(Long reservationId) {
-        return reservationRepository.findById(reservationId, currentUserProvider.currentCenterId())
+        Reservation reservation = reservationRepository.findById(reservationId, currentUserProvider.currentCenterId())
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "예약을 찾을 수 없습니다. reservationId=" + reservationId));
+        guardTrainerMembershipAccess(getMembership(reservation.membershipId()));
+        return reservation;
     }
 
     private MemberMembership getMembership(Long membershipId) {
@@ -334,6 +371,32 @@ public class ReservationService {
     private TrainerSchedule getSchedule(Long scheduleId) {
         return trainerScheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "스케줄을 찾을 수 없습니다. scheduleId=" + scheduleId));
+    }
+
+    private void guardTrainerMembershipAccess(MemberMembership membership) {
+        Long trainerScopedUserId = resolveTrainerScopedActorId();
+        if (trainerScopedUserId == null) {
+            return;
+        }
+        if (!trainerScopedUserId.equals(membership.assignedTrainerId())) {
+            throw new ApiException(ErrorCode.ACCESS_DENIED, "트레이너는 본인 담당 회원권 예약만 처리할 수 있습니다.");
+        }
+    }
+
+    private Long resolveTrainerScopedActorId() {
+        AuthUser actor = currentActorOrNull();
+        if (actor == null || !"ROLE_TRAINER".equals(actor.roleCode())) {
+            return null;
+        }
+        return actor.userId();
+    }
+
+    private AuthUser currentActorOrNull() {
+        try {
+            return authUserRepository.findActiveById(currentUserProvider.currentUserId()).orElse(null);
+        } catch (IllegalStateException ex) {
+            return null;
+        }
     }
 
     private ApiException mapCreateDataAccessException(DataAccessException ex) {
@@ -363,4 +426,14 @@ public class ReservationService {
     public record NoShowRequest(Long reservationId) {}
 
     public record CompleteResult(Reservation reservation, MemberMembership membership, boolean countDeducted) {}
+
+    public record ReservationTarget(
+            Long memberId,
+            String memberCode,
+            String memberName,
+            String phone,
+            Integer reservableMembershipCount,
+            LocalDate membershipExpiryDate,
+            Integer confirmedReservationCount
+    ) {}
 }

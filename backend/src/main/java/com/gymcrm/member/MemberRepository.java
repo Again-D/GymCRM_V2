@@ -65,9 +65,28 @@ public class MemberRepository {
             String memberCodeKeyword,
             String nameKeyword,
             String phoneKeyword,
+            Long trainerId,
+            Long productId,
+            LocalDate dateFrom,
+            LocalDate dateTo,
             LocalDate referenceDate
     ) {
-        return memberQueryRepository.findAllSummaries(centerId, keyword, memberCodeKeyword, nameKeyword, phoneKeyword, referenceDate);
+        return memberQueryRepository.findAllSummaries(
+                centerId,
+                keyword,
+                memberCodeKeyword,
+                nameKeyword,
+                phoneKeyword,
+                trainerId,
+                productId,
+                dateFrom,
+                dateTo,
+                referenceDate
+        );
+    }
+
+    public boolean existsActiveTrainerScopedMembership(Long centerId, Long memberId, Long trainerUserId) {
+        return memberQueryRepository.existsActiveTrainerScopedMembership(centerId, memberId, trainerUserId);
     }
 
     public Member update(MemberUpdateCommand command) {

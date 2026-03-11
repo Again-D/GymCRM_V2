@@ -121,6 +121,7 @@ class TrainerPayrollSettlementServiceIntegrationTest {
         return purchaseService.purchase(new MembershipPurchaseService.PurchaseRequest(
                 member.memberId(),
                 product.productId(),
+                null,
                 LocalDate.now(),
                 null,
                 "CARD",

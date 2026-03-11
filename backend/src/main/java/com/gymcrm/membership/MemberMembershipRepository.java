@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static com.gymcrm.membership.QMemberMembershipEntity.memberMembershipEntity;
@@ -31,6 +32,7 @@ public class MemberMembershipRepository {
         entity.setCenterId(command.centerId());
         entity.setMemberId(command.memberId());
         entity.setProductId(command.productId());
+        entity.setAssignedTrainerId(command.assignedTrainerId());
         entity.setMembershipStatus(command.membershipStatus());
         entity.setProductNameSnapshot(command.productNameSnapshot());
         entity.setProductCategorySnapshot(command.productCategorySnapshot());
@@ -140,12 +142,29 @@ public class MemberMembershipRepository {
         return memberMembershipJpaRepository.findByMembershipIdAndIsDeletedFalse(membershipId).map(this::toDomain);
     }
 
+    public List<MemberMembership> findVisibleByMemberId(Long centerId, Long memberId, Long trainerUserId) {
+        return queryFactory
+                .selectFrom(memberMembershipEntity)
+                .where(
+                        memberMembershipEntity.centerId.eq(centerId),
+                        memberMembershipEntity.memberId.eq(memberId),
+                        trainerUserId == null ? null : memberMembershipEntity.assignedTrainerId.eq(trainerUserId),
+                        memberMembershipEntity.isDeleted.isFalse()
+                )
+                .orderBy(memberMembershipEntity.membershipId.desc())
+                .fetch()
+                .stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
     private MemberMembership toDomain(MemberMembershipEntity entity) {
         return new MemberMembership(
                 entity.getMembershipId(),
                 entity.getCenterId(),
                 entity.getMemberId(),
                 entity.getProductId(),
+                entity.getAssignedTrainerId(),
                 entity.getMembershipStatus(),
                 entity.getProductNameSnapshot(),
                 entity.getProductCategorySnapshot(),
@@ -171,6 +190,7 @@ public class MemberMembershipRepository {
             Long centerId,
             Long memberId,
             Long productId,
+            Long assignedTrainerId,
             String membershipStatus,
             String productNameSnapshot,
             String productCategorySnapshot,
