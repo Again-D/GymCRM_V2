@@ -144,7 +144,7 @@ export function ReservationManagementPanels({
           </div>
         </form>
         {reservableMemberships.length === 0 ? (
-          <NoticeText compact>예약에 사용할 ACTIVE 회원권(세션 기준)이 없습니다.</NoticeText>
+          <NoticeText compact>예약에 사용할 ACTIVE·미만료 회원권(세션 기준)이 없습니다.</NoticeText>
         ) : null}
         <InlineHelpText>예약 생성은 미래 스케줄과 예약 가능 회원권이 모두 선택된 경우에만 가능합니다.</InlineHelpText>
       </article>

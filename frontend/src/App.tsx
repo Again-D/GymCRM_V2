@@ -58,6 +58,7 @@ import {
   type ReservationRecord,
   useReservationWorkspaceState
 } from "./features/reservations/useReservationWorkspaceState";
+import { isMembershipReservableOn } from "./features/reservations/reservableMemberships";
 import { useReservationSchedulesQuery } from "./features/reservations/useReservationSchedulesQuery";
 import { useReservationTargetsQuery } from "./features/reservations/useReservationTargetsQuery";
 import { SettlementsSection } from "./features/settlements/SettlementsSection";
@@ -1717,10 +1718,9 @@ export default function App() {
   const selectedMemberMemberships = selectedMember ? (memberMembershipsByMemberId[selectedMember.memberId] ?? []) : [];
   const selectedMemberPayments = selectedMember ? (memberPaymentsByMemberId[selectedMember.memberId] ?? []) : [];
   const selectedMemberReservations = selectedMember ? (reservationRowsByMemberId[selectedMember.memberId] ?? []) : [];
+  const reservationBusinessDateText = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
   const reservableMemberships = selectedMemberMemberships.filter(
-    (membership) =>
-      membership.membershipStatus === "ACTIVE" &&
-      (membership.productTypeSnapshot !== "COUNT" || (membership.remainingCount ?? 0) > 0)
+    (membership) => isMembershipReservableOn(membership, reservationBusinessDateText)
   );
   const isDeskRole = authUser?.roleCode === "ROLE_DESK";
   const canManageProducts = !isJwtMode || authUser?.roleCode === "ROLE_CENTER_ADMIN";

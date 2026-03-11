@@ -331,6 +331,10 @@ public class ReservationService {
         if (!"ACTIVE".equals(membership.membershipStatus())) {
             throw new ApiException(ErrorCode.BUSINESS_RULE, "ACTIVE 상태 회원권만 예약에 사용할 수 있습니다.");
         }
+        LocalDate businessDate = LocalDate.now(BUSINESS_ZONE);
+        if (membership.endDate() != null && membership.endDate().isBefore(businessDate)) {
+            throw new ApiException(ErrorCode.BUSINESS_RULE, "만료된 회원권은 예약에 사용할 수 없습니다.");
+        }
         if ("COUNT".equals(membership.productTypeSnapshot()) && (membership.remainingCount() == null || membership.remainingCount() <= 0)) {
             throw new ApiException(ErrorCode.BUSINESS_RULE, "잔여 횟수가 없는 횟수제 회원권은 예약에 사용할 수 없습니다.");
         }
