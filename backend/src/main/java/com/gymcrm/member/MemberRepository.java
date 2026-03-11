@@ -85,6 +85,10 @@ public class MemberRepository {
         );
     }
 
+    public boolean existsActiveTrainerScopedMembership(Long centerId, Long memberId, Long trainerUserId) {
+        return memberQueryRepository.existsActiveTrainerScopedMembership(centerId, memberId, trainerUserId);
+    }
+
     public Member update(MemberUpdateCommand command) {
         MemberEntity entity = memberJpaRepository.findByMemberIdAndIsDeletedFalse(command.memberId())
                 .orElseThrow();

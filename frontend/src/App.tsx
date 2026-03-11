@@ -67,6 +67,7 @@ import {
 import { useSettlementReportQuery } from "./features/settlements/useSettlementReportQuery";
 import { ApiClientError, apiGet, apiPatch, apiPost } from "./shared/api/client";
 import { type AuthTokenResponse, type AuthUserSession, type SecurityMode, useAuthSession } from "./shared/hooks/useAuthSession";
+import { useMembershipDateFilter } from "./shared/hooks/useMembershipDateFilter";
 import {
   useAccessWorkspaceLoader,
   useCrmWorkspaceLoader,
@@ -106,6 +107,13 @@ type MemberDetail = {
   consentSms: boolean;
   consentMarketing: boolean;
   memo: string | null;
+};
+
+type TrainerSummary = {
+  userId: number;
+  centerId: number;
+  loginId: string;
+  displayName: string;
 };
 
 const LazyMembershipOperationsPanels = lazy(async () => ({
@@ -481,11 +489,22 @@ function buildResumePreview(membership: PurchasedMembership, draft: MembershipAc
 export default function App() {
   const [activeNavSection, setActiveNavSection] = useState<NavSectionKey>("dashboard");
   const { themePreference, setThemePreference, resolvedTheme } = useThemePreference();
+  const membershipDateFilter = useMembershipDateFilter();
+  const {
+    dateFilter: memberDateFilter,
+    applyPreset: applyMemberDatePreset,
+    setDateFrom: setMemberDateFrom,
+    setDateTo: setMemberDateTo,
+    reset: resetMemberDateFilter
+  } = membershipDateFilter;
   const [loginIdInput, setLoginIdInput] = useState("center-admin");
   const [loginPasswordInput, setLoginPasswordInput] = useState("dev-admin-1234!");
 
   const [memberSearchName, setMemberSearchName] = useState("");
   const [memberSearchPhone, setMemberSearchPhone] = useState("");
+  const [memberTrainerFilter, setMemberTrainerFilter] = useState("");
+  const [memberProductFilter, setMemberProductFilter] = useState("");
+  const [trainerOptions, setTrainerOptions] = useState<TrainerSummary[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
   const [selectedMember, setSelectedMember] = useState<MemberDetail | null>(null);
   const [memberForm, setMemberForm] = useState<MemberFormState>(EMPTY_MEMBER_FORM);
@@ -653,7 +672,14 @@ export default function App() {
     setProductFormError
   } = productWorkspace;
   const { members, setMembers, membersLoading, membersQueryError, loadMembers: runMembersQuery, resetMembersQuery } = useMembersQuery({
-    getDefaultFilters: () => ({ name: memberSearchName, phone: memberSearchPhone }),
+    getDefaultFilters: () => ({
+      name: memberSearchName,
+      phone: memberSearchPhone,
+      trainerId: memberTrainerFilter,
+      productId: memberProductFilter,
+      dateFrom: memberDateFilter.dateFrom,
+      dateTo: memberDateFilter.dateTo
+    }),
     formatError: errorMessage
   });
   const {
@@ -712,6 +738,10 @@ export default function App() {
     setMemberFormError(null);
     setMemberSearchName("");
     setMemberSearchPhone("");
+    setMemberTrainerFilter("");
+    setMemberProductFilter("");
+    resetMemberDateFilter();
+    setTrainerOptions([]);
     membershipWorkspace.resetMembershipWorkspace();
     setPurchaseProductDetail(null);
     setMemberMembershipsByMemberId({});
@@ -762,14 +792,35 @@ export default function App() {
   const effectiveSettlementPanelError = settlementPanelError ?? settlementReportError;
   const effectiveCrmPanelError = crmPanelError ?? crmHistoryError;
   const effectiveProductPanelError = productPanelError ?? productsQueryError;
+  const memberTrainerOptions =
+    authUser?.roleCode === "ROLE_TRAINER"
+      ? [{ userId: authUser.userId, centerId: authUser.centerId, loginId: authUser.loginId, displayName: authUser.displayName }]
+      : trainerOptions;
   const purchasePreview = useMemo(
     () => buildPurchasePreview(purchaseProductDetail, purchaseForm),
     [purchaseProductDetail, purchaseForm]
   );
 
-  async function loadMembers(filters?: { name?: string; phone?: string }) {
+  async function loadMembers(filters?: {
+    name?: string;
+    phone?: string;
+    trainerId?: string;
+    productId?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  }) {
     setMemberPanelError(null);
     await runMembersQuery(filters);
+  }
+
+  async function loadTrainerOptions() {
+    try {
+      const response = await apiGet<TrainerSummary[]>("/api/v1/auth/trainers");
+      setTrainerOptions(response.data);
+    } catch (error) {
+      setTrainerOptions([]);
+      setMemberPanelError(errorMessage(error));
+    }
   }
 
   async function loadProducts(filters?: ProductFilters) {
@@ -933,8 +984,17 @@ export default function App() {
     }
     void loadMembers();
     void loadProducts();
+    void loadTrainerOptions();
     void loadReservationSchedules();
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (authUser?.roleCode === "ROLE_TRAINER") {
+      setMemberTrainerFilter(String(authUser.userId));
+      return;
+    }
+    setMemberTrainerFilter("");
+  }, [authUser]);
 
   useEffect(() => {
     if (activeNavSection !== "members") {
@@ -1913,6 +1973,17 @@ export default function App() {
             setMemberSearchName={setMemberSearchName}
             memberSearchPhone={memberSearchPhone}
             setMemberSearchPhone={setMemberSearchPhone}
+            memberTrainerFilter={memberTrainerFilter}
+            setMemberTrainerFilter={setMemberTrainerFilter}
+            memberProductFilter={memberProductFilter}
+            setMemberProductFilter={setMemberProductFilter}
+            memberDateFilter={memberDateFilter}
+            applyMemberDatePreset={applyMemberDatePreset}
+            setMemberDateFrom={setMemberDateFrom}
+            setMemberDateTo={setMemberDateTo}
+            trainerOptions={memberTrainerOptions}
+            productOptions={products}
+            trainerFilterDisabled={authUser?.roleCode === "ROLE_TRAINER"}
             loadMembers={loadMembers}
             membersLoading={membersLoading}
             memberPanelMessage={memberPanelMessage}

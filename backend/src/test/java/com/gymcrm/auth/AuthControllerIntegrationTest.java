@@ -8,11 +8,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.mock.web.MockCookie;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.hasItem;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -38,6 +40,9 @@ class AuthControllerIntegrationTest {
 
     @Autowired
     private JdbcClient jdbcClient;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void ensureSeedUserIsActive() {
@@ -133,6 +138,66 @@ class AuthControllerIntegrationTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.error.code").value("TOKEN_REVOKED"));
+    }
+
+    @Test
+    void trainersEndpointReturnsActiveTrainerRows() throws Exception {
+        ensureTrainerUser();
+
+        MvcResult loginResult = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "loginId": "center-admin",
+                                  "password": "dev-admin-1234!"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String accessToken = JsonExtractors.readString(loginResult.getResponse().getContentAsString(), "$.data.accessToken");
+
+        mockMvc.perform(get("/api/v1/auth/trainers")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.data[*].loginId", hasItem("trainer-user")));
+    }
+
+    private void ensureTrainerUser() {
+        int updated = jdbcClient.sql("""
+                UPDATE users
+                SET password_hash = :passwordHash,
+                    display_name = :displayName,
+                    role_code = 'ROLE_TRAINER',
+                    user_status = 'ACTIVE',
+                    is_deleted = FALSE,
+                    deleted_at = NULL,
+                    deleted_by = NULL,
+                    updated_at = CURRENT_TIMESTAMP,
+                    updated_by = 0
+                WHERE center_id = 1
+                  AND login_id = 'trainer-user'
+                """)
+                .param("passwordHash", passwordEncoder.encode("trainer-user-1234!"))
+                .param("displayName", "Trainer User")
+                .update();
+
+        if (updated == 0) {
+            jdbcClient.sql("""
+                    INSERT INTO users (
+                        center_id, login_id, password_hash, display_name, role_code, user_status,
+                        created_by, updated_by
+                    )
+                    VALUES (
+                        1, 'trainer-user', :passwordHash, 'Trainer User', 'ROLE_TRAINER', 'ACTIVE',
+                        0, 0
+                    )
+                    """)
+                    .param("passwordHash", passwordEncoder.encode("trainer-user-1234!"))
+                    .update();
+        }
     }
 
     static final class CookieExtractors {

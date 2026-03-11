@@ -48,7 +48,7 @@ describe("useMembersQuery", () => {
 
     const { result } = renderHook(() =>
       useMembersQuery({
-        getDefaultFilters: () => ({ name: "Kim", phone: "" }),
+        getDefaultFilters: () => ({ name: "Kim", phone: "", trainerId: "", productId: "", dateFrom: "", dateTo: "" }),
         formatError: () => "load failed"
       })
     );
@@ -83,7 +83,7 @@ describe("useMembersQuery", () => {
 
     const { result } = renderHook(() =>
       useMembersQuery({
-        getDefaultFilters: () => ({ name: "", phone: "" }),
+        getDefaultFilters: () => ({ name: "", phone: "", trainerId: "", productId: "", dateFrom: "", dateTo: "" }),
         formatError: () => "load failed"
       })
     );
@@ -118,5 +118,31 @@ describe("useMembersQuery", () => {
     expect(result.current.members).toEqual([]);
     expect(result.current.membersLoading).toBe(false);
     expect(result.current.membersQueryError).toBeNull();
+  });
+
+  it("passes membership filter params through to the shared query source", async () => {
+    apiGetMock.mockResolvedValue({ data: [] });
+
+    const { result } = renderHook(() =>
+      useMembersQuery({
+        getDefaultFilters: () => ({
+          name: "",
+          phone: "",
+          trainerId: "11",
+          productId: "22",
+          dateFrom: "2026-03-10",
+          dateTo: "2026-04-10"
+        }),
+        formatError: () => "load failed"
+      })
+    );
+
+    await act(async () => {
+      await result.current.loadMembers();
+    });
+
+    expect(apiGetMock).toHaveBeenCalledWith(
+      "/api/v1/members?trainerId=11&productId=22&dateFrom=2026-03-10&dateTo=2026-04-10"
+    );
   });
 });

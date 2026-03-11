@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 
 @Service
 public class AuthService {
@@ -133,6 +134,11 @@ public class AuthService {
                 .filter(AuthUser::isActive)
                 .orElseThrow(() -> new ApiException(ErrorCode.AUTHENTICATION_FAILED, "활성 사용자 정보를 찾을 수 없습니다."));
         return UserSession.from(user);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AuthUser> listActiveTrainers(Long centerId) {
+        return authUserRepository.findActiveByCenterAndRoleCode(centerId, "ROLE_TRAINER");
     }
 
     private String requireText(String value, String field) {

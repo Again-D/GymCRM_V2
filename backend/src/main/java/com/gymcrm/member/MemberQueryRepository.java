@@ -284,4 +284,21 @@ public class MemberQueryRepository {
     private boolean hasText(String value) {
         return value != null && !value.isBlank();
     }
+
+    public boolean existsActiveTrainerScopedMembership(Long centerId, Long memberId, Long trainerUserId) {
+        Number count = (Number) entityManager.createNativeQuery("""
+                SELECT COUNT(*)
+                FROM member_memberships mm
+                WHERE mm.center_id = :centerId
+                  AND mm.member_id = :memberId
+                  AND mm.assigned_trainer_id = :trainerUserId
+                  AND mm.membership_status = 'ACTIVE'
+                  AND mm.is_deleted = FALSE
+                """)
+                .setParameter("centerId", centerId)
+                .setParameter("memberId", memberId)
+                .setParameter("trainerUserId", trainerUserId)
+                .getSingleResult();
+        return count != null && count.longValue() > 0;
+    }
 }

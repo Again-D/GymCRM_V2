@@ -718,10 +718,53 @@ textarea {
   margin-bottom: 12px;
 }
 
+.members-toolbar-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .toolbar-actions {
   display: flex;
   gap: 8px;
   align-items: end;
+}
+
+.membership-period-filter {
+  display: grid;
+  gap: 8px;
+  grid-column: 1 / -1;
+}
+
+.membership-period-filter-label {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.period-preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.period-preset-chip {
+  border: 1px solid var(--line);
+  background: var(--panel-bg);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-weight: 700;
+}
+
+.period-preset-chip.is-active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(184, 75, 45, 0.08);
+}
+
+.period-date-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
 label {
@@ -1623,6 +1666,10 @@ code {
 
   .toolbar-grid,
   .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .period-date-row {
     grid-template-columns: 1fr;
   }
 

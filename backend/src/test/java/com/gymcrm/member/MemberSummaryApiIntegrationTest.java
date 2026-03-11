@@ -257,6 +257,55 @@ class MemberSummaryApiIntegrationTest {
     }
 
     @Test
+    void trainerListAndDetailAreRestrictedToAssignedMembers() throws Exception {
+        long trainerUserId = ensureTrainerUser();
+        String trainerToken = loginAndGetAccessToken(TRAINER_LOGIN_ID, TRAINER_PASSWORD);
+        LocalDate today = LocalDate.now();
+
+        long productId = insertProductFixture("TRAINER-SCOPE-" + shortId(), "PT", "COUNT");
+        long visibleMemberId = insertMemberFixture("트레이너가보는회원-" + shortId());
+        insertMembershipFixture(visibleMemberId, productId, trainerUserId, "ACTIVE", "PT", "COUNT", today.plusDays(15), 10, 5);
+
+        long hiddenMemberId = insertMemberFixture("트레이너가못보는회원-" + shortId());
+        insertMembershipFixture(hiddenMemberId, productId, null, "ACTIVE", "PT", "COUNT", today.plusDays(15), 10, 5);
+
+        MvcResult trainerListResult = mockMvc.perform(get("/api/v1/members")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + trainerToken))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode trainerList = objectMapper.readTree(trainerListResult.getResponse().getContentAsString()).path("data");
+        findMember(trainerList, visibleMemberId);
+        assertMemberMissing(trainerList, hiddenMemberId);
+
+        MvcResult explicitTrainerFilterResult = mockMvc.perform(get("/api/v1/members")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + trainerToken)
+                        .param("trainerId", String.valueOf(trainerUserId)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode explicitTrainerList = objectMapper.readTree(explicitTrainerFilterResult.getResponse().getContentAsString()).path("data");
+        findMember(explicitTrainerList, visibleMemberId);
+        assertMemberMissing(explicitTrainerList, hiddenMemberId);
+
+        mockMvc.perform(get("/api/v1/members")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + trainerToken)
+                        .param("trainerId", String.valueOf(trainerUserId + 999)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("ACCESS_DENIED"));
+
+        mockMvc.perform(get("/api/v1/members/{memberId}", visibleMemberId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + trainerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.memberId").value(visibleMemberId));
+
+        mockMvc.perform(get("/api/v1/members/{memberId}", hiddenMemberId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + trainerToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("ACCESS_DENIED"));
+    }
+
+    @Test
     void representativeMembershipUsesMembershipIdTieBreakWhenExpiryDatesEqual() {
         LocalDate targetEndDate = LocalDate.now().plusDays(12);
         long durationProductId = insertProductFixture("SUMMARY-TIE-" + shortId(), "MEMBERSHIP", "DURATION");
@@ -309,6 +358,14 @@ class MemberSummaryApiIntegrationTest {
             }
         }
         throw new AssertionError("Member not found in response. memberId=" + memberId);
+    }
+
+    private void assertMemberMissing(JsonNode data, long memberId) {
+        for (JsonNode item : data) {
+            if (item.path("memberId").asLong() == memberId) {
+                throw new AssertionError("Member should not be visible in response. memberId=" + memberId);
+            }
+        }
     }
 
     private void ensureDeskUser() {

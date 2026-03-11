@@ -4,6 +4,7 @@ import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
 import com.gymcrm.common.security.PiiEncryptionService;
+import com.gymcrm.auth.AuthUserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
 
@@ -22,9 +23,10 @@ import static org.mockito.Mockito.never;
 class MemberServiceTest {
 
     private final MemberRepository memberRepository = mock(MemberRepository.class);
+    private final AuthUserRepository authUserRepository = mock(AuthUserRepository.class);
     private final CurrentUserProvider currentUserProvider = mock(CurrentUserProvider.class);
     private final PiiEncryptionService piiEncryptionService = mock(PiiEncryptionService.class);
-    private final MemberService service = new MemberService(memberRepository, currentUserProvider, piiEncryptionService, 1);
+    private final MemberService service = new MemberService(memberRepository, authUserRepository, currentUserProvider, piiEncryptionService, 1);
 
     @Test
     void mapsDuplicatePhoneConstraintToConflict() {

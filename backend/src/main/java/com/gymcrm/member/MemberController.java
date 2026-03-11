@@ -51,7 +51,7 @@ public class MemberController {
     }
 
     @GetMapping
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER)
     public ApiResponse<List<MemberSummaryResponse>> list(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String memberCode,
@@ -78,7 +78,7 @@ public class MemberController {
     }
 
     @GetMapping("/{memberId}")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER)
     public ApiResponse<MemberResponse> detail(@PathVariable Long memberId) {
         Member member = memberService.get(memberId);
         auditLogService.recordPiiRead(
