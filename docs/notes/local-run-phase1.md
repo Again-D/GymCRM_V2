@@ -79,8 +79,37 @@ export REDIS_PORT=6379
 - 책임별 Redis feature flag:
   - `APP_REDIS_QR_TOKEN_STORE_ENABLED`
   - `APP_REDIS_RESERVATION_LOCK_ENABLED`
+  - `APP_REDIS_CRM_DISPATCH_CLAIM_ENABLED`
+  - `APP_REDIS_CRM_RETRY_WHEEL_ENABLED`
+  - `APP_REDIS_SETTLEMENT_DASHBOARD_CACHE_ENABLED`
+  - `APP_REDIS_SETTLEMENT_REPORT_CACHE_ENABLED`
   - `APP_REDIS_AUTH_DENYLIST_ENABLED`
 - Actuator Redis health는 `APP_REDIS_ENABLED=true`일 때만 포함된다.
+
+Redis 전체 책임을 로컬에서 확인할 때 예시:
+
+```bash
+cd /Users/abc/projects/GymCRM_V2/backend
+SPRING_PROFILES_ACTIVE=dev \
+APP_REDIS_ENABLED=true \
+APP_REDIS_QR_TOKEN_STORE_ENABLED=true \
+APP_REDIS_RESERVATION_LOCK_ENABLED=true \
+APP_REDIS_CRM_DISPATCH_CLAIM_ENABLED=true \
+APP_REDIS_CRM_RETRY_WHEEL_ENABLED=true \
+APP_REDIS_SETTLEMENT_DASHBOARD_CACHE_ENABLED=true \
+APP_REDIS_SETTLEMENT_REPORT_CACHE_ENABLED=true \
+APP_REDIS_AUTH_DENYLIST_ENABLED=true \
+./gradlew bootRun
+```
+
+검증 포인트:
+- `docker ps`에서 `gymcrm-redis`가 `Up` 상태인지 확인
+- `curl -s http://localhost:8080/api/v1/health | jq '.data.redis'`
+- Redis 장애/의존성 문제를 강제하지 않으려면 `APP_REDIS_STARTUP_REQUIRED=false` 유지
+
+참고:
+- 로컬 표준 경로는 `docker compose up -d redis`다.
+- compose 기준으로 컨테이너를 다시 만들었으면 이후 상태 확인도 `docker compose ps`, `docker compose logs -f redis` 기준으로 본다.
 
 ### Backend (JWT Mode - Phase 5)
 
