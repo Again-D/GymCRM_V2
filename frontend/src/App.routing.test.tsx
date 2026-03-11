@@ -369,6 +369,40 @@ describe("App shell routing", () => {
     });
   });
 
+  it("keeps protected routes on the bootstrapping screen until auth bootstrap completes", async () => {
+    authSessionState.authBootstrapping = true;
+
+    render(
+      <MemoryRouter initialEntries={["/members"]}>
+        <App />
+        <LocationProbe />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("BOOTSTRAPPING")).toBeTruthy();
+      expect(screen.queryByText("LOGIN_SCREEN")).toBeNull();
+      expect(screen.getByTestId("location").textContent).toBe("/members");
+    });
+  });
+
+  it("keeps /login on the bootstrapping screen until jwt session restore finishes", async () => {
+    authSessionState.authBootstrapping = true;
+
+    render(
+      <MemoryRouter initialEntries={["/login"]}>
+        <App />
+        <LocationProbe />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("BOOTSTRAPPING")).toBeTruthy();
+      expect(screen.queryByText("LOGIN_SCREEN")).toBeNull();
+      expect(screen.getByTestId("location").textContent).toBe("/login");
+    });
+  });
+
   it("redirects root to /dashboard in prototype mode", async () => {
     authSessionState.securityMode = "prototype";
     authSessionState.prototypeNoAuth = true;

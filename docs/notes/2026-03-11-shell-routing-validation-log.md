@@ -6,6 +6,9 @@
   - Passed
 - `cd /Users/abc/projects/GymCRM_V2/frontend && npm test -- --run src/app/routes.test.ts`
   - Passed
+- `cd /Users/abc/projects/GymCRM_V2/frontend && npm test -- --run src/App.routing.test.tsx`
+  - Passed
+  - `authBootstrapping === true` 동안 `/members`, `/login` 모두 redirect 대신 `BootstrappingScreen`이 먼저 유지되는지 확인
 
 ## Browser Checks
 
@@ -27,6 +30,7 @@
   - browser `forward` returned to `/memberships`
 - Authenticated JWT `reload` on `/memberships` kept the URL at `/memberships`.
 - `selectedMember` stayed intact across section navigation (`/members -> /memberships -> back`) and reset on full reload, which matches the shell-only contract.
+- Repeated JWT direct-entry/reload observation did not show a visible flash of protected section content before `/login`, and did not show a visible flash of `/login` before authenticated `/dashboard`/section render after session restore.
 - Prototype no-auth mode on `http://127.0.0.1:5174` allowed direct entry to `/members`, `/reservations`, and `/access`.
 - Prototype no-auth mode on `http://127.0.0.1:5174` allowed direct entry to every shell section:
   - `/dashboard`
@@ -40,9 +44,10 @@
   - `/settlements`
 - Prototype browser `back/forward` worked between `/reservations` and `/access`.
 - Prototype `reload` on `/access` kept the URL at `/access`.
+- Prototype direct-entry/reload observation did not show a visible `/login` flash because the app stayed on the target shell section throughout.
 
 ### Not Fully Verified In Browser
-- Auth bootstrap flicker/flash redirect timing was not measured beyond normal visual observation.
+- Auth bootstrap flicker/flash timing was observed only by normal-speed local browser automation; no network throttling or filmstrip capture was added.
 
 ## Notes
 - Earlier login failures were caused by stale agent-browser refs reusing the wrong input mapping. Reopening the session and submitting with fresh refs plus `Enter` fixed the browser login flow.

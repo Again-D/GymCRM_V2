@@ -1,7 +1,7 @@
 ---
 title: feat: adopt shell-only React Router for admin sections
 type: feat
-status: active
+status: completed
 date: 2026-03-11
 ---
 
@@ -230,11 +230,12 @@ date: 2026-03-11
 - [x] browser back/forward가 section 전환과 일치하는지 확인
 - [x] JWT unauthenticated 상태에서 redirect loop가 없는지 확인
 - [x] section route 전환만으로 `selectedMember`가 불필요하게 reset되지 않는지 확인
-- [ ] `/login`과 protected route 사이 auth bootstrap 시각 차이로 flicker/flash redirect가 없는지 확인
+- [x] `/login`과 protected route 사이 auth bootstrap 시각 차이로 flicker/flash redirect가 없는지 확인
 
 ### Testing Notes
 - 단위/컴포넌트 테스트:
   - `/Users/abc/projects/GymCRM_V2/frontend/src/App.routing.test.tsx`로 `/`, unknown path, JWT unauth protected route redirect 확인
+  - `/Users/abc/projects/GymCRM_V2/frontend/src/App.routing.test.tsx`로 `authBootstrapping` 동안 `/members`, `/login`이 redirect보다 `BootstrappingScreen`을 우선 렌더하는지 확인
   - `/Users/abc/projects/GymCRM_V2/frontend/src/components/layout/SidebarNav.test.tsx`로 sidebar link surface 확인
   - `/Users/abc/projects/GymCRM_V2/frontend/src/features/dashboard/DashboardSection.test.tsx`로 dashboard quick action link surface 확인
   - `MemoryRouter`로 `/dashboard`, `/members`, `/reservations` seed 진입 확인
