@@ -2,6 +2,7 @@ package com.gymcrm.member;
 
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Repository;
@@ -79,8 +80,12 @@ public class MemberQueryRepository {
             LocalDate referenceDate
     ) {
         LocalDate expiringThresholdDate = referenceDate.plusDays(7);
-        boolean hasMembershipFilters = trainerId != null || productId != null || dateFrom != null || dateTo != null;
-        List<BaseMemberRow> baseMembers = queryFactory
+        boolean hasMembershipInclusionFilters = trainerId != null
+                || productId != null
+                || dateFrom != null
+                || dateTo != null;
+        boolean hasMembershipFilters = hasMembershipInclusionFilters || hasText(membershipOperationalStatus);
+        JPAQuery<BaseMemberRow> baseMembersQuery = queryFactory
                 .select(Projections.constructor(
                         BaseMemberRow.class,
                         memberEntity.memberId,
@@ -100,9 +105,11 @@ public class MemberQueryRepository {
                         containsIgnoreCase(memberEntity.memberName, nameKeyword),
                         containsIgnoreCase(memberEntity.phone, phoneKeyword)
                 )
-                .orderBy(memberEntity.memberId.desc())
-                .limit(100)
-                .fetch();
+                .orderBy(memberEntity.memberId.desc());
+        if (!hasMembershipFilters) {
+            baseMembersQuery.limit(100);
+        }
+        List<BaseMemberRow> baseMembers = baseMembersQuery.fetch();
 
         if (baseMembers.isEmpty()) {
             return List.of();
@@ -163,7 +170,7 @@ public class MemberQueryRepository {
         for (BaseMemberRow member : baseMembers) {
             List<MembershipSummaryRow> visibleRows = visibleMembershipsByMemberId.getOrDefault(member.memberId(), List.of());
             List<MembershipSummaryRow> filteredRows = filteredMembershipsByMemberId.getOrDefault(member.memberId(), List.of());
-            if (hasMembershipFilters && filteredRows.isEmpty()) {
+            if (hasMembershipInclusionFilters && filteredRows.isEmpty()) {
                 continue;
             }
 

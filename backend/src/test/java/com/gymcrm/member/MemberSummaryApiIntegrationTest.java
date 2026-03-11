@@ -327,6 +327,34 @@ class MemberSummaryApiIntegrationTest {
     }
 
     @Test
+    void membershipOperationalStatusFilterCanReachRowsOutsideDefaultTopHundredWindow() throws Exception {
+        LocalDate today = LocalDate.now();
+
+        ensureDeskUser();
+        String token = loginAndGetAccessToken(DESK_LOGIN_ID, DESK_PASSWORD);
+        long durationProductId = insertProductFixture("STATUS-WINDOW-" + shortId(), "MEMBERSHIP", "DURATION");
+
+        long holdingMemberId = insertMemberFixture("상태윈도우홀딩-" + shortId());
+        insertMembershipFixture(holdingMemberId, durationProductId, "HOLDING", "MEMBERSHIP", "DURATION",
+                today.plusDays(20), null, null);
+
+        for (int index = 0; index < 105; index++) {
+            long memberId = insertMemberFixture("상태윈도우비대상-" + index + "-" + shortId());
+            insertMembershipFixture(memberId, durationProductId, "ACTIVE", "MEMBERSHIP", "DURATION",
+                    today.plusDays(20), null, null);
+        }
+
+        MvcResult holdingResult = mockMvc.perform(get("/api/v1/members")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .param("membershipOperationalStatus", "홀딩중"))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode holdingData = objectMapper.readTree(holdingResult.getResponse().getContentAsString()).path("data");
+        assertEquals("홀딩중", findMember(holdingData, holdingMemberId).path("membershipOperationalStatus").asText());
+    }
+
+    @Test
     void memberListShowsHoldingAfterHoldAction() throws Exception {
         ensureDeskUser();
         String token = loginAndGetAccessToken(DESK_LOGIN_ID, DESK_PASSWORD);
