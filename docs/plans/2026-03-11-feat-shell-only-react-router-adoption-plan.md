@@ -224,7 +224,7 @@ date: 2026-03-11
 
 ### Quality Gates
 - [x] 최소한 route fallback 동작 검증
-- [ ] sidebar와 dashboard가 같은 route surface를 쓰는지 검증
+- [x] sidebar와 dashboard가 같은 route surface를 쓰는지 검증
 - [ ] prototype/jwt 모드에서 refresh 진입 검증
 - [x] `activeNavSection` 이중 source of truth 제거 여부 확인
 - [ ] browser back/forward가 section 전환과 일치하는지 확인

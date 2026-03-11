@@ -1825,7 +1825,6 @@ export default function App() {
         <SidebarNav
           items={navItems}
           activeKey={activeNavSection}
-          onSelect={(key) => navigateToSection(key as NavSectionKey)}
           isJwtMode={isJwtMode}
           selectedMemberLabel={selectedMember ? `#${selectedMember.memberId} ${selectedMember.memberName}` : "-"}
           currentUserLabel={authUser ? `${authUser.displayName} (${authUser.roleCode})` : "로그인 없음"}
@@ -1871,7 +1870,6 @@ export default function App() {
               membersCount={members.length}
               productsCount={products.length}
               sessionMembershipCount={selectedMemberMemberships.length}
-              onNavigate={navigateToSection}
             />
           ) : activeNavSection === "memberships" ? (
             <MembershipsSection

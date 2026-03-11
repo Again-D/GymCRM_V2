@@ -1,6 +1,7 @@
-import type { NavSectionKey, RoutePreviewItem, ShellRoute } from "../../app/routes";
+import type { RoutePreviewItem, ShellRoute } from "../../app/routes";
+import { Link } from "react-router-dom";
 
-type DashboardQuickAction = Pick<ShellRoute, "key" | "label">;
+type DashboardQuickAction = Pick<ShellRoute, "key" | "path" | "label">;
 
 type DashboardSectionProps = {
   routePreview: RoutePreviewItem[];
@@ -13,7 +14,6 @@ type DashboardSectionProps = {
   membersCount: number;
   productsCount: number;
   sessionMembershipCount: number;
-  onNavigate: (sectionKey: NavSectionKey) => void;
 };
 
 export function DashboardSection(props: DashboardSectionProps) {
@@ -27,8 +27,7 @@ export function DashboardSection(props: DashboardSectionProps) {
     isAuthenticated,
     membersCount,
     productsCount,
-    sessionMembershipCount,
-    onNavigate
+    sessionMembershipCount
   } = props;
 
   const metricCards = [
@@ -92,14 +91,13 @@ export function DashboardSection(props: DashboardSectionProps) {
 
           <div className="quick-actions-grid dashboard-actions-grid">
             {quickActions.map((action) => (
-              <button
+              <Link
                 key={action.key}
-                type="button"
+                to={action.path}
                 className="secondary-button"
-                onClick={() => onNavigate(action.key)}
               >
                 {action.label}
-              </button>
+              </Link>
             ))}
           </div>
 
