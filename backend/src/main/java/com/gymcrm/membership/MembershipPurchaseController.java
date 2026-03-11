@@ -38,6 +38,7 @@ public class MembershipPurchaseController {
                 new MembershipPurchaseService.PurchaseRequest(
                         memberId,
                         request.productId(),
+                        request.assignedTrainerId(),
                         request.startDate(),
                         request.paidAmount(),
                         request.paymentMethod(),
@@ -52,6 +53,7 @@ public class MembershipPurchaseController {
     public record PurchaseMembershipRequest(
             @NotNull(message = "productId is required")
             Long productId,
+            Long assignedTrainerId,
             LocalDate startDate,
             @DecimalMin(value = "0", inclusive = true, message = "paidAmount must be >= 0")
             BigDecimal paidAmount,
@@ -80,6 +82,7 @@ public class MembershipPurchaseController {
             Long centerId,
             Long memberId,
             Long productId,
+            Long assignedTrainerId,
             String membershipStatus,
             String productNameSnapshot,
             String productCategorySnapshot,
@@ -101,6 +104,7 @@ public class MembershipPurchaseController {
                     membership.centerId(),
                     membership.memberId(),
                     membership.productId(),
+                    membership.assignedTrainerId(),
                     membership.membershipStatus(),
                     membership.productNameSnapshot(),
                     membership.productCategorySnapshot(),

@@ -15,7 +15,7 @@ export type AuthUserSession = {
   centerId: number;
   loginId: string;
   displayName: string;
-  roleCode: "ROLE_CENTER_ADMIN" | "ROLE_DESK";
+  roleCode: "ROLE_CENTER_ADMIN" | "ROLE_DESK" | "ROLE_TRAINER";
 };
 
 export type AuthTokenResponse = {

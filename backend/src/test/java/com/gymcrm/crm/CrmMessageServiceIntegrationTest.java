@@ -123,6 +123,7 @@ class CrmMessageServiceIntegrationTest {
         purchaseService.purchase(new MembershipPurchaseService.PurchaseRequest(
                 ptConsented.memberId(),
                 ptProduct.productId(),
+                null,
                 baseDate,
                 null,
                 "CARD",
@@ -132,6 +133,7 @@ class CrmMessageServiceIntegrationTest {
         purchaseService.purchase(new MembershipPurchaseService.PurchaseRequest(
                 gxConsented.memberId(),
                 gxProduct.productId(),
+                null,
                 baseDate,
                 null,
                 "CARD",
@@ -141,6 +143,7 @@ class CrmMessageServiceIntegrationTest {
         purchaseService.purchase(new MembershipPurchaseService.PurchaseRequest(
                 ptOptedOut.memberId(),
                 ptProduct.productId(),
+                null,
                 baseDate,
                 null,
                 "CARD",
@@ -167,6 +170,7 @@ class CrmMessageServiceIntegrationTest {
         purchaseService.purchase(new MembershipPurchaseService.PurchaseRequest(
                 member.memberId(),
                 ptProduct.productId(),
+                null,
                 baseDate,
                 null,
                 "CARD",
@@ -195,6 +199,7 @@ class CrmMessageServiceIntegrationTest {
         purchaseService.purchase(new MembershipPurchaseService.PurchaseRequest(
                 member.memberId(),
                 product.productId(),
+                null,
                 targetDate,
                 null,
                 "CARD",

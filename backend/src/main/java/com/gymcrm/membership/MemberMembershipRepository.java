@@ -31,6 +31,7 @@ public class MemberMembershipRepository {
         entity.setCenterId(command.centerId());
         entity.setMemberId(command.memberId());
         entity.setProductId(command.productId());
+        entity.setAssignedTrainerId(command.assignedTrainerId());
         entity.setMembershipStatus(command.membershipStatus());
         entity.setProductNameSnapshot(command.productNameSnapshot());
         entity.setProductCategorySnapshot(command.productCategorySnapshot());
@@ -146,6 +147,7 @@ public class MemberMembershipRepository {
                 entity.getCenterId(),
                 entity.getMemberId(),
                 entity.getProductId(),
+                entity.getAssignedTrainerId(),
                 entity.getMembershipStatus(),
                 entity.getProductNameSnapshot(),
                 entity.getProductCategorySnapshot(),
@@ -171,6 +173,7 @@ public class MemberMembershipRepository {
             Long centerId,
             Long memberId,
             Long productId,
+            Long assignedTrainerId,
             String membershipStatus,
             String productNameSnapshot,
             String productCategorySnapshot,

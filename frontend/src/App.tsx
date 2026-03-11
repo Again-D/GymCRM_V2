@@ -135,6 +135,7 @@ type PurchasedMembership = {
   centerId: number;
   memberId: number;
   productId: number;
+  assignedTrainerId: number | null;
   membershipStatus: "ACTIVE" | "HOLDING" | "REFUNDED" | "EXPIRED";
   productNameSnapshot: string;
   productCategorySnapshot: "MEMBERSHIP" | "PT" | "GX" | "ETC";

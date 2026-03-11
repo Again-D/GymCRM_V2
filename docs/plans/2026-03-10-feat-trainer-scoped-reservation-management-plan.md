@@ -317,10 +317,10 @@ return (
 
 ## Implementation Plan
 ### Phase 1: Data model and auth boundary
-- [ ] `member_memberships.assigned_trainer_id` migration 추가
-- [ ] membership entity/domain/repository/command 반영
+- [x] `member_memberships.assigned_trainer_id` migration 추가
+- [x] membership entity/domain/repository/command 반영
 - [ ] membership create/update API에 optional trainer assignment 반영
-- [ ] `ROLE_TRAINER` 프런트 auth 타입 반영
+- [x] `ROLE_TRAINER` 프런트 auth 타입 반영
 - [ ] 로그인 후 role-based section gating 점검
 - [ ] trainer 계정 fixture/seed/test user 준비
 

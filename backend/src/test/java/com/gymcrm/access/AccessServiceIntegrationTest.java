@@ -172,6 +172,7 @@ class AccessServiceIntegrationTest {
         MemberMembership membership = membershipPurchaseService.purchase(new MembershipPurchaseService.PurchaseRequest(
                 member.memberId(),
                 product.productId(),
+                null,
                 LocalDate.now(),
                 product.priceAmount(),
                 "CARD",

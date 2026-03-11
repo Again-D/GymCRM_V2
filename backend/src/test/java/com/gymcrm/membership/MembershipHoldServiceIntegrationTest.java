@@ -71,6 +71,7 @@ class MembershipHoldServiceIntegrationTest {
         MembershipPurchaseService.PurchaseResult purchase = purchaseService.purchase(new MembershipPurchaseService.PurchaseRequest(
                 member.memberId(),
                 product.productId(),
+                null,
                 LocalDate.of(2026, 3, 1),
                 null,
                 "CASH",
@@ -115,6 +116,7 @@ class MembershipHoldServiceIntegrationTest {
         MembershipPurchaseService.PurchaseResult purchase = purchaseService.purchase(new MembershipPurchaseService.PurchaseRequest(
                 member.memberId(),
                 product.productId(),
+                null,
                 LocalDate.of(2026, 3, 1),
                 null,
                 "CASH",
@@ -148,6 +150,7 @@ class MembershipHoldServiceIntegrationTest {
         MembershipPurchaseService.PurchaseResult purchase = purchaseService.purchase(new MembershipPurchaseService.PurchaseRequest(
                 member.memberId(),
                 product.productId(),
+                null,
                 LocalDate.of(2026, 3, 1),
                 null,
                 "CASH",

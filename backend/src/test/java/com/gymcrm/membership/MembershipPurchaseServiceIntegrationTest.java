@@ -58,12 +58,14 @@ class MembershipPurchaseServiceIntegrationTest {
     void purchaseCreatesMembershipAndPaymentAtomically() {
         Member member = createActiveMember();
         Product product = createDurationProduct();
+        long trainerUserId = createTrainerUser();
         long membershipCountBefore = countRows("member_memberships");
         long paymentCountBefore = countRows("payments");
 
         MembershipPurchaseService.PurchaseResult result = purchaseService.purchase(new MembershipPurchaseService.PurchaseRequest(
                 member.memberId(),
                 product.productId(),
+                trainerUserId,
                 LocalDate.of(2026, 3, 1),
                 null,
                 "CARD",
@@ -78,6 +80,7 @@ class MembershipPurchaseServiceIntegrationTest {
         assertEquals("COMPLETED", result.payment().paymentStatus());
         assertEquals("CARD", result.payment().paymentMethod());
         assertEquals(product.priceAmount(), result.payment().amount());
+        assertEquals(trainerUserId, result.membership().assignedTrainerId());
         assertEquals(membershipCountBefore + 1, countRows("member_memberships"));
         assertEquals(paymentCountBefore + 1, countRows("payments"));
     }
@@ -96,6 +99,7 @@ class MembershipPurchaseServiceIntegrationTest {
         assertThrows(ApiException.class, () -> purchaseService.purchase(new MembershipPurchaseService.PurchaseRequest(
                 member.memberId(),
                 product.productId(),
+                null,
                 LocalDate.of(2026, 3, 2),
                 new BigDecimal("50000"),
                 "CASH",
@@ -105,6 +109,26 @@ class MembershipPurchaseServiceIntegrationTest {
 
         assertEquals(membershipCountBefore, countRows("member_memberships"));
         assertEquals(paymentCountBefore, countRows("payments"));
+    }
+
+    @Test
+    void rejectsAssignedTrainerWhenUserIsNotTrainerRole() {
+        Member member = createActiveMember();
+        Product product = createDurationProduct();
+        long deskUserId = createDeskUser();
+
+        ApiException exception = assertThrows(ApiException.class, () -> purchaseService.purchase(new MembershipPurchaseService.PurchaseRequest(
+                member.memberId(),
+                product.productId(),
+                deskUserId,
+                LocalDate.of(2026, 3, 4),
+                null,
+                "CARD",
+                null,
+                null
+        )));
+
+        assertEquals("담당 트레이너는 ROLE_TRAINER 사용자여야 합니다.", exception.getMessage());
     }
 
     private long countRows(String tableName) {
@@ -163,5 +187,43 @@ class MembershipPurchaseServiceIntegrationTest {
                 "ACTIVE",
                 null
         ));
+    }
+
+    private long createTrainerUser() {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        return jdbcClient.sql("""
+                INSERT INTO users (
+                    center_id, login_id, password_hash, display_name, role_code, user_status,
+                    is_deleted, created_at, created_by, updated_at, updated_by
+                ) VALUES (
+                    1, :loginId, :passwordHash, :displayName, 'ROLE_TRAINER', 'ACTIVE',
+                    FALSE, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 1
+                )
+                RETURNING user_id
+                """)
+                .param("loginId", "trainer-" + suffix)
+                .param("passwordHash", "noop")
+                .param("displayName", "Trainer " + suffix)
+                .query(Long.class)
+                .single();
+    }
+
+    private long createDeskUser() {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        return jdbcClient.sql("""
+                INSERT INTO users (
+                    center_id, login_id, password_hash, display_name, role_code, user_status,
+                    is_deleted, created_at, created_by, updated_at, updated_by
+                ) VALUES (
+                    1, :loginId, :passwordHash, :displayName, 'ROLE_DESK', 'ACTIVE',
+                    FALSE, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 1
+                )
+                RETURNING user_id
+                """)
+                .param("loginId", "desk-" + suffix)
+                .param("passwordHash", "noop")
+                .param("displayName", "Desk " + suffix)
+                .query(Long.class)
+                .single();
     }
 }

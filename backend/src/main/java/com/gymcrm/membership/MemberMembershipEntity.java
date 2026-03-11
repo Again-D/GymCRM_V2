@@ -28,6 +28,9 @@ public class MemberMembershipEntity {
     @Column(name = "product_id", nullable = false)
     private Long productId;
 
+    @Column(name = "assigned_trainer_id")
+    private Long assignedTrainerId;
+
     @Column(name = "membership_status", nullable = false)
     private String membershipStatus;
 
@@ -120,6 +123,14 @@ public class MemberMembershipEntity {
 
     public void setProductId(Long productId) {
         this.productId = productId;
+    }
+
+    public Long getAssignedTrainerId() {
+        return assignedTrainerId;
+    }
+
+    public void setAssignedTrainerId(Long assignedTrainerId) {
+        this.assignedTrainerId = assignedTrainerId;
     }
 
     public String getMembershipStatus() {

@@ -99,6 +99,7 @@ class MembershipHoldServiceTest {
                 1L,
                 1L,
                 1L,
+                null,
                 status,
                 "테스트상품",
                 "MEMBERSHIP",

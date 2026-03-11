@@ -97,7 +97,7 @@ class MembershipRefundServiceTest {
     private MemberMembership durationMembership(LocalDate startDate, LocalDate endDate, int holdDaysUsed) {
         OffsetDateTime now = OffsetDateTime.now();
         return new MemberMembership(
-                1L, 1L, 1L, 1L, "ACTIVE",
+                1L, 1L, 1L, 1L, null, "ACTIVE",
                 "기간제", "MEMBERSHIP", "DURATION",
                 new BigDecimal("100000"),
                 now,
@@ -116,7 +116,7 @@ class MembershipRefundServiceTest {
     private MemberMembership countMembership(int totalCount, int remainingCount, int usedCount) {
         OffsetDateTime now = OffsetDateTime.now();
         return new MemberMembership(
-                1L, 1L, 1L, 1L, "ACTIVE",
+                1L, 1L, 1L, 1L, null, "ACTIVE",
                 "횟수제", "PT", "COUNT",
                 new BigDecimal("200000"),
                 now,
@@ -135,7 +135,7 @@ class MembershipRefundServiceTest {
     private MemberMembership durationMembershipWithStatus(String status) {
         OffsetDateTime now = OffsetDateTime.now();
         return new MemberMembership(
-                1L, 1L, 1L, 1L, status,
+                1L, 1L, 1L, 1L, null, status,
                 "기간제", "MEMBERSHIP", "DURATION",
                 new BigDecimal("100000"),
                 now,
