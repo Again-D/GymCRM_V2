@@ -181,19 +181,19 @@ date: 2026-03-11
 - 출입 관리에서 검색 결과 pagination과 이벤트 pagination이 서로 상태를 공유하지 않는지
 
 ## Acceptance Criteria
-- [ ] 회원관리 목록에 공통 pagination controls가 보인다.
-- [ ] 예약 관리의 선택 회원 예약 목록에 같은 pagination controls가 보인다.
-- [ ] 출입 관리의 세 목록에 같은 pagination controls가 보인다.
-- [ ] 필터/검색/선택 상태가 바뀌면 현재 페이지가 1로 리셋된다.
-- [ ] 페이지네이션은 fetch 로직이 아니라 렌더 직전 rows slicing으로만 적용된다.
-- [ ] 각 화면의 기존 정렬/empty state/loading 문구는 유지된다.
-- [ ] 페이지 수 감소 시 현재 페이지가 자동 보정된다.
+- [x] 회원관리 목록에 공통 pagination controls가 보인다.
+- [x] 예약 관리의 선택 회원 예약 목록에 같은 pagination controls가 보인다.
+- [x] 출입 관리의 세 목록에 같은 pagination controls가 보인다.
+- [x] 필터/검색/선택 상태가 바뀌면 현재 페이지가 1로 리셋된다.
+- [x] 페이지네이션은 fetch 로직이 아니라 렌더 직전 rows slicing으로만 적용된다.
+- [x] 각 화면의 기존 정렬/empty state/loading 문구는 유지된다.
+- [x] 페이지 수 감소 시 현재 페이지가 자동 보정된다.
 - [ ] 모바일 좁은 화면에서도 controls가 줄바꿈되거나 축약되어 레이아웃이 깨지지 않는다.
-- [ ] `cd /Users/abc/projects/GymCRM_V2/frontend && npm run build` 통과
+- [x] `cd /Users/abc/projects/GymCRM_V2/frontend && npm run build` 통과
 
 ### Quality Gates
-- [ ] `usePagination` 단위 테스트 추가
-- [ ] 최소 1개 화면에서 page reset 회귀 테스트 추가
+- [x] `usePagination` 단위 테스트 추가
+- [x] 최소 1개 화면에서 page reset 회귀 테스트 추가
 - [ ] 수동 확인:
   - 회원관리
   - 예약 관리
@@ -233,9 +233,40 @@ date: 2026-03-11
 **Migration trigger to server pagination later**
 - member summary limit를 100보다 높여야 하는 요구가 생길 때
 - access events를 100건 이상 탐색해야 하는 운영 요구가 생길 때
+- reservation list도 선택 회원 기준을 넘어 더 긴 이력을 직접 탐색해야 하는 요구가 생길 때
 - initial fetch cost가 UX 병목이 될 때
+- 모바일 또는 저사양 환경에서 first render 비용이 체감되기 시작할 때
 
 그 전까지는 client-side가 더 단순하고 안전하다.
+
+## Server Pagination Transition Criteria
+이번 작업은 의도적으로 `client-side pagination`으로 끝낸다. 아래 조건이 하나라도 실제 운영 요구로 올라오면, 별도 후속 작업으로 `server-side pagination` 전환을 검토한다.
+
+1. 회원관리
+   - `/api/v1/members`의 기본 `100건` 제한이 운영상 부족해져 더 많은 결과 탐색이 필요해질 때
+   - `membershipOperationalStatus`, trainer, product, 기간 필터를 조합한 검색에서 100건 초과 결과를 정확히 탐색해야 할 때
+2. 출입 관리
+   - 최근 출입 이벤트 `100건` 제한을 넘어 더 긴 기간을 UI에서 직접 넘겨보는 요구가 생길 때
+   - 현재 입장중 회원 수나 검색 결과가 커져 initial fetch가 느려질 때
+3. 예약 관리
+   - 선택 회원의 예약 이력이나 예약 대상 회원 리스트가 길어져 client-side slice만으로 UX를 유지하기 어려울 때
+4. 공통 성능 신호
+   - 첫 조회 payload가 커져 네트워크 대기 시간이 눈에 띄게 길어질 때
+   - 브라우저 메모리 사용이나 테이블 초기 렌더가 체감 성능 이슈로 올라올 때
+
+전환 시에는 `offset/limit` 또는 cursor 방식을 화면별로 따로 넣지 말고, 목록별 정렬 기준과 총 개수 응답 구조를 함께 설계하는 별도 계획 문서로 분리한다.
+
+## Follow-up Work
+이번 플랜의 구현 이후에도 아래 항목은 `후속 작업`으로 남긴다.
+
+- 서버 페이지네이션 전환 검토 문서 작성
+  - 대상: 회원관리, 예약 관리, 출입 관리
+  - 조건: 위 `Server Pagination Transition Criteria` 중 하나라도 충족될 때
+- 운영 데이터 규모 점검
+  - 회원 수, 출입 이벤트 수, 예약 이력 길이가 현재 `client-side pagination` 가정 범위를 넘는지 주기적으로 확인
+- 필요 시 후속 플랜 분리
+  - 예시: `feat: add server-side pagination for member summaries`
+  - 예시: `feat: add server-side pagination for access events`
 
 ## Sources & References
 - Members list: `/Users/abc/projects/GymCRM_V2/frontend/src/features/members/MemberManagementPanels.tsx`
