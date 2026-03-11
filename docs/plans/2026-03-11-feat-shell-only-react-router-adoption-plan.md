@@ -223,12 +223,12 @@ date: 2026-03-11
 - [x] `/Users/abc/projects/GymCRM_V2/frontend && npm run build` 통과
 
 ### Quality Gates
-- [ ] 최소한 route fallback 동작 검증
+- [x] 최소한 route fallback 동작 검증
 - [ ] sidebar와 dashboard가 같은 route surface를 쓰는지 검증
 - [ ] prototype/jwt 모드에서 refresh 진입 검증
 - [x] `activeNavSection` 이중 source of truth 제거 여부 확인
 - [ ] browser back/forward가 section 전환과 일치하는지 확인
-- [ ] JWT unauthenticated 상태에서 redirect loop가 없는지 확인
+- [x] JWT unauthenticated 상태에서 redirect loop가 없는지 확인
 - [ ] section route 전환만으로 `selectedMember`가 불필요하게 reset되지 않는지 확인
 - [ ] `/login`과 protected route 사이 auth bootstrap 시각 차이로 flicker/flash redirect가 없는지 확인
 
@@ -243,6 +243,9 @@ date: 2026-03-11
   - 새로고침
   - 브라우저 뒤로가기/앞으로가기
   - prototype/jwt 각각에서 `/members` 직접 진입
+
+### Validation Log
+- `/Users/abc/projects/GymCRM_V2/docs/notes/2026-03-11-shell-routing-validation-log.md`
 
 ## Implementation Steps
 1. `/Users/abc/projects/GymCRM_V2/frontend/package.json`에 `react-router-dom` 추가

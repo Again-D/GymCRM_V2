@@ -1,11 +1,7 @@
-type SidebarNavItem = {
-  key: string;
-  label: string;
-  description: string;
-};
+import type { ShellRoute } from "../../app/routes";
 
 type SidebarNavProps = {
-  items: SidebarNavItem[];
+  items: Array<Pick<ShellRoute, "key" | "label" | "description">>;
   activeKey: string;
   onSelect: (key: string) => void;
   isJwtMode: boolean;

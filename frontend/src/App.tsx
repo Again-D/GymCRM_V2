@@ -1727,6 +1727,7 @@ export default function App() {
   }
 
   const navItems = shellRoutes.filter((route) => route.showInSidebar);
+  const dashboardQuickActions = shellRoutes.filter((route) => route.showInDashboard);
   const selectedMemberMemberships = selectedMember ? (memberMembershipsByMemberId[selectedMember.memberId] ?? []) : [];
   const selectedMemberPayments = selectedMember ? (memberPaymentsByMemberId[selectedMember.memberId] ?? []) : [];
   const selectedMemberReservations = selectedMember ? (reservationRowsByMemberId[selectedMember.memberId] ?? []) : [];
@@ -1861,6 +1862,7 @@ export default function App() {
           {activeNavSection === "dashboard" ? (
             <DashboardSection
               routePreview={routePreview}
+              quickActions={dashboardQuickActions}
               selectedMemberLabel={selectedMember ? `#${selectedMember.memberId} ${selectedMember.memberName}` : "-"}
               hasSelectedMember={Boolean(selectedMember)}
               isDeskRole={Boolean(isDeskRole)}
@@ -1869,11 +1871,7 @@ export default function App() {
               membersCount={members.length}
               productsCount={products.length}
               sessionMembershipCount={selectedMemberMemberships.length}
-              onOpenMembers={() => navigateToSection("members")}
-              onOpenMemberships={() => navigateToSection("memberships")}
-              onOpenReservations={() => navigateToSection("reservations")}
-              onOpenAccess={() => navigateToSection("access")}
-              onOpenProducts={() => navigateToSection("products")}
+              onNavigate={navigateToSection}
             />
           ) : activeNavSection === "memberships" ? (
             <MembershipsSection
