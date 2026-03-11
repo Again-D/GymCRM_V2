@@ -682,6 +682,7 @@ textarea {
   border-radius: 16px;
   box-shadow: var(--shadow);
   padding: 14px;
+  min-width: 0;
 }
 
 .wide-panel {
@@ -999,8 +1000,10 @@ textarea:disabled {
   border: 1px solid var(--line);
   border-radius: 12px;
   overflow: auto;
+  max-width: 100%;
   background: var(--list-shell-bg);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  -webkit-overflow-scrolling: touch;
 }
 
 .pagination-controls {
@@ -1019,6 +1022,7 @@ textarea:disabled {
   align-items: center;
   color: var(--muted);
   font-size: 12px;
+  min-width: 0;
 }
 
 .pagination-actions {
@@ -1027,6 +1031,7 @@ textarea:disabled {
   gap: 12px;
   align-items: center;
   justify-content: flex-end;
+  min-width: 0;
 }
 
 .pagination-size {
@@ -1046,6 +1051,7 @@ textarea:disabled {
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+  min-width: 0;
 }
 
 .pagination-button {
@@ -1056,6 +1062,7 @@ textarea:disabled {
   display: inline-flex;
   flex-wrap: wrap;
   gap: 6px;
+  min-width: 0;
 }
 
 .pagination-page {
@@ -1839,11 +1846,22 @@ code {
   }
 
   .pagination-buttons {
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    width: 100%;
+    justify-content: initial;
   }
 
   .pagination-page-list {
     justify-content: flex-start;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: thin;
+  }
+
+  .pagination-page {
+    flex: 0 0 auto;
   }
 
   .checkbox-row {
@@ -1940,6 +1958,10 @@ code {
     min-width: 30px;
     min-height: 30px;
     padding: 0 8px;
+  }
+
+  .pagination-summary {
+    gap: 4px;
   }
 
   .workspace-member-picker-item {

@@ -87,6 +87,10 @@ export function ReservationManagementPanels({
     initialPageSize: 10,
     resetDeps: [selectedMemberId, selectedMemberReservations.length]
   });
+  const reservationSchedulesPagination = usePagination(reservationSchedules, {
+    initialPageSize: 10,
+    resetDeps: [reservationSchedules.length]
+  });
 
   return (
     <>
@@ -321,10 +325,10 @@ export function ReservationManagementPanels({
               </tr>
             </thead>
             <tbody>
-              {reservationSchedules.length === 0 ? (
+              {reservationSchedulesPagination.pagedItems.length === 0 ? (
                 <EmptyTableRow colSpan={7} message="예약 스케줄이 없습니다." />
               ) : (
-                reservationSchedules.map((schedule) => (
+                reservationSchedulesPagination.pagedItems.map((schedule) => (
                   <tr key={schedule.scheduleId}>
                     <td>{schedule.scheduleId}</td>
                     <td>{schedule.scheduleType}</td>
@@ -341,6 +345,17 @@ export function ReservationManagementPanels({
             </tbody>
           </table>
         </div>
+        <PaginationControls
+          page={reservationSchedulesPagination.page}
+          totalPages={reservationSchedulesPagination.totalPages}
+          pageSize={reservationSchedulesPagination.pageSize}
+          pageSizeOptions={[10, 20, 50]}
+          totalItems={reservationSchedulesPagination.totalItems}
+          startItemIndex={reservationSchedulesPagination.startItemIndex}
+          endItemIndex={reservationSchedulesPagination.endItemIndex}
+          onPageChange={reservationSchedulesPagination.setPage}
+          onPageSizeChange={reservationSchedulesPagination.setPageSize}
+        />
       </article>
 
       
