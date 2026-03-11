@@ -83,6 +83,7 @@ public class MemberService {
             String phoneKeyword,
             Long trainerId,
             Long productId,
+            String membershipOperationalStatus,
             LocalDate dateFrom,
             LocalDate dateTo
     ) {
@@ -96,6 +97,7 @@ public class MemberService {
                         phoneKeyword,
                         effectiveTrainerId,
                         productId,
+                        membershipOperationalStatus,
                         dateFrom,
                         dateTo,
                         businessDate
