@@ -340,9 +340,9 @@ return (
 - 마지막에 auth 타입 열기
 
 ### Phase 2: Query and filter expansion
-- [ ] member summary API에 `trainerId`, `productId`, `dateFrom`, `dateTo` 필터 추가
+- [x] member summary API에 `trainerId`, `productId`, `dateFrom`, `dateTo` 필터 추가
 - [ ] 회원관리 필터 UI에 `1주일`, `1개월`, `3개월`, `6개월` 빠른 기간 프리셋 추가
-- [ ] member summary query를 membership join 기반으로 확장
+- [x] member summary query를 membership join 기반으로 확장
 - [ ] 중복 회원 제거 규칙 및 정렬 기준 명시
 - [ ] trainer role일 때 member summary 결과를 담당 회원으로 제한
 - [ ] trainer가 사용할 member list/detail read surface를 명시적으로 선택하고 service/query scope를 연결

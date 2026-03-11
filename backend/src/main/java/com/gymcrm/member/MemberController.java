@@ -56,9 +56,22 @@ public class MemberController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String memberCode,
             @RequestParam(required = false) String name,
-            @RequestParam(required = false) String phone
+            @RequestParam(required = false) String phone,
+            @RequestParam(required = false) Long trainerId,
+            @RequestParam(required = false) Long productId,
+            @RequestParam(required = false) LocalDate dateFrom,
+            @RequestParam(required = false) LocalDate dateTo
     ) {
-        List<MemberSummaryResponse> items = memberService.list(keyword, memberCode, name, phone).stream()
+        List<MemberSummaryResponse> items = memberService.list(
+                        keyword,
+                        memberCode,
+                        name,
+                        phone,
+                        trainerId,
+                        productId,
+                        dateFrom,
+                        dateTo
+                ).stream()
                 .map(MemberSummaryResponse::from)
                 .toList();
         return ApiResponse.success(items, "회원 목록 조회 성공");

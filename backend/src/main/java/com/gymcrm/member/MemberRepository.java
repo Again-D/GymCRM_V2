@@ -65,9 +65,24 @@ public class MemberRepository {
             String memberCodeKeyword,
             String nameKeyword,
             String phoneKeyword,
+            Long trainerId,
+            Long productId,
+            LocalDate dateFrom,
+            LocalDate dateTo,
             LocalDate referenceDate
     ) {
-        return memberQueryRepository.findAllSummaries(centerId, keyword, memberCodeKeyword, nameKeyword, phoneKeyword, referenceDate);
+        return memberQueryRepository.findAllSummaries(
+                centerId,
+                keyword,
+                memberCodeKeyword,
+                nameKeyword,
+                phoneKeyword,
+                trainerId,
+                productId,
+                dateFrom,
+                dateTo,
+                referenceDate
+        );
     }
 
     public Member update(MemberUpdateCommand command) {

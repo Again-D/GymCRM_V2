@@ -66,9 +66,14 @@ public class MemberQueryRepository {
             String memberCodeKeyword,
             String nameKeyword,
             String phoneKeyword,
+            Long trainerId,
+            Long productId,
+            LocalDate dateFrom,
+            LocalDate dateTo,
             LocalDate referenceDate
     ) {
         LocalDate expiringThresholdDate = referenceDate.plusDays(7);
+        boolean hasMembershipFilters = trainerId != null || productId != null || dateFrom != null || dateTo != null;
         StringBuilder sql = new StringBuilder("""
                 WITH base_members AS (
                     SELECT
@@ -108,16 +113,61 @@ public class MemberQueryRepository {
         sql.append("""
                     ORDER BY m.member_id DESC
                     LIMIT 100
-                ),
-                representative_memberships AS (
-                    SELECT DISTINCT ON (mm.member_id)
+                )
+                ,
+                filtered_memberships AS (
+                    SELECT
                         mm.member_id,
-                        mm.end_date
+                        mm.membership_id,
+                        mm.end_date,
+                        mm.remaining_count,
+                        mm.product_category_snapshot,
+                        mm.product_type_snapshot
                     FROM member_memberships mm
                     JOIN base_members bm ON bm.member_id = mm.member_id
                     WHERE mm.center_id = :centerId
                       AND mm.is_deleted = FALSE
                       AND mm.membership_status = 'ACTIVE'
+                """);
+
+        if (trainerId != null) {
+            sql.append(" AND mm.assigned_trainer_id = :trainerId ");
+        }
+        if (productId != null) {
+            sql.append(" AND mm.product_id = :productId ");
+        }
+        if (dateFrom != null) {
+            sql.append(" AND (mm.end_date IS NULL OR mm.end_date >= :dateFrom) ");
+        }
+        if (dateTo != null) {
+            sql.append(" AND mm.start_date <= :dateTo ");
+        }
+
+        sql.append("""
+                ),
+                scoped_members AS (
+                    SELECT bm.*
+                    FROM base_members bm
+                """);
+
+        if (hasMembershipFilters) {
+            sql.append("""
+                    WHERE EXISTS (
+                        SELECT 1
+                        FROM filtered_memberships fm
+                        WHERE fm.member_id = bm.member_id
+                    )
+                    """);
+        }
+
+        sql.append("""
+                ),
+                representative_memberships AS (
+                    SELECT DISTINCT ON (mm.member_id)
+                        mm.member_id,
+                        mm.end_date
+                    FROM filtered_memberships mm
+                    JOIN scoped_members bm ON bm.member_id = mm.member_id
                     ORDER BY mm.member_id, mm.end_date NULLS LAST, mm.membership_id ASC
                 ),
                 pt_remaining_summary AS (
@@ -130,11 +180,9 @@ public class MemberQueryRepository {
                                 ELSE 0
                             END
                         ), 0) AS remaining_pt_count
-                    FROM member_memberships mm
-                    JOIN base_members bm ON bm.member_id = mm.member_id
-                    WHERE mm.center_id = :centerId
-                      AND mm.is_deleted = FALSE
-                      AND mm.membership_status = 'ACTIVE'
+                    FROM filtered_memberships mm
+                    JOIN scoped_members bm ON bm.member_id = mm.member_id
+                    WHERE 1 = 1
                       AND mm.product_category_snapshot = 'PT'
                       AND mm.product_type_snapshot = 'COUNT'
                     GROUP BY mm.member_id
@@ -156,7 +204,7 @@ public class MemberQueryRepository {
                     END AS membership_operational_status,
                     rm.end_date AS membership_expiry_date,
                     pts.remaining_pt_count
-                FROM base_members bm
+                FROM scoped_members bm
                 LEFT JOIN representative_memberships rm ON rm.member_id = bm.member_id
                 LEFT JOIN pt_remaining_summary pts ON pts.member_id = bm.member_id
                 ORDER BY bm.member_id DESC
@@ -177,6 +225,18 @@ public class MemberQueryRepository {
         }
         if (hasText(phoneKeyword)) {
             query.setParameter("phoneKeyword", "%" + phoneKeyword.trim() + "%");
+        }
+        if (trainerId != null) {
+            query.setParameter("trainerId", trainerId);
+        }
+        if (productId != null) {
+            query.setParameter("productId", productId);
+        }
+        if (dateFrom != null) {
+            query.setParameter("dateFrom", dateFrom);
+        }
+        if (dateTo != null) {
+            query.setParameter("dateTo", dateTo);
         }
 
         @SuppressWarnings("unchecked")
