@@ -1,10 +1,11 @@
-type RoutePreviewItem = {
-  path: string;
-  label: string;
-};
+import type { RoutePreviewItem, ShellRoute } from "../../app/routes";
+import { Link } from "react-router-dom";
+
+type DashboardQuickAction = Pick<ShellRoute, "key" | "path" | "label">;
 
 type DashboardSectionProps = {
   routePreview: RoutePreviewItem[];
+  quickActions: DashboardQuickAction[];
   selectedMemberLabel: string;
   hasSelectedMember: boolean;
   isDeskRole: boolean;
@@ -13,16 +14,12 @@ type DashboardSectionProps = {
   membersCount: number;
   productsCount: number;
   sessionMembershipCount: number;
-  onOpenMembers: () => void;
-  onOpenMemberships: () => void;
-  onOpenReservations: () => void;
-  onOpenAccess: () => void;
-  onOpenProducts: () => void;
 };
 
 export function DashboardSection(props: DashboardSectionProps) {
   const {
     routePreview,
+    quickActions,
     selectedMemberLabel,
     hasSelectedMember,
     isDeskRole,
@@ -30,12 +27,7 @@ export function DashboardSection(props: DashboardSectionProps) {
     isAuthenticated,
     membersCount,
     productsCount,
-    sessionMembershipCount,
-    onOpenMembers,
-    onOpenMemberships,
-    onOpenReservations,
-    onOpenAccess,
-    onOpenProducts
+    sessionMembershipCount
   } = props;
 
   const metricCards = [
@@ -63,14 +55,6 @@ export function DashboardSection(props: DashboardSectionProps) {
       delta: `보안 모드 ${securityMode}`,
       tone: isAuthenticated ? "ok" : "muted"
     }
-  ] as const;
-
-  const quickActions = [
-    { label: "회원 관리", onClick: onOpenMembers, disabled: false },
-    { label: "회원권 업무", onClick: onOpenMemberships, disabled: false },
-    { label: "예약 관리", onClick: onOpenReservations, disabled: false },
-    { label: "출입 관리", onClick: onOpenAccess, disabled: false },
-    { label: "상품 관리", onClick: onOpenProducts, disabled: false }
   ] as const;
 
   return (
@@ -107,15 +91,13 @@ export function DashboardSection(props: DashboardSectionProps) {
 
           <div className="quick-actions-grid dashboard-actions-grid">
             {quickActions.map((action) => (
-              <button
-                key={action.label}
-                type="button"
+              <Link
+                key={action.key}
+                to={action.path}
                 className="secondary-button"
-                onClick={action.onClick}
-                disabled={action.disabled}
               >
                 {action.label}
-              </button>
+              </Link>
             ))}
           </div>
 

@@ -1,5 +1,11 @@
 import { FormEvent, Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
-import { routes } from "./app/routes";
+import {
+  getShellRouteByKey,
+  getShellRouteByPath,
+  routePreviewRoutes,
+  shellRoutes,
+  type NavSectionKey
+} from "./app/routes";
 import { ContentHeader } from "./components/layout/ContentHeader";
 import { SidebarNav } from "./components/layout/SidebarNav";
 import { TopBar } from "./components/layout/TopBar";
@@ -71,6 +77,11 @@ import { ApiClientError, apiGet, apiPatch, apiPost } from "./shared/api/client";
 import { type AuthTokenResponse, type AuthUserSession, type SecurityMode, useAuthSession } from "./shared/hooks/useAuthSession";
 import { useMembershipDateFilter } from "./shared/hooks/useMembershipDateFilter";
 import {
+  Navigate,
+  useLocation,
+  useNavigate
+} from "react-router-dom";
+import {
   useAccessWorkspaceLoader,
   useCrmWorkspaceLoader,
   useLockerWorkspaceLoader,
@@ -84,17 +95,6 @@ function WorkspacePanelFallback() {
 }
 import { detectSystemTheme, useThemePreference } from "./shared/hooks/useThemePreference";
 import { formatCurrency, formatDate, formatDateTime } from "./shared/utils/format";
-
-type NavSectionKey =
-  | "dashboard"
-  | "members"
-  | "memberships"
-  | "reservations"
-  | "access"
-  | "lockers"
-  | "crm"
-  | "settlements"
-  | "products";
 
 type MemberDetail = {
   memberId: number;
@@ -492,7 +492,10 @@ function buildResumePreview(membership: PurchasedMembership, draft: MembershipAc
 }
 
 export default function App() {
-  const [activeNavSection, setActiveNavSection] = useState<NavSectionKey>("dashboard");
+  const location = useLocation();
+  const navigate = useNavigate();
+  const shellRoute = getShellRouteByPath(location.pathname);
+  const activeNavSection = shellRoute?.key ?? "dashboard";
   const { themePreference, setThemePreference, resolvedTheme } = useThemePreference();
   const membershipDateFilter = useMembershipDateFilter();
   const {
@@ -799,7 +802,7 @@ export default function App() {
     onProtectedUiReset: clearProtectedUiState
   });
 
-  const routePreview = useMemo(() => routes.slice(0, 4), []);
+  const routePreview = routePreviewRoutes.slice(0, 4);
   const activeProductsForPurchase = useMemo(
     () => products.filter((product) => product.productStatus === "ACTIVE"),
     [products]
@@ -1675,17 +1678,25 @@ export default function App() {
     await loadMemberDetail(memberId, { syncForm: false });
   }
 
+  function navigateToSection(sectionKey: NavSectionKey) {
+    const nextRoute = getShellRouteByKey(sectionKey);
+    if (!nextRoute) {
+      return;
+    }
+    navigate(nextRoute.path);
+  }
+
   async function openMembershipOperationsForMember(memberId: number) {
     const loaded = await loadMemberDetail(memberId, { syncForm: false });
     if (loaded) {
-      setActiveNavSection("memberships");
+      navigateToSection("memberships");
     }
   }
 
   async function openReservationManagementForMember(memberId: number) {
     const loaded = await loadMemberDetail(memberId, { syncForm: false });
     if (loaded) {
-      setActiveNavSection("reservations");
+      navigateToSection("reservations");
     }
   }
 
@@ -1715,17 +1726,8 @@ export default function App() {
     });
   }
 
-  const navItems: Array<{ key: NavSectionKey; label: string; description: string }> = [
-    { key: "dashboard", label: "대시보드", description: "운영 요약 / 빠른 진입" },
-    { key: "members", label: "회원 관리", description: "회원 목록 / 등록 / 수정" },
-    { key: "memberships", label: "회원권 업무", description: "구매 / 홀딩 / 해제 / 환불" },
-    { key: "reservations", label: "예약 관리", description: "예약 생성 / 취소 / 완료 / 차감" },
-    { key: "access", label: "출입 관리", description: "입장 / 퇴장 / 거절 이력 / 현재 입장" },
-    { key: "lockers", label: "라커 관리", description: "슬롯 조회 / 배정 / 반납" },
-    { key: "crm", label: "CRM 메시지", description: "만료임박 트리거 / 큐 처리 / 이력" },
-    { key: "settlements", label: "정산 리포트", description: "기간/상품/결제수단/순매출" },
-    { key: "products", label: "상품 관리", description: "상품 목록 / 정책 / 상태" }
-  ];
+  const navItems = shellRoutes.filter((route) => route.showInSidebar);
+  const dashboardQuickActions = shellRoutes.filter((route) => route.showInDashboard);
   const selectedMemberMemberships = selectedMember ? (memberMembershipsByMemberId[selectedMember.memberId] ?? []) : [];
   const selectedMemberPayments = selectedMember ? (memberPaymentsByMemberId[selectedMember.memberId] ?? []) : [];
   const selectedMemberReservations = selectedMember ? (reservationRowsByMemberId[selectedMember.memberId] ?? []) : [];
@@ -1748,6 +1750,14 @@ export default function App() {
     return <BootstrappingScreen />;
   }
 
+  if (!isJwtMode && location.pathname === "/login") {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  if (isJwtMode && !isAuthenticated && location.pathname !== "/login") {
+    return <Navigate to="/login" replace />;
+  }
+
   if (isJwtMode && !isAuthenticated) {
     return (
       <LoginScreen
@@ -1767,6 +1777,18 @@ export default function App() {
 
   if (securityMode === "unknown") {
     return <UnknownSecurityScreen authError={authError} onReload={() => window.location.reload()} />;
+  }
+
+  if (location.pathname === "/") {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  if (isAuthenticated && location.pathname === "/login") {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  if (!shellRoute) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return (
@@ -1803,7 +1825,6 @@ export default function App() {
         <SidebarNav
           items={navItems}
           activeKey={activeNavSection}
-          onSelect={(key) => setActiveNavSection(key as NavSectionKey)}
           isJwtMode={isJwtMode}
           selectedMemberLabel={selectedMember ? `#${selectedMember.memberId} ${selectedMember.memberName}` : "-"}
           currentUserLabel={authUser ? `${authUser.displayName} (${authUser.roleCode})` : "로그인 없음"}
@@ -1834,12 +1855,13 @@ export default function App() {
             showSelectMemberAction={
               (activeNavSection === "memberships" || activeNavSection === "reservations") && !selectedMember
             }
-            onSelectMemberClick={() => setActiveNavSection("members")}
+            onSelectMemberClick={() => navigateToSection("members")}
           />
 
           {activeNavSection === "dashboard" ? (
             <DashboardSection
               routePreview={routePreview}
+              quickActions={dashboardQuickActions}
               selectedMemberLabel={selectedMember ? `#${selectedMember.memberId} ${selectedMember.memberName}` : "-"}
               hasSelectedMember={Boolean(selectedMember)}
               isDeskRole={Boolean(isDeskRole)}
@@ -1848,18 +1870,13 @@ export default function App() {
               membersCount={members.length}
               productsCount={products.length}
               sessionMembershipCount={selectedMemberMemberships.length}
-              onOpenMembers={() => setActiveNavSection("members")}
-              onOpenMemberships={() => setActiveNavSection("memberships")}
-              onOpenReservations={() => setActiveNavSection("reservations")}
-              onOpenAccess={() => setActiveNavSection("access")}
-              onOpenProducts={() => setActiveNavSection("products")}
             />
           ) : activeNavSection === "memberships" ? (
             <MembershipsSection
               selectedMember={selectedMember}
               loadWorkspaceMembers={loadWorkspaceMembers}
               onSelectWorkspaceMember={(memberId) => loadMemberDetail(memberId, { syncForm: false })}
-              onGoMembers={() => setActiveNavSection("members")}
+              onGoMembers={() => navigateToSection("members")}
             >
               <Suspense fallback={<WorkspacePanelFallback />}>
                 <LazyMembershipOperationsPanels
@@ -1923,7 +1940,7 @@ export default function App() {
               selectedMemberReservations={selectedMemberReservations}
               reservationPanelMessage={reservationPanelMessage}
               reservationPanelError={effectiveReservationPanelError}
-              onGoMembers={() => setActiveNavSection("members")}
+              onGoMembers={() => navigateToSection("members")}
             >
               <Suspense fallback={<WorkspacePanelFallback />}>
                 <LazyReservationManagementPanels

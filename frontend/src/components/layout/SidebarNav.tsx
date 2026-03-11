@@ -1,13 +1,9 @@
-type SidebarNavItem = {
-  key: string;
-  label: string;
-  description: string;
-};
+import type { ShellRoute } from "../../app/routes";
+import { NavLink } from "react-router-dom";
 
 type SidebarNavProps = {
-  items: SidebarNavItem[];
+  items: Array<Pick<ShellRoute, "key" | "path" | "label" | "description">>;
   activeKey: string;
-  onSelect: (key: string) => void;
   isJwtMode: boolean;
   selectedMemberLabel: string;
   currentUserLabel: string;
@@ -16,7 +12,6 @@ type SidebarNavProps = {
 export function SidebarNav({
   items,
   activeKey,
-  onSelect,
   isJwtMode,
   selectedMemberLabel,
   currentUserLabel
@@ -29,17 +24,15 @@ export function SidebarNav({
       </div>
       <nav className="sidebar-nav" aria-label="관리자 기능 탭">
         {items.map((item) => (
-          <button
+          <NavLink
             key={item.key}
-            type="button"
+            to={item.path}
             className={activeKey === item.key ? "sidebar-tab is-active" : "sidebar-tab"}
-            aria-pressed={activeKey === item.key}
             aria-current={activeKey === item.key ? "page" : undefined}
-            onClick={() => onSelect(item.key)}
           >
             <span className="sidebar-tab-label">{item.label}</span>
             <span className="sidebar-tab-desc">{item.description}</span>
-          </button>
+          </NavLink>
         ))}
       </nav>
       <div className="sidebar-meta">
