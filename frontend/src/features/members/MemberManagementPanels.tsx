@@ -3,9 +3,11 @@ import { EmptyTableRow } from "../../shared/ui/EmptyTableRow";
 import { MembershipPeriodFilter } from "../../shared/ui/MembershipPeriodFilter";
 import { NoticeText } from "../../shared/ui/NoticeText";
 import { OverlayPanel } from "../../shared/ui/OverlayPanel";
+import { PaginationControls } from "../../shared/ui/PaginationControls";
 import { PanelHeader } from "../../shared/ui/PanelHeader";
 import { formatDate } from "../../shared/utils/format";
 import type { MembershipDateFilterState, MembershipPeriodPreset } from "../../shared/hooks/useMembershipDateFilter";
+import { usePagination } from "../../shared/hooks/usePagination";
 
 type MemberSummaryRow = {
   memberId: number;
@@ -161,6 +163,21 @@ export function MemberManagementPanels({
   setMemberForm,
   memberFormSubmitting
 }: MemberManagementPanelsProps) {
+  const membersPagination = usePagination(members, {
+    initialPageSize: 20,
+    resetDeps: [
+      memberSearchName,
+      memberSearchPhone,
+      memberTrainerFilter,
+      memberProductFilter,
+      memberMembershipStatusFilter,
+      memberDateFilter.presetRange,
+      memberDateFilter.dateFrom,
+      memberDateFilter.dateTo,
+      members.length
+    ]
+  });
+
   return (
     <>
       <article className="panel member-management-panel">
@@ -287,10 +304,10 @@ export function MemberManagementPanels({
               </tr>
             </thead>
             <tbody>
-              {members.length === 0 ? (
+              {membersPagination.pagedItems.length === 0 ? (
                 <EmptyTableRow colSpan={9} message="조회된 회원이 없습니다." />
               ) : (
-                members.map((member) => (
+                membersPagination.pagedItems.map((member) => (
                   <tr
                     key={member.memberId}
                     className={`is-clickable-row${member.memberId === selectedMemberId ? " is-selected" : ""}`}
@@ -380,6 +397,17 @@ export function MemberManagementPanels({
             </tbody>
           </table>
         </div>
+        <PaginationControls
+          page={membersPagination.page}
+          totalPages={membersPagination.totalPages}
+          pageSize={membersPagination.pageSize}
+          pageSizeOptions={[20, 50, 100]}
+          totalItems={membersPagination.totalItems}
+          startItemIndex={membersPagination.startItemIndex}
+          endItemIndex={membersPagination.endItemIndex}
+          onPageChange={membersPagination.setPage}
+          onPageSizeChange={membersPagination.setPageSize}
+        />
       </article>
 
       <OverlayPanel

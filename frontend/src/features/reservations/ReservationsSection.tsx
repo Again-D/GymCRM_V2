@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { NoticeText } from "../../shared/ui/NoticeText";
 import { OverlayPanel } from "../../shared/ui/OverlayPanel";
+import { PaginationControls } from "../../shared/ui/PaginationControls";
 import { PanelHeader } from "../../shared/ui/PanelHeader";
+import { usePagination } from "../../shared/hooks/usePagination";
 import { formatDate, formatDateTime } from "../../shared/utils/format";
 import { EmptyTableRow } from "../../shared/ui/EmptyTableRow";
 
@@ -79,6 +81,10 @@ export function ReservationsSection({
   children
 }: ReservationsSectionProps) {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const reservationTargetsPagination = usePagination(reservationTargets, {
+    initialPageSize: 10,
+    resetDeps: [reservationTargetsKeyword, reservationTargets.length]
+  });
 
   useEffect(() => {
     if (!selectedMember) {
@@ -95,7 +101,7 @@ export function ReservationsSection({
     <section className="membership-ops-shell" aria-label="예약 관리 화면">
       <article className="panel">
         <PanelHeader
-          title="PT 이용권 보유 회원 리스트"
+          title="회원권 보유 회원 리스트"
           actions={
             <div className="panel-header-actions">
               <button type="button" className="secondary-button" onClick={onReservationTargetsSearch}>
@@ -132,10 +138,10 @@ export function ReservationsSection({
               </tr>
             </thead>
             <tbody>
-              {reservationTargets.length === 0 ? (
+              {reservationTargetsPagination.pagedItems.length === 0 ? (
                 <EmptyTableRow colSpan={8} message="예약 대상 회원이 없습니다." />
               ) : (
-                reservationTargets.map((target) => (
+                reservationTargetsPagination.pagedItems.map((target) => (
                   <tr
                     key={target.memberId}
                     className={selectedMember?.memberId === target.memberId ? "is-selected" : undefined}
@@ -144,7 +150,7 @@ export function ReservationsSection({
                       if (loaded) {
                         setIsDetailOpen(true);
                       }
-                      }}
+                    }}
                   >
                     <td>{target.memberId}</td>
                     <td>{target.memberCode}</td>
@@ -160,8 +166,7 @@ export function ReservationsSection({
                         onClick={(event) => {
                           event.stopPropagation();
                           void onSelectReservationTarget(target.memberId);
-                          }
-                        }
+                        }}
                       >
                         {selectedMember?.memberId === target.memberId ? "선택됨" : "선택"}
                       </button>
@@ -172,6 +177,17 @@ export function ReservationsSection({
             </tbody>
           </table>
         </div>
+        <PaginationControls
+          page={reservationTargetsPagination.page}
+          totalPages={reservationTargetsPagination.totalPages}
+          pageSize={reservationTargetsPagination.pageSize}
+          pageSizeOptions={[10, 20, 50]}
+          totalItems={reservationTargetsPagination.totalItems}
+          startItemIndex={reservationTargetsPagination.startItemIndex}
+          endItemIndex={reservationTargetsPagination.endItemIndex}
+          onPageChange={reservationTargetsPagination.setPage}
+          onPageSizeChange={reservationTargetsPagination.setPageSize}
+        />
       </article>
 
       {selectedMember ? (

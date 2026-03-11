@@ -1,7 +1,9 @@
 import type { Dispatch, SetStateAction } from "react";
 import { EmptyTableRow } from "../../shared/ui/EmptyTableRow";
+import { PaginationControls } from "../../shared/ui/PaginationControls";
 import { PanelHeader } from "../../shared/ui/PanelHeader";
 import { formatDateTime } from "../../shared/utils/format";
+import { usePagination } from "../../shared/hooks/usePagination";
 
 type MemberRow = {
   memberId: number;
@@ -88,6 +90,16 @@ export function AccessManagementPanels({
   });
 
   const selectedMember = members.find((member) => member.memberId === accessSelectedMemberId) ?? null;
+  const filteredMembersPagination = usePagination(filteredMembers, {
+    initialPageSize: 10,
+    resetDeps: [accessMemberQuery, filteredMembers.length]
+  });
+  const openSessionsPagination = usePagination(accessPresence?.openSessions ?? [], {
+    initialPageSize: 10
+  });
+  const accessEventsPagination = usePagination(accessEvents, {
+    initialPageSize: 20
+  });
 
   return (
     <>
@@ -148,10 +160,10 @@ export function AccessManagementPanels({
               </tr>
             </thead>
             <tbody>
-              {filteredMembers.length === 0 ? (
+              {filteredMembersPagination.pagedItems.length === 0 ? (
                 <EmptyTableRow colSpan={5} message="검색 결과 회원이 없습니다." />
               ) : (
-                filteredMembers.map((member) => (
+                filteredMembersPagination.pagedItems.map((member) => (
                   <tr
                     key={member.memberId}
                     className={accessSelectedMemberId === member.memberId ? "is-selected" : undefined}
@@ -177,6 +189,17 @@ export function AccessManagementPanels({
             </tbody>
           </table>
         </div>
+        <PaginationControls
+          page={filteredMembersPagination.page}
+          totalPages={filteredMembersPagination.totalPages}
+          pageSize={filteredMembersPagination.pageSize}
+          pageSizeOptions={[10, 20, 50]}
+          totalItems={filteredMembersPagination.totalItems}
+          startItemIndex={filteredMembersPagination.startItemIndex}
+          endItemIndex={filteredMembersPagination.endItemIndex}
+          onPageChange={filteredMembersPagination.setPage}
+          onPageSizeChange={filteredMembersPagination.setPageSize}
+        />
 
         <div className="form-actions" style={{ marginTop: 12 }}>
           <button
@@ -216,8 +239,8 @@ export function AccessManagementPanels({
               </tr>
             </thead>
             <tbody>
-              {accessPresence?.openSessions.length ? (
-                accessPresence.openSessions.map((session) => (
+              {openSessionsPagination.pagedItems.length ? (
+                openSessionsPagination.pagedItems.map((session) => (
                   <tr key={session.accessSessionId}>
                     <td>{session.memberId}</td>
                     <td>{session.memberName}</td>
@@ -233,6 +256,17 @@ export function AccessManagementPanels({
             </tbody>
           </table>
         </div>
+        <PaginationControls
+          page={openSessionsPagination.page}
+          totalPages={openSessionsPagination.totalPages}
+          pageSize={openSessionsPagination.pageSize}
+          pageSizeOptions={[10, 20, 50]}
+          totalItems={openSessionsPagination.totalItems}
+          startItemIndex={openSessionsPagination.startItemIndex}
+          endItemIndex={openSessionsPagination.endItemIndex}
+          onPageChange={openSessionsPagination.setPage}
+          onPageSizeChange={openSessionsPagination.setPageSize}
+        />
       </article>
 
       <article className="panel">
@@ -251,10 +285,10 @@ export function AccessManagementPanels({
               </tr>
             </thead>
             <tbody>
-              {accessEvents.length === 0 ? (
+              {accessEventsPagination.pagedItems.length === 0 ? (
                 <EmptyTableRow colSpan={7} message={accessEventsLoading ? "로딩 중..." : "출입 이벤트가 없습니다."} />
               ) : (
-                accessEvents.map((event) => (
+                accessEventsPagination.pagedItems.map((event) => (
                   <tr key={event.accessEventId}>
                     <td>{event.accessEventId}</td>
                     <td>{event.memberId}</td>
@@ -269,6 +303,17 @@ export function AccessManagementPanels({
             </tbody>
           </table>
         </div>
+        <PaginationControls
+          page={accessEventsPagination.page}
+          totalPages={accessEventsPagination.totalPages}
+          pageSize={accessEventsPagination.pageSize}
+          pageSizeOptions={[10, 20, 50]}
+          totalItems={accessEventsPagination.totalItems}
+          startItemIndex={accessEventsPagination.startItemIndex}
+          endItemIndex={accessEventsPagination.endItemIndex}
+          onPageChange={accessEventsPagination.setPage}
+          onPageSizeChange={accessEventsPagination.setPageSize}
+        />
       </article>
     </>
   );
