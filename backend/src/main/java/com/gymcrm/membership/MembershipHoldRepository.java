@@ -5,7 +5,11 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Repository
 public class MembershipHoldRepository {
@@ -55,6 +59,33 @@ public class MembershipHoldRepository {
                 .param("membershipId", membershipId)
                 .query(MembershipHold.class)
                 .optional();
+    }
+
+    public Map<Long, MembershipHold> findActiveByMembershipIds(List<Long> membershipIds) {
+        if (membershipIds.isEmpty()) {
+            return Map.of();
+        }
+        return jdbcClient.sql("""
+                SELECT
+                    membership_hold_id, center_id, membership_id, hold_status,
+                    hold_start_date, hold_end_date, resumed_at, actual_hold_days,
+                    reason, memo,
+                    created_at, created_by, updated_at, updated_by
+                FROM membership_holds
+                WHERE membership_id IN (:membershipIds)
+                  AND hold_status = 'ACTIVE'
+                  AND is_deleted = FALSE
+                ORDER BY membership_id ASC, membership_hold_id DESC
+                """)
+                .param("membershipIds", membershipIds)
+                .query(MembershipHold.class)
+                .list()
+                .stream()
+                .collect(Collectors.toMap(
+                        MembershipHold::membershipId,
+                        Function.identity(),
+                        (current, ignored) -> current
+                ));
     }
 
     public MembershipHold markResumed(MembershipHoldResumeCommand command) {

@@ -18,6 +18,7 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -28,6 +29,7 @@ public class MembershipPurchaseService {
     private final ProductService productService;
     private final AuthUserRepository authUserRepository;
     private final MemberMembershipRepository memberMembershipRepository;
+    private final MembershipHoldRepository membershipHoldRepository;
     private final PaymentRepository paymentRepository;
     private final CurrentUserProvider currentUserProvider;
 
@@ -36,6 +38,7 @@ public class MembershipPurchaseService {
             ProductService productService,
             AuthUserRepository authUserRepository,
             MemberMembershipRepository memberMembershipRepository,
+            MembershipHoldRepository membershipHoldRepository,
             PaymentRepository paymentRepository,
             CurrentUserProvider currentUserProvider
     ) {
@@ -43,6 +46,7 @@ public class MembershipPurchaseService {
         this.productService = productService;
         this.authUserRepository = authUserRepository;
         this.memberMembershipRepository = memberMembershipRepository;
+        this.membershipHoldRepository = membershipHoldRepository;
         this.paymentRepository = paymentRepository;
         this.currentUserProvider = currentUserProvider;
     }
@@ -111,16 +115,25 @@ public class MembershipPurchaseService {
     }
 
     @Transactional(readOnly = true)
-    public List<MemberMembership> listMemberships(Long memberId) {
+    public List<MembershipListItem> listMemberships(Long memberId) {
         if (memberId == null) {
             throw new ApiException(ErrorCode.VALIDATION_ERROR, "memberId is required");
         }
         Member member = memberService.get(memberId);
-        return memberMembershipRepository.findVisibleByMemberId(
+        List<MemberMembership> memberships = memberMembershipRepository.findVisibleByMemberId(
                 member.centerId(),
                 member.memberId(),
                 resolveTrainerScopedActorId()
         );
+        Map<Long, MembershipHold> activeHoldsByMembershipId = membershipHoldRepository.findActiveByMembershipIds(
+                memberships.stream().map(MemberMembership::membershipId).toList()
+        );
+        return memberships.stream()
+                .map(membership -> new MembershipListItem(
+                        membership,
+                        activeHoldsByMembershipId.get(membership.membershipId())
+                ))
+                .toList();
     }
 
     PurchaseCalculation calculatePurchase(Product product, LocalDate requestedStartDate) {
@@ -225,6 +238,11 @@ public class MembershipPurchaseService {
             String paymentMethod,
             String membershipMemo,
             String paymentMemo
+    ) {}
+
+    public record MembershipListItem(
+            MemberMembership membership,
+            MembershipHold activeHold
     ) {}
 
     public record PurchaseCalculation(

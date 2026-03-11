@@ -277,6 +277,55 @@ class MemberSummaryApiIntegrationTest {
     }
 
     @Test
+    void memberListShowsHoldingAfterHoldAction() throws Exception {
+        ensureDeskUser();
+        String token = loginAndGetAccessToken(DESK_LOGIN_ID, DESK_PASSWORD);
+        LocalDate today = LocalDate.now();
+
+        long memberId = insertMemberFixture("홀딩액션요약-" + shortId());
+        long productId = insertHoldableDurationProductFixture("HOLD-SUMMARY-" + shortId());
+
+        MvcResult purchaseResult = mockMvc.perform(post("/api/v1/members/{memberId}/memberships", memberId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "productId": %d,
+                                  "startDate": "%s",
+                                  "paymentMethod": "CARD"
+                                }
+                                """.formatted(productId, today)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        long membershipId = objectMapper.readTree(purchaseResult.getResponse().getContentAsString())
+                .path("data")
+                .path("membership")
+                .path("membershipId")
+                .asLong();
+
+        mockMvc.perform(post("/api/v1/members/{memberId}/memberships/{membershipId}/hold", memberId, membershipId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "holdStartDate": "%s",
+                                  "holdEndDate": "%s",
+                                  "reason": "요약 상태 검증"
+                                }
+                                """.formatted(today.plusDays(1), today.plusDays(3))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.membership.membershipStatus").value("HOLDING"));
+
+        mockMvc.perform(get("/api/v1/members")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .param("name", "홀딩액션요약"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].memberId").value(memberId))
+                .andExpect(jsonPath("$.data[0].membershipOperationalStatus").value("홀딩중"));
+    }
+
+    @Test
     void trainerListAndDetailAreRestrictedToAssignedMembers() throws Exception {
         long trainerUserId = ensureTrainerUser();
         String trainerToken = loginAndGetAccessToken(TRAINER_LOGIN_ID, TRAINER_PASSWORD);
@@ -554,6 +603,27 @@ class MemberSummaryApiIntegrationTest {
                 .param("priceAmount", BigDecimal.valueOf(100000))
                 .param("validityDays", validityDays)
                 .param("totalCount", totalCount)
+                .query(Long.class)
+                .single();
+    }
+
+    private long insertHoldableDurationProductFixture(String productName) {
+        return jdbcClient.sql("""
+                INSERT INTO products (
+                    center_id, product_name, product_category, product_type, price_amount,
+                    validity_days, total_count, allow_hold, max_hold_days, max_hold_count,
+                    allow_transfer, product_status, created_by, updated_by
+                )
+                VALUES (
+                    :centerId, :productName, 'MEMBERSHIP', 'DURATION', :priceAmount,
+                    30, NULL, TRUE, 30, 3,
+                    FALSE, 'ACTIVE', 0, 0
+                )
+                RETURNING product_id
+                """)
+                .param("centerId", CENTER_ID)
+                .param("productName", productName)
+                .param("priceAmount", BigDecimal.valueOf(120000))
                 .query(Long.class)
                 .single();
     }

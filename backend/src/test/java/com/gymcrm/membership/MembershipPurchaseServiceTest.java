@@ -26,6 +26,7 @@ class MembershipPurchaseServiceTest {
             mock(ProductService.class),
             mock(AuthUserRepository.class),
             mock(MemberMembershipRepository.class),
+            mock(MembershipHoldRepository.class),
             mock(PaymentRepository.class),
             mock(CurrentUserProvider.class)
     );

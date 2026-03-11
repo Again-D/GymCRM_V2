@@ -311,7 +311,7 @@ export function MembershipOperationsPanels(props: MembershipOperationsPanelsProp
                                   </button>
                                 </div>
                               </details>
-                            ) : membership.membershipStatus === "HOLDING" ? (
+                            ) : membership.membershipStatus === "HOLDING" && membership.activeHoldStatus === "ACTIVE" ? (
                               <details className="membership-action-group" open>
                                 <summary>홀딩 해제</summary>
                                 <div className="membership-action-group-body">
@@ -348,6 +348,8 @@ export function MembershipOperationsPanels(props: MembershipOperationsPanelsProp
                                   </button>
                                 </div>
                               </details>
+                            ) : membership.membershipStatus === "HOLDING" ? (
+                              <p className="muted-text">활성 홀딩 이력이 없어 해제할 수 없습니다.</p>
                             ) : (
                               <span className="muted-text">상태상 액션 없음</span>
                             )}

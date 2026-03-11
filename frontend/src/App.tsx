@@ -160,6 +160,9 @@ type PurchasedMembership = {
   holdDaysUsed: number;
   holdCountUsed: number;
   memo: string | null;
+  activeHoldStatus: "ACTIVE" | "RESUMED" | "CANCELED" | null;
+  activeHoldStartDate: string | null;
+  activeHoldEndDate: string | null;
 };
 
 type PurchasePayment = {

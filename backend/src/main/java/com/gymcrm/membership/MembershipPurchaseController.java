@@ -106,9 +106,20 @@ public class MembershipPurchaseController {
             Integer usedCount,
             Integer holdDaysUsed,
             Integer holdCountUsed,
-            String memo
+            String memo,
+            String activeHoldStatus,
+            LocalDate activeHoldStartDate,
+            LocalDate activeHoldEndDate
     ) {
+        static MembershipResponse from(MembershipPurchaseService.MembershipListItem item) {
+            return from(item.membership(), item.activeHold());
+        }
+
         static MembershipResponse from(MemberMembership membership) {
+            return from(membership, null);
+        }
+
+        static MembershipResponse from(MemberMembership membership, MembershipHold activeHold) {
             return new MembershipResponse(
                     membership.membershipId(),
                     membership.centerId(),
@@ -128,7 +139,10 @@ public class MembershipPurchaseController {
                     membership.usedCount(),
                     membership.holdDaysUsed(),
                     membership.holdCountUsed(),
-                    membership.memo()
+                    membership.memo(),
+                    activeHold == null ? null : activeHold.holdStatus(),
+                    activeHold == null ? null : activeHold.holdStartDate(),
+                    activeHold == null ? null : activeHold.holdEndDate()
             );
         }
     }
