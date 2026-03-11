@@ -274,7 +274,7 @@ class ReservationServiceIntegrationTest {
                     updated_by = 1
                 WHERE membership_id = :membershipId
                 RETURNING
-                    membership_id, center_id, member_id, product_id, membership_status,
+                    membership_id, center_id, member_id, product_id, assigned_trainer_id, membership_status,
                     product_name_snapshot, product_category_snapshot, product_type_snapshot,
                     price_amount_snapshot, purchased_at, start_date, end_date,
                     total_count, remaining_count, used_count,

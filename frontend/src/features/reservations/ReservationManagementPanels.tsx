@@ -146,6 +146,7 @@ export function ReservationManagementPanels({
         {reservableMemberships.length === 0 ? (
           <NoticeText compact>예약에 사용할 ACTIVE 회원권(세션 기준)이 없습니다.</NoticeText>
         ) : null}
+        <InlineHelpText>예약 생성은 미래 스케줄과 예약 가능 회원권이 모두 선택된 경우에만 가능합니다.</InlineHelpText>
       </article>
 
       <article className="panel">
@@ -311,6 +312,7 @@ export function ReservationManagementPanels({
                         {reservation.checkedInAt ? (
                           <InlineHelpText>체크인됨: 노쇼 처리 불가</InlineHelpText>
                         ) : null}
+                        {!canMutate ? <InlineHelpText>확정 예약만 상태 조정 가능</InlineHelpText> : null}
                         {canMutate && !canNoShowByTime ? (
                           <InlineHelpText>노쇼는 종료 후 가능</InlineHelpText>
                         ) : null}
