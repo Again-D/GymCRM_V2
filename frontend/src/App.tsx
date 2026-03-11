@@ -1294,7 +1294,7 @@ export default function App() {
     setMembershipActionMessageById((prev) => ({ ...prev, [membership.membershipId]: "" }));
     try {
       const response = await apiPost<HoldMembershipResponse>(
-        `/api/v1/members/${selectedMember.memberId}/memberships/${membership.membershipId}/hold`,
+        `/api/v1/members/${membership.memberId}/memberships/${membership.membershipId}/hold`,
         {
           holdStartDate: draft.holdStartDate || null,
           holdEndDate: draft.holdEndDate || null,
@@ -1303,7 +1303,7 @@ export default function App() {
         }
       );
 
-      patchSessionMembership(selectedMember.memberId, response.data.membership);
+      patchSessionMembership(membership.memberId, response.data.membership);
       invalidateWorkspaceMemberSearchCache();
       await loadMembers();
       setMembershipActionMessageById((prev) => ({ ...prev, [membership.membershipId]: response.message }));
@@ -1343,13 +1343,13 @@ export default function App() {
     setMembershipActionMessageById((prev) => ({ ...prev, [membership.membershipId]: "" }));
     try {
       const response = await apiPost<ResumeMembershipResponse>(
-        `/api/v1/members/${selectedMember.memberId}/memberships/${membership.membershipId}/resume`,
+        `/api/v1/members/${membership.memberId}/memberships/${membership.membershipId}/resume`,
         {
           resumeDate: draft.resumeDate || null
         }
       );
 
-      patchSessionMembership(selectedMember.memberId, response.data.membership);
+      patchSessionMembership(membership.memberId, response.data.membership);
       invalidateWorkspaceMemberSearchCache();
       await loadMembers();
       setMembershipActionMessageById((prev) => ({ ...prev, [membership.membershipId]: response.message }));
@@ -1371,7 +1371,7 @@ export default function App() {
     setMembershipActionMessageById((prev) => ({ ...prev, [membership.membershipId]: "" }));
     try {
       const response = await apiPost<RefundPreviewResponse>(
-        `/api/v1/members/${selectedMember.memberId}/memberships/${membership.membershipId}/refund/preview`,
+        `/api/v1/members/${membership.memberId}/memberships/${membership.membershipId}/refund/preview`,
         {
           refundDate: draft.refundDate || null
         }
@@ -1398,7 +1398,7 @@ export default function App() {
     setMembershipActionMessageById((prev) => ({ ...prev, [membership.membershipId]: "" }));
     try {
       const response = await apiPost<RefundMembershipResponse>(
-        `/api/v1/members/${selectedMember.memberId}/memberships/${membership.membershipId}/refund`,
+        `/api/v1/members/${membership.memberId}/memberships/${membership.membershipId}/refund`,
         {
           refundDate: draft.refundDate || null,
           refundPaymentMethod: draft.refundPaymentMethod,
@@ -1408,7 +1408,7 @@ export default function App() {
         }
       );
 
-      patchSessionMembership(selectedMember.memberId, response.data.membership);
+      patchSessionMembership(membership.memberId, response.data.membership);
       setMemberPaymentsByMemberId((prev) => {
         const currentRows = prev[selectedMember.memberId] ?? [];
         return {
