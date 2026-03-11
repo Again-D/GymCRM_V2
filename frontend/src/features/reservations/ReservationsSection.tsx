@@ -50,7 +50,7 @@ type ReservationsSectionProps = {
   reservationTargetsKeyword: string;
   onReservationTargetsKeywordChange: (value: string) => void;
   onReservationTargetsSearch: () => void;
-  onSelectReservationTarget: (memberId: number) => void;
+  onSelectReservationTarget: (memberId: number) => Promise<boolean>;
   selectedMemberReservationsCount: number;
   reservableMembershipsCount: number;
   reservableMemberships: ReservableMembershipRow[];
@@ -95,7 +95,7 @@ export function ReservationsSection({
     <section className="membership-ops-shell" aria-label="예약 관리 화면">
       <article className="panel">
         <PanelHeader
-          title="예약권 보유 회원 리스트"
+          title="PT 이용권 보유 회원 리스트"
           actions={
             <div className="panel-header-actions">
               <button type="button" className="secondary-button" onClick={onReservationTargetsSearch}>
@@ -139,6 +139,12 @@ export function ReservationsSection({
                   <tr
                     key={target.memberId}
                     className={selectedMember?.memberId === target.memberId ? "is-selected" : undefined}
+                    onClick={async () => {
+                      const loaded = await onSelectReservationTarget(target.memberId);
+                      if (loaded) {
+                        setIsDetailOpen(true);
+                      }
+                      }}
                   >
                     <td>{target.memberId}</td>
                     <td>{target.memberCode}</td>
@@ -151,7 +157,11 @@ export function ReservationsSection({
                       <button
                         type="button"
                         className="secondary-button"
-                        onClick={() => onSelectReservationTarget(target.memberId)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void onSelectReservationTarget(target.memberId);
+                          }
+                        }
                       >
                         {selectedMember?.memberId === target.memberId ? "선택됨" : "선택"}
                       </button>
