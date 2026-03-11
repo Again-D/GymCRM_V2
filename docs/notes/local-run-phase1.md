@@ -125,6 +125,35 @@ DB_PASSWORD=gymcrm \
 ./gradlew bootRun
 ```
 
+### Backend (Redis + JWT Mode)
+
+Redis 책임까지 함께 켜서 검증할 때:
+
+```bash
+cd /Users/abc/projects/GymCRM_V2/backend
+SPRING_PROFILES_ACTIVE=dev \
+APP_SECURITY_MODE=jwt \
+DB_URL=jdbc:postgresql://localhost:5433/gymcrm_dev \
+DB_USERNAME=gymcrm \
+DB_PASSWORD=gymcrm \
+APP_REDIS_ENABLED=true \
+REDIS_HOST=localhost \
+REDIS_PORT=6379 \
+APP_REDIS_QR_TOKEN_STORE_ENABLED=true \
+APP_REDIS_RESERVATION_LOCK_ENABLED=true \
+APP_REDIS_CRM_DISPATCH_CLAIM_ENABLED=true \
+APP_REDIS_CRM_RETRY_WHEEL_ENABLED=true \
+APP_REDIS_SETTLEMENT_DASHBOARD_CACHE_ENABLED=true \
+APP_REDIS_SETTLEMENT_REPORT_CACHE_ENABLED=true \
+APP_REDIS_AUTH_DENYLIST_ENABLED=true \
+./gradlew bootRun
+```
+
+검증:
+- `docker compose up -d postgres redis`
+- `curl -s http://localhost:8080/api/v1/health | jq '.data.redis'`
+- 로그인 후 logout/access revoke/CRM process/settlement 조회 경로 점검
+
 dev/staging JWT seed 계정:
 - `center-admin / dev-admin-1234!`
 

@@ -46,6 +46,35 @@ DB_PASSWORD=gymcrm \
 ./gradlew bootRun
 ```
 
+백엔드 (Redis + JWT 함께 검증/개발):
+
+```bash
+cd backend
+SPRING_PROFILES_ACTIVE=dev \
+APP_SECURITY_MODE=jwt \
+DB_URL=jdbc:postgresql://localhost:5433/gymcrm_dev \
+DB_USERNAME=gymcrm \
+DB_PASSWORD=gymcrm \
+APP_REDIS_ENABLED=true \
+REDIS_HOST=localhost \
+REDIS_PORT=6379 \
+APP_REDIS_QR_TOKEN_STORE_ENABLED=true \
+APP_REDIS_RESERVATION_LOCK_ENABLED=true \
+APP_REDIS_CRM_DISPATCH_CLAIM_ENABLED=true \
+APP_REDIS_CRM_RETRY_WHEEL_ENABLED=true \
+APP_REDIS_SETTLEMENT_DASHBOARD_CACHE_ENABLED=true \
+APP_REDIS_SETTLEMENT_REPORT_CACHE_ENABLED=true \
+APP_REDIS_AUTH_DENYLIST_ENABLED=true \
+./gradlew bootRun
+```
+
+Redis + JWT 검증 포인트:
+- `docker compose up -d postgres redis`
+- `curl -s http://localhost:8080/api/v1/health | jq '.data.redis'`
+- 로그인 후 logout/access revoke/CRM process/settlement 조회 경로가 정상 동작하는지 확인
+- 상세 로컬 실행 참고:
+  - [local-run-phase1.md](/Users/abc/projects/GymCRM_V2/docs/notes/local-run-phase1.md)
+
 백엔드 빌드 표준:
 - `backend`의 canonical build는 Gradle이다.
 - QueryDSL generated source는 `backend/build/generated/sources/annotationProcessor/java/main`에 생성된다.
