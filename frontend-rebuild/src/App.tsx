@@ -6,6 +6,7 @@ import DashboardLayout from "./components/layout/DashboardLayout";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import AccessPage from "./pages/access/AccessPage";
+import LockersPage from "./pages/lockers/LockersPage";
 import MembershipsPage from "./pages/memberships/MembershipsPage";
 import ReservationsPage from "./pages/reservations/ReservationsPage";
 import ShellPlaceholderPage from "./pages/ShellPlaceholderPage";
@@ -56,10 +57,7 @@ export default function App() {
           <Route path="/memberships" element={<MembershipsPage />} />
           <Route path="/reservations" element={<ReservationsPage />} />
           <Route path="/access" element={<AccessPage />} />
-          <Route
-            path="/lockers"
-            element={<ShellPlaceholderPage title="라커 관리 프로토타입" description="Locker ownership and assignment flows are intentionally deferred." />}
-          />
+          <Route path="/lockers" element={<LockersPage />} />
           <Route
             path="/crm"
             element={<ShellPlaceholderPage title="CRM 메시지 프로토타입" description="Messaging trigger and history flows will be rebuilt after core parity." />}

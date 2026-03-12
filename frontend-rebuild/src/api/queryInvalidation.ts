@@ -4,7 +4,9 @@ export type QueryDomain =
   | "members"
   | "reservationTargets"
   | "accessPresence"
-  | "accessEvents";
+  | "accessEvents"
+  | "lockerSlots"
+  | "lockerAssignments";
 
 const versions = new Map<QueryDomain, number>();
 const listeners = new Set<() => void>();

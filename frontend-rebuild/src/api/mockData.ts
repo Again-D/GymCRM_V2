@@ -11,6 +11,10 @@ import type {
   AccessPresenceRow,
   AccessPresenceSummary
 } from "../pages/access/modules/types";
+import type {
+  LockerAssignment,
+  LockerSlot
+} from "../pages/lockers/modules/types";
 import type { ReservationTargetSummary } from "../pages/reservations/modules/useReservationTargetsQuery";
 import { isMembershipReservableOn } from "../pages/reservations/modules/reservableMemberships";
 
@@ -279,6 +283,63 @@ const initialAccessEvents: AccessEventRow[] = [
   }
 ];
 
+const initialLockerSlots: LockerSlot[] = [
+  {
+    lockerSlotId: 4001,
+    centerId: 1,
+    lockerCode: "A-01",
+    lockerZone: "A",
+    lockerGrade: "STANDARD",
+    lockerStatus: "ASSIGNED",
+    memo: null,
+    createdAt: "2026-01-01T09:00:00Z",
+    updatedAt: "2026-03-12T09:00:00Z"
+  },
+  {
+    lockerSlotId: 4002,
+    centerId: 1,
+    lockerCode: "A-02",
+    lockerZone: "A",
+    lockerGrade: "STANDARD",
+    lockerStatus: "AVAILABLE",
+    memo: null,
+    createdAt: "2026-01-01T09:00:00Z",
+    updatedAt: "2026-03-12T09:00:00Z"
+  },
+  {
+    lockerSlotId: 4003,
+    centerId: 1,
+    lockerCode: "B-01",
+    lockerZone: "B",
+    lockerGrade: "PREMIUM",
+    lockerStatus: "MAINTENANCE",
+    memo: "도어 점검 중",
+    createdAt: "2026-01-01T09:00:00Z",
+    updatedAt: "2026-03-12T09:00:00Z"
+  }
+];
+
+const initialLockerAssignments: LockerAssignment[] = [
+  {
+    lockerAssignmentId: 6001,
+    centerId: 1,
+    lockerSlotId: 4001,
+    lockerCode: "A-01",
+    memberId: 101,
+    memberName: "김민수",
+    assignmentStatus: "ACTIVE",
+    assignedAt: "2026-03-01T10:00:00Z",
+    startDate: "2026-03-01",
+    endDate: "2026-04-01",
+    returnedAt: null,
+    refundAmount: null,
+    returnReason: null,
+    memo: "한 달 계약",
+    createdAt: "2026-03-01T10:00:00Z",
+    updatedAt: "2026-03-01T10:00:00Z"
+  }
+];
+
 let mockMembers = cloneMembers(initialMembers);
 let mockMemberDetails = cloneMemberDetails(initialMemberDetails);
 let mockMemberMemberships = cloneMembershipMap(initialMemberMemberships);
@@ -286,10 +347,13 @@ let mockReservationSchedules = cloneSchedules(initialReservationSchedules);
 let mockReservationsByMemberId = cloneReservationsMap(initialReservationsByMemberId);
 let mockOpenAccessSessions = cloneAccessSessions(initialOpenAccessSessions);
 let mockAccessEvents = cloneAccessEvents(initialAccessEvents);
+let mockLockerSlots = cloneLockerSlots(initialLockerSlots);
+let mockLockerAssignments = cloneLockerAssignments(initialLockerAssignments);
 let mockDataVersion = 0;
 let membershipIdSeed = 99000;
 let accessSessionIdSeed = 92000;
 let accessEventIdSeed = 97000;
+let lockerAssignmentIdSeed = 98000;
 
 function cloneMembers(source: MemberSummary[]) {
   return source.map((member) => ({ ...member }));
@@ -327,6 +391,14 @@ function cloneAccessSessions(source: AccessPresenceRow[]) {
 
 function cloneAccessEvents(source: AccessEventRow[]) {
   return source.map((event) => ({ ...event }));
+}
+
+function cloneLockerSlots(source: LockerSlot[]) {
+  return source.map((slot) => ({ ...slot }));
+}
+
+function cloneLockerAssignments(source: LockerAssignment[]) {
+  return source.map((assignment) => ({ ...assignment }));
 }
 
 function envelope<T>(data: T): ApiEnvelope<T> {
@@ -464,6 +536,27 @@ function deriveAccessPresenceSummary(): AccessPresenceSummary {
   };
 }
 
+function filterLockerSlots(url: URL) {
+  const lockerStatus = url.searchParams.get("lockerStatus")?.trim() ?? "";
+  const lockerZone = url.searchParams.get("lockerZone")?.trim() ?? "";
+
+  return mockLockerSlots.filter((slot) => {
+    const matchesStatus = !lockerStatus || slot.lockerStatus === lockerStatus;
+    const matchesZone = !lockerZone || (slot.lockerZone ?? "").includes(lockerZone);
+    return matchesStatus && matchesZone;
+  });
+}
+
+function filterLockerAssignments(url: URL) {
+  const activeOnly = url.searchParams.get("activeOnly") === "true";
+  return mockLockerAssignments.filter((assignment) => {
+    if (!activeOnly) {
+      return true;
+    }
+    return assignment.assignmentStatus === "ACTIVE";
+  });
+}
+
 function filterMembers(url: URL) {
   const name = url.searchParams.get("name")?.trim() ?? "";
   const phone = url.searchParams.get("phone")?.trim() ?? "";
@@ -493,10 +586,13 @@ export function resetMockData() {
   mockReservationsByMemberId = cloneReservationsMap(initialReservationsByMemberId);
   mockOpenAccessSessions = cloneAccessSessions(initialOpenAccessSessions);
   mockAccessEvents = cloneAccessEvents(initialAccessEvents);
+  mockLockerSlots = cloneLockerSlots(initialLockerSlots);
+  mockLockerAssignments = cloneLockerAssignments(initialLockerAssignments);
   mockDataVersion = 0;
   membershipIdSeed = 99000;
   accessSessionIdSeed = 92000;
   accessEventIdSeed = 97000;
+  lockerAssignmentIdSeed = 98000;
 }
 
 export function createMockMembership(input: {
@@ -635,6 +731,82 @@ export function createMockAccessExit(memberId: number) {
   return { ok: true as const, message: `회원 #${memberId} 퇴장을 처리했습니다.` };
 }
 
+export function createMockLockerAssignment(input: {
+  lockerSlotId: number;
+  memberId: number;
+  startDate: string;
+  endDate: string;
+  memo: string | null;
+}) {
+  const slot = mockLockerSlots.find((item) => item.lockerSlotId === input.lockerSlotId);
+  if (!slot) {
+    return { ok: false as const, message: "라커 슬롯을 찾을 수 없습니다." };
+  }
+  if (slot.lockerStatus !== "AVAILABLE") {
+    return { ok: false as const, message: "배정 가능한 라커 슬롯이 아닙니다." };
+  }
+  const member = mockMemberDetails.get(input.memberId);
+  if (!member) {
+    return { ok: false as const, message: "회원을 찾을 수 없습니다." };
+  }
+
+  lockerAssignmentIdSeed += 1;
+  const now = new Date().toISOString();
+  const nextAssignment: LockerAssignment = {
+    lockerAssignmentId: lockerAssignmentIdSeed,
+    centerId: 1,
+    lockerSlotId: slot.lockerSlotId,
+    lockerCode: slot.lockerCode,
+    memberId: input.memberId,
+    memberName: member.memberName,
+    assignmentStatus: "ACTIVE",
+    assignedAt: now,
+    startDate: input.startDate,
+    endDate: input.endDate,
+    returnedAt: null,
+    refundAmount: null,
+    returnReason: null,
+    memo: input.memo,
+    createdAt: now,
+    updatedAt: now
+  };
+
+  mockLockerAssignments = [nextAssignment, ...mockLockerAssignments];
+  mockLockerSlots = mockLockerSlots.map((currentSlot) =>
+    currentSlot.lockerSlotId === slot.lockerSlotId
+      ? { ...currentSlot, lockerStatus: "ASSIGNED", updatedAt: now }
+      : currentSlot
+  );
+
+  return { ok: true as const, message: `라커 ${slot.lockerCode}를 회원 #${input.memberId}에 배정했습니다.` };
+}
+
+export function returnMockLockerAssignment(lockerAssignmentId: number) {
+  const assignment = mockLockerAssignments.find((item) => item.lockerAssignmentId === lockerAssignmentId);
+  if (!assignment || assignment.assignmentStatus !== "ACTIVE") {
+    return { ok: false as const, message: "활성 라커 배정을 찾을 수 없습니다." };
+  }
+
+  const now = new Date().toISOString();
+  mockLockerAssignments = mockLockerAssignments.map((currentAssignment) =>
+    currentAssignment.lockerAssignmentId === lockerAssignmentId
+      ? {
+          ...currentAssignment,
+          assignmentStatus: "RETURNED",
+          returnedAt: now,
+          updatedAt: now
+        }
+      : currentAssignment
+  );
+  mockLockerSlots = mockLockerSlots.map((slot) =>
+    slot.lockerSlotId === assignment.lockerSlotId
+      ? { ...slot, lockerStatus: "AVAILABLE", updatedAt: now }
+      : slot
+  );
+
+  return { ok: true as const, message: `라커 ${assignment.lockerCode} 반납을 처리했습니다.` };
+}
+
 export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
   const url = new URL(path, "http://local.mock");
 
@@ -684,6 +856,14 @@ export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
         ? mockAccessEvents
         : mockAccessEvents.filter((event) => event.memberId === Number(memberId));
     return envelope(filteredEvents.slice(0, limit).map((event) => ({ ...event })));
+  }
+
+  if (url.pathname === "/api/v1/lockers/slots") {
+    return envelope(filterLockerSlots(url).map((slot) => ({ ...slot })));
+  }
+
+  if (url.pathname === "/api/v1/lockers/assignments") {
+    return envelope(filterLockerAssignments(url).map((assignment) => ({ ...assignment })));
   }
 
   return null;
