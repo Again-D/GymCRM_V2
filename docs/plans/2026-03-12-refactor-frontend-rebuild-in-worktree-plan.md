@@ -367,7 +367,7 @@ All must remain aligned. Rebuild cannot update one surface while leaving the oth
 - [x] 새 앱 셸은 기존 shell route URL surface를 그대로 유지한다.
 - [x] JWT/prototype auth gate와 route fallback behavior가 parity를 유지한다.
 - [x] 최소한 `/dashboard`, `/members`, `/memberships`, `/reservations`가 새 구조에서 **prototype 수준으로 먼저 동작한다**.
-- [ ] prototype checkpoint에서 구조 적합성을 평가하는 go/no-go 1 게이트가 있다.
+- [x] prototype checkpoint에서 구조 적합성을 평가하는 go/no-go 1 게이트가 있다.
 - [x] prototype checkpoint는 baseline과 side-by-side 비교 가능한 실행 전략을 사용한다.
 - [x] rebuilt prototype의 `selectedMember` canonical owner가 `members` domain support module/store로 명시된다.
 - [x] go 판단 이전 prototype 단계에서 기존 member-context 흐름의 핵심 handoff가 새 구조에서 재현된다.
@@ -378,20 +378,20 @@ All must remain aligned. Rebuild cannot update one surface while leaving the oth
 - [x] 재구축 worktree는 `main` 기능 흐름을 막지 않는다.
 - [x] parity validation 로그를 각 단계별로 남긴다.
 - [ ] 새 구조의 설명 문서가 실제 디렉터리와 맞는다.
-- [ ] route/state/query ownership이 현재보다 더 명확해진다.
+- [x] route/state/query ownership이 현재보다 더 명확해진다.
 - [x] prototype 단계와 parity 단계의 성공 기준이 문서상 분리돼 있다.
 
 ### Quality Gates
 - [x] `frontend-rebuild && npm run build`
 - [x] 라우팅 테스트 parity
-- [ ] JWT/prototype 브라우저 스모크
+- [x] JWT/prototype 브라우저 스모크
 - [x] members/memberships/reservations prototype vertical slice smoke
-- [ ] prototype checkpoint 기록
-- [ ] prototype checkpoint에 baseline vs prototype side-by-side evidence 포함
+- [x] prototype checkpoint 기록
+- [x] prototype checkpoint에 baseline vs prototype side-by-side evidence 포함
 - [x] selectedMember ownership data-flow가 문서와 코드 모두에서 일치
 - [ ] core parity hardening 이후 members/memberships/reservations full smoke
 - [ ] responsive check on mobile viewport
-- [ ] feature matrix gap review before merge decision
+- [x] feature matrix gap review before merge decision
 - [x] baseline shell routing validation log와 같은 fallback/auth bootstrap contract 유지
 - [ ] debounce/cache/dedupe가 필요한 검색 surface에서 request churn regression 없음
 - [ ] stale-response/reset invalidation regression tests 복제 또는 동등 coverage 확보
