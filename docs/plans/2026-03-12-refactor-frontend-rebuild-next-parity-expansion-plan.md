@@ -122,8 +122,8 @@ Those are useful later, but they are not the highest signal-to-cost next step.
 ### Phase 4: Validation
 
 - [x] Unit/integration tests for access modules
-- [ ] Desktop browser smoke for `/members`, `/access`, `/memberships`, `/reservations`
-- [ ] Mobile browser smoke for `/access`
+- [x] Desktop browser smoke for `/members`, `/access`, `/memberships`, `/reservations`
+- [x] Mobile browser smoke for `/access`
 - [x] Update parity notes with tradeoffs and remaining gaps
 
 ## Out of Scope

@@ -35,8 +35,21 @@
 ## Validation
 - `cd /Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/frontend-rebuild && npm test -- --run src/api/queryInvalidation.test.ts src/pages/access/modules/useAccessQueries.test.tsx src/pages/access/modules/useAccessPrototypeState.test.tsx src/App.routing.test.tsx src/pages/members/modules/useMembersQuery.test.tsx src/pages/reservations/modules/useReservationTargetsQuery.test.tsx src/pages/members/modules/SelectedMemberContext.test.tsx src/pages/memberships/modules/useMembershipPrototypeState.test.tsx src/pages/reservations/modules/useReservationSchedulesQuery.test.tsx src/pages/reservations/modules/reservableMemberships.test.ts src/api/mockData.test.ts`
 - `cd /Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/frontend-rebuild && npm run build`
+- Desktop browser smoke:
+  - `/members`
+  - `/access`
+  - `/memberships`
+  - `/reservations`
+- Mobile browser smoke:
+  - iPhone 14 Pro Max viewport (`430x932`) on `/access`
+
+## Browser artifacts
+- `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/testing/artifacts/rebuild-prototype-members-access-smoke.png`
+- `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/testing/artifacts/rebuild-prototype-access-desktop-smoke.png`
+- `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/testing/artifacts/rebuild-prototype-memberships-access-smoke.png`
+- `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/testing/artifacts/rebuild-prototype-reservations-access-smoke.png`
+- `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/testing/artifacts/rebuild-prototype-access-mobile-smoke.png`
 
 ## Remaining gaps
-- desktop/mobile browser smoke for `/access` is still pending
 - access slice still runs on mock API and runtime auth presets, not real backend auth/session integration
 - locker/product/CRM/settlement parity is intentionally deferred
