@@ -1,7 +1,7 @@
 ---
 title: refactor: frontend rebuild remaining expansion and readiness
 type: refactor
-status: active
+status: completed
 date: 2026-03-13
 ---
 
@@ -146,10 +146,10 @@ Success criteria:
 
 - [x] `settlements` parity is implemented as a real rebuilt slice
 - [x] desktop/mobile smoke is recorded for the rebuilt settlements page
-- [ ] a rebuild-wide parity hardening pass is completed across covered slices
-- [ ] shared invalidation, selected-member ownership, and shell routing boundaries remain fixed
-- [ ] a written readiness checkpoint records whether the rebuild should continue, pause, or stop
-- [ ] the draft PR remains reviewable with current evidence and documentation
+- [x] a rebuild-wide parity hardening pass is completed across covered slices
+- [x] shared invalidation, selected-member ownership, and shell routing boundaries remain fixed
+- [x] a written readiness checkpoint records whether the rebuild should continue, pause, or stop
+- [x] the draft PR remains reviewable with current evidence and documentation
 
 ## Success Metrics
 
@@ -194,3 +194,7 @@ Why this order:
 - `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-crm-hardening.md`
 
 - `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-settlements-hardening.md`
+
+- `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-parity-hardening.md`
+
+- `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-readiness-checkpoint.md`
