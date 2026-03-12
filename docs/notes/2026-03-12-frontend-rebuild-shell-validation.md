@@ -35,3 +35,14 @@
 ## Outcome
 - Phase 1 shell prototype is ready for the next vertical slice.
 - The next implementation target should be `/memberships` and `/reservations`, reusing the members-domain support module/store that now owns `selectedMemberId` and `selectedMember`.
+
+## Runtime auth presets
+- The running prototype now supports source-free auth switching through `AuthStateProvider` runtime presets.
+- Query params can override the initial session:
+  - `?authMode=prototype`
+  - `?authMode=jwt&authSession=anon`
+  - `?authMode=jwt&authSession=admin`
+  - `?authMode=jwt&authSession=trainer`
+- The `/login` screen exposes runtime buttons for JWT admin, JWT trainer, and prototype mode.
+- The shell sidebar exposes runtime controls for `Prototype`, `JWT 관리자`, `JWT 트레이너`, and `JWT 로그아웃 상태`.
+- `src/app/auth.test.tsx` now proves query-param bootstrap and persisted runtime preset changes.
