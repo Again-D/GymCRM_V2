@@ -1,7 +1,7 @@
 ---
 title: "feat: Rebuild locker parity expansion"
 type: feat
-status: active
+status: completed
 date: 2026-03-12
 tags:
   - frontend
@@ -193,8 +193,8 @@ Do not include:
 ### Phase 4: Validation
 
 - [x] Unit/integration tests for locker modules
-- [ ] Desktop browser smoke for `/members`, `/lockers`, `/memberships`, `/reservations`
-- [ ] Mobile browser smoke for `/lockers`
+- [x] Desktop browser smoke for `/members`, `/lockers`, `/memberships`, `/reservations`
+- [x] Mobile browser smoke for `/lockers`
 - [x] Record parity notes, tradeoffs, and remaining gaps
 
 ## Acceptance Criteria
@@ -206,7 +206,7 @@ Do not include:
 - [x] locker slot and assignment reads use separate invalidation domains by default
 - [x] locker assign/return actions update locker read surfaces through the shared invalidation contract
 - [x] changing selected member clears locker-local form state without stale repopulation
-- [ ] desktop and mobile browser smoke pass for the rebuilt locker slice
+- [x] desktop and mobile browser smoke pass for the rebuilt locker slice
 
 ## Success Metrics
 
