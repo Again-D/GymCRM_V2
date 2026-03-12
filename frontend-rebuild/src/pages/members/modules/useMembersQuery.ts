@@ -1,6 +1,8 @@
 import { useRef, useState } from "react";
 
 import { apiGet } from "../../../api/client";
+import { useAuthState } from "../../../app/auth";
+import { filterMemberIdsForAuth } from "../../member-context/modules/trainerScope";
 import type { MemberQueryFilters, MemberSummary } from "./types";
 
 function useLatestRef<T>(value: T) {
@@ -14,6 +16,7 @@ export function useMembersQuery({
 }: {
   getDefaultFilters: () => MemberQueryFilters;
 }) {
+  const { authUser } = useAuthState();
   const [members, setMembers] = useState<MemberSummary[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
   const [membersQueryError, setMembersQueryError] = useState<string | null>(null);
@@ -42,7 +45,9 @@ export function useMembersQuery({
       const query = params.toString();
       const response = await apiGet<MemberSummary[]>(`/api/v1/members${query ? `?${query}` : ""}`);
       if (requestIdRef.current !== requestId) return;
-      setMembers(response.data);
+      const scopedMembers = await filterMemberIdsForAuth(response.data, authUser);
+      if (requestIdRef.current !== requestId) return;
+      setMembers(scopedMembers);
     } catch (error) {
       if (requestIdRef.current !== requestId) return;
       setMembersQueryError(error instanceof Error ? error.message : "회원 목록을 불러오지 못했습니다.");

@@ -13,6 +13,10 @@
   - reject expired memberships
   - reject exhausted count memberships
 - memberships prototype now uses the same selected-member memberships query so member-context ownership stays in `members` domain while downstream data stays query-owned
+- trainer-scoped read parity is now visible in prototype mode:
+  - members list query filters to trainer-owned member rows
+  - reservation target query filters to trainer-owned target rows
+  - direct `selectMember()` attempts outside trainer scope fail back into picker/list state instead of creating an inconsistent selected-member context
 
 ## New files
 - `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/frontend-rebuild/src/pages/member-context/modules/useSelectedMemberMembershipsQuery.ts`
@@ -26,7 +30,7 @@
 - `cd /Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/frontend-rebuild && npm run build`
 
 ## Remaining parity gaps
-- trainer-scoped reservation restriction is not yet re-applied in prototype reads/actions
+- trainer-scoped reservation restriction is only re-applied to prototype reads and member-context selection, not reservation mutations
 - reservation detail modal and action surface parity is still placeholder-level
 - search debounce/cache/dedupe parity is not yet reintroduced for rebuilt member-context search surfaces
 - hold summary semantics and broader membership mutation parity are not yet ported

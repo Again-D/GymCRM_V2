@@ -43,6 +43,11 @@ const mockMembers: MemberSummary[] = [
   }
 ];
 
+const trainerAssignedMemberIds = new Map<number, number[]>([
+  [41, [101]],
+  [42, [102]]
+]);
+
 const mockMemberDetails = new Map<number, MemberDetail>([
   [
     101,
@@ -273,4 +278,8 @@ export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
   }
 
   return null;
+}
+
+export function getTrainerScopedMemberIds(userId: number) {
+  return new Set(trainerAssignedMemberIds.get(userId) ?? []);
 }

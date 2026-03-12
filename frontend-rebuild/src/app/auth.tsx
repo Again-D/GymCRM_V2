@@ -3,6 +3,7 @@ import { createContext, type PropsWithChildren, useContext, useMemo } from "reac
 export type SecurityMode = "prototype" | "jwt";
 
 export type PrototypeAuthUser = {
+  userId: number;
   username: string;
   role: string;
 };
@@ -17,6 +18,7 @@ const defaultAuthState: AuthState = {
   securityMode: "prototype",
   authBootstrapping: false,
   authUser: {
+    userId: 1,
     username: "prototype-admin",
     role: "ROLE_CENTER_ADMIN"
   }

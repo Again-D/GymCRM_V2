@@ -1,6 +1,7 @@
 import { renderHook, act } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { AuthStateProvider } from "../../../app/auth";
 import { SelectedMemberProvider, useSelectedMemberStore } from "./SelectedMemberContext";
 
 describe("SelectedMemberContext", () => {
@@ -46,5 +47,29 @@ describe("SelectedMemberContext", () => {
     expect(loaded).toBe(true);
     expect(result.current.selectedMemberId).toBe(17);
     expect(result.current.selectedMember?.memberName).toBe("김회원");
+  });
+
+  it("keeps fallback state when trainer selects an out-of-scope member in mock mode", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result } = renderHook(() => useSelectedMemberStore(), {
+      wrapper: ({ children }) => (
+        <AuthStateProvider value={{ authUser: { userId: 41, username: "trainer-a", role: "ROLE_TRAINER" } }}>
+          <SelectedMemberProvider>{children}</SelectedMemberProvider>
+        </AuthStateProvider>
+      )
+    });
+
+    let loaded = true;
+    await act(async () => {
+      loaded = await result.current.selectMember(102);
+    });
+
+    expect(loaded).toBe(false);
+    expect(result.current.selectedMemberId).toBeNull();
+    expect(result.current.selectedMember).toBeNull();
+    expect(result.current.selectedMemberError).toContain("회원 선택 화면");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

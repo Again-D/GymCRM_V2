@@ -1,6 +1,8 @@
 import { createContext, type PropsWithChildren, useContext, useMemo, useRef, useState } from "react";
 
 import { apiGet } from "../../../api/client";
+import { useAuthState } from "../../../app/auth";
+import { canAuthUserAccessMember } from "../../member-context/modules/trainerScope";
 import type { MemberDetail } from "./types";
 
 type SelectedMemberStore = {
@@ -15,6 +17,7 @@ type SelectedMemberStore = {
 const SelectedMemberContext = createContext<SelectedMemberStore | null>(null);
 
 export function SelectedMemberProvider({ children }: PropsWithChildren) {
+  const { authUser } = useAuthState();
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
   const [selectedMember, setSelectedMember] = useState<MemberDetail | null>(null);
   const [selectedMemberLoading, setSelectedMemberLoading] = useState(false);
@@ -28,6 +31,16 @@ export function SelectedMemberProvider({ children }: PropsWithChildren) {
     setSelectedMemberError(null);
 
     try {
+      const canAccess = await canAuthUserAccessMember(memberId, authUser);
+      if (!canAccess) {
+        if (requestIdRef.current !== requestId) {
+          return false;
+        }
+        setSelectedMemberId(null);
+        setSelectedMember(null);
+        setSelectedMemberError("선택한 회원을 불러올 수 없어 회원 선택 화면을 유지합니다.");
+        return false;
+      }
       const response = await apiGet<MemberDetail>(`/api/v1/members/${memberId}`);
       if (requestIdRef.current !== requestId) {
         return false;

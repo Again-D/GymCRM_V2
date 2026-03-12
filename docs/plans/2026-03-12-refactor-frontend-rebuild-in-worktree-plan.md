@@ -395,6 +395,7 @@ All must remain aligned. Rebuild cannot update one surface while leaving the oth
 - [x] baseline shell routing validation log와 같은 fallback/auth bootstrap contract 유지
 - [ ] debounce/cache/dedupe가 필요한 검색 surface에서 request churn regression 없음
 - [x] stale-response/reset invalidation regression tests 일부를 prototype reservations query까지 복제
+- [x] trainer-scoped member/target read parity를 prototype members/reservations query에 재적용
 
 ## Success Metrics
 - 재구축 worktree에서 최소 4개 핵심 섹션(`dashboard`, `members`, `memberships`, `reservations`)이 prototype 상태로 먼저 동작

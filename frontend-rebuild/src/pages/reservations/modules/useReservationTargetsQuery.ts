@@ -1,6 +1,8 @@
 import { useRef, useState } from "react";
 
 import { apiGet } from "../../../api/client";
+import { useAuthState } from "../../../app/auth";
+import { filterMemberIdsForAuth } from "../../member-context/modules/trainerScope";
 
 export type ReservationTargetSummary = {
   memberId: number;
@@ -13,6 +15,7 @@ export type ReservationTargetSummary = {
 };
 
 export function useReservationTargetsQuery() {
+  const { authUser } = useAuthState();
   const [reservationTargets, setReservationTargets] = useState<ReservationTargetSummary[]>([]);
   const [reservationTargetsKeyword, setReservationTargetsKeyword] = useState("");
   const [reservationTargetsLoading, setReservationTargetsLoading] = useState(false);
@@ -38,7 +41,11 @@ export function useReservationTargetsQuery() {
       if (requestIdRef.current !== requestId) {
         return;
       }
-      setReservationTargets(response.data);
+      const scopedTargets = await filterMemberIdsForAuth(response.data, authUser);
+      if (requestIdRef.current !== requestId) {
+        return;
+      }
+      setReservationTargets(scopedTargets);
     } catch (error) {
       if (requestIdRef.current !== requestId) {
         return;
