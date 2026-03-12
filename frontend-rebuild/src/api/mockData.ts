@@ -16,6 +16,7 @@ import type {
   LockerSlot
 } from "../pages/lockers/modules/types";
 import type { ProductRecord } from "../pages/products/modules/types";
+import type { CrmHistoryRow, CrmSendStatus } from "../pages/crm/modules/types";
 import type { ReservationTargetSummary } from "../pages/reservations/modules/useReservationTargetsQuery";
 import { isMembershipReservableOn } from "../pages/reservations/modules/reservableMemberships";
 
@@ -392,6 +393,57 @@ const initialProducts: ProductRecord[] = [
   }
 ];
 
+const initialCrmHistoryRows: CrmHistoryRow[] = [
+  {
+    crmMessageEventId: 12001,
+    memberId: 101,
+    membershipId: 9001,
+    eventType: "MEMBERSHIP_EXPIRY_REMINDER",
+    channelType: "SMS",
+    sendStatus: "PENDING",
+    attemptCount: 0,
+    lastAttemptedAt: null,
+    nextAttemptAt: "2026-03-13T10:00:00+09:00",
+    sentAt: null,
+    failedAt: null,
+    lastErrorMessage: null,
+    traceId: "crm-trace-12001",
+    createdAt: "2026-03-13T09:00:00+09:00"
+  },
+  {
+    crmMessageEventId: 12002,
+    memberId: 102,
+    membershipId: 9011,
+    eventType: "MEMBERSHIP_EXPIRY_REMINDER",
+    channelType: "SMS",
+    sendStatus: "SENT",
+    attemptCount: 1,
+    lastAttemptedAt: "2026-03-12T11:00:00+09:00",
+    nextAttemptAt: null,
+    sentAt: "2026-03-12T11:00:03+09:00",
+    failedAt: null,
+    lastErrorMessage: null,
+    traceId: "crm-trace-12002",
+    createdAt: "2026-03-12T10:55:00+09:00"
+  },
+  {
+    crmMessageEventId: 12003,
+    memberId: 101,
+    membershipId: 9002,
+    eventType: "MEMBERSHIP_HOLD_NOTICE",
+    channelType: "SMS",
+    sendStatus: "RETRY_WAIT",
+    attemptCount: 2,
+    lastAttemptedAt: "2026-03-12T12:15:00+09:00",
+    nextAttemptAt: "2026-03-13T12:15:00+09:00",
+    sentAt: null,
+    failedAt: null,
+    lastErrorMessage: "통신사 응답 지연",
+    traceId: "crm-trace-12003",
+    createdAt: "2026-03-12T12:00:00+09:00"
+  }
+];
+
 let mockMembers = cloneMembers(initialMembers);
 let mockMemberDetails = cloneMemberDetails(initialMemberDetails);
 let mockMemberMemberships = cloneMembershipMap(initialMemberMemberships);
@@ -402,12 +454,14 @@ let mockAccessEvents = cloneAccessEvents(initialAccessEvents);
 let mockLockerSlots = cloneLockerSlots(initialLockerSlots);
 let mockLockerAssignments = cloneLockerAssignments(initialLockerAssignments);
 let mockProducts = cloneProducts(initialProducts);
+let mockCrmHistoryRows = cloneCrmHistoryRows(initialCrmHistoryRows);
 let mockDataVersion = 0;
 let membershipIdSeed = 99000;
 let accessSessionIdSeed = 92000;
 let accessEventIdSeed = 97000;
 let lockerAssignmentIdSeed = 98000;
 let productIdSeed = 200;
+let crmMessageEventIdSeed = 12050;
 
 function cloneMembers(source: MemberSummary[]) {
   return source.map((member) => ({ ...member }));
@@ -457,6 +511,10 @@ function cloneLockerAssignments(source: LockerAssignment[]) {
 
 function cloneProducts(source: ProductRecord[]) {
   return source.map((product) => ({ ...product }));
+}
+
+function cloneCrmHistoryRows(source: CrmHistoryRow[]) {
+  return source.map((row) => ({ ...row }));
 }
 
 function envelope<T>(data: T): ApiEnvelope<T> {
@@ -626,6 +684,17 @@ function filterProducts(url: URL) {
   });
 }
 
+function filterCrmHistory(url: URL) {
+  const sendStatus = url.searchParams.get("sendStatus")?.trim() as CrmSendStatus | "" | null;
+  const parsedLimit = Number.parseInt(url.searchParams.get("limit") ?? "100", 10);
+  const limit = Number.isFinite(parsedLimit) ? parsedLimit : 100;
+
+  return mockCrmHistoryRows
+    .filter((row) => !sendStatus || row.sendStatus === sendStatus)
+    .slice(0, limit)
+    .map((row) => ({ ...row }));
+}
+
 function filterMembers(url: URL) {
   const name = url.searchParams.get("name")?.trim() ?? "";
   const phone = url.searchParams.get("phone")?.trim() ?? "";
@@ -658,12 +727,14 @@ export function resetMockData() {
   mockLockerSlots = cloneLockerSlots(initialLockerSlots);
   mockLockerAssignments = cloneLockerAssignments(initialLockerAssignments);
   mockProducts = cloneProducts(initialProducts);
+  mockCrmHistoryRows = cloneCrmHistoryRows(initialCrmHistoryRows);
   mockDataVersion = 0;
   membershipIdSeed = 99000;
   accessSessionIdSeed = 92000;
   accessEventIdSeed = 97000;
   lockerAssignmentIdSeed = 98000;
   productIdSeed = 200;
+  crmMessageEventIdSeed = 12050;
 }
 
 export function createMockMembership(input: {
@@ -916,6 +987,80 @@ export function toggleMockProductStatus(productId: number) {
   }));
 }
 
+export function triggerMockCrmExpiryReminder(daysAhead: number) {
+  crmMessageEventIdSeed += 1;
+  const now = new Date().toISOString();
+  const targetMembership = (mockMemberMemberships.get(102) ?? [])[0];
+  const nextRow: CrmHistoryRow = {
+    crmMessageEventId: crmMessageEventIdSeed,
+    memberId: 102,
+    membershipId: targetMembership?.membershipId ?? null,
+    eventType: "MEMBERSHIP_EXPIRY_REMINDER",
+    channelType: "SMS",
+    sendStatus: "PENDING",
+    attemptCount: 0,
+    lastAttemptedAt: null,
+    nextAttemptAt: now,
+    sentAt: null,
+    failedAt: null,
+    lastErrorMessage: null,
+    traceId: `crm-trace-${crmMessageEventIdSeed}`,
+    createdAt: now
+  };
+
+  mockCrmHistoryRows = [nextRow, ...mockCrmHistoryRows];
+  bumpMockDataVersion();
+
+  return {
+    ok: true as const,
+    message: `${daysAhead}일 기준 만료임박 메시지 ${1}건을 큐에 적재했습니다.`,
+    createdCount: 1
+  };
+}
+
+export function processMockCrmQueue() {
+  const now = new Date().toISOString();
+  let processedCount = 0;
+
+  mockCrmHistoryRows = mockCrmHistoryRows.map((row) => {
+    if (row.sendStatus === "PENDING" && processedCount < 1) {
+      processedCount += 1;
+      return {
+        ...row,
+        sendStatus: "SENT",
+        attemptCount: row.attemptCount + 1,
+        lastAttemptedAt: now,
+        sentAt: now,
+        nextAttemptAt: null,
+        lastErrorMessage: null
+      };
+    }
+
+    if (row.sendStatus === "RETRY_WAIT" && processedCount < 2) {
+      processedCount += 1;
+      return {
+        ...row,
+        sendStatus: "SENT",
+        attemptCount: row.attemptCount + 1,
+        lastAttemptedAt: now,
+        sentAt: now,
+        nextAttemptAt: null,
+        lastErrorMessage: null
+      };
+    }
+
+    return row;
+  });
+
+  bumpMockDataVersion();
+
+  return {
+    ok: true as const,
+    message: `CRM 큐 ${processedCount}건을 처리했습니다.`,
+    processedCount
+  };
+}
+
 export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
   const url = new URL(path, "http://local.mock");
 
@@ -977,6 +1122,12 @@ export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
 
   if (url.pathname === "/api/v1/products") {
     return envelope(filterProducts(url).map((product) => ({ ...product })));
+  }
+
+  if (url.pathname === "/api/v1/crm/messages") {
+    return envelope({
+      rows: filterCrmHistory(url)
+    });
   }
 
   return null;

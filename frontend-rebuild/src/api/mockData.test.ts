@@ -1,7 +1,15 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { createMockMembership, getMockResponse, patchMockMembership, resetMockData } from "./mockData";
+import {
+  createMockMembership,
+  getMockResponse,
+  patchMockMembership,
+  processMockCrmQueue,
+  resetMockData,
+  triggerMockCrmExpiryReminder
+} from "./mockData";
 import type { MemberSummary } from "../pages/members/modules/types";
+import type { CrmHistoryRow } from "../pages/crm/modules/types";
 import type { ReservationTargetSummary } from "../pages/reservations/modules/useReservationTargetsQuery";
 
 describe("mockData membership propagation", () => {
@@ -38,5 +46,17 @@ describe("mockData membership propagation", () => {
 
     expect(members.find((member) => member.memberId === 102)?.membershipOperationalStatus).toBe("홀딩중");
     expect(reservationTargets.map((target) => target.memberId)).not.toContain(102);
+  });
+
+  it("updates crm history through trigger and process actions", () => {
+    triggerMockCrmExpiryReminder(3);
+
+    const afterTrigger = getMockResponse("/api/v1/crm/messages?limit=100")?.data as { rows: CrmHistoryRow[] };
+    expect(afterTrigger.rows[0]?.sendStatus).toBe("PENDING");
+
+    processMockCrmQueue();
+
+    const afterProcess = getMockResponse("/api/v1/crm/messages?limit=100")?.data as { rows: CrmHistoryRow[] };
+    expect(afterProcess.rows.some((row) => row.sendStatus === "SENT")).toBe(true);
   });
 });

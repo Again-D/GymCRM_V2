@@ -19,4 +19,16 @@ describe("queryInvalidation", () => {
     expect(getQueryInvalidationVersion("accessPresence")).toBe(1);
     expect(getQueryInvalidationVersion("reservationTargets")).toBe(0);
   });
+
+  it("tracks crm invalidation domains independently", () => {
+    resetQueryInvalidationStateForTests();
+
+    expect(getQueryInvalidationVersion("crmHistory")).toBe(0);
+    expect(getQueryInvalidationVersion("crmQueue")).toBe(0);
+
+    invalidateQueryDomains(["crmHistory"]);
+
+    expect(getQueryInvalidationVersion("crmHistory")).toBe(1);
+    expect(getQueryInvalidationVersion("crmQueue")).toBe(0);
+  });
 });

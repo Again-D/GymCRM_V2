@@ -4,6 +4,8 @@ export type QueryDomain =
   | "products"
   | "members"
   | "reservationTargets"
+  | "crmHistory"
+  | "crmQueue"
   | "accessPresence"
   | "accessEvents"
   | "lockerSlots"

@@ -6,6 +6,7 @@ import DashboardLayout from "./components/layout/DashboardLayout";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import AccessPage from "./pages/access/AccessPage";
+import CrmPage from "./pages/crm/CrmPage";
 import LockersPage from "./pages/lockers/LockersPage";
 import MembershipsPage from "./pages/memberships/MembershipsPage";
 import ProductsPage from "./pages/products/ProductsPage";
@@ -59,10 +60,7 @@ export default function App() {
           <Route path="/reservations" element={<ReservationsPage />} />
           <Route path="/access" element={<AccessPage />} />
           <Route path="/lockers" element={<LockersPage />} />
-          <Route
-            path="/crm"
-            element={<ShellPlaceholderPage title="CRM 메시지 프로토타입" description="Messaging trigger and history flows will be rebuilt after core parity." />}
-          />
+          <Route path="/crm" element={<CrmPage />} />
           <Route
             path="/settlements"
             element={<ShellPlaceholderPage title="정산 리포트 프로토타입" description="Settlement query ownership and reporting will be added in a later phase." />}
