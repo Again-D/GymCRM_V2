@@ -2,6 +2,42 @@ import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { useMembershipPrototypeState } from "./useMembershipPrototypeState";
+import type { ProductRecord } from "../../products/modules/types";
+
+const availableProducts: ProductRecord[] = [
+  {
+    productId: 1,
+    centerId: 1,
+    productName: "헬스 90일권",
+    productCategory: "MEMBERSHIP",
+    productType: "DURATION",
+    priceAmount: 180000,
+    validityDays: 90,
+    totalCount: null,
+    allowHold: true,
+    maxHoldDays: 30,
+    maxHoldCount: 1,
+    allowTransfer: false,
+    productStatus: "ACTIVE",
+    description: null
+  },
+  {
+    productId: 2,
+    centerId: 1,
+    productName: "PT 10회권",
+    productCategory: "PT",
+    productType: "COUNT",
+    priceAmount: 550000,
+    validityDays: null,
+    totalCount: 10,
+    allowHold: true,
+    maxHoldDays: 30,
+    maxHoldCount: 1,
+    allowTransfer: false,
+    productStatus: "ACTIVE",
+    description: null
+  }
+];
 
 describe("useMembershipPrototypeState", () => {
   it("creates a membership and purchase payment from the preview", () => {
@@ -21,6 +57,7 @@ describe("useMembershipPrototypeState", () => {
     const { result } = renderHook(() =>
       useMembershipPrototypeState({
         selectedMemberId: 101,
+        availableProducts,
         createLocalMembership,
         patchLocalMembership
       })
@@ -73,6 +110,7 @@ describe("useMembershipPrototypeState", () => {
     const { result } = renderHook(() =>
       useMembershipPrototypeState({
         selectedMemberId: 101,
+        availableProducts,
         createLocalMembership,
         patchLocalMembership
       })

@@ -5,6 +5,8 @@ import { useSelectedMemberMembershipsQuery } from "../member-context/modules/use
 import { SelectedMemberContextBadge } from "../members/components/SelectedMemberContextBadge";
 import { useSelectedMemberStore } from "../members/modules/SelectedMemberContext";
 import type { MembershipPaymentRecord, PurchasedMembership } from "../members/modules/types";
+import { createDefaultProductFilters } from "../products/modules/types";
+import { useProductsQuery } from "../products/modules/useProductsQuery";
 import { useMembershipPrototypeState } from "./modules/useMembershipPrototypeState";
 
 function formatCurrency(amount: number) {
@@ -37,8 +39,13 @@ export default function MembershipsPage() {
     createLocalMembership,
     patchLocalMembership
   } = useSelectedMemberMembershipsQuery();
+  const { products, productsLoading, productsQueryError, loadProducts, resetProductsQuery } = useProductsQuery({
+    getDefaultFilters: () => ({
+      ...createDefaultProductFilters(),
+      status: "ACTIVE"
+    })
+  });
   const {
-    prototypeProducts,
     purchaseForm,
     setPurchaseForm,
     purchasePreview,
@@ -58,6 +65,7 @@ export default function MembershipsPage() {
     handleRefundSubmit
   } = useMembershipPrototypeState({
     selectedMemberId,
+    availableProducts: products,
     createLocalMembership,
     patchLocalMembership
   });
@@ -69,6 +77,16 @@ export default function MembershipsPage() {
     }
     void loadSelectedMemberMemberships(selectedMemberId);
   }, [selectedMemberId, loadSelectedMemberMemberships, resetSelectedMemberMembershipsQuery]);
+
+  useEffect(() => {
+    void loadProducts({
+      ...createDefaultProductFilters(),
+      status: "ACTIVE"
+    });
+    return () => {
+      resetProductsQuery();
+    };
+  }, []);
 
   if (!selectedMember) {
     return (
@@ -111,7 +129,7 @@ export default function MembershipsPage() {
                 }}
               >
                 <option value="">선택하세요</option>
-                {prototypeProducts.map((product) => (
+                {products.map((product) => (
                   <option key={product.productId} value={product.productId}>
                     {product.productName} · {product.productType} · {formatCurrency(product.priceAmount)}
                   </option>
@@ -193,6 +211,8 @@ export default function MembershipsPage() {
         {membershipPanelMessage ? <p>{membershipPanelMessage}</p> : null}
         {membershipPanelError ? <p className="error-text">{membershipPanelError}</p> : null}
         {selectedMemberMembershipsError ? <p className="error-text">{selectedMemberMembershipsError}</p> : null}
+        {productsQueryError ? <p className="error-text">{productsQueryError}</p> : null}
+        {productsLoading ? <p>상품 목록을 동기화하는 중...</p> : null}
 
         <div className="placeholder-stack">
           <div className="placeholder-card">

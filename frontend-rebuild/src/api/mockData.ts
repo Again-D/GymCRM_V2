@@ -15,6 +15,7 @@ import type {
   LockerAssignment,
   LockerSlot
 } from "../pages/lockers/modules/types";
+import type { ProductRecord } from "../pages/products/modules/types";
 import type { ReservationTargetSummary } from "../pages/reservations/modules/useReservationTargetsQuery";
 import { isMembershipReservableOn } from "../pages/reservations/modules/reservableMemberships";
 
@@ -340,6 +341,57 @@ const initialLockerAssignments: LockerAssignment[] = [
   }
 ];
 
+const initialProducts: ProductRecord[] = [
+  {
+    productId: 1,
+    centerId: 1,
+    productName: "헬스 90일권",
+    productCategory: "MEMBERSHIP",
+    productType: "DURATION",
+    priceAmount: 180000,
+    validityDays: 90,
+    totalCount: null,
+    allowHold: true,
+    maxHoldDays: 30,
+    maxHoldCount: 1,
+    allowTransfer: false,
+    productStatus: "ACTIVE",
+    description: "기본 헬스 이용권"
+  },
+  {
+    productId: 2,
+    centerId: 1,
+    productName: "PT 10회권",
+    productCategory: "PT",
+    productType: "COUNT",
+    priceAmount: 550000,
+    validityDays: null,
+    totalCount: 10,
+    allowHold: false,
+    maxHoldDays: null,
+    maxHoldCount: null,
+    allowTransfer: false,
+    productStatus: "ACTIVE",
+    description: "퍼스널 트레이닝 10회"
+  },
+  {
+    productId: 3,
+    centerId: 1,
+    productName: "GX 12회권",
+    productCategory: "GX",
+    productType: "COUNT",
+    priceAmount: 220000,
+    validityDays: null,
+    totalCount: 12,
+    allowHold: false,
+    maxHoldDays: null,
+    maxHoldCount: null,
+    allowTransfer: false,
+    productStatus: "INACTIVE",
+    description: "그룹 수업 12회"
+  }
+];
+
 let mockMembers = cloneMembers(initialMembers);
 let mockMemberDetails = cloneMemberDetails(initialMemberDetails);
 let mockMemberMemberships = cloneMembershipMap(initialMemberMemberships);
@@ -349,11 +401,13 @@ let mockOpenAccessSessions = cloneAccessSessions(initialOpenAccessSessions);
 let mockAccessEvents = cloneAccessEvents(initialAccessEvents);
 let mockLockerSlots = cloneLockerSlots(initialLockerSlots);
 let mockLockerAssignments = cloneLockerAssignments(initialLockerAssignments);
+let mockProducts = cloneProducts(initialProducts);
 let mockDataVersion = 0;
 let membershipIdSeed = 99000;
 let accessSessionIdSeed = 92000;
 let accessEventIdSeed = 97000;
 let lockerAssignmentIdSeed = 98000;
+let productIdSeed = 200;
 
 function cloneMembers(source: MemberSummary[]) {
   return source.map((member) => ({ ...member }));
@@ -399,6 +453,10 @@ function cloneLockerSlots(source: LockerSlot[]) {
 
 function cloneLockerAssignments(source: LockerAssignment[]) {
   return source.map((assignment) => ({ ...assignment }));
+}
+
+function cloneProducts(source: ProductRecord[]) {
+  return source.map((product) => ({ ...product }));
 }
 
 function envelope<T>(data: T): ApiEnvelope<T> {
@@ -557,6 +615,17 @@ function filterLockerAssignments(url: URL) {
   });
 }
 
+function filterProducts(url: URL) {
+  const category = url.searchParams.get("category")?.trim() ?? "";
+  const status = url.searchParams.get("status")?.trim() ?? "";
+
+  return mockProducts.filter((product) => {
+    const matchesCategory = !category || product.productCategory === category;
+    const matchesStatus = !status || product.productStatus === status;
+    return matchesCategory && matchesStatus;
+  });
+}
+
 function filterMembers(url: URL) {
   const name = url.searchParams.get("name")?.trim() ?? "";
   const phone = url.searchParams.get("phone")?.trim() ?? "";
@@ -588,11 +657,13 @@ export function resetMockData() {
   mockAccessEvents = cloneAccessEvents(initialAccessEvents);
   mockLockerSlots = cloneLockerSlots(initialLockerSlots);
   mockLockerAssignments = cloneLockerAssignments(initialLockerAssignments);
+  mockProducts = cloneProducts(initialProducts);
   mockDataVersion = 0;
   membershipIdSeed = 99000;
   accessSessionIdSeed = 92000;
   accessEventIdSeed = 97000;
   lockerAssignmentIdSeed = 98000;
+  productIdSeed = 200;
 }
 
 export function createMockMembership(input: {
@@ -807,6 +878,44 @@ export function returnMockLockerAssignment(lockerAssignmentId: number) {
   return { ok: true as const, message: `라커 ${assignment.lockerCode} 반납을 처리했습니다.` };
 }
 
+export function createMockProduct(input: Omit<ProductRecord, "productId" | "centerId">) {
+  productIdSeed += 1;
+  const nextProduct: ProductRecord = {
+    productId: productIdSeed,
+    centerId: 1,
+    ...input
+  };
+  mockProducts = [nextProduct, ...mockProducts];
+  bumpMockDataVersion();
+  return { ...nextProduct };
+}
+
+export function updateMockProduct(
+  productId: number,
+  updater: (product: ProductRecord) => ProductRecord
+) {
+  let nextProduct: ProductRecord | null = null;
+  mockProducts = mockProducts.map((product) => {
+    if (product.productId !== productId) {
+      return product;
+    }
+    nextProduct = updater({ ...product });
+    return nextProduct;
+  });
+  if (!nextProduct) {
+    return null;
+  }
+  bumpMockDataVersion();
+  return { ...(nextProduct as ProductRecord) };
+}
+
+export function toggleMockProductStatus(productId: number) {
+  return updateMockProduct(productId, (product) => ({
+    ...product,
+    productStatus: product.productStatus === "ACTIVE" ? "INACTIVE" : "ACTIVE"
+  }));
+}
+
 export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
   const url = new URL(path, "http://local.mock");
 
@@ -864,6 +973,10 @@ export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
 
   if (url.pathname === "/api/v1/lockers/assignments") {
     return envelope(filterLockerAssignments(url).map((assignment) => ({ ...assignment })));
+  }
+
+  if (url.pathname === "/api/v1/products") {
+    return envelope(filterProducts(url).map((product) => ({ ...product })));
   }
 
   return null;

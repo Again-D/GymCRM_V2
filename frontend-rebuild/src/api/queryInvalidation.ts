@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 
 export type QueryDomain =
+  | "products"
   | "members"
   | "reservationTargets"
   | "accessPresence"

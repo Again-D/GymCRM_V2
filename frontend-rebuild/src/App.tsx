@@ -8,6 +8,7 @@ import Login from "./pages/Login";
 import AccessPage from "./pages/access/AccessPage";
 import LockersPage from "./pages/lockers/LockersPage";
 import MembershipsPage from "./pages/memberships/MembershipsPage";
+import ProductsPage from "./pages/products/ProductsPage";
 import ReservationsPage from "./pages/reservations/ReservationsPage";
 import ShellPlaceholderPage from "./pages/ShellPlaceholderPage";
 import MemberList from "./pages/members/MemberList";
@@ -66,10 +67,7 @@ export default function App() {
             path="/settlements"
             element={<ShellPlaceholderPage title="정산 리포트 프로토타입" description="Settlement query ownership and reporting will be added in a later phase." />}
           />
-          <Route
-            path="/products"
-            element={<ShellPlaceholderPage title="상품 관리 프로토타입" description="Product pages remain outside the first vertical slice." />}
-          />
+          <Route path="/products" element={<ProductsPage />} />
         </Route>
       </Routes>
     </SelectedMemberProvider>

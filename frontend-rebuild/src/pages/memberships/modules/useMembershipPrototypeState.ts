@@ -1,17 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { MembershipPaymentRecord, PurchasedMembership } from "../../members/modules/types";
+import type { ProductRecord } from "../../products/modules/types";
 
 type PaymentMethod = "CASH" | "CARD" | "TRANSFER" | "ETC";
-
-type PurchaseProduct = {
-  productId: number;
-  productName: string;
-  productType: "DURATION" | "COUNT";
-  priceAmount: number;
-  durationDays?: number;
-  totalCount?: number;
-};
 
 type PurchaseFormState = {
   productId: string;
@@ -57,26 +49,10 @@ type PatchLocalMembership = (
 
 type UseMembershipPrototypeStateArgs = {
   selectedMemberId: number | null;
+  availableProducts: ProductRecord[];
   createLocalMembership: CreateLocalMembership;
   patchLocalMembership: PatchLocalMembership;
 };
-
-export const prototypeProducts: PurchaseProduct[] = [
-  {
-    productId: 1,
-    productName: "헬스 90일권",
-    productType: "DURATION",
-    priceAmount: 180000,
-    durationDays: 90
-  },
-  {
-    productId: 2,
-    productName: "PT 10회권",
-    productType: "COUNT",
-    priceAmount: 550000,
-    totalCount: 10
-  }
-];
 
 function todayText() {
   return new Date().toISOString().slice(0, 10);
@@ -122,7 +98,7 @@ function createDefaultMembershipActionDraft(): MembershipActionDraft {
 }
 
 export function useMembershipPrototypeState(args: UseMembershipPrototypeStateArgs) {
-  const { selectedMemberId, createLocalMembership, patchLocalMembership } = args;
+  const { selectedMemberId, availableProducts, createLocalMembership, patchLocalMembership } = args;
   const [purchaseForm, setPurchaseForm] = useState<PurchaseFormState>(() => createEmptyPurchaseForm());
   const [payments, setPayments] = useState<MembershipPaymentRecord[]>([]);
   const [membershipActionDrafts, setMembershipActionDrafts] = useState<Record<number, MembershipActionDraft>>({});
@@ -141,7 +117,7 @@ export function useMembershipPrototypeState(args: UseMembershipPrototypeStateArg
   }, [selectedMemberId]);
 
   const purchasePreview = useMemo(() => {
-    const product = prototypeProducts.find((item) => String(item.productId) === purchaseForm.productId);
+    const product = availableProducts.find((item) => String(item.productId) === purchaseForm.productId);
     if (!product) {
       return null;
     }
@@ -150,11 +126,11 @@ export function useMembershipPrototypeState(args: UseMembershipPrototypeStateArg
     return {
       product,
       startDate: purchaseForm.startDate,
-      endDate: product.productType === "DURATION" ? addDays(purchaseForm.startDate, (product.durationDays ?? 1) - 1) : null,
+      endDate: product.productType === "DURATION" ? addDays(purchaseForm.startDate, (product.validityDays ?? 1) - 1) : null,
       remainingCount: product.productType === "COUNT" ? (product.totalCount ?? 0) : null,
       chargeAmount
     };
-  }, [purchaseForm]);
+  }, [availableProducts, purchaseForm]);
 
   function clearPanelFeedback() {
     setMembershipPanelMessage(null);
@@ -351,7 +327,6 @@ export function useMembershipPrototypeState(args: UseMembershipPrototypeStateArg
   }
 
   return {
-    prototypeProducts,
     purchaseForm,
     setPurchaseForm,
     purchasePreview,
