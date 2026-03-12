@@ -10,6 +10,7 @@ import {
 } from "./mockData";
 import type { MemberSummary } from "../pages/members/modules/types";
 import type { CrmHistoryRow } from "../pages/crm/modules/types";
+import type { SettlementReport } from "../pages/settlements/modules/types";
 import type { ReservationTargetSummary } from "../pages/reservations/modules/useReservationTargetsQuery";
 
 describe("mockData membership propagation", () => {
@@ -58,5 +59,15 @@ describe("mockData membership propagation", () => {
 
     const afterProcess = getMockResponse("/api/v1/crm/messages?limit=100")?.data as { rows: CrmHistoryRow[] };
     expect(afterProcess.rows.some((row) => row.sendStatus === "SENT")).toBe(true);
+  });
+
+  it("aggregates settlement report rows by product and payment method", () => {
+    const report = getMockResponse(
+      "/api/v1/settlements/sales-report?startDate=2026-03-01&endDate=2026-03-31&paymentMethod=CARD"
+    )?.data as SettlementReport;
+
+    expect(report.totalGrossSales).toBeGreaterThan(0);
+    expect(report.rows.every((row) => row.paymentMethod === "CARD")).toBe(true);
+    expect(report.rows.some((row) => row.productName.includes("PT"))).toBe(true);
   });
 });

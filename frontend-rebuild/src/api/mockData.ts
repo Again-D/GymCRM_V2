@@ -17,6 +17,7 @@ import type {
 } from "../pages/lockers/modules/types";
 import type { ProductRecord } from "../pages/products/modules/types";
 import type { CrmHistoryRow, CrmSendStatus } from "../pages/crm/modules/types";
+import type { SettlementPaymentMethod, SettlementReport } from "../pages/settlements/modules/types";
 import type { ReservationTargetSummary } from "../pages/reservations/modules/useReservationTargetsQuery";
 import { isMembershipReservableOn } from "../pages/reservations/modules/reservableMemberships";
 
@@ -444,6 +445,24 @@ const initialCrmHistoryRows: CrmHistoryRow[] = [
   }
 ];
 
+type SettlementTransaction = {
+  transactionId: number;
+  transactionDate: string;
+  productId: number;
+  paymentMethod: Exclude<SettlementPaymentMethod, "">;
+  grossSales: number;
+  refundAmount: number;
+};
+
+const initialSettlementTransactions: SettlementTransaction[] = [
+  { transactionId: 21001, transactionDate: "2026-03-01", productId: 1, paymentMethod: "CARD", grossSales: 180000, refundAmount: 0 },
+  { transactionId: 21002, transactionDate: "2026-03-03", productId: 2, paymentMethod: "CARD", grossSales: 550000, refundAmount: 0 },
+  { transactionId: 21003, transactionDate: "2026-03-05", productId: 2, paymentMethod: "TRANSFER", grossSales: 550000, refundAmount: 110000 },
+  { transactionId: 21004, transactionDate: "2026-03-08", productId: 1, paymentMethod: "CASH", grossSales: 180000, refundAmount: 0 },
+  { transactionId: 21005, transactionDate: "2026-03-11", productId: 3, paymentMethod: "ETC", grossSales: 220000, refundAmount: 220000 },
+  { transactionId: 21006, transactionDate: "2026-03-12", productId: 2, paymentMethod: "CARD", grossSales: 550000, refundAmount: 0 }
+];
+
 let mockMembers = cloneMembers(initialMembers);
 let mockMemberDetails = cloneMemberDetails(initialMemberDetails);
 let mockMemberMemberships = cloneMembershipMap(initialMemberMemberships);
@@ -455,6 +474,7 @@ let mockLockerSlots = cloneLockerSlots(initialLockerSlots);
 let mockLockerAssignments = cloneLockerAssignments(initialLockerAssignments);
 let mockProducts = cloneProducts(initialProducts);
 let mockCrmHistoryRows = cloneCrmHistoryRows(initialCrmHistoryRows);
+let mockSettlementTransactions = initialSettlementTransactions.map((transaction) => ({ ...transaction }));
 let mockDataVersion = 0;
 let membershipIdSeed = 99000;
 let accessSessionIdSeed = 92000;
@@ -515,6 +535,10 @@ function cloneProducts(source: ProductRecord[]) {
 
 function cloneCrmHistoryRows(source: CrmHistoryRow[]) {
   return source.map((row) => ({ ...row }));
+}
+
+function cloneSettlementTransactions(source: SettlementTransaction[]) {
+  return source.map((transaction) => ({ ...transaction }));
 }
 
 function envelope<T>(data: T): ApiEnvelope<T> {
@@ -695,6 +719,72 @@ function filterCrmHistory(url: URL) {
     .map((row) => ({ ...row }));
 }
 
+function filterSettlementReport(url: URL): SettlementReport {
+  const startDate = url.searchParams.get("startDate")?.trim() ?? todayText();
+  const endDate = url.searchParams.get("endDate")?.trim() ?? todayText();
+  const paymentMethod = (url.searchParams.get("paymentMethod")?.trim() ?? "") as SettlementPaymentMethod;
+  const productKeyword = url.searchParams.get("productKeyword")?.trim() ?? "";
+
+  const groupedRows = new Map<
+    string,
+    {
+      productName: string;
+      paymentMethod: Exclude<SettlementPaymentMethod, "">;
+      grossSales: number;
+      refundAmount: number;
+      netSales: number;
+      transactionCount: number;
+    }
+  >();
+
+  for (const transaction of mockSettlementTransactions) {
+    if (transaction.transactionDate < startDate || transaction.transactionDate > endDate) {
+      continue;
+    }
+    if (paymentMethod && transaction.paymentMethod !== paymentMethod) {
+      continue;
+    }
+    const product = mockProducts.find((item) => item.productId === transaction.productId);
+    const productName = product?.productName ?? `상품 #${transaction.productId}`;
+    if (productKeyword && !productName.includes(productKeyword)) {
+      continue;
+    }
+
+    const key = `${productName}:${transaction.paymentMethod}`;
+    const current = groupedRows.get(key) ?? {
+      productName,
+      paymentMethod: transaction.paymentMethod,
+      grossSales: 0,
+      refundAmount: 0,
+      netSales: 0,
+      transactionCount: 0
+    };
+    current.grossSales += transaction.grossSales;
+    current.refundAmount += transaction.refundAmount;
+    current.netSales += transaction.grossSales - transaction.refundAmount;
+    current.transactionCount += 1;
+    groupedRows.set(key, current);
+  }
+
+  const rows = Array.from(groupedRows.values()).sort((left, right) => {
+    if (right.netSales !== left.netSales) {
+      return right.netSales - left.netSales;
+    }
+    return left.productName.localeCompare(right.productName, "ko");
+  });
+
+  return {
+    startDate,
+    endDate,
+    paymentMethod: paymentMethod || null,
+    productKeyword: productKeyword || null,
+    totalGrossSales: rows.reduce((sum, row) => sum + row.grossSales, 0),
+    totalRefundAmount: rows.reduce((sum, row) => sum + row.refundAmount, 0),
+    totalNetSales: rows.reduce((sum, row) => sum + row.netSales, 0),
+    rows
+  };
+}
+
 function filterMembers(url: URL) {
   const name = url.searchParams.get("name")?.trim() ?? "";
   const phone = url.searchParams.get("phone")?.trim() ?? "";
@@ -728,6 +818,7 @@ export function resetMockData() {
   mockLockerAssignments = cloneLockerAssignments(initialLockerAssignments);
   mockProducts = cloneProducts(initialProducts);
   mockCrmHistoryRows = cloneCrmHistoryRows(initialCrmHistoryRows);
+  mockSettlementTransactions = cloneSettlementTransactions(initialSettlementTransactions);
   mockDataVersion = 0;
   membershipIdSeed = 99000;
   accessSessionIdSeed = 92000;
@@ -1128,6 +1219,10 @@ export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
     return envelope({
       rows: filterCrmHistory(url)
     });
+  }
+
+  if (url.pathname === "/api/v1/settlements/sales-report") {
+    return envelope(filterSettlementReport(url));
   }
 
   return null;

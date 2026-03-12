@@ -31,4 +31,16 @@ describe("queryInvalidation", () => {
     expect(getQueryInvalidationVersion("crmHistory")).toBe(1);
     expect(getQueryInvalidationVersion("crmQueue")).toBe(0);
   });
+
+  it("tracks settlement invalidation independently from products", () => {
+    resetQueryInvalidationStateForTests();
+
+    expect(getQueryInvalidationVersion("settlementReport")).toBe(0);
+    expect(getQueryInvalidationVersion("products")).toBe(0);
+
+    invalidateQueryDomains(["settlementReport"]);
+
+    expect(getQueryInvalidationVersion("settlementReport")).toBe(1);
+    expect(getQueryInvalidationVersion("products")).toBe(0);
+  });
 });

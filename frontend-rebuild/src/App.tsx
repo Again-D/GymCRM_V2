@@ -11,6 +11,7 @@ import LockersPage from "./pages/lockers/LockersPage";
 import MembershipsPage from "./pages/memberships/MembershipsPage";
 import ProductsPage from "./pages/products/ProductsPage";
 import ReservationsPage from "./pages/reservations/ReservationsPage";
+import SettlementsPage from "./pages/settlements/SettlementsPage";
 import ShellPlaceholderPage from "./pages/ShellPlaceholderPage";
 import MemberList from "./pages/members/MemberList";
 import { SelectedMemberProvider } from "./pages/members/modules/SelectedMemberContext";
@@ -61,10 +62,7 @@ export default function App() {
           <Route path="/access" element={<AccessPage />} />
           <Route path="/lockers" element={<LockersPage />} />
           <Route path="/crm" element={<CrmPage />} />
-          <Route
-            path="/settlements"
-            element={<ShellPlaceholderPage title="정산 리포트 프로토타입" description="Settlement query ownership and reporting will be added in a later phase." />}
-          />
+          <Route path="/settlements" element={<SettlementsPage />} />
           <Route path="/products" element={<ProductsPage />} />
         </Route>
       </Routes>
