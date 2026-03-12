@@ -190,6 +190,17 @@ export function AuthStateProvider({
   }, [hasRuntimeOverride]);
 
   useEffect(() => {
+    if (!hasRuntimeOverride) {
+      return;
+    }
+
+    setRuntimeState({
+      ...defaultAuthState,
+      ...value
+    });
+  }, [hasRuntimeOverride, value]);
+
+  useEffect(() => {
     if (hasRuntimeOverride || runtimeState.authBootstrapping || typeof window === "undefined") {
       return;
     }

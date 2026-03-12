@@ -15,7 +15,7 @@ export function useSettlementReportQuery({ getDefaultFilters }: UseSettlementRep
   const [settlementReportMessage, setSettlementReportMessage] = useState<string | null>(null);
   const requestIdRef = useRef(0);
   const cacheRef = useRef(new Map<string, SettlementReport>());
-  const inflightRef = useRef(new Map<string, Promise<SettlementReport>>());
+  const inflightRef = useRef(new Map<string, Promise<{ data: SettlementReport; message: string }>>());
   const settlementReportVersion = useQueryInvalidationVersion("settlementReport");
   const productsVersion = useQueryInvalidationVersion("products");
 
@@ -49,18 +49,19 @@ export function useSettlementReportQuery({ getDefaultFilters }: UseSettlementRep
       let responsePromise = inflightRef.current.get(cacheKey);
       if (!responsePromise) {
         responsePromise = apiGet<SettlementReport>(`/api/v1/settlements/sales-report?${query}`)
-          .then((response) => {
-            setSettlementReportMessage(response.message);
-            return response.data;
-          })
+          .then((response) => ({
+            data: response.data,
+            message: response.message
+          }))
           .finally(() => inflightRef.current.delete(cacheKey));
         inflightRef.current.set(cacheKey, responsePromise);
       }
 
-      const nextReport = await responsePromise;
+      const nextResponse = await responsePromise;
       if (requestIdRef.current !== requestId) return;
-      cacheRef.current.set(cacheKey, nextReport);
-      setSettlementReport(nextReport);
+      cacheRef.current.set(cacheKey, nextResponse.data);
+      setSettlementReport(nextResponse.data);
+      setSettlementReportMessage(nextResponse.message);
     } catch (error) {
       if (requestIdRef.current !== requestId) return;
       setSettlementReport(null);

@@ -1,4 +1,4 @@
-import { createContext, type PropsWithChildren, useContext, useMemo, useRef, useState } from "react";
+import { createContext, type PropsWithChildren, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { apiGet } from "../../../api/client";
 import { useAuthState } from "../../../app/auth";
@@ -23,6 +23,7 @@ export function SelectedMemberProvider({ children }: PropsWithChildren) {
   const [selectedMemberLoading, setSelectedMemberLoading] = useState(false);
   const [selectedMemberError, setSelectedMemberError] = useState<string | null>(null);
   const requestIdRef = useRef(0);
+  const authIdentityKeyRef = useRef<string | null>(null);
 
   async function selectMember(memberId: number) {
     const requestId = requestIdRef.current + 1;
@@ -70,6 +71,25 @@ export function SelectedMemberProvider({ children }: PropsWithChildren) {
     setSelectedMemberLoading(false);
     setSelectedMemberError(null);
   }
+
+  useEffect(() => {
+    const nextAuthIdentityKey = authUser ? `${authUser.userId}:${authUser.role}` : "anonymous";
+    if (authIdentityKeyRef.current === null) {
+      authIdentityKeyRef.current = nextAuthIdentityKey;
+      return;
+    }
+
+    if (authIdentityKeyRef.current === nextAuthIdentityKey) {
+      return;
+    }
+
+    authIdentityKeyRef.current = nextAuthIdentityKey;
+    requestIdRef.current += 1;
+    setSelectedMemberId(null);
+    setSelectedMember(null);
+    setSelectedMemberLoading(false);
+    setSelectedMemberError(null);
+  }, [authUser]);
 
   const value = useMemo<SelectedMemberStore>(
     () => ({
