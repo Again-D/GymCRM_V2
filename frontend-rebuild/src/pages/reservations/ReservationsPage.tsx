@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 
 import { formatDate } from "../../shared/format";
+import { useDebouncedValue } from "../../shared/hooks/useDebouncedValue";
 import { usePagination } from "../../shared/hooks/usePagination";
 import { PaginationControls } from "../../shared/ui/PaginationControls";
 import { useSelectedMemberMembershipsQuery } from "../member-context/modules/useSelectedMemberMembershipsQuery";
@@ -20,6 +21,7 @@ export default function ReservationsPage() {
     reservationTargetsError,
     loadReservationTargets
   } = useReservationTargetsQuery();
+  const debouncedReservationTargetsKeyword = useDebouncedValue(reservationTargetsKeyword, 250);
   const {
     selectedMemberMemberships,
     selectedMemberMembershipsLoading,
@@ -50,12 +52,12 @@ export default function ReservationsPage() {
   );
 
   useEffect(() => {
-    void loadReservationTargets();
+    void loadReservationTargets(debouncedReservationTargetsKeyword);
     void loadReservationSchedules();
     return () => {
       resetReservationSchedulesQuery();
     };
-  }, []);
+  }, [debouncedReservationTargetsKeyword]);
 
   useEffect(() => {
     if (selectedMemberId == null) {

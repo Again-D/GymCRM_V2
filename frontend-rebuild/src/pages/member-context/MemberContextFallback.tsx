@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { useDebouncedValue } from "../../shared/hooks/useDebouncedValue";
 import { usePagination } from "../../shared/hooks/usePagination";
 import { PaginationControls } from "../../shared/ui/PaginationControls";
 import { useMembersQuery } from "../members/modules/useMembersQuery";
@@ -13,6 +14,7 @@ type MemberContextFallbackProps = {
 
 export function MemberContextFallback({ title, description, submitLabel }: MemberContextFallbackProps) {
   const [keyword, setKeyword] = useState("");
+  const debouncedKeyword = useDebouncedValue(keyword, 250);
   const { selectMember, selectedMemberLoading } = useSelectedMemberStore();
   const { members, membersLoading, membersQueryError, loadMembers } = useMembersQuery({
     getDefaultFilters: () => ({
@@ -30,8 +32,8 @@ export function MemberContextFallback({ title, description, submitLabel }: Membe
   });
 
   useEffect(() => {
-    void loadMembers();
-  }, []);
+    void loadMembers({ name: debouncedKeyword, phone: debouncedKeyword });
+  }, [debouncedKeyword]);
 
   return (
     <article className="panel-card">

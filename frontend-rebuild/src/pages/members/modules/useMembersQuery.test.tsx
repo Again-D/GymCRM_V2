@@ -109,4 +109,53 @@ describe("useMembersQuery", () => {
 
     expect(result.current.members.map((member) => member.memberId)).toEqual([101]);
   });
+
+  it("reuses cached results for the same query", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: [
+          {
+            memberId: 101,
+            centerId: 1,
+            memberName: "김민수",
+            phone: "010-1234-5678",
+            memberStatus: "ACTIVE",
+            joinDate: "2026-01-04",
+            membershipOperationalStatus: "홀딩중",
+            membershipExpiryDate: "2026-06-30",
+            remainingPtCount: 8
+          }
+        ],
+        message: "ok",
+        timestamp: "2026-03-12T00:00:00Z",
+        traceId: "trace-1"
+      })
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result } = renderHook(
+      () =>
+        useMembersQuery({
+          getDefaultFilters: () => ({
+            name: "",
+            phone: "",
+            membershipOperationalStatus: "",
+            dateFrom: "",
+            dateTo: ""
+          })
+        }),
+      {
+        wrapper: ({ children }) => <AuthStateProvider>{children}</AuthStateProvider>
+      }
+    );
+
+    await act(async () => {
+      await result.current.loadMembers({ name: "김민수" });
+      await result.current.loadMembers({ name: "김민수" });
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 });

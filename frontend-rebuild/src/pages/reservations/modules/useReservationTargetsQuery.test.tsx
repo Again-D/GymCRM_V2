@@ -77,4 +77,39 @@ describe("useReservationTargetsQuery", () => {
 
     expect(result.current.reservationTargets.map((target) => target.memberId)).toEqual([101]);
   });
+
+  it("reuses cached target results for the same query", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: [
+          {
+            memberId: 101,
+            memberCode: "M-0101",
+            memberName: "김민수",
+            phone: "010-1234-5678",
+            reservableMembershipCount: 1,
+            membershipExpiryDate: "2026-06-30",
+            confirmedReservationCount: 2
+          }
+        ],
+        message: "ok",
+        timestamp: "2026-03-12T00:00:00Z",
+        traceId: "trace-1"
+      })
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result } = renderHook(() => useReservationTargetsQuery(), {
+      wrapper: ({ children }) => <AuthStateProvider>{children}</AuthStateProvider>
+    });
+
+    await act(async () => {
+      await result.current.loadReservationTargets("김민수");
+      await result.current.loadReservationTargets("김민수");
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 });

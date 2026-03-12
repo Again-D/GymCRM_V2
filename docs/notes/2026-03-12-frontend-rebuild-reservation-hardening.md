@@ -17,6 +17,10 @@
   - members list query filters to trainer-owned member rows
   - reservation target query filters to trainer-owned target rows
   - direct `selectMember()` attempts outside trainer scope fail back into picker/list state instead of creating an inconsistent selected-member context
+- request churn mitigation is now partially re-applied:
+  - `MemberContextFallback` and `ReservationsPage` search inputs use debounced keywords
+  - rebuilt `useMembersQuery` and `useReservationTargetsQuery` cache identical query results
+  - identical in-flight requests are deduped per query key
 
 ## New files
 - `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/frontend-rebuild/src/pages/member-context/modules/useSelectedMemberMembershipsQuery.ts`
@@ -32,5 +36,5 @@
 ## Remaining parity gaps
 - trainer-scoped reservation restriction is only re-applied to prototype reads and member-context selection, not reservation mutations
 - reservation detail modal and action surface parity is still placeholder-level
-- search debounce/cache/dedupe parity is not yet reintroduced for rebuilt member-context search surfaces
+- search debounce/cache/dedupe parity is reintroduced for member-context search surfaces, but not yet for every future rebuilt search UI
 - hold summary semantics and broader membership mutation parity are not yet ported

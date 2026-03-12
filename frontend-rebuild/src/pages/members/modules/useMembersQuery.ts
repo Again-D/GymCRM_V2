@@ -22,6 +22,8 @@ export function useMembersQuery({
   const [membersQueryError, setMembersQueryError] = useState<string | null>(null);
   const getDefaultFiltersRef = useLatestRef(getDefaultFilters);
   const requestIdRef = useRef(0);
+  const cacheRef = useRef(new Map<string, MemberSummary[]>());
+  const inflightRef = useRef(new Map<string, Promise<MemberSummary[]>>());
 
   async function loadMembers(filters?: Partial<MemberQueryFilters>) {
     const requestId = requestIdRef.current + 1;
@@ -43,10 +45,26 @@ export function useMembersQuery({
       if (dateFrom.trim()) params.set("dateFrom", dateFrom.trim());
       if (dateTo.trim()) params.set("dateTo", dateTo.trim());
       const query = params.toString();
-      const response = await apiGet<MemberSummary[]>(`/api/v1/members${query ? `?${query}` : ""}`);
+      const cacheKey = `${authUser?.role ?? "anon"}:${authUser?.userId ?? "none"}:${query}`;
+      if (cacheRef.current.has(cacheKey)) {
+        if (requestIdRef.current !== requestId) return;
+        setMembers(cacheRef.current.get(cacheKey) ?? []);
+        return;
+      }
+
+      let responsePromise = inflightRef.current.get(cacheKey);
+      if (!responsePromise) {
+        responsePromise = apiGet<MemberSummary[]>(`/api/v1/members${query ? `?${query}` : ""}`)
+          .then((response) => filterMemberIdsForAuth(response.data, authUser))
+          .finally(() => {
+            inflightRef.current.delete(cacheKey);
+          });
+        inflightRef.current.set(cacheKey, responsePromise);
+      }
+
+      const scopedMembers = await responsePromise;
       if (requestIdRef.current !== requestId) return;
-      const scopedMembers = await filterMemberIdsForAuth(response.data, authUser);
-      if (requestIdRef.current !== requestId) return;
+      cacheRef.current.set(cacheKey, scopedMembers);
       setMembers(scopedMembers);
     } catch (error) {
       if (requestIdRef.current !== requestId) return;

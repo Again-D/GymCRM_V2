@@ -393,7 +393,7 @@ All must remain aligned. Rebuild cannot update one surface while leaving the oth
 - [ ] responsive check on mobile viewport
 - [x] feature matrix gap review before merge decision
 - [x] baseline shell routing validation log와 같은 fallback/auth bootstrap contract 유지
-- [ ] debounce/cache/dedupe가 필요한 검색 surface에서 request churn regression 없음
+- [x] prototype member-context search surfaces에 debounce/cache/dedupe 재적용
 - [x] stale-response/reset invalidation regression tests 일부를 prototype reservations query까지 복제
 - [x] trainer-scoped member/target read parity를 prototype members/reservations query에 재적용
 

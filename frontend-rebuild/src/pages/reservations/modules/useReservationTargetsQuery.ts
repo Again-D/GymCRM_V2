@@ -21,6 +21,8 @@ export function useReservationTargetsQuery() {
   const [reservationTargetsLoading, setReservationTargetsLoading] = useState(false);
   const [reservationTargetsError, setReservationTargetsError] = useState<string | null>(null);
   const requestIdRef = useRef(0);
+  const cacheRef = useRef(new Map<string, ReservationTargetSummary[]>());
+  const inflightRef = useRef(new Map<string, Promise<ReservationTargetSummary[]>>());
 
   async function loadReservationTargets(keyword?: string) {
     const requestId = requestIdRef.current + 1;
@@ -35,16 +37,33 @@ export function useReservationTargetsQuery() {
     }
 
     try {
-      const response = await apiGet<ReservationTargetSummary[]>(
-        `/api/v1/reservations/targets${params.size > 0 ? `?${params.toString()}` : ""}`
-      );
+      const query = params.toString();
+      const cacheKey = `${authUser?.role ?? "anon"}:${authUser?.userId ?? "none"}:${query}`;
+      if (cacheRef.current.has(cacheKey)) {
+        if (requestIdRef.current !== requestId) {
+          return;
+        }
+        setReservationTargets(cacheRef.current.get(cacheKey) ?? []);
+        return;
+      }
+
+      let responsePromise = inflightRef.current.get(cacheKey);
+      if (!responsePromise) {
+        responsePromise = apiGet<ReservationTargetSummary[]>(
+          `/api/v1/reservations/targets${query ? `?${query}` : ""}`
+        )
+          .then((response) => filterMemberIdsForAuth(response.data, authUser))
+          .finally(() => {
+            inflightRef.current.delete(cacheKey);
+          });
+        inflightRef.current.set(cacheKey, responsePromise);
+      }
+
+      const scopedTargets = await responsePromise;
       if (requestIdRef.current !== requestId) {
         return;
       }
-      const scopedTargets = await filterMemberIdsForAuth(response.data, authUser);
-      if (requestIdRef.current !== requestId) {
-        return;
-      }
+      cacheRef.current.set(cacheKey, scopedTargets);
       setReservationTargets(scopedTargets);
     } catch (error) {
       if (requestIdRef.current !== requestId) {
