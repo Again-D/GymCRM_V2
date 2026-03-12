@@ -363,26 +363,26 @@ All must remain aligned. Rebuild cannot update one surface while leaving the oth
 
 ### Functional Requirements
 - [x] 별도 `codex/` 브랜치와 git worktree에서 재구축을 시작한다.
-- [ ] 새 구조는 `/Users/abc/projects/GymCRM_V2/docs/folder_structure.md`를 기준으로 하되, 현재 운영 앱에 필요한 보정 규칙을 명시한다.
-- [ ] 새 앱 셸은 기존 shell route URL surface를 그대로 유지한다.
-- [ ] JWT/prototype auth gate와 route fallback behavior가 parity를 유지한다.
-- [ ] 최소한 `/dashboard`, `/members`, `/memberships`, `/reservations`가 새 구조에서 **prototype 수준으로 먼저 동작한다**.
+- [x] 새 구조는 `/Users/abc/projects/GymCRM_V2/docs/folder_structure.md`를 기준으로 하되, 현재 운영 앱에 필요한 보정 규칙을 명시한다.
+- [x] 새 앱 셸은 기존 shell route URL surface를 그대로 유지한다.
+- [x] JWT/prototype auth gate와 route fallback behavior가 parity를 유지한다.
+- [x] 최소한 `/dashboard`, `/members`, `/memberships`, `/reservations`가 새 구조에서 **prototype 수준으로 먼저 동작한다**.
 - [ ] prototype checkpoint에서 구조 적합성을 평가하는 go/no-go 1 게이트가 있다.
-- [ ] prototype checkpoint는 baseline과 side-by-side 비교 가능한 실행 전략을 사용한다.
-- [ ] rebuilt prototype의 `selectedMember` canonical owner가 `members` domain support module/store로 명시된다.
+- [x] prototype checkpoint는 baseline과 side-by-side 비교 가능한 실행 전략을 사용한다.
+- [x] rebuilt prototype의 `selectedMember` canonical owner가 `members` domain support module/store로 명시된다.
 - [ ] go 판단 이후 기존 member-context 흐름과 trainer reservation 제한이 새 구조에서 parity 수준으로 재현된다.
 - [ ] 기존 요약 상태 semantics(`홀딩중` 포함)와 핵심 업무 정책이 parity hardening 단계에서 유지된다.
 
 ### Non-Functional Requirements
-- [ ] 재구축 worktree는 `main` 기능 흐름을 막지 않는다.
-- [ ] parity validation 로그를 각 단계별로 남긴다.
+- [x] 재구축 worktree는 `main` 기능 흐름을 막지 않는다.
+- [x] parity validation 로그를 각 단계별로 남긴다.
 - [ ] 새 구조의 설명 문서가 실제 디렉터리와 맞는다.
 - [ ] route/state/query ownership이 현재보다 더 명확해진다.
-- [ ] prototype 단계와 parity 단계의 성공 기준이 문서상 분리돼 있다.
+- [x] prototype 단계와 parity 단계의 성공 기준이 문서상 분리돼 있다.
 
 ### Quality Gates
-- [ ] `frontend && npm run build`
-- [ ] 라우팅 테스트 parity
+- [x] `frontend-rebuild && npm run build`
+- [x] 라우팅 테스트 parity
 - [ ] JWT/prototype 브라우저 스모크
 - [ ] members/memberships/reservations prototype vertical slice smoke
 - [ ] prototype checkpoint 기록
@@ -391,7 +391,7 @@ All must remain aligned. Rebuild cannot update one surface while leaving the oth
 - [ ] core parity hardening 이후 members/memberships/reservations full smoke
 - [ ] responsive check on mobile viewport
 - [ ] feature matrix gap review before merge decision
-- [ ] baseline shell routing validation log와 같은 fallback/auth bootstrap contract 유지
+- [x] baseline shell routing validation log와 같은 fallback/auth bootstrap contract 유지
 - [ ] debounce/cache/dedupe가 필요한 검색 surface에서 request churn regression 없음
 - [ ] stale-response/reset invalidation regression tests 복제 또는 동등 coverage 확보
 

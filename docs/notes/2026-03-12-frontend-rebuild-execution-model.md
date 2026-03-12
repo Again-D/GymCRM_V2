@@ -15,10 +15,17 @@
 - Prototype preview port: `4175`
 
 ## Current Prototype Scope
-- Shell prototype only
+- Shell prototype with baseline route contract
 - Route surface currently scaffolded:
   - `/dashboard`
   - `/members`
+  - `/memberships`
+  - `/reservations`
+  - `/access`
+  - `/lockers`
+  - `/crm`
+  - `/settlements`
+  - `/products`
   - `/login`
 - `selectedMember` canonical owner rule:
   - members domain support module/store owns `selectedMemberId` and `selectedMember`
