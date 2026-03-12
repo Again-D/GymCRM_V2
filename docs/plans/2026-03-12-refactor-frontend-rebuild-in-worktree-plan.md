@@ -389,8 +389,8 @@ All must remain aligned. Rebuild cannot update one surface while leaving the oth
 - [x] prototype checkpoint 기록
 - [x] prototype checkpoint에 baseline vs prototype side-by-side evidence 포함
 - [x] selectedMember ownership data-flow가 문서와 코드 모두에서 일치
-- [ ] core parity hardening 이후 members/memberships/reservations full smoke
-- [ ] responsive check on mobile viewport
+- [x] core parity hardening 이후 members/memberships/reservations full smoke
+- [x] responsive check on mobile viewport
 - [x] feature matrix gap review before merge decision
 - [x] baseline shell routing validation log와 같은 fallback/auth bootstrap contract 유지
 - [x] prototype member-context search surfaces에 debounce/cache/dedupe 재적용
