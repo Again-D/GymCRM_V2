@@ -5,6 +5,8 @@ import { getShellRouteByPath, shellRoutes } from "./app/routes";
 import DashboardLayout from "./components/layout/DashboardLayout";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
+import MembershipsPage from "./pages/memberships/MembershipsPage";
+import ReservationsPage from "./pages/reservations/ReservationsPage";
 import ShellPlaceholderPage from "./pages/ShellPlaceholderPage";
 import MemberList from "./pages/members/MemberList";
 import { SelectedMemberProvider } from "./pages/members/modules/SelectedMemberContext";
@@ -50,26 +52,8 @@ export default function App() {
         <Route element={<DashboardLayout routes={sidebarRoutes} />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/members" element={<MemberList />} />
-          <Route
-            path="/memberships"
-            element={
-              <ShellPlaceholderPage
-                title="회원권 업무 프로토타입"
-                description="Member-context handoff is now consumed from the members domain store."
-                showMemberContext
-              />
-            }
-          />
-          <Route
-            path="/reservations"
-            element={
-              <ShellPlaceholderPage
-                title="예약 관리 프로토타입"
-                description="Reservation prototype will consume the same selected-member source in the next phase."
-                showMemberContext
-              />
-            }
-          />
+          <Route path="/memberships" element={<MembershipsPage />} />
+          <Route path="/reservations" element={<ReservationsPage />} />
           <Route
             path="/access"
             element={<ShellPlaceholderPage title="출입 관리 프로토타입" description="Access queries and current presence will be rebuilt after the core member-context flows." />}

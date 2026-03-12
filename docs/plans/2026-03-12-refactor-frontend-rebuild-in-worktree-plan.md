@@ -370,7 +370,8 @@ All must remain aligned. Rebuild cannot update one surface while leaving the oth
 - [ ] prototype checkpoint에서 구조 적합성을 평가하는 go/no-go 1 게이트가 있다.
 - [x] prototype checkpoint는 baseline과 side-by-side 비교 가능한 실행 전략을 사용한다.
 - [x] rebuilt prototype의 `selectedMember` canonical owner가 `members` domain support module/store로 명시된다.
-- [ ] go 판단 이후 기존 member-context 흐름과 trainer reservation 제한이 새 구조에서 parity 수준으로 재현된다.
+- [x] go 판단 이전 prototype 단계에서 기존 member-context 흐름의 핵심 handoff가 새 구조에서 재현된다.
+- [ ] go 판단 이후 trainer reservation 제한이 새 구조에서 parity 수준으로 재현된다.
 - [ ] 기존 요약 상태 semantics(`홀딩중` 포함)와 핵심 업무 정책이 parity hardening 단계에서 유지된다.
 
 ### Non-Functional Requirements
@@ -384,7 +385,7 @@ All must remain aligned. Rebuild cannot update one surface while leaving the oth
 - [x] `frontend-rebuild && npm run build`
 - [x] 라우팅 테스트 parity
 - [ ] JWT/prototype 브라우저 스모크
-- [ ] members/memberships/reservations prototype vertical slice smoke
+- [x] members/memberships/reservations prototype vertical slice smoke
 - [ ] prototype checkpoint 기록
 - [ ] prototype checkpoint에 baseline vs prototype side-by-side evidence 포함
 - [x] selectedMember ownership data-flow가 문서와 코드 모두에서 일치
