@@ -1,7 +1,7 @@
 ---
 title: refactor: rebuild frontend in isolated branch and worktree against documented structure
 type: refactor
-status: active
+status: completed
 date: 2026-03-12
 origin: docs/brainstorms/2026-03-12-frontend-rebuild-comparison-brainstorm.md
 ---
@@ -377,7 +377,7 @@ All must remain aligned. Rebuild cannot update one surface while leaving the oth
 ### Non-Functional Requirements
 - [x] 재구축 worktree는 `main` 기능 흐름을 막지 않는다.
 - [x] parity validation 로그를 각 단계별로 남긴다.
-- [ ] 새 구조의 설명 문서가 실제 디렉터리와 맞는다.
+- [x] 새 구조의 설명 문서가 실제 디렉터리와 맞는다.
 - [x] route/state/query ownership이 현재보다 더 명확해진다.
 - [x] prototype 단계와 parity 단계의 성공 기준이 문서상 분리돼 있다.
 
