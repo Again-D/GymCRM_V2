@@ -3,6 +3,7 @@ import type {
   MemberDetail,
   MemberSummary,
   PurchasedMembership,
+  ReservationRow,
   ReservationScheduleSummary
 } from "../pages/members/modules/types";
 import type { ReservationTargetSummary } from "../pages/reservations/modules/useReservationTargetsQuery";
@@ -220,6 +221,41 @@ const mockReservationSchedules: ReservationScheduleSummary[] = [
   }
 ];
 
+const mockReservationsByMemberId = new Map<number, ReservationRow[]>([
+  [
+    101,
+    [
+      {
+        reservationId: 5001,
+        membershipId: 9001,
+        scheduleId: 7001,
+        reservationStatus: "CONFIRMED",
+        reservedAt: "2026-03-11T10:00:00+09:00",
+        cancelledAt: null,
+        completedAt: null,
+        noShowAt: null,
+        checkedInAt: null
+      }
+    ]
+  ],
+  [
+    102,
+    [
+      {
+        reservationId: 5002,
+        membershipId: 9011,
+        scheduleId: 7101,
+        reservationStatus: "COMPLETED",
+        reservedAt: "2026-03-10T12:00:00+09:00",
+        cancelledAt: null,
+        completedAt: "2026-03-10T19:55:00+09:00",
+        noShowAt: null,
+        checkedInAt: "2026-03-10T18:58:00+09:00"
+      }
+    ]
+  ]
+]);
+
 function envelope<T>(data: T): ApiEnvelope<T> {
   return {
     success: true,
@@ -255,6 +291,9 @@ export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
     const memberId = Number(segments[3]);
     if (segments[4] === "memberships") {
       return envelope(mockMemberMemberships.get(memberId) ?? []);
+    }
+    if (segments[4] === "reservations") {
+      return envelope(mockReservationsByMemberId.get(memberId) ?? []);
     }
     const detail = mockMemberDetails.get(memberId);
     return detail ? envelope(detail) : null;

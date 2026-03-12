@@ -396,6 +396,7 @@ All must remain aligned. Rebuild cannot update one surface while leaving the oth
 - [x] prototype member-context search surfaces에 debounce/cache/dedupe 재적용
 - [x] stale-response/reset invalidation regression tests 일부를 prototype reservations query까지 복제
 - [x] trainer-scoped member/target read parity를 prototype members/reservations query에 재적용
+- [x] rebuilt reservations page에 selected-member reservation list/create/action surface를 다시 배치
 
 ## Success Metrics
 - 재구축 worktree에서 최소 4개 핵심 섹션(`dashboard`, `members`, `memberships`, `reservations`)이 prototype 상태로 먼저 동작

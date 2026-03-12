@@ -21,6 +21,10 @@
   - `MemberContextFallback` and `ReservationsPage` search inputs use debounced keywords
   - rebuilt `useMembersQuery` and `useReservationTargetsQuery` cache identical query results
   - identical in-flight requests are deduped per query key
+- reservation detail/action surface is no longer placeholder-only:
+  - selected member reservation list loads through a dedicated reservations state module
+  - prototype reservation create form can append a new confirmed reservation into local state
+  - check-in / complete / cancel / no-show buttons mutate local reservation state with baseline-style gating messages
 
 ## New files
 - `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/frontend-rebuild/src/pages/member-context/modules/useSelectedMemberMembershipsQuery.ts`
@@ -35,6 +39,6 @@
 
 ## Remaining parity gaps
 - trainer-scoped reservation restriction is only re-applied to prototype reads and member-context selection, not reservation mutations
-- reservation detail modal and action surface parity is still placeholder-level
+- reservation detail modal parity is still incomplete, but reservation list/create/action surface parity is now represented in-page
 - search debounce/cache/dedupe parity is reintroduced for member-context search surfaces, but not yet for every future rebuilt search UI
 - hold summary semantics and broader membership mutation parity are not yet ported

@@ -47,6 +47,18 @@ export type ReservationScheduleSummary = {
   currentCount: number;
 };
 
+export type ReservationRow = {
+  reservationId: number;
+  membershipId: number;
+  scheduleId: number;
+  reservationStatus: "CONFIRMED" | "CANCELLED" | "COMPLETED" | "NO_SHOW";
+  reservedAt: string;
+  cancelledAt: string | null;
+  completedAt: string | null;
+  noShowAt: string | null;
+  checkedInAt: string | null;
+};
+
 export type MemberQueryFilters = {
   name: string;
   phone: string;
