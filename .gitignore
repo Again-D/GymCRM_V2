@@ -90,3 +90,8 @@ frontend/vite.config.d.ts
 .agents/skills/vercel-react-best-practices/rules/server-hoist-static-io.md
 .agents/skills/vercel-react-best-practices/rules/server-parallel-fetching.md
 .agents/skills/vercel-react-best-practices/rules/server-serialization.md
+frontend-rebuild/node_modules/
+frontend-rebuild/dist/
+frontend-rebuild/*.tsbuildinfo
+frontend-rebuild/vite.config.js
+frontend-rebuild/vite.config.d.ts
