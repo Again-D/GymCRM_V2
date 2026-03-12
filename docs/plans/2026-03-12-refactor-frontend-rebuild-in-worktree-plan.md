@@ -371,8 +371,8 @@ All must remain aligned. Rebuild cannot update one surface while leaving the oth
 - [x] prototype checkpoint는 baseline과 side-by-side 비교 가능한 실행 전략을 사용한다.
 - [x] rebuilt prototype의 `selectedMember` canonical owner가 `members` domain support module/store로 명시된다.
 - [x] go 판단 이전 prototype 단계에서 기존 member-context 흐름의 핵심 handoff가 새 구조에서 재현된다.
-- [ ] go 판단 이후 trainer reservation 제한이 새 구조에서 parity 수준으로 재현된다.
-- [ ] 기존 요약 상태 semantics(`홀딩중` 포함)와 핵심 업무 정책이 parity hardening 단계에서 유지된다.
+- [x] go 판단 이후 trainer reservation 제한이 새 구조에서 parity 수준으로 재현된다.
+- [x] 기존 요약 상태 semantics(`홀딩중` 포함)와 핵심 업무 정책이 parity hardening 단계에서 유지된다.
 
 ### Non-Functional Requirements
 - [x] 재구축 worktree는 `main` 기능 흐름을 막지 않는다.

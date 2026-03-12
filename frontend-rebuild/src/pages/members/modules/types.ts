@@ -34,6 +34,18 @@ export type PurchasedMembership = {
   startDate: string;
   endDate: string | null;
   remainingCount: number | null;
+  activeHoldStatus?: "ACTIVE" | null;
+};
+
+export type MembershipPaymentRecord = {
+  paymentId: number;
+  membershipId: number;
+  paymentType: "PURCHASE" | "REFUND";
+  paymentStatus: "PAID" | "REFUNDED";
+  paymentMethod: "CASH" | "CARD" | "TRANSFER" | "ETC";
+  amount: number;
+  paidAt: string;
+  memo: string | null;
 };
 
 export type ReservationScheduleSummary = {

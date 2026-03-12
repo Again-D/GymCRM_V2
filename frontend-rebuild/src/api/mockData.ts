@@ -115,7 +115,8 @@ const mockMemberMemberships = new Map<number, PurchasedMembership[]>([
         membershipStatus: "ACTIVE",
         startDate: "2026-03-01",
         endDate: "2026-06-30",
-        remainingCount: 8
+        remainingCount: 8,
+        activeHoldStatus: null
       },
       {
         membershipId: 9002,
@@ -125,7 +126,8 @@ const mockMemberMemberships = new Map<number, PurchasedMembership[]>([
         membershipStatus: "HOLDING",
         startDate: "2026-02-15",
         endDate: "2026-05-15",
-        remainingCount: null
+        remainingCount: null,
+        activeHoldStatus: "ACTIVE"
       },
       {
         membershipId: 9003,
@@ -135,7 +137,8 @@ const mockMemberMemberships = new Map<number, PurchasedMembership[]>([
         membershipStatus: "ACTIVE",
         startDate: "2025-12-01",
         endDate: "2026-01-15",
-        remainingCount: 3
+        remainingCount: 3,
+        activeHoldStatus: null
       }
     ]
   ],
@@ -150,7 +153,8 @@ const mockMemberMemberships = new Map<number, PurchasedMembership[]>([
         membershipStatus: "ACTIVE",
         startDate: "2026-02-01",
         endDate: "2026-07-20",
-        remainingCount: 12
+        remainingCount: 12,
+        activeHoldStatus: null
       },
       {
         membershipId: 9012,
@@ -160,7 +164,8 @@ const mockMemberMemberships = new Map<number, PurchasedMembership[]>([
         membershipStatus: "ACTIVE",
         startDate: "2026-02-20",
         endDate: "2026-04-30",
-        remainingCount: 0
+        remainingCount: 0,
+        activeHoldStatus: null
       }
     ]
   ],
