@@ -7,6 +7,7 @@ import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import ShellPlaceholderPage from "./pages/ShellPlaceholderPage";
 import MemberList from "./pages/members/MemberList";
+import { SelectedMemberProvider } from "./pages/members/modules/SelectedMemberContext";
 
 export default function App() {
   const location = useLocation();
@@ -44,40 +45,54 @@ export default function App() {
   }
 
   return (
-    <Routes>
-      <Route element={<DashboardLayout routes={sidebarRoutes} />}>
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/members" element={<MemberList />} />
-        <Route
-          path="/memberships"
-          element={<ShellPlaceholderPage title="회원권 업무 프로토타입" description="Member-context handoff will be added in the next prototype slice." />}
-        />
-        <Route
-          path="/reservations"
-          element={<ShellPlaceholderPage title="예약 관리 프로토타입" description="Reservation target and picker fallback parity will follow in Phase 3." />}
-        />
-        <Route
-          path="/access"
-          element={<ShellPlaceholderPage title="출입 관리 프로토타입" description="Access queries and current presence will be rebuilt after the core member-context flows." />}
-        />
-        <Route
-          path="/lockers"
-          element={<ShellPlaceholderPage title="라커 관리 프로토타입" description="Locker ownership and assignment flows are intentionally deferred." />}
-        />
-        <Route
-          path="/crm"
-          element={<ShellPlaceholderPage title="CRM 메시지 프로토타입" description="Messaging trigger and history flows will be rebuilt after core parity." />}
-        />
-        <Route
-          path="/settlements"
-          element={<ShellPlaceholderPage title="정산 리포트 프로토타입" description="Settlement query ownership and reporting will be added in a later phase." />}
-        />
-        <Route
-          path="/products"
-          element={<ShellPlaceholderPage title="상품 관리 프로토타입" description="Product pages remain outside the first vertical slice." />}
-        />
-      </Route>
-    </Routes>
+    <SelectedMemberProvider>
+      <Routes>
+        <Route element={<DashboardLayout routes={sidebarRoutes} />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/members" element={<MemberList />} />
+          <Route
+            path="/memberships"
+            element={
+              <ShellPlaceholderPage
+                title="회원권 업무 프로토타입"
+                description="Member-context handoff is now consumed from the members domain store."
+                showMemberContext
+              />
+            }
+          />
+          <Route
+            path="/reservations"
+            element={
+              <ShellPlaceholderPage
+                title="예약 관리 프로토타입"
+                description="Reservation prototype will consume the same selected-member source in the next phase."
+                showMemberContext
+              />
+            }
+          />
+          <Route
+            path="/access"
+            element={<ShellPlaceholderPage title="출입 관리 프로토타입" description="Access queries and current presence will be rebuilt after the core member-context flows." />}
+          />
+          <Route
+            path="/lockers"
+            element={<ShellPlaceholderPage title="라커 관리 프로토타입" description="Locker ownership and assignment flows are intentionally deferred." />}
+          />
+          <Route
+            path="/crm"
+            element={<ShellPlaceholderPage title="CRM 메시지 프로토타입" description="Messaging trigger and history flows will be rebuilt after core parity." />}
+          />
+          <Route
+            path="/settlements"
+            element={<ShellPlaceholderPage title="정산 리포트 프로토타입" description="Settlement query ownership and reporting will be added in a later phase." />}
+          />
+          <Route
+            path="/products"
+            element={<ShellPlaceholderPage title="상품 관리 프로토타입" description="Product pages remain outside the first vertical slice." />}
+          />
+        </Route>
+      </Routes>
+    </SelectedMemberProvider>
   );
 }
 

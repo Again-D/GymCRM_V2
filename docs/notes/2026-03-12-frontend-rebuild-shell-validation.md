@@ -34,4 +34,4 @@
 
 ## Outcome
 - Phase 1 shell prototype is ready for the next vertical slice.
-- The next implementation target should be `/members` with a members-domain support module/store owning `selectedMemberId` and `selectedMember`.
+- The next implementation target should be `/memberships` and `/reservations`, reusing the members-domain support module/store that now owns `selectedMemberId` and `selectedMember`.

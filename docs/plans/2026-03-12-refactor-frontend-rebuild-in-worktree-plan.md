@@ -387,7 +387,7 @@ All must remain aligned. Rebuild cannot update one surface while leaving the oth
 - [ ] members/memberships/reservations prototype vertical slice smoke
 - [ ] prototype checkpoint 기록
 - [ ] prototype checkpoint에 baseline vs prototype side-by-side evidence 포함
-- [ ] selectedMember ownership data-flow가 문서와 코드 모두에서 일치
+- [x] selectedMember ownership data-flow가 문서와 코드 모두에서 일치
 - [ ] core parity hardening 이후 members/memberships/reservations full smoke
 - [ ] responsive check on mobile viewport
 - [ ] feature matrix gap review before merge decision
