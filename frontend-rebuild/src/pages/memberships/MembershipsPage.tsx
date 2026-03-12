@@ -1,9 +1,27 @@
+import { useEffect } from "react";
+
 import { MemberContextFallback } from "../member-context/MemberContextFallback";
+import { useSelectedMemberMembershipsQuery } from "../member-context/modules/useSelectedMemberMembershipsQuery";
 import { SelectedMemberContextBadge } from "../members/components/SelectedMemberContextBadge";
 import { useSelectedMemberStore } from "../members/modules/SelectedMemberContext";
 
 export default function MembershipsPage() {
-  const { selectedMember } = useSelectedMemberStore();
+  const { selectedMember, selectedMemberId } = useSelectedMemberStore();
+  const {
+    selectedMemberMemberships,
+    selectedMemberMembershipsLoading,
+    selectedMemberMembershipsError,
+    loadSelectedMemberMemberships,
+    resetSelectedMemberMembershipsQuery
+  } = useSelectedMemberMembershipsQuery();
+
+  useEffect(() => {
+    if (selectedMemberId == null) {
+      resetSelectedMemberMembershipsQuery();
+      return;
+    }
+    void loadSelectedMemberMemberships(selectedMemberId);
+  }, [selectedMemberId]);
 
   if (!selectedMember) {
     return (
@@ -27,16 +45,36 @@ export default function MembershipsPage() {
 
         <SelectedMemberContextBadge />
 
+        {selectedMemberMembershipsError ? <p className="error-text">{selectedMemberMembershipsError}</p> : null}
+
         <div className="placeholder-stack">
           <div className="placeholder-card">
-            <h2>구매 / 홀딩 / 해제 / 환불</h2>
-            <p>이 단계에서는 action surface 배치만 확인하고, 실제 mutation parity는 parity hardening에서 붙입니다.</p>
+            <h2>선택 회원 회원권 목록</h2>
+            <p>members domain owner는 회원 컨텍스트만 소유하고, 회원권 목록은 query module이 별도로 로드합니다.</p>
+            {selectedMemberMembershipsLoading ? (
+              <p>회원권 목록을 불러오는 중...</p>
+            ) : selectedMemberMemberships.length === 0 ? (
+              <p>선택 회원의 회원권이 없습니다.</p>
+            ) : (
+              <ul>
+                {selectedMemberMemberships.map((membership) => (
+                  <li key={membership.membershipId}>
+                    #{membership.membershipId} · {membership.productNameSnapshot} · {membership.membershipStatus}
+                    {membership.productTypeSnapshot === "COUNT"
+                      ? ` · 잔여 ${membership.remainingCount ?? 0}`
+                      : membership.endDate
+                        ? ` · 만료 ${membership.endDate}`
+                        : ""}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
           <div className="placeholder-card">
-            <h2>다음 단계 목표</h2>
+            <h2>다음 parity 대상</h2>
             <ul>
-              <li>선택 회원 기준 memberships query 연결</li>
-              <li>홀딩/해제/환불 상태 갱신 contract 복제</li>
+              <li>purchase / hold / resume / refund mutation</li>
+              <li>summary refresh and stale-response guard around mutations</li>
               <li>invalid member-context fallback 유지</li>
             </ul>
           </div>

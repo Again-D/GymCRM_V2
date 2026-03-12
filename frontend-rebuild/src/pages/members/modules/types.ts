@@ -25,6 +25,28 @@ export type MemberDetail = {
   memo: string | null;
 };
 
+export type PurchasedMembership = {
+  membershipId: number;
+  memberId: number;
+  productNameSnapshot: string;
+  productTypeSnapshot: "DURATION" | "COUNT";
+  membershipStatus: "ACTIVE" | "HOLDING" | "REFUNDED" | "EXPIRED";
+  startDate: string;
+  endDate: string | null;
+  remainingCount: number | null;
+};
+
+export type ReservationScheduleSummary = {
+  scheduleId: number;
+  scheduleType: "PT" | "GX";
+  trainerName: string;
+  slotTitle: string;
+  startAt: string;
+  endAt: string;
+  capacity: number;
+  currentCount: number;
+};
+
 export type MemberQueryFilters = {
   name: string;
   phone: string;

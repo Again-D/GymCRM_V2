@@ -1,5 +1,10 @@
 import type { ApiEnvelope } from "./client";
-import type { MemberDetail, MemberSummary } from "../pages/members/modules/types";
+import type {
+  MemberDetail,
+  MemberSummary,
+  PurchasedMembership,
+  ReservationScheduleSummary
+} from "../pages/members/modules/types";
 import type { ReservationTargetSummary } from "../pages/reservations/modules/useReservationTargetsQuery";
 
 const mockMembers: MemberSummary[] = [
@@ -92,6 +97,70 @@ const mockMemberDetails = new Map<number, MemberDetail>([
   ]
 ]);
 
+const mockMemberMemberships = new Map<number, PurchasedMembership[]>([
+  [
+    101,
+    [
+      {
+        membershipId: 9001,
+        memberId: 101,
+        productNameSnapshot: "PT 10회권",
+        productTypeSnapshot: "COUNT",
+        membershipStatus: "ACTIVE",
+        startDate: "2026-03-01",
+        endDate: "2026-06-30",
+        remainingCount: 8
+      },
+      {
+        membershipId: 9002,
+        memberId: 101,
+        productNameSnapshot: "헬스 3개월",
+        productTypeSnapshot: "DURATION",
+        membershipStatus: "HOLDING",
+        startDate: "2026-02-15",
+        endDate: "2026-05-15",
+        remainingCount: null
+      },
+      {
+        membershipId: 9003,
+        memberId: 101,
+        productNameSnapshot: "만료된 PT 5회권",
+        productTypeSnapshot: "COUNT",
+        membershipStatus: "ACTIVE",
+        startDate: "2025-12-01",
+        endDate: "2026-01-15",
+        remainingCount: 3
+      }
+    ]
+  ],
+  [
+    102,
+    [
+      {
+        membershipId: 9011,
+        memberId: 102,
+        productNameSnapshot: "PT 20회권",
+        productTypeSnapshot: "COUNT",
+        membershipStatus: "ACTIVE",
+        startDate: "2026-02-01",
+        endDate: "2026-07-20",
+        remainingCount: 12
+      },
+      {
+        membershipId: 9012,
+        memberId: 102,
+        productNameSnapshot: "GX 12회권",
+        productTypeSnapshot: "COUNT",
+        membershipStatus: "ACTIVE",
+        startDate: "2026-02-20",
+        endDate: "2026-04-30",
+        remainingCount: 0
+      }
+    ]
+  ],
+  [103, []]
+]);
+
 const mockReservationTargets: ReservationTargetSummary[] = [
   {
     memberId: 101,
@@ -110,6 +179,39 @@ const mockReservationTargets: ReservationTargetSummary[] = [
     reservableMembershipCount: 2,
     membershipExpiryDate: "2026-07-20",
     confirmedReservationCount: 1
+  }
+];
+
+const mockReservationSchedules: ReservationScheduleSummary[] = [
+  {
+    scheduleId: 7001,
+    scheduleType: "PT",
+    trainerName: "정트레이너",
+    slotTitle: "오전 PT A",
+    startAt: "2026-03-12T09:00:00+09:00",
+    endAt: "2026-03-12T09:50:00+09:00",
+    capacity: 1,
+    currentCount: 1
+  },
+  {
+    scheduleId: 7002,
+    scheduleType: "PT",
+    trainerName: "김트레이너",
+    slotTitle: "오후 PT B",
+    startAt: "2026-03-12T15:00:00+09:00",
+    endAt: "2026-03-12T15:50:00+09:00",
+    capacity: 1,
+    currentCount: 0
+  },
+  {
+    scheduleId: 7101,
+    scheduleType: "GX",
+    trainerName: "한코치",
+    slotTitle: "저녁 GX C",
+    startAt: "2026-03-12T19:00:00+09:00",
+    endAt: "2026-03-12T19:50:00+09:00",
+    capacity: 12,
+    currentCount: 7
   }
 ];
 
@@ -144,7 +246,11 @@ export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
   }
 
   if (url.pathname.startsWith("/api/v1/members/")) {
-    const memberId = Number(url.pathname.split("/").pop());
+    const segments = url.pathname.split("/").filter(Boolean);
+    const memberId = Number(segments[3]);
+    if (segments[4] === "memberships") {
+      return envelope(mockMemberMemberships.get(memberId) ?? []);
+    }
     const detail = mockMemberDetails.get(memberId);
     return detail ? envelope(detail) : null;
   }
@@ -160,6 +266,10 @@ export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
             target.memberCode.includes(keyword)
         );
     return envelope(targets);
+  }
+
+  if (url.pathname === "/api/v1/reservations/schedules") {
+    return envelope(mockReservationSchedules);
   }
 
   return null;
