@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 
 import { apiGet } from "../../../api/client";
+import { getMockDataVersion } from "../../../api/mockData";
 import { useAuthState } from "../../../app/auth";
 import { filterMemberIdsForAuth } from "../../member-context/modules/trainerScope";
 
@@ -38,7 +39,8 @@ export function useReservationTargetsQuery() {
 
     try {
       const query = params.toString();
-      const cacheKey = `${authUser?.role ?? "anon"}:${authUser?.userId ?? "none"}:${query}`;
+      const mockDataVersion = import.meta.env.VITE_REBUILD_MOCK_DATA === "1" ? getMockDataVersion() : 0;
+      const cacheKey = `${authUser?.role ?? "anon"}:${authUser?.userId ?? "none"}:${mockDataVersion}:${query}`;
       if (cacheRef.current.has(cacheKey)) {
         if (requestIdRef.current !== requestId) {
           return;

@@ -7,8 +7,9 @@ import type {
   ReservationScheduleSummary
 } from "../pages/members/modules/types";
 import type { ReservationTargetSummary } from "../pages/reservations/modules/useReservationTargetsQuery";
+import { isMembershipReservableOn } from "../pages/reservations/modules/reservableMemberships";
 
-const mockMembers: MemberSummary[] = [
+const initialMembers: MemberSummary[] = [
   {
     memberId: 101,
     centerId: 1,
@@ -49,7 +50,7 @@ const trainerAssignedMemberIds = new Map<number, number[]>([
   [42, [102]]
 ]);
 
-const mockMemberDetails = new Map<number, MemberDetail>([
+const initialMemberDetails = new Map<number, MemberDetail>([
   [
     101,
     {
@@ -103,7 +104,7 @@ const mockMemberDetails = new Map<number, MemberDetail>([
   ]
 ]);
 
-const mockMemberMemberships = new Map<number, PurchasedMembership[]>([
+const initialMemberMemberships = new Map<number, PurchasedMembership[]>([
   [
     101,
     [
@@ -172,28 +173,7 @@ const mockMemberMemberships = new Map<number, PurchasedMembership[]>([
   [103, []]
 ]);
 
-const mockReservationTargets: ReservationTargetSummary[] = [
-  {
-    memberId: 101,
-    memberCode: "M-0101",
-    memberName: "김민수",
-    phone: "010-1234-5678",
-    reservableMembershipCount: 1,
-    membershipExpiryDate: "2026-06-30",
-    confirmedReservationCount: 2
-  },
-  {
-    memberId: 102,
-    memberCode: "M-0102",
-    memberName: "박서연",
-    phone: "010-9988-7766",
-    reservableMembershipCount: 2,
-    membershipExpiryDate: "2026-07-20",
-    confirmedReservationCount: 1
-  }
-];
-
-const mockReservationSchedules: ReservationScheduleSummary[] = [
+const initialReservationSchedules: ReservationScheduleSummary[] = [
   {
     scheduleId: 7001,
     scheduleType: "PT",
@@ -226,7 +206,7 @@ const mockReservationSchedules: ReservationScheduleSummary[] = [
   }
 ];
 
-const mockReservationsByMemberId = new Map<number, ReservationRow[]>([
+const initialReservationsByMemberId = new Map<number, ReservationRow[]>([
   [
     101,
     [
@@ -261,6 +241,44 @@ const mockReservationsByMemberId = new Map<number, ReservationRow[]>([
   ]
 ]);
 
+let mockMembers = cloneMembers(initialMembers);
+let mockMemberDetails = cloneMemberDetails(initialMemberDetails);
+let mockMemberMemberships = cloneMembershipMap(initialMemberMemberships);
+let mockReservationSchedules = cloneSchedules(initialReservationSchedules);
+let mockReservationsByMemberId = cloneReservationsMap(initialReservationsByMemberId);
+let mockDataVersion = 0;
+let membershipIdSeed = 99000;
+
+function cloneMembers(source: MemberSummary[]) {
+  return source.map((member) => ({ ...member }));
+}
+
+function cloneMemberDetails(source: Map<number, MemberDetail>) {
+  return new Map(Array.from(source.entries(), ([memberId, detail]) => [memberId, { ...detail }]));
+}
+
+function cloneMembershipMap(source: Map<number, PurchasedMembership[]>) {
+  return new Map(
+    Array.from(source.entries(), ([memberId, memberships]) => [
+      memberId,
+      memberships.map((membership) => ({ ...membership }))
+    ])
+  );
+}
+
+function cloneSchedules(source: ReservationScheduleSummary[]) {
+  return source.map((schedule) => ({ ...schedule }));
+}
+
+function cloneReservationsMap(source: Map<number, ReservationRow[]>) {
+  return new Map(
+    Array.from(source.entries(), ([memberId, reservations]) => [
+      memberId,
+      reservations.map((reservation) => ({ ...reservation }))
+    ])
+  );
+}
+
 function envelope<T>(data: T): ApiEnvelope<T> {
   return {
     success: true,
@@ -271,17 +289,196 @@ function envelope<T>(data: T): ApiEnvelope<T> {
   };
 }
 
+function todayText() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function getVisibleMemberships(memberId: number) {
+  return (mockMemberMemberships.get(memberId) ?? []).filter((membership) => membership.membershipStatus !== "REFUNDED");
+}
+
+function deriveMembershipOperationalStatus(memberships: PurchasedMembership[]): MemberSummary["membershipOperationalStatus"] {
+  if (memberships.some((membership) => membership.membershipStatus === "HOLDING")) {
+    return "홀딩중";
+  }
+
+  const activeMemberships = memberships.filter((membership) => membership.membershipStatus === "ACTIVE");
+  if (activeMemberships.length === 0) {
+    return "없음";
+  }
+
+  const today = todayText();
+  const futureOrCurrentMemberships = activeMemberships.filter(
+    (membership) => !membership.endDate || membership.endDate >= today
+  );
+  if (futureOrCurrentMemberships.length === 0) {
+    return "만료";
+  }
+
+  const hasExpiringSoon = futureOrCurrentMemberships.some((membership) => {
+    if (!membership.endDate) {
+      return false;
+    }
+    return membership.endDate <= addDays(today, 14);
+  });
+
+  return hasExpiringSoon ? "만료임박" : "정상";
+}
+
+function addDays(dateText: string, days: number) {
+  const next = new Date(`${dateText}T00:00:00`);
+  next.setDate(next.getDate() + days);
+  return next.toISOString().slice(0, 10);
+}
+
+function deriveMembershipExpiryDate(memberships: PurchasedMembership[]) {
+  const datedMemberships = memberships.filter((membership) => membership.endDate);
+  if (datedMemberships.length === 0) {
+    return null;
+  }
+  return datedMemberships.reduce<string | null>((latest, membership) => {
+    if (!membership.endDate) {
+      return latest;
+    }
+    if (!latest || membership.endDate > latest) {
+      return membership.endDate;
+    }
+    return latest;
+  }, null);
+}
+
+function deriveRemainingPtCount(memberships: PurchasedMembership[]) {
+  const total = memberships
+    .filter(
+      (membership) =>
+        membership.membershipStatus === "ACTIVE" &&
+        membership.productTypeSnapshot === "COUNT" &&
+        membership.productNameSnapshot.includes("PT")
+    )
+    .reduce((sum, membership) => sum + (membership.remainingCount ?? 0), 0);
+  return total > 0 ? total : null;
+}
+
+function deriveMembers() {
+  return mockMembers.map((member) => {
+    const visibleMemberships = getVisibleMemberships(member.memberId);
+    return {
+      ...member,
+      membershipOperationalStatus: deriveMembershipOperationalStatus(visibleMemberships),
+      membershipExpiryDate: deriveMembershipExpiryDate(visibleMemberships),
+      remainingPtCount: deriveRemainingPtCount(visibleMemberships)
+    };
+  });
+}
+
+function deriveReservationTargets() {
+  const businessDateText = todayText();
+
+  return deriveMembers()
+    .map((member) => {
+      const visibleMemberships = getVisibleMemberships(member.memberId);
+      const reservableMemberships = visibleMemberships.filter((membership) =>
+        isMembershipReservableOn(membership, businessDateText)
+      );
+      if (reservableMemberships.length === 0) {
+        return null;
+      }
+
+      const confirmedReservationCount = (mockReservationsByMemberId.get(member.memberId) ?? []).filter(
+        (reservation) => reservation.reservationStatus === "CONFIRMED"
+      ).length;
+
+      return {
+        memberId: member.memberId,
+        memberCode: `M-${String(member.memberId).padStart(4, "0")}`,
+        memberName: member.memberName,
+        phone: member.phone,
+        reservableMembershipCount: reservableMemberships.length,
+        membershipExpiryDate: deriveMembershipExpiryDate(reservableMemberships),
+        confirmedReservationCount
+      } satisfies ReservationTargetSummary;
+    })
+    .filter((target): target is ReservationTargetSummary => target !== null);
+}
+
 function filterMembers(url: URL) {
   const name = url.searchParams.get("name")?.trim() ?? "";
   const phone = url.searchParams.get("phone")?.trim() ?? "";
   const status = url.searchParams.get("membershipOperationalStatus")?.trim() ?? "";
 
-  return mockMembers.filter((member) => {
+  return deriveMembers().filter((member) => {
     const matchesName = !name || member.memberName.includes(name);
     const matchesPhone = !phone || member.phone.includes(phone);
     const matchesStatus = !status || member.membershipOperationalStatus === status;
     return matchesName && matchesPhone && matchesStatus;
   });
+}
+
+function bumpMockDataVersion() {
+  mockDataVersion += 1;
+}
+
+export function getMockDataVersion() {
+  return mockDataVersion;
+}
+
+export function resetMockData() {
+  mockMembers = cloneMembers(initialMembers);
+  mockMemberDetails = cloneMemberDetails(initialMemberDetails);
+  mockMemberMemberships = cloneMembershipMap(initialMemberMemberships);
+  mockReservationSchedules = cloneSchedules(initialReservationSchedules);
+  mockReservationsByMemberId = cloneReservationsMap(initialReservationsByMemberId);
+  mockDataVersion = 0;
+  membershipIdSeed = 99000;
+}
+
+export function createMockMembership(input: {
+  memberId: number;
+  productNameSnapshot: string;
+  productTypeSnapshot: "DURATION" | "COUNT";
+  startDate: string;
+  endDate: string | null;
+  remainingCount: number | null;
+}) {
+  membershipIdSeed += 1;
+  const membership: PurchasedMembership = {
+    membershipId: membershipIdSeed,
+    memberId: input.memberId,
+    productNameSnapshot: input.productNameSnapshot,
+    productTypeSnapshot: input.productTypeSnapshot,
+    membershipStatus: "ACTIVE",
+    startDate: input.startDate,
+    endDate: input.endDate,
+    remainingCount: input.remainingCount,
+    activeHoldStatus: null
+  };
+
+  const existingMemberships = mockMemberMemberships.get(input.memberId) ?? [];
+  mockMemberMemberships.set(input.memberId, [membership, ...existingMemberships]);
+  bumpMockDataVersion();
+  return { ...membership };
+}
+
+export function patchMockMembership(
+  memberId: number,
+  membershipId: number,
+  updater: (membership: PurchasedMembership) => PurchasedMembership
+) {
+  const existingMemberships = mockMemberMemberships.get(memberId) ?? [];
+  let nextMembership: PurchasedMembership | null = null;
+  const nextMemberships = existingMemberships.map((membership) => {
+    if (membership.membershipId !== membershipId) {
+      return membership;
+    }
+    nextMembership = updater({ ...membership });
+    return nextMembership;
+  });
+  mockMemberMemberships.set(memberId, nextMemberships);
+  bumpMockDataVersion();
+  if (!nextMembership) {
+    return null;
+  }
+  return nextMembership;
 }
 
 export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
@@ -295,20 +492,20 @@ export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
     const segments = url.pathname.split("/").filter(Boolean);
     const memberId = Number(segments[3]);
     if (segments[4] === "memberships") {
-      return envelope(mockMemberMemberships.get(memberId) ?? []);
+      return envelope((mockMemberMemberships.get(memberId) ?? []).map((membership) => ({ ...membership })));
     }
     if (segments[4] === "reservations") {
-      return envelope(mockReservationsByMemberId.get(memberId) ?? []);
+      return envelope((mockReservationsByMemberId.get(memberId) ?? []).map((reservation) => ({ ...reservation })));
     }
     const detail = mockMemberDetails.get(memberId);
-    return detail ? envelope(detail) : null;
+    return detail ? envelope({ ...detail }) : null;
   }
 
   if (url.pathname === "/api/v1/reservations/targets") {
     const keyword = url.searchParams.get("keyword")?.trim() ?? "";
     const targets = !keyword
-      ? mockReservationTargets
-      : mockReservationTargets.filter(
+      ? deriveReservationTargets()
+      : deriveReservationTargets().filter(
           (target) =>
             target.memberName.includes(keyword) ||
             target.phone.includes(keyword) ||
@@ -318,7 +515,7 @@ export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
   }
 
   if (url.pathname === "/api/v1/reservations/schedules") {
-    return envelope(mockReservationSchedules);
+    return envelope(mockReservationSchedules.map((schedule) => ({ ...schedule })));
   }
 
   return null;

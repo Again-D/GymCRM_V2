@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 
 import { apiGet } from "../../../api/client";
+import { createMockMembership, patchMockMembership } from "../../../api/mockData";
 import type { PurchasedMembership } from "../../members/modules/types";
 
 type CreateMembershipInput = {
@@ -18,6 +19,7 @@ export function useSelectedMemberMembershipsQuery() {
   const [selectedMemberMembershipsError, setSelectedMemberMembershipsError] = useState<string | null>(null);
   const requestIdRef = useRef(0);
   const membershipIdSeedRef = useRef(99000);
+  const useMockMutations = import.meta.env.VITE_REBUILD_MOCK_DATA === "1";
 
   async function loadSelectedMemberMemberships(memberId: number) {
     const requestId = requestIdRef.current + 1;
@@ -52,18 +54,21 @@ export function useSelectedMemberMembershipsQuery() {
   }
 
   function createLocalMembership(input: CreateMembershipInput) {
-    membershipIdSeedRef.current += 1;
-    const membership: PurchasedMembership = {
-      membershipId: membershipIdSeedRef.current,
-      memberId: input.memberId,
-      productNameSnapshot: input.productNameSnapshot,
-      productTypeSnapshot: input.productTypeSnapshot,
-      membershipStatus: "ACTIVE",
-      startDate: input.startDate,
-      endDate: input.endDate,
-      remainingCount: input.remainingCount,
-      activeHoldStatus: null
-    };
+    const membership: PurchasedMembership =
+      useMockMutations
+        ? createMockMembership(input)
+        : {
+            membershipId: membershipIdSeedRef.current + 1,
+            memberId: input.memberId,
+            productNameSnapshot: input.productNameSnapshot,
+            productTypeSnapshot: input.productTypeSnapshot,
+            membershipStatus: "ACTIVE",
+            startDate: input.startDate,
+            endDate: input.endDate,
+            remainingCount: input.remainingCount,
+            activeHoldStatus: null
+          };
+    membershipIdSeedRef.current = Math.max(membershipIdSeedRef.current + 1, membership.membershipId);
 
     setSelectedMemberMemberships((prev) => [membership, ...prev]);
     return membership;
@@ -74,7 +79,15 @@ export function useSelectedMemberMembershipsQuery() {
     updater: (membership: PurchasedMembership) => PurchasedMembership
   ) {
     setSelectedMemberMemberships((prev) =>
-      prev.map((membership) => (membership.membershipId === membershipId ? updater(membership) : membership))
+      prev.map((membership) => {
+        if (membership.membershipId !== membershipId) {
+          return membership;
+        }
+        if (!useMockMutations) {
+          return updater(membership);
+        }
+        return patchMockMembership(membership.memberId, membershipId, updater) ?? updater(membership);
+      })
     );
   }
 
