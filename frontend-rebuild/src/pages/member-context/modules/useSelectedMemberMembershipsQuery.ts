@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 
 import { apiGet } from "../../../api/client";
 import { createMockMembership, patchMockMembership } from "../../../api/mockData";
+import { invalidateQueryDomains } from "../../../api/queryInvalidation";
 import type { PurchasedMembership } from "../../members/modules/types";
 
 type CreateMembershipInput = {
@@ -71,6 +72,9 @@ export function useSelectedMemberMembershipsQuery() {
     membershipIdSeedRef.current = Math.max(membershipIdSeedRef.current + 1, membership.membershipId);
 
     setSelectedMemberMemberships((prev) => [membership, ...prev]);
+    if (useMockMutations) {
+      invalidateQueryDomains(["members", "reservationTargets"]);
+    }
     return membership;
   }
 
@@ -78,17 +82,22 @@ export function useSelectedMemberMembershipsQuery() {
     membershipId: number,
     updater: (membership: PurchasedMembership) => PurchasedMembership
   ) {
+    let didMutate = false;
     setSelectedMemberMemberships((prev) =>
       prev.map((membership) => {
         if (membership.membershipId !== membershipId) {
           return membership;
         }
+        didMutate = true;
         if (!useMockMutations) {
           return updater(membership);
         }
         return patchMockMembership(membership.memberId, membershipId, updater) ?? updater(membership);
       })
     );
+    if (useMockMutations && didMutate) {
+      invalidateQueryDomains(["members", "reservationTargets"]);
+    }
   }
 
   return {

@@ -6,6 +6,11 @@ import type {
   ReservationRow,
   ReservationScheduleSummary
 } from "../pages/members/modules/types";
+import type {
+  AccessEventRow,
+  AccessPresenceRow,
+  AccessPresenceSummary
+} from "../pages/access/modules/types";
 import type { ReservationTargetSummary } from "../pages/reservations/modules/useReservationTargetsQuery";
 import { isMembershipReservableOn } from "../pages/reservations/modules/reservableMemberships";
 
@@ -241,13 +246,50 @@ const initialReservationsByMemberId = new Map<number, ReservationRow[]>([
   ]
 ]);
 
+const initialOpenAccessSessions: AccessPresenceRow[] = [
+  {
+    accessSessionId: 3001,
+    memberId: 101,
+    memberName: "김민수",
+    phone: "010-1234-5678",
+    membershipId: 9001,
+    reservationId: 5001,
+    entryAt: "2026-03-12T09:03:00+09:00"
+  }
+];
+
+const initialAccessEvents: AccessEventRow[] = [
+  {
+    accessEventId: 8101,
+    memberId: 101,
+    membershipId: 9001,
+    reservationId: 5001,
+    eventType: "ENTRY_GRANTED",
+    denyReason: null,
+    processedAt: "2026-03-12T09:03:00+09:00"
+  },
+  {
+    accessEventId: 8102,
+    memberId: 102,
+    membershipId: null,
+    reservationId: null,
+    eventType: "ENTRY_DENIED",
+    denyReason: "예약 가능 회원권 없음",
+    processedAt: "2026-03-12T08:12:00+09:00"
+  }
+];
+
 let mockMembers = cloneMembers(initialMembers);
 let mockMemberDetails = cloneMemberDetails(initialMemberDetails);
 let mockMemberMemberships = cloneMembershipMap(initialMemberMemberships);
 let mockReservationSchedules = cloneSchedules(initialReservationSchedules);
 let mockReservationsByMemberId = cloneReservationsMap(initialReservationsByMemberId);
+let mockOpenAccessSessions = cloneAccessSessions(initialOpenAccessSessions);
+let mockAccessEvents = cloneAccessEvents(initialAccessEvents);
 let mockDataVersion = 0;
 let membershipIdSeed = 99000;
+let accessSessionIdSeed = 92000;
+let accessEventIdSeed = 97000;
 
 function cloneMembers(source: MemberSummary[]) {
   return source.map((member) => ({ ...member }));
@@ -277,6 +319,14 @@ function cloneReservationsMap(source: Map<number, ReservationRow[]>) {
       reservations.map((reservation) => ({ ...reservation }))
     ])
   );
+}
+
+function cloneAccessSessions(source: AccessPresenceRow[]) {
+  return source.map((session) => ({ ...session }));
+}
+
+function cloneAccessEvents(source: AccessEventRow[]) {
+  return source.map((event) => ({ ...event }));
 }
 
 function envelope<T>(data: T): ApiEnvelope<T> {
@@ -401,6 +451,19 @@ function deriveReservationTargets() {
     .filter((target): target is ReservationTargetSummary => target !== null);
 }
 
+function deriveAccessPresenceSummary(): AccessPresenceSummary {
+  const today = todayText();
+  const todaysEvents = mockAccessEvents.filter((event) => event.processedAt.slice(0, 10) === today);
+
+  return {
+    openSessionCount: mockOpenAccessSessions.length,
+    todayEntryGrantedCount: todaysEvents.filter((event) => event.eventType === "ENTRY_GRANTED").length,
+    todayExitCount: todaysEvents.filter((event) => event.eventType === "EXIT").length,
+    todayEntryDeniedCount: todaysEvents.filter((event) => event.eventType === "ENTRY_DENIED").length,
+    openSessions: mockOpenAccessSessions.map((session) => ({ ...session }))
+  };
+}
+
 function filterMembers(url: URL) {
   const name = url.searchParams.get("name")?.trim() ?? "";
   const phone = url.searchParams.get("phone")?.trim() ?? "";
@@ -428,8 +491,12 @@ export function resetMockData() {
   mockMemberMemberships = cloneMembershipMap(initialMemberMemberships);
   mockReservationSchedules = cloneSchedules(initialReservationSchedules);
   mockReservationsByMemberId = cloneReservationsMap(initialReservationsByMemberId);
+  mockOpenAccessSessions = cloneAccessSessions(initialOpenAccessSessions);
+  mockAccessEvents = cloneAccessEvents(initialAccessEvents);
   mockDataVersion = 0;
   membershipIdSeed = 99000;
+  accessSessionIdSeed = 92000;
+  accessEventIdSeed = 97000;
 }
 
 export function createMockMembership(input: {
@@ -481,6 +548,93 @@ export function patchMockMembership(
   return nextMembership;
 }
 
+export function createMockAccessEntry(memberId: number) {
+  const member = mockMemberDetails.get(memberId);
+  if (!member) {
+    return { ok: false as const, message: "회원을 찾을 수 없습니다." };
+  }
+
+  const existingSession = mockOpenAccessSessions.find((session) => session.memberId === memberId);
+  if (existingSession) {
+    return { ok: false as const, message: "이미 입장중인 회원입니다." };
+  }
+
+  const reservableMembership = getVisibleMemberships(memberId).find((membership) =>
+    isMembershipReservableOn(membership, todayText())
+  );
+  const activeReservation =
+    (mockReservationsByMemberId.get(memberId) ?? []).find((reservation) => reservation.reservationStatus === "CONFIRMED") ??
+    null;
+
+  accessEventIdSeed += 1;
+
+  if (!reservableMembership) {
+    mockAccessEvents = [
+      {
+        accessEventId: accessEventIdSeed,
+        memberId,
+        membershipId: null,
+        reservationId: activeReservation?.reservationId ?? null,
+        eventType: "ENTRY_DENIED",
+        denyReason: "예약 가능 회원권 없음",
+        processedAt: new Date().toISOString()
+      },
+      ...mockAccessEvents
+    ];
+    return { ok: false as const, message: "예약 가능 회원권이 없어 입장 처리할 수 없습니다." };
+  }
+
+  accessSessionIdSeed += 1;
+  const nextSession: AccessPresenceRow = {
+    accessSessionId: accessSessionIdSeed,
+    memberId,
+    memberName: member.memberName,
+    phone: member.phone,
+    membershipId: reservableMembership.membershipId,
+    reservationId: activeReservation?.reservationId ?? null,
+    entryAt: new Date().toISOString()
+  };
+  mockOpenAccessSessions = [nextSession, ...mockOpenAccessSessions];
+  mockAccessEvents = [
+    {
+      accessEventId: accessEventIdSeed,
+      memberId,
+      membershipId: reservableMembership.membershipId,
+      reservationId: activeReservation?.reservationId ?? null,
+      eventType: "ENTRY_GRANTED",
+      denyReason: null,
+      processedAt: new Date().toISOString()
+    },
+    ...mockAccessEvents
+  ];
+
+  return { ok: true as const, message: `회원 #${memberId} 입장을 처리했습니다.` };
+}
+
+export function createMockAccessExit(memberId: number) {
+  const session = mockOpenAccessSessions.find((item) => item.memberId === memberId);
+  if (!session) {
+    return { ok: false as const, message: "현재 입장중인 세션이 없습니다." };
+  }
+
+  accessEventIdSeed += 1;
+  mockOpenAccessSessions = mockOpenAccessSessions.filter((item) => item.memberId !== memberId);
+  mockAccessEvents = [
+    {
+      accessEventId: accessEventIdSeed,
+      memberId,
+      membershipId: session.membershipId,
+      reservationId: session.reservationId,
+      eventType: "EXIT",
+      denyReason: null,
+      processedAt: new Date().toISOString()
+    },
+    ...mockAccessEvents
+  ];
+
+  return { ok: true as const, message: `회원 #${memberId} 퇴장을 처리했습니다.` };
+}
+
 export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
   const url = new URL(path, "http://local.mock");
 
@@ -516,6 +670,20 @@ export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
 
   if (url.pathname === "/api/v1/reservations/schedules") {
     return envelope(mockReservationSchedules.map((schedule) => ({ ...schedule })));
+  }
+
+  if (url.pathname === "/api/v1/access/presence") {
+    return envelope(deriveAccessPresenceSummary());
+  }
+
+  if (url.pathname === "/api/v1/access/events") {
+    const memberId = url.searchParams.get("memberId");
+    const limit = Number(url.searchParams.get("limit") ?? "100");
+    const filteredEvents =
+      memberId == null
+        ? mockAccessEvents
+        : mockAccessEvents.filter((event) => event.memberId === Number(memberId));
+    return envelope(filteredEvents.slice(0, limit).map((event) => ({ ...event })));
   }
 
   return null;

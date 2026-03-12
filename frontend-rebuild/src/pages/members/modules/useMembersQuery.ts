@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 
 import { apiGet } from "../../../api/client";
-import { getMockDataVersion } from "../../../api/mockData";
+import { useQueryInvalidationVersion } from "../../../api/queryInvalidation";
 import { useAuthState } from "../../../app/auth";
 import { filterMemberIdsForAuth } from "../../member-context/modules/trainerScope";
 import type { MemberQueryFilters, MemberSummary } from "./types";
@@ -25,6 +25,7 @@ export function useMembersQuery({
   const requestIdRef = useRef(0);
   const cacheRef = useRef(new Map<string, MemberSummary[]>());
   const inflightRef = useRef(new Map<string, Promise<MemberSummary[]>>());
+  const membersVersion = useQueryInvalidationVersion("members");
 
   async function loadMembers(filters?: Partial<MemberQueryFilters>) {
     const requestId = requestIdRef.current + 1;
@@ -39,7 +40,6 @@ export function useMembersQuery({
       const membershipOperationalStatus = filters?.membershipOperationalStatus ?? defaults.membershipOperationalStatus;
       const dateFrom = filters?.dateFrom ?? defaults.dateFrom;
       const dateTo = filters?.dateTo ?? defaults.dateTo;
-      const mockDataVersion = import.meta.env.VITE_REBUILD_MOCK_DATA === "1" ? getMockDataVersion() : 0;
       const params = new URLSearchParams();
       if (name.trim()) params.set("name", name.trim());
       if (phone.trim()) params.set("phone", phone.trim());
@@ -47,7 +47,7 @@ export function useMembersQuery({
       if (dateFrom.trim()) params.set("dateFrom", dateFrom.trim());
       if (dateTo.trim()) params.set("dateTo", dateTo.trim());
       const query = params.toString();
-      const cacheKey = `${authUser?.role ?? "anon"}:${authUser?.userId ?? "none"}:${mockDataVersion}:${query}`;
+      const cacheKey = `${authUser?.role ?? "anon"}:${authUser?.userId ?? "none"}:${membersVersion}:${query}`;
       if (cacheRef.current.has(cacheKey)) {
         if (requestIdRef.current !== requestId) return;
         setMembers(cacheRef.current.get(cacheKey) ?? []);

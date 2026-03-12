@@ -101,30 +101,30 @@ Those are useful later, but they are not the highest signal-to-cost next step.
 
 ### Phase 1: Rebuild-wide query invalidation contract
 
-- [ ] Define a single invalidation pattern for rebuild query modules
-- [ ] Apply it to existing members/reservations modules without changing behavior
-- [ ] Add tests proving cross-section reload after mutation does not depend on ad hoc local patching
+- [x] Define a single invalidation pattern for rebuild query modules
+- [x] Apply it to existing members/reservations modules without changing behavior
+- [x] Add tests proving cross-section reload after mutation does not depend on ad hoc local patching
 
 ### Phase 2: Access prototype slice
 
-- [ ] Add `AccessPage`
-- [ ] Add selected-member-aware access detail surface
-- [ ] Add current presence / recent access events / member search result surfaces
-- [ ] Reuse shared pagination patterns already proven in the baseline app
-- [ ] Define clear fallback behavior when no member is selected
+- [x] Add `AccessPage`
+- [x] Add selected-member-aware access detail surface
+- [x] Add current presence / recent access events / member search result surfaces
+- [x] Reuse shared pagination patterns already proven in the baseline app
+- [x] Define clear fallback behavior when no member is selected
 
 ### Phase 3: Access action parity
 
-- [ ] Add prototype access actions that update the correct rebuild read surfaces
-- [ ] Ensure the rebuild invalidation contract updates access + members summary where needed
-- [ ] Verify trainer-scoped behavior if access is meant to respect role limits
+- [x] Add prototype access actions that update the correct rebuild read surfaces
+- [x] Ensure the rebuild invalidation contract updates access + members summary where needed
+- [x] Verify trainer-scoped behavior if access is meant to respect role limits
 
 ### Phase 4: Validation
 
-- [ ] Unit/integration tests for access modules
+- [x] Unit/integration tests for access modules
 - [ ] Desktop browser smoke for `/members`, `/access`, `/memberships`, `/reservations`
 - [ ] Mobile browser smoke for `/access`
-- [ ] Update parity notes with tradeoffs and remaining gaps
+- [x] Update parity notes with tradeoffs and remaining gaps
 
 ## Out of Scope
 

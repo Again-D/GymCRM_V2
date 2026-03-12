@@ -5,6 +5,7 @@ import { getShellRouteByPath, shellRoutes } from "./app/routes";
 import DashboardLayout from "./components/layout/DashboardLayout";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
+import AccessPage from "./pages/access/AccessPage";
 import MembershipsPage from "./pages/memberships/MembershipsPage";
 import ReservationsPage from "./pages/reservations/ReservationsPage";
 import ShellPlaceholderPage from "./pages/ShellPlaceholderPage";
@@ -54,10 +55,7 @@ export default function App() {
           <Route path="/members" element={<MemberList />} />
           <Route path="/memberships" element={<MembershipsPage />} />
           <Route path="/reservations" element={<ReservationsPage />} />
-          <Route
-            path="/access"
-            element={<ShellPlaceholderPage title="출입 관리 프로토타입" description="Access queries and current presence will be rebuilt after the core member-context flows." />}
-          />
+          <Route path="/access" element={<AccessPage />} />
           <Route
             path="/lockers"
             element={<ShellPlaceholderPage title="라커 관리 프로토타입" description="Locker ownership and assignment flows are intentionally deferred." />}
