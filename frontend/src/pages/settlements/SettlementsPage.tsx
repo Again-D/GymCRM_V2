@@ -5,6 +5,10 @@ import { PaginationControls } from "../../shared/ui/PaginationControls";
 import { useSettlementPrototypeState } from "./modules/useSettlementPrototypeState";
 import { useSettlementReportQuery } from "./modules/useSettlementReportQuery";
 import { createDefaultSettlementFilters } from "./modules/types";
+import { EmptyState } from "../../shared/ui/EmptyState";
+import { SkeletonLoader } from "../../shared/ui/SkeletonLoader";
+
+import styles from "./SettlementsPage.module.css";
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("ko-KR", {
@@ -63,7 +67,7 @@ export default function SettlementsPage() {
   }
 
   return (
-    <section className="members-prototype-layout">
+    <section className={styles["members-prototype-layout"]}>
       <article className="panel-card">
         <div className="panel-card-header">
           <div>
@@ -72,10 +76,10 @@ export default function SettlementsPage() {
           </div>
         </div>
 
-        <div className="placeholder-card mb-md">
+        <div className={`${styles["placeholder-card"]} mb-md`}>
           <h2>리포트 조건</h2>
           <form
-            className="members-filter-grid"
+            className={styles["members-filter-grid"]}
             onSubmit={(event) => {
               event.preventDefault();
               void reloadReport();
@@ -123,7 +127,7 @@ export default function SettlementsPage() {
                 placeholder="예: PT 10회권"
               />
             </label>
-            <div className="toolbar-actions">
+            <div className={styles["toolbar-actions"]}>
               <button type="submit" className="primary-button" disabled={settlementReportLoading}>
                 {settlementReportLoading ? "집계 중..." : "집계"}
               </button>
@@ -144,9 +148,9 @@ export default function SettlementsPage() {
           {settlementPanelError ? <p className="error-text">{settlementPanelError}</p> : null}
         </div>
 
-        <div className="placeholder-card mb-md">
+        <div className={`${styles["placeholder-card"]} mb-md`}>
           <h2>정산 요약</h2>
-          <dl className="detail-grid compact-detail-grid">
+          <dl className={`${styles["detail-grid"]} ${styles["compact-detail-grid"]}`}>
             <div>
               <dt>총 매출</dt>
               <dd>{formatCurrency(settlementReport?.totalGrossSales ?? 0)}</dd>
@@ -166,9 +170,9 @@ export default function SettlementsPage() {
           </dl>
         </div>
 
-        <div className="placeholder-card">
+        <div className={styles["placeholder-card"]}>
           <h2>상품/결제수단 집계</h2>
-          <div className="table-shell mt-sm">
+          <div className={`${styles["table-shell"]} mt-sm`}>
             <table className="members-table">
               <thead>
                 <tr>
@@ -183,8 +187,8 @@ export default function SettlementsPage() {
               <tbody>
                 {rowsPagination.pagedItems.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="empty-cell">
-                      {settlementReportLoading ? "집계 중..." : "집계 데이터가 없습니다."}
+                    <td colSpan={6} className={styles["empty-cell"]}>
+                      {settlementReportLoading ? <SkeletonLoader type="rectangular" height={40} /> : <EmptyState message="집계 데이터가 없습니다." />}
                     </td>
                   </tr>
                 ) : (

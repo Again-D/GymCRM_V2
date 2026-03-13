@@ -109,9 +109,9 @@ export function useLockerQueries() {
   const resetLockerQueries = useCallback(() => {
     lockerSlotsRequestIdRef.current += 1;
     lockerAssignmentsRequestIdRef.current += 1;
-    setLockerSlots([]);
+    setLockerSlots((prev) => (prev.length === 0 ? prev : []));
     setLockerSlotsLoading(false);
-    setLockerAssignments([]);
+    setLockerAssignments((prev) => (prev.length === 0 ? prev : []));
     setLockerAssignmentsLoading(false);
     setLockerQueryError(null);
   }, []);

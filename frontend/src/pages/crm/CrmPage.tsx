@@ -8,6 +8,8 @@ import { createDefaultCrmFilters } from "./modules/types";
 import { useCrmHistoryQuery } from "./modules/useCrmHistoryQuery";
 import { useCrmPrototypeState } from "./modules/useCrmPrototypeState";
 
+import styles from "./CrmPage.module.css";
+
 function formatDateTime(value: string | null) {
   if (!value) {
     return "-";
@@ -77,7 +79,7 @@ export default function CrmPage() {
   }
 
   return (
-    <section className="members-prototype-layout">
+    <section className={styles["members-prototype-layout"]}>
       <article className="panel-card">
         <div className="panel-card-header">
           <div>
@@ -97,9 +99,9 @@ export default function CrmPage() {
           </div>
         ) : null}
 
-        <div className="placeholder-card mb-md">
+        <div className={`${styles["placeholder-card"]} mb-md`}>
           <h2>메시지 트리거 / 큐 처리</h2>
-          <div className="members-filter-grid">
+          <div className={styles["members-filter-grid"]}>
             <label>
               만료임박 기준 (daysAhead)
               <input
@@ -111,7 +113,7 @@ export default function CrmPage() {
                 onChange={(event) => setCrmTriggerDaysAhead(event.target.value)}
               />
             </label>
-            <div className="toolbar-actions">
+            <div className={styles["toolbar-actions"]}>
               <button
                 type="button"
                 className="primary-button"
@@ -134,10 +136,10 @@ export default function CrmPage() {
           {crmPanelError ? <p className="error-text">{crmPanelError}</p> : null}
         </div>
 
-        <div className="placeholder-card">
+        <div className={styles["placeholder-card"]}>
           <h2>발송 이력 조회</h2>
           <form
-            className="members-filter-grid"
+            className={styles["members-filter-grid"]}
             onSubmit={(event) => {
               event.preventDefault();
               void reloadHistory();
@@ -178,7 +180,7 @@ export default function CrmPage() {
                 }
               />
             </label>
-            <div className="toolbar-actions">
+            <div className={styles["toolbar-actions"]}>
               <button type="submit" className="primary-button" disabled={crmHistoryLoading || !isLiveCrmRoleSupported}>
                 {crmHistoryLoading ? "조회 중..." : "조회"}
               </button>
@@ -203,7 +205,7 @@ export default function CrmPage() {
 
           {crmHistoryError ? <p className="error-text">{crmHistoryError}</p> : null}
 
-          <div className="table-shell mt-sm">
+          <div className={`${styles["table-shell"]} mt-sm`}>
             <table className="members-table">
               <thead>
                 <tr>
@@ -222,7 +224,7 @@ export default function CrmPage() {
               <tbody>
                 {historyPagination.pagedItems.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="empty-cell">
+                    <td colSpan={10} className={styles["empty-cell"]}>
                       {!isLiveCrmRoleSupported
                         ? "현재 역할에서는 live CRM 이력을 조회할 수 없습니다."
                         : crmHistoryLoading

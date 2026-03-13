@@ -6,6 +6,10 @@ import { PaginationControls } from "../../shared/ui/PaginationControls";
 import { useProductsQuery } from "./modules/useProductsQuery";
 import { useProductPrototypeState } from "./modules/useProductPrototypeState";
 import { createDefaultProductFilters, type ProductRecord } from "./modules/types";
+import { EmptyState } from "../../shared/ui/EmptyState";
+import { SkeletonLoader } from "../../shared/ui/SkeletonLoader";
+
+import styles from "./ProductsPage.module.css";
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("ko-KR", {
@@ -86,7 +90,7 @@ export default function ProductsPage() {
   }
 
   return (
-    <section className="members-prototype-layout">
+    <section className={styles["members-prototype-layout"]}>
       <article className="panel-card">
         <div className="panel-card-header">
           <div>
@@ -123,7 +127,7 @@ export default function ProductsPage() {
         ) : null}
 
         <form
-          className="members-filter-grid"
+          className={styles["members-filter-grid"]}
           onSubmit={(event) => {
             event.preventDefault();
             if (!canReadLiveProducts) {
@@ -166,7 +170,7 @@ export default function ProductsPage() {
               <option value="INACTIVE">INACTIVE</option>
             </select>
           </label>
-          <div className="toolbar-actions">
+          <div className={styles["toolbar-actions"]}>
             <button type="submit" className="primary-button" disabled={productsLoading || !canReadLiveProducts}>
               {productsLoading ? "조회 중..." : "조회"}
             </button>
@@ -192,7 +196,7 @@ export default function ProductsPage() {
         {productPanelMessage ? <p>{productPanelMessage}</p> : null}
         {productPanelError || productsQueryError ? <p className="error-text">{productPanelError ?? productsQueryError}</p> : null}
 
-        <div className="table-shell">
+        <div className={styles["table-shell"]}>
           <table className="members-table">
             <thead>
               <tr>
@@ -208,12 +212,12 @@ export default function ProductsPage() {
             <tbody>
               {productsPagination.pagedItems.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="empty-cell">
+                  <td colSpan={7} className={styles["empty-cell"]}>
                     {!canReadLiveProducts
                       ? "현재 역할에서는 live 상품 목록을 조회할 수 없습니다."
                       : productsLoading
-                        ? "상품 목록을 불러오는 중..."
-                        : "조회된 상품이 없습니다."}
+                        ? <SkeletonLoader type="rectangular" height={40} />
+                        : <EmptyState message="조회된 상품이 없습니다." />}
                   </td>
                 </tr>
               ) : (
@@ -282,7 +286,7 @@ export default function ProductsPage() {
           <p>등록 또는 편집을 시작하면 이 패널에 form이 열립니다.</p>
         ) : (
           <form
-            className="members-filter-grid"
+            className={styles["members-filter-grid"]}
             onSubmit={(event) => {
               event.preventDefault();
               void runSubmit();
@@ -367,7 +371,7 @@ export default function ProductsPage() {
                 <option value="INACTIVE">INACTIVE</option>
               </select>
             </label>
-            <label className="checkbox-row">
+            <label className={styles["checkbox-row"]}>
               <input
                 type="checkbox"
                 checked={productForm.allowHold}
@@ -391,7 +395,7 @@ export default function ProductsPage() {
                 onChange={(event) => setProductForm((prev) => ({ ...prev, maxHoldCount: event.target.value }))}
               />
             </label>
-            <label className="checkbox-row">
+            <label className={styles["checkbox-row"]}>
               <input
                 type="checkbox"
                 checked={productForm.allowTransfer}
@@ -399,14 +403,14 @@ export default function ProductsPage() {
               />
               양도 허용
             </label>
-            <label className="full-span">
+            <label className={styles["full-span"]}>
               설명
               <textarea
                 value={productForm.description}
                 onChange={(event) => setProductForm((prev) => ({ ...prev, description: event.target.value }))}
               />
             </label>
-            <div className="toolbar-actions full-span">
+            <div className={`${styles["toolbar-actions"]} ${styles["full-span"]}`}>
               <button type="submit" className="primary-button" disabled={productFormSubmitting}>
                 {productFormSubmitting ? "저장 중..." : productFormMode === "create" ? "상품 등록" : "상품 저장"}
               </button>

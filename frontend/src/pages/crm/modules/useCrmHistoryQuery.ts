@@ -64,7 +64,7 @@ export function useCrmHistoryQuery() {
 
   const resetCrmHistoryQuery = useCallback(() => {
     requestIdRef.current += 1;
-    setCrmHistoryRows([]);
+    setCrmHistoryRows((prev) => (prev.length === 0 ? prev : []));
     setCrmHistoryLoading(false);
     setCrmHistoryError(null);
   }, []);

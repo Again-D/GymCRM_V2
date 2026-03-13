@@ -27,7 +27,7 @@ export function useMembersQuery({
   const inflightRef = useRef(new Map<string, Promise<MemberSummary[]>>());
   const membersVersion = useQueryInvalidationVersion("members");
 
-  async function loadMembers(filters?: Partial<MemberQueryFilters>) {
+  const loadMembers = useCallback(async (filters?: Partial<MemberQueryFilters>) => {
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
     setMembersLoading(true);
@@ -76,11 +76,11 @@ export function useMembersQuery({
         setMembersLoading(false);
       }
     }
-  }
+  }, [authUser, membersVersion, getDefaultFiltersRef]);
 
   const resetMembersQuery = useCallback(() => {
     requestIdRef.current += 1;
-    setMembers([]);
+    setMembers((prev) => (prev.length === 0 ? prev : []));
     setMembersLoading(false);
     setMembersQueryError(null);
   }, []);

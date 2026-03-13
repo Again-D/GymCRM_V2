@@ -37,7 +37,7 @@ describe("useSettlementReportQuery", () => {
 
     const { result } = renderHook(() =>
       useSettlementReportQuery({
-        getDefaultFilters: () => ({ startDate: "2026-03-01", endDate: "2026-03-31", paymentMethod: "", productKeyword: "" })
+        getDefaultFilters: () => ({ startDate: "2026-03-01", endDate: "2026-03-31", paymentMethod: "", productKeyword: "" } as SettlementReportFilters)
       })
     );
 
@@ -122,7 +122,7 @@ describe("useSettlementReportQuery", () => {
 
     const { result } = renderHook(() =>
       useSettlementReportQuery({
-        getDefaultFilters: () => ({ startDate: "2026-03-01", endDate: "2026-03-31", paymentMethod: "", productKeyword: "" })
+        getDefaultFilters: () => ({ startDate: "2026-03-01", endDate: "2026-03-31", paymentMethod: "", productKeyword: "" } as SettlementReportFilters)
       })
     );
 
@@ -206,7 +206,7 @@ describe("useSettlementReportQuery", () => {
             endDate: "2026-03-31",
             paymentMethod: "",
             productKeyword: ""
-          })
+          } as SettlementReportFilters)
         }
       }
     );

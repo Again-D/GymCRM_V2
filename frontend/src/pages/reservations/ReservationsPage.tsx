@@ -6,6 +6,8 @@ import { usePagination } from "../../shared/hooks/usePagination";
 import { PaginationControls } from "../../shared/ui/PaginationControls";
 import { todayLocalDate } from "../../shared/date";
 import { useSelectedMemberMembershipsQuery } from "../member-context/modules/useSelectedMemberMembershipsQuery";
+import { EmptyState } from "../../shared/ui/EmptyState";
+import { SkeletonLoader } from "../../shared/ui/SkeletonLoader";
 import { SelectedMemberContextBadge } from "../members/components/SelectedMemberContextBadge";
 import { useSelectedMemberStore } from "../members/modules/SelectedMemberContext";
 import type { ReservationRow } from "../members/modules/types";
@@ -13,6 +15,8 @@ import { isMembershipReservableOn } from "./modules/reservableMemberships";
 import { useReservationSchedulesQuery } from "./modules/useReservationSchedulesQuery";
 import { useReservationTargetsQuery } from "./modules/useReservationTargetsQuery";
 import { useSelectedMemberReservationsState } from "./modules/useSelectedMemberReservationsState";
+
+import styles from "./ReservationsPage.module.css";
 
 type ReservationCreateForm = {
   membershipId: string;
@@ -220,7 +224,7 @@ export default function ReservationsPage() {
   }
 
   return (
-    <section className="members-prototype-layout">
+    <section className={styles["members-prototype-layout"]}>
       <article className="panel-card">
         <div className="panel-card-header">
           <div>
@@ -230,7 +234,7 @@ export default function ReservationsPage() {
         </div>
 
         <form
-          className="context-fallback-toolbar"
+          className={styles["context-fallback-toolbar"]}
           onSubmit={(event) => {
             event.preventDefault();
             void loadReservationTargets(reservationTargetsKeyword);
@@ -244,7 +248,7 @@ export default function ReservationsPage() {
               placeholder="예: 김민수, 010-1234, 회원코드"
             />
           </label>
-          <div className="toolbar-actions">
+          <div className={styles["toolbar-actions"]}>
             <button type="submit" className="primary-button" disabled={reservationTargetsLoading}>
               {reservationTargetsLoading ? "조회 중..." : "조회"}
             </button>
@@ -253,7 +257,7 @@ export default function ReservationsPage() {
 
         {reservationTargetsError ? <p className="error-text">{reservationTargetsError}</p> : null}
 
-        <div className="table-shell">
+        <div className={styles["table-shell"]}>
           <table className="members-table">
             <thead>
               <tr>
@@ -270,7 +274,7 @@ export default function ReservationsPage() {
             <tbody>
               {targetsPagination.pagedItems.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="empty-cell">
+                  <td colSpan={8} className={styles["empty-cell"] ?? "empty-cell"}>
                     예약 대상 회원이 없습니다.
                   </td>
                 </tr>
@@ -329,13 +333,13 @@ export default function ReservationsPage() {
         {reservationPanelMessage ? <p>{reservationPanelMessage}</p> : null}
         {reservationPanelError ? <p className="error-text">{reservationPanelError}</p> : null}
 
-        <div className="placeholder-stack">
-          <div className="placeholder-card">
+        <div className={styles["placeholder-stack"]}>
+          <div className={styles["placeholder-card"]}>
             <h3>선택 회원 요약</h3>
             {selectedMember == null ? (
               <p>회원을 선택하면 예약 상세 surface가 열립니다.</p>
             ) : (
-              <dl className="selected-member-grid">
+              <dl className={styles["selected-member-grid"]}>
                 <div>
                   <dt>회원 ID</dt>
                   <dd>{selectedMember.memberId}</dd>
@@ -364,9 +368,9 @@ export default function ReservationsPage() {
             )}
           </div>
 
-          <div className="placeholder-card">
+          <div className={styles["placeholder-card"]}>
             <h3>예약 생성</h3>
-            <form className="members-filter-grid" onSubmit={handleReservationCreateSubmit}>
+            <form className={styles["members-filter-grid"]} onSubmit={handleReservationCreateSubmit}>
               <label>
                 사용할 회원권
                 <select
@@ -399,14 +403,14 @@ export default function ReservationsPage() {
                   ))}
                 </select>
               </label>
-              <label className="full-span">
+              <label className={styles["full-span"]}>
                 메모
                 <input
                   value={reservationCreateForm.memo}
                   onChange={(event) => setReservationCreateForm((prev) => ({ ...prev, memo: event.target.value }))}
                 />
               </label>
-              <div className="toolbar-actions full-span">
+              <div className={`${styles["toolbar-actions"]} ${styles["full-span"]}`}>
                 <button type="submit" className="primary-button" disabled={!selectedMember || selectedMemberReservationsLoading}>
                   예약 생성
                 </button>
@@ -418,15 +422,15 @@ export default function ReservationsPage() {
             ) : null}
           </div>
 
-          <div className="placeholder-card">
+          <div className={styles["placeholder-card"]}>
             <h3>선택 회원 예약 목록</h3>
             {selectedMemberReservationsLoading ? (
-              <p>예약 이력을 불러오는 중...</p>
+              <SkeletonLoader type="rectangular" height={100} />
             ) : reservationsPagination.pagedItems.length === 0 ? (
-              <p>선택 회원의 예약 이력이 없습니다.</p>
+              <EmptyState message="선택 회원의 예약 이력이 없습니다." />
             ) : (
               <>
-                <div className="table-shell">
+                <div className={styles["table-shell"]}>
                   <table className="members-table">
                     <thead>
                       <tr>
@@ -457,7 +461,7 @@ export default function ReservationsPage() {
                             <td>{reservation.reservationStatus}</td>
                             <td>{formatDateTime(reservation.reservedAt)}</td>
                             <td>
-                              <div className="row-actions">
+                              <div className={styles["row-actions"]}>
                                 <button
                                   type="button"
                                   className="secondary-button"
@@ -557,7 +561,7 @@ export default function ReservationsPage() {
             )}
           </div>
 
-          <div className="placeholder-card">
+          <div className={styles["placeholder-card"]}>
             <h3>예약 스케줄 목록</h3>
             {reservationSchedulesLoading ? (
               <p>예약 스케줄을 불러오는 중...</p>

@@ -8,6 +8,10 @@ import { useMembersQuery } from "../members/modules/useMembersQuery";
 import { useSelectedMemberStore } from "../members/modules/SelectedMemberContext";
 import { useLockerPrototypeState } from "./modules/useLockerPrototypeState";
 import { useLockerQueries } from "./modules/useLockerQueries";
+import { EmptyState } from "../../shared/ui/EmptyState";
+import { SkeletonLoader } from "../../shared/ui/SkeletonLoader";
+
+import styles from "./LockersPage.module.css";
 
 export default function LockersPage() {
   const { authUser, isMockMode } = useAuthState();
@@ -101,7 +105,7 @@ export default function LockersPage() {
   }
 
   return (
-    <section className="members-prototype-layout">
+    <section className={styles["members-prototype-layout"]}>
       <article className="panel-card">
         <div className="panel-card-header">
           <div>
@@ -138,7 +142,7 @@ export default function LockersPage() {
 
         <div className="selected-member-card mb-md">
           <h2>라커 슬롯 조회</h2>
-          <div className="members-filter-grid">
+          <div className={styles["members-filter-grid"]}>
             <label>
               상태
               <select
@@ -168,7 +172,7 @@ export default function LockersPage() {
           {lockerPanelMessage ? <p>{lockerPanelMessage}</p> : null}
           {lockerPanelError || lockerQueryError ? <p className="error-text">{lockerPanelError ?? lockerQueryError}</p> : null}
 
-          <div className="table-shell">
+          <div className={styles["table-shell"]}>
             <table className="members-table">
               <thead>
                 <tr>
@@ -183,7 +187,7 @@ export default function LockersPage() {
               <tbody>
                 {slotsPagination.pagedItems.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="empty-cell">
+                    <td colSpan={6} className={styles["empty-cell"]}>
                       {!isLiveLockerRoleSupported
                         ? "현재 역할에서는 live 라커 슬롯을 조회할 수 없습니다."
                         : lockerSlotsLoading
@@ -192,7 +196,7 @@ export default function LockersPage() {
                     </td>
                   </tr>
                 ) : (
-                  slotsPagination.pagedItems.map((slot) => (
+                  slotsPagination.pagedItems.map((slot: any) => (
                     <tr key={slot.lockerSlotId}>
                       <td>{slot.lockerSlotId}</td>
                       <td>{slot.lockerCode}</td>
@@ -224,7 +228,7 @@ export default function LockersPage() {
 
         <div className="selected-member-card">
           <h2>라커 배정</h2>
-          <div className="members-filter-grid">
+          <div className={styles["members-filter-grid"]}>
             <label>
               라커 슬롯
               <select
@@ -288,7 +292,7 @@ export default function LockersPage() {
             />
           </label>
 
-          <div className="toolbar-actions mt-md">
+          <div className={`${styles["toolbar-actions"]} mt-md`}>
             <button
               type="button"
               className="primary-button"
@@ -305,7 +309,7 @@ export default function LockersPage() {
         </div>
       </article>
 
-      <aside className="selected-member-card panel-stack">
+      <aside className={`selected-member-card ${styles["panel-stack"]}`}>
         <section>
           <h2>배정 목록</h2>
           <div className="table-shell">
@@ -324,16 +328,16 @@ export default function LockersPage() {
               <tbody>
                 {assignmentsPagination.pagedItems.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="empty-cell">
+                    <td colSpan={7} className={styles["empty-cell"]}>
                       {!isLiveLockerRoleSupported
                         ? "현재 역할에서는 live 라커 배정 목록을 조회할 수 없습니다."
                         : lockerAssignmentsLoading
-                          ? "라커 배정 목록을 불러오는 중..."
-                          : "라커 배정 이력이 없습니다."}
+                          ? <SkeletonLoader type="rectangular" height={40} />
+                          : <EmptyState message="라커 배정 이력이 없습니다." />}
                     </td>
                   </tr>
                 ) : (
-                  assignmentsPagination.pagedItems.map((assignment) => (
+                  assignmentsPagination.pagedItems.map((assignment: any) => (
                     <tr key={assignment.lockerAssignmentId}>
                       <td>{assignment.lockerAssignmentId}</td>
                       <td>{assignment.lockerCode}</td>
