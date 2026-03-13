@@ -28,6 +28,7 @@ Date: 2026-03-13
 - `/Users/abc/projects/GymCRM_V2/docs/notes/frontend-rebuild-final-candidate-checkpoint.md`
 - `/Users/abc/projects/GymCRM_V2/docs/notes/frontend-rebuild-route-subset-cutover-decision.md`
 - `/Users/abc/projects/GymCRM_V2/docs/plans/2026-03-13-feat-frontend-rebuild-route-subset-evaluation-plan.md`
+- `/Users/abc/projects/GymCRM_V2/docs/notes/frontend-rebuild-route-subset-execution-input-sheet.md`
 
 다음 조건이 충족되어야 한다.
 
