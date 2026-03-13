@@ -233,6 +233,8 @@ Risks:
 ### Internal References
 - replacement candidate canonical plan:
   - `/Users/abc/projects/GymCRM_V2/docs/plans/2026-03-13-refactor-frontend-replacement-candidate-project-plan.md`
+- route subset execution procedure:
+  - `/Users/abc/projects/GymCRM_V2/docs/notes/frontend-rebuild-route-subset-execution-procedure.md`
 - rebuild route subset evaluation note:
   - `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-route-subset-evaluation-plan.md`
 - route subset cutover decision:
