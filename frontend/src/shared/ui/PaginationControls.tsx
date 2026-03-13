@@ -31,26 +31,18 @@ export function PaginationControls({
   onPageSizeChange
 }: PaginationControlsProps) {
   const visiblePages = buildVisiblePages(page, totalPages);
-  const canMovePrev = page > 1;
-  const canMoveNext = page < totalPages;
 
   return (
     <nav className="pagination-controls" aria-label="목록 페이지네이션">
       <div className="pagination-summary" aria-live="polite">
         <strong>{totalItems.toLocaleString()}건</strong>
-        <span>
-          {totalItems === 0 ? "0건" : `${startItemIndex}-${endItemIndex}건 표시`}
-        </span>
+        <span>{totalItems === 0 ? "0건" : `${startItemIndex}-${endItemIndex}건 표시`}</span>
       </div>
 
       <div className="pagination-actions">
         <label className="pagination-size">
           <span>페이지당</span>
-          <select
-            value={pageSize}
-            onChange={(event) => onPageSizeChange(Number(event.target.value))}
-            aria-label="페이지당 표시 개수"
-          >
+          <select value={pageSize} onChange={(event) => onPageSizeChange(Number(event.target.value))}>
             {pageSizeOptions.map((option) => (
               <option key={option} value={option}>
                 {option}개
@@ -60,37 +52,22 @@ export function PaginationControls({
         </label>
 
         <div className="pagination-buttons">
-          <button
-            type="button"
-            className="secondary-button pagination-button"
-            onClick={() => onPageChange(page - 1)}
-            disabled={!canMovePrev}
-            aria-label="이전 페이지"
-          >
+          <button type="button" onClick={() => onPageChange(page - 1)} disabled={page <= 1}>
             이전
           </button>
-
-          <div className="pagination-page-list" aria-label="페이지 번호">
+          <div className="pagination-page-list">
             {visiblePages.map((pageNumber) => (
               <button
                 key={pageNumber}
                 type="button"
                 className={pageNumber === page ? "pagination-page is-active" : "pagination-page"}
                 onClick={() => onPageChange(pageNumber)}
-                aria-current={pageNumber === page ? "page" : undefined}
               >
                 {pageNumber}
               </button>
             ))}
           </div>
-
-          <button
-            type="button"
-            className="secondary-button pagination-button"
-            onClick={() => onPageChange(page + 1)}
-            disabled={!canMoveNext}
-            aria-label="다음 페이지"
-          >
+          <button type="button" onClick={() => onPageChange(page + 1)} disabled={page >= totalPages}>
             다음
           </button>
         </div>
