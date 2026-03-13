@@ -142,10 +142,15 @@ Date: 2026-03-13
 ## Evidence Required Before Recommending Cutover
 
 - staging smoke note
+- staging smoke results note
 - updated blocker log
 - role matrix evidence
 - core workflow parity diff
 - migration / rollback decision note
+
+추가 참조:
+- `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-staging-smoke-results.md`
+- `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-route-subset-cutover-decision.md`
 
 ## Current Recommendation
 

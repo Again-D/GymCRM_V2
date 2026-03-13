@@ -1,0 +1,70 @@
+# Frontend Rebuild Route Subset Cutover Decision Draft
+
+Date: 2026-03-13
+
+## Purpose
+
+이 문서는 rebuild frontend를 full swap 대신 `route subset exposure`로 시험할 때의 판단 기준을 정리한다.
+
+현재 단계에서의 기본 방향은:
+- full swap은 하지 않음
+- route subset exposure가 첫 현실적 cutover candidate임
+
+## Candidate Routes
+
+우선 후보:
+- `/members`
+- `/memberships`
+- `/reservations`
+- `/access`
+
+이 4개는 replacement candidate plan의 core workflow minimum scope와 같다.
+
+## Why These Routes
+
+- 이미 local live parity evidence가 가장 많이 축적된 영역이다
+- selected-member ownership / invalidation / route behavior가 가장 잘 정리된 영역이다
+- 운영 의미가 명확하고 baseline과 diff를 비교하기 쉽다
+
+## Preconditions
+
+- [ ] staging smoke results note 작성
+- [ ] staging blocker가 high severity 없이 정리됨
+- [ ] auth/session parity가 staging에서도 유지됨
+- [ ] role restrictions가 baseline과 같은 수준으로 설명 가능함
+- [ ] rollback trigger/owner가 채워짐
+
+## Non-Candidate Routes For First Exposure
+
+초기 route subset에는 다음을 포함하지 않는다.
+
+- `/crm`
+- `/settlements`
+- `/lockers`
+- `/products`
+
+이유:
+- operational breadth는 충분히 설명 가능하지만, 첫 staged evaluation에서는 minimum core workflow scope에 집중하는 편이 안전하다.
+
+## Decision Matrix
+
+| Condition | Recommendation |
+|---|---|
+| staging smoke mostly pass, blockers are low/medium, rollback is clear | route subset evaluation 가능 |
+| auth/session or role parity blocker remains | route subset evaluation 보류 |
+| selected-member or mutation refresh mismatch remains | route subset evaluation 보류 |
+| unexpected staging-only env issue remains unresolved | replacement candidate 유지, blocker reduction 계속 |
+
+## Default Recommendation
+
+현재 기본 권고:
+- staging evidence가 충분하면 `route subset evaluation`
+- 그렇지 않으면 `remain replacement candidate`
+
+## Evidence To Attach Before Deciding
+
+- staging smoke screenshots
+- staging smoke results note
+- updated blocker log
+- migration / rollback plan
+- final candidate checkpoint draft update
