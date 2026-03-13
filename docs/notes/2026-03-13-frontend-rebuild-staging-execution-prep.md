@@ -1,20 +1,20 @@
-# Frontend Rebuild Staging Execution Prep
+# Frontend Rebuild Local Staging-Profile Execution Prep
 
 Date: 2026-03-13
 
 ## Purpose
 
-이 문서는 staging smoke를 실제로 수행하기 전에 필요한 입력값과 실행 순서를 고정한다.
+이 문서는 local staging-profile smoke를 실제로 수행하기 전에 필요한 입력값과 실행 순서를 고정한다.
 
-현재 blocker는 smoke 절차 자체가 아니라, **staging target / credential / exposure path가 아직 채워지지 않은 상태**다.
+현재 blocker는 smoke 절차 자체가 아니라, **local staging-profile 실행 조건과 role 계정/세션 입력이 아직 채워지지 않은 상태**다.
 즉 이 문서는 다음 실행자가 환경 정보만 채우면 바로 smoke를 시작할 수 있게 만드는 준비 문서다.
 
 ## Required Inputs
 
-아래 6개가 채워지면 staging smoke를 바로 시작할 수 있다.
+아래 6개가 채워지면 local staging-profile smoke를 바로 시작할 수 있다.
 
-1. rebuild staging URL
-2. baseline staging URL
+1. rebuild local URL
+2. baseline local URL
 3. admin 계정
 4. desk 계정
 5. trainer 계정
@@ -22,8 +22,8 @@ Date: 2026-03-13
 
 ## Fill-In Sheet
 
-- rebuild staging URL:
-- baseline staging URL:
+- rebuild local URL:
+- baseline local URL:
 - login route:
 - logout route:
 - health endpoint:
@@ -37,10 +37,10 @@ Date: 2026-03-13
 
 ### Step 1: Pre-check
 
-- [ ] rebuild staging URL 접속 가능
-- [ ] baseline staging URL 접속 가능
+- [ ] rebuild local URL 접속 가능
+- [ ] baseline local URL 접속 가능
 - [ ] health endpoint 200
-- [ ] auth/session이 staging에서 실제로 동작
+- [ ] auth/session이 local staging-profile 환경에서 실제로 동작
 
 ### Step 2: Auth / Session Matrix
 
@@ -63,27 +63,27 @@ Date: 2026-03-13
 - [ ] mobile screenshots
 - [ ] role matrix screenshots
 - [ ] blocker note update
-- [ ] staging results note update
+- [ ] local smoke results note update
 
 ## Screenshot Naming Convention
 
 다음 패턴으로 저장한다.
 
-- `rebuild-staging-admin-members.png`
-- `rebuild-staging-admin-memberships.png`
-- `rebuild-staging-desk-access.png`
-- `rebuild-staging-trainer-access.png`
-- `rebuild-staging-trainer-reservations.png`
-- `rebuild-staging-mobile-members.png`
-- `rebuild-staging-mobile-reservations.png`
-- `rebuild-staging-mobile-access.png`
+- `rebuild-local-staging-admin-members.png`
+- `rebuild-local-staging-admin-memberships.png`
+- `rebuild-local-staging-desk-access.png`
+- `rebuild-local-staging-trainer-access.png`
+- `rebuild-local-staging-trainer-reservations.png`
+- `rebuild-local-staging-mobile-members.png`
+- `rebuild-local-staging-mobile-reservations.png`
+- `rebuild-local-staging-mobile-access.png`
 
 저장 위치:
 - `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/testing/artifacts/`
 
 ## Output Documents To Update
 
-staging smoke를 끝내면 아래 문서를 같이 업데이트한다.
+local staging-profile smoke를 끝내면 아래 문서를 같이 업데이트한다.
 
 - `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-staging-smoke-results.md`
 - `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-live-api-blocker-log.md`
@@ -94,6 +94,6 @@ staging smoke를 끝내면 아래 문서를 같이 업데이트한다.
 
 현재는 아래 문장이 정확하다.
 
-> staging smoke를 수행할 절차와 evidence template는 준비돼 있지만, 실제 staging target/credential 정보가 아직 채워지지 않았다.
+> local staging-profile smoke를 수행할 절차와 evidence template는 준비돼 있지만, 실제 실행 URL/계정/세션 입력이 아직 채워지지 않았다.
 
-따라서 지금 단계의 다음 액션은 구현이 아니라 **환경 정보 확보**다.
+따라서 지금 단계의 다음 액션은 구현이 아니라 **실행 입력 확보**다.

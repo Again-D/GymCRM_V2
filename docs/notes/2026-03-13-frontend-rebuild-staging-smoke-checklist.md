@@ -1,19 +1,19 @@
-# Frontend Rebuild Staging Smoke Checklist
+# Frontend Rebuild Local Staging-Profile Smoke Checklist
 
 Date: 2026-03-13
 
 ## Goal
 
-`replacement candidate` 판단 전, rebuild frontend가 staging 환경에서 baseline과 같은 운영 흐름을 재현하는지 확인한다.
+`replacement candidate` 판단 전, rebuild frontend가 local staging-profile 환경에서 baseline과 같은 운영 흐름을 재현하는지 확인한다.
 
-이 문서는 실행 체크리스트이자 evidence 수집 기준이다. 체크 항목은 staging에서 실제로 수행되고, 성공/실패/차이를 간단히 메모로 남겨야 한다.
+이 문서는 실행 체크리스트이자 evidence 수집 기준이다. 체크 항목은 local staging-profile 환경에서 실제로 수행되고, 성공/실패/차이를 간단히 메모로 남겨야 한다.
 
 ## Environment Contract
 
 - rebuild frontend target:
-  - staging rebuild deployment URL
+  - local rebuild dev/prod-preview URL
 - backend target:
-  - staging API / auth session backend
+  - local backend running with staging profile
 - browser baseline:
   - Chrome desktop
 - mobile baseline:
@@ -80,7 +80,7 @@ Before execution, fill environment details in:
 차이가 보이면 아래 기준으로 기록한다.
 
 - baseline behavior:
-- staging rebuild behavior:
+- local staging-profile rebuild behavior:
 - acceptable difference인지:
 - blocker인지:
 - screenshot or console evidence path:
@@ -96,7 +96,7 @@ Before execution, fill environment details in:
 
 다음 단계로 넘어가려면 아래가 필요하다.
 
-- [ ] core workflow 4개가 staging에서 적어도 한 번 end-to-end로 확인됨
+- [ ] core workflow 4개가 local staging-profile 환경에서 적어도 한 번 end-to-end로 확인됨
 - [ ] role-specific 제한이 baseline과 같은 수준으로 설명 가능함
 - [ ] blocker는 `known + reproducible + documented` 상태로 남음
-- [ ] cutover 논의를 막는 staging-only 차이가 있으면 별도 blocker로 승격됨
+- [ ] cutover 논의를 막는 local staging-profile blocker가 있으면 별도 blocker로 승격됨

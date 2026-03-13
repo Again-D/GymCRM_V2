@@ -7,10 +7,11 @@ Date: 2026-03-13
 이 문서는 rebuild frontend를 replacement candidate로 평가할 때 필요한 운영 전환/되돌리기 초안을 남긴다.
 
 현재 결론은 즉시 cutover가 아니라:
-- staging smoke evidence를 먼저 확보하고
-- 그 결과를 바탕으로 staged cutover evaluation을 판단하는 것
+- local staging-profile smoke evidence를 먼저 확보하고
+- internal cutover rehearsal 결과를 만든 뒤
+- 그 결과를 바탕으로 controlled cutover evaluation을 판단하는 것
 
-즉 이 문서는 **ready-to-execute cutover playbook**이 아니라, staging 결과를 받아 실제 전환 판단으로 이어질 수 있게 하는 migration/rollback baseline이다.
+즉 이 문서는 **ready-to-execute cutover playbook**이 아니라, local staging-profile 결과와 rehearsal 결과를 받아 실제 전환 판단으로 이어질 수 있게 하는 migration/rollback baseline이다.
 
 ## Recommended Cutover Unit
 
@@ -41,17 +42,19 @@ Date: 2026-03-13
 - 문제 생겨도 baseline 운영 흐름을 즉시 보존할 수 있음
 - auth/session, cookie, selected-member handoff, mutation invalidation 차이를 실제 환경에서 조용히 관찰 가능
 
-## Preconditions Before Any Staged Cutover
+## Preconditions Before Any Controlled Cutover
 
-- [ ] staging smoke checklist 완료
-- [ ] core workflow 4개에 대한 staging evidence 확보
-- [ ] auth/session parity가 staging에서도 재현됨
-- [ ] role parity가 staging에서도 재현됨
+- [ ] local staging-profile smoke checklist 완료
+- [ ] core workflow 4개에 대한 local staging-profile evidence 확보
+- [ ] auth/session parity가 local staging-profile에서도 재현됨
+- [ ] role parity가 local staging-profile에서도 재현됨
 - [ ] active blocker 목록이 최신 상태임
+- [ ] internal cutover rehearsal note 작성
 
 참조:
 - `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-staging-smoke-checklist.md`
 - `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-live-api-blocker-log.md`
+- `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-internal-cutover-rehearsal.md`
 
 ## Proposed Migration Path
 
@@ -59,7 +62,7 @@ Date: 2026-03-13
 
 - draft PR `#73` 유지
 - rebuild는 replacement candidate로만 다룸
-- staging smoke와 blocker reduction만 수행
+- local staging-profile smoke, internal rehearsal, blocker reduction만 수행
 
 ### Stage 1: Internal Exposure
 
@@ -86,7 +89,7 @@ Date: 2026-03-13
 
 다음이 모두 충족될 때만 검토한다.
 
-- staging smoke pass
+- local staging-profile smoke pass
 - internal exposure에서 blocker가 관리 가능 수준
 - rollback trigger와 procedure 확정
 - route subset trial evidence가 충분함
@@ -113,8 +116,8 @@ Date: 2026-03-13
 - auth 전이 후 stale member가 남거나
 - cross-section mutation 후 stale summary가 남음
 
-5. staging-only unexpected error
-- local live에서는 보이지 않았지만 staging proxy/cookie/env 차이로 재현되는 blocker
+5. local staging-profile or rehearsal-only unexpected error
+- local live에서는 보이지 않았지만 staging-profile security/env 차이나 internal rehearsal 과정에서만 재현되는 blocker
 
 ## Rollback Procedure Baseline
 
@@ -127,7 +130,7 @@ Date: 2026-03-13
 5. retry 전 blocker severity와 owner 재분류
 
 현재 단계에서는 “몇 분 안에 revert deploy” 같은 infra-specific 절차까지는 정하지 않는다.
-그건 실제 배포 구조가 정해질 때 staging evidence와 함께 확정한다.
+그건 실제 배포 구조가 정해질 때 local staging-profile evidence와 internal rehearsal 결과와 함께 확정한다.
 
 ## Decision Owners
 
@@ -141,12 +144,13 @@ Date: 2026-03-13
 
 ## Evidence Required Before Recommending Cutover
 
-- staging smoke note
-- staging smoke results note
+- local staging-profile smoke note
+- local staging-profile smoke results note
 - updated blocker log
 - role matrix evidence
 - core workflow parity diff
 - migration / rollback decision note
+- internal cutover rehearsal note
 
 추가 참조:
 - `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-staging-smoke-results.md`
@@ -157,13 +161,14 @@ Date: 2026-03-13
 현재 시점 권고:
 
 - replacement candidate로 계속 유지
-- staging smoke 이전에는 cutover 논의를 진행하지 않음
-- migration/rollback은 이 문서를 baseline으로 두고, staging 결과가 생긴 뒤 구체화
+- local staging-profile smoke와 internal rehearsal 이전에는 cutover 논의를 진행하지 않음
+- migration/rollback은 이 문서를 baseline으로 두고, local smoke / rehearsal 결과가 생긴 뒤 구체화
 
 ## Next Action
 
 바로 다음 액션은 이것이다.
 
-1. staging smoke checklist 실행
+1. local staging-profile smoke checklist 실행
 2. blocker log 갱신
-3. 이 migration/rollback baseline을 staging evidence에 맞춰 확정본으로 승격
+3. internal cutover rehearsal note 작성
+4. 이 migration/rollback baseline을 local smoke / rehearsal evidence에 맞춰 확정본으로 승격

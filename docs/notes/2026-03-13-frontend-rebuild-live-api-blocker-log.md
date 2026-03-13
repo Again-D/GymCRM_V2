@@ -12,22 +12,22 @@ Date: 2026-03-13
 
 ## Active blockers
 
-### 1. Staging auth / workflow evidence gap
+### 1. Local staging-profile auth / workflow evidence gap
 
 - Endpoint / route:
-  - staging protected shell routes
-  - staging login/logout/refresh flow
-  - staging role-restricted workflows
+  - local staging-profile protected shell routes
+  - local staging-profile login/logout/refresh flow
+  - local staging-profile role-restricted workflows
 - Baseline behavior:
-  - staging에서 role/session/cookie/proxy 차이까지 포함한 실제 운영 유사 흐름이 재현돼야 함
+  - local staging-profile 환경에서 role/session/security-profile 차이까지 포함한 운영 유사 흐름이 재현돼야 함
 - Rebuild behavior:
-  - local live parity는 확보했지만, staging smoke evidence는 아직 없음
+  - local live parity는 확보했지만, local staging-profile smoke evidence는 아직 없음
 - Severity:
   - high
 - Owner:
   - rebuild replacement-candidate phase 4
 - Workaround:
-  - local live evidence와 baseline staging smoke를 함께 참고
+  - local live evidence와 baseline local smoke를 함께 참고
 - Execution checklist:
   - `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-staging-smoke-checklist.md`
   - `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-staging-execution-prep.md`
@@ -37,15 +37,16 @@ Date: 2026-03-13
 - Endpoint / route:
   - replacement candidate overall decision
 - Baseline behavior:
-  - cutover discussion should be grounded in staging evidence and executable rollback criteria
+  - cutover discussion should be grounded in local staging-profile evidence, internal rehearsal evidence, and executable rollback criteria
 - Rebuild behavior:
-  - local live evidence is strong, but final candidate judgement is still pre-staging only
+  - local live evidence is strong, but final candidate judgement is still pre-local-staging-profile / pre-rehearsal only
 - Severity:
   - medium
 - Owner:
   - rebuild replacement-candidate final checkpoint
 - Workaround:
   - keep draft verdict in `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-final-candidate-checkpoint-draft.md`
+  - maintain rehearsal baseline in `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-internal-cutover-rehearsal.md`
 
 ## Resolved blockers in this phase
 

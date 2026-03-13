@@ -1,18 +1,18 @@
-# Frontend Rebuild Staging Smoke Results
+# Frontend Rebuild Local Staging-Profile Smoke Results
 
 Date: 2026-03-13
 
 ## Purpose
 
-이 문서는 rebuild frontend의 staging smoke 실행 결과를 기록하는 자리다.
+이 문서는 rebuild frontend의 local staging-profile smoke 실행 결과를 기록하는 자리다.
 
 아직 실행 전이라면 이 문서는 checklist-driven run sheet 역할을 하고,
 실행 후에는 cutover 논의를 위한 evidence note가 된다.
 
 ## Environment
 
-- rebuild staging URL:
-- baseline staging URL:
+- rebuild local URL:
+- baseline local URL:
 - backend target:
 - auth mode:
 - browser:
@@ -62,7 +62,7 @@ Date: 2026-03-13
 - Blocker:
 - Evidence:
 
-## Blockers Found In Staging
+## Blockers Found In Local Staging-Profile Smoke
 
 | Severity | Workflow | Description | Repro | Evidence | Owner |
 |---|---|---|---|---|---|
@@ -70,7 +70,7 @@ Date: 2026-03-13
 
 ## Preliminary Recommendation
 
-- `Proceed to route subset evaluation`
+- `Proceed to controlled route subset evaluation`
 - `Remain replacement candidate`
 - `Pause and reduce blockers first`
 

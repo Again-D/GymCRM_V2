@@ -9,6 +9,7 @@ Date: 2026-03-13
 현재 단계에서의 기본 방향은:
 - full swap은 하지 않음
 - route subset exposure가 첫 현실적 cutover candidate임
+- 단, 실제 staging이 없으므로 판단 근거는 `local staging-profile smoke + internal cutover rehearsal` 조합을 사용한다
 
 ## Candidate Routes
 
@@ -28,11 +29,12 @@ Date: 2026-03-13
 
 ## Preconditions
 
-- [ ] staging smoke results note 작성
-- [ ] staging blocker가 high severity 없이 정리됨
-- [ ] auth/session parity가 staging에서도 유지됨
+- [ ] local staging-profile smoke results note 작성
+- [ ] local smoke blocker가 high severity 없이 정리됨
+- [ ] auth/session parity가 local staging-profile에서도 유지됨
 - [ ] role restrictions가 baseline과 같은 수준으로 설명 가능함
 - [ ] rollback trigger/owner가 채워짐
+- [ ] internal cutover rehearsal note 작성
 
 ## Non-Candidate Routes For First Exposure
 
@@ -50,21 +52,22 @@ Date: 2026-03-13
 
 | Condition | Recommendation |
 |---|---|
-| staging smoke mostly pass, blockers are low/medium, rollback is clear | route subset evaluation 가능 |
+| local staging-profile smoke mostly pass, blockers are low/medium, rollback is clear | route subset evaluation 가능 |
 | auth/session or role parity blocker remains | route subset evaluation 보류 |
 | selected-member or mutation refresh mismatch remains | route subset evaluation 보류 |
-| unexpected staging-only env issue remains unresolved | replacement candidate 유지, blocker reduction 계속 |
+| unexpected local staging-profile or rehearsal blocker remains unresolved | replacement candidate 유지, blocker reduction 계속 |
 
 ## Default Recommendation
 
 현재 기본 권고:
-- staging evidence가 충분하면 `route subset evaluation`
+- local staging-profile evidence와 internal rehearsal이 충분하면 `route subset evaluation`
 - 그렇지 않으면 `remain replacement candidate`
 
 ## Evidence To Attach Before Deciding
 
-- staging smoke screenshots
-- staging smoke results note
+- local staging-profile smoke screenshots
+- local staging-profile smoke results note
 - updated blocker log
 - migration / rollback plan
 - final candidate checkpoint draft update
+- internal cutover rehearsal note

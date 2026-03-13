@@ -4,9 +4,9 @@ Date: 2026-03-13
 
 ## Purpose
 
-이 문서는 rebuild frontend를 replacement candidate로 평가하기 위한 **pre-staging checkpoint draft**다.
+이 문서는 rebuild frontend를 replacement candidate로 평가하기 위한 **pre-cutover checkpoint draft**다.
 
-아직 staging smoke evidence가 없으므로, 최종 go/no-go 문서가 아니라 현재까지의 local live evidence를 한 번 정리하고 다음 의사결정이 무엇인지 명확히 하기 위한 중간 산출물이다.
+아직 local staging-profile smoke evidence와 internal cutover rehearsal evidence가 없으므로, 최종 go/no-go 문서가 아니라 현재까지의 local live evidence를 한 번 정리하고 다음 의사결정이 무엇인지 명확히 하기 위한 중간 산출물이다.
 
 ## Current Verdict
 
@@ -15,7 +15,7 @@ Date: 2026-03-13
 즉 지금 rebuild는:
 - architecture experiment는 이미 성공했고
 - local live parity도 상당 수준 확보했지만
-- staged cutover evaluation으로 넘어가기 전에 staging evidence가 필요하다
+- controlled cutover evaluation으로 넘어가기 전에 local staging-profile evidence와 internal rehearsal evidence가 필요하다
 
 ## What Is Already Strong
 
@@ -52,20 +52,20 @@ local live backend 기준으로 다음이 증명돼 있다.
 
 ## What Still Blocks Cutover Evaluation
 
-### 1. Staging Smoke Evidence Gap
+### 1. Local Staging-Profile Smoke Evidence Gap
 
 현재 가장 큰 active blocker다.
 
 아직 없는 것:
-- staging auth/session evidence
-- staging role matrix evidence
-- staging core workflow 4개 smoke evidence
-- staging-only env/cookie/proxy 차이 확인
-- staging target/credential fill-in 완료
+- local staging-profile auth/session evidence
+- local staging-profile role matrix evidence
+- local staging-profile core workflow 4개 smoke evidence
+- staging profile에서만 드러나는 env/security 차이 확인
+- 실행 URL/계정/세션 입력 fill-in 완료
 
 ### 2. Migration and Rollback Are Still Baseline Documents
 
-현재 migration/rollback은 baseline 초안은 있으나, staging 결과를 반영한 execution-ready 상태는 아니다.
+현재 migration/rollback은 baseline 초안은 있으나, local staging-profile 결과와 internal cutover rehearsal 결과를 반영한 execution-ready 상태는 아니다.
 
 즉 지금 문서는:
 - 방향은 설명 가능
@@ -75,23 +75,23 @@ local live backend 기준으로 다음이 증명돼 있다.
 
 | Workflow | Current local judgement | Cutover judgement |
 |---|---|---|
-| 회원관리 | baseline과 의미상 동일 | staging evidence 필요 |
-| 회원권 업무 | baseline과 의미상 동일 | staging evidence 필요 |
-| 예약 관리 | baseline과 의미상 동일 | staging evidence 필요 |
-| 출입 관리 | 차이가 있지만 허용 가능 | staging evidence 필요 |
+| 회원관리 | baseline과 의미상 동일 | local staging-profile evidence 필요 |
+| 회원권 업무 | baseline과 의미상 동일 | local staging-profile evidence 필요 |
+| 예약 관리 | baseline과 의미상 동일 | local staging-profile evidence 필요 |
+| 출입 관리 | 차이가 있지만 허용 가능 | local staging-profile evidence 필요 |
 
 ## Recommended Next Decision Path
 
-1. staging smoke checklist 실행
+1. local staging-profile smoke checklist 실행
 2. blocker log 갱신
-3. migration / rollback baseline에 staging 결과 반영
-4. 그 다음에야 staged cutover evaluation 여부 판단
+3. migration / rollback baseline에 local smoke와 rehearsal 결과 반영
+4. 그 다음에야 controlled cutover evaluation 여부 판단
 
 ## What Should Not Happen Yet
 
 - draft PR `#73`를 ready/merge 대상으로 취급
 - full swap 전환 논의
-- staging evidence 없이 cutover recommendation 작성
+- local staging-profile evidence와 internal rehearsal 없이 cutover recommendation 작성
 
 ## Evidence References
 
@@ -100,3 +100,4 @@ local live backend 기준으로 다음이 증명돼 있다.
 - `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-core-workflow-parity-diff.md`
 - `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-staging-smoke-checklist.md`
 - `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-migration-rollback-plan.md`
+- `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-internal-cutover-rehearsal.md`
