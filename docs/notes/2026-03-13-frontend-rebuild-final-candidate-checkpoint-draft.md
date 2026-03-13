@@ -6,16 +6,17 @@ Date: 2026-03-13
 
 이 문서는 rebuild frontend를 replacement candidate로 평가하기 위한 **pre-cutover checkpoint draft**다.
 
-local staging-profile smoke evidence는 이제 확보됐지만, internal cutover rehearsal evidence가 아직 없으므로 최종 go/no-go 문서가 아니라 현재까지의 evidence를 정리하고 다음 의사결정이 무엇인지 명확히 하기 위한 중간 산출물이다.
+local staging-profile smoke evidence와 internal cutover rehearsal evidence는 이제 확보됐다. 이 문서는 full cutover go/no-go 문서는 아니지만, rebuild를 controlled route subset evaluation으로 올릴 수 있는지 판단하는 현재 checkpoint다.
 
 ## Current Verdict
 
-`Remain replacement candidate, proceed to internal cutover rehearsal`
+`Proceed to controlled route subset evaluation`
 
 즉 지금 rebuild는:
 - architecture experiment는 이미 성공했고
-- local live parity와 local staging-profile smoke도 상당 수준 확보했지만
-- controlled cutover evaluation으로 넘어가기 전에 internal rehearsal evidence와 executable rollback confirmation이 더 필요하다
+- local live parity와 local staging-profile smoke도 상당 수준 확보했고
+- internal cutover rehearsal 기준에서도 운영 판단이 가능한 수준까지 올라왔다
+- 다만 full swap이나 merge 대상은 아니며, 다음 단계는 제한된 route subset evaluation이다
 
 ## What Is Already Strong
 
@@ -52,35 +53,36 @@ local live backend 기준으로 다음이 증명돼 있다.
 
 ## What Still Blocks Cutover Evaluation
 
-### 1. Migration and Rollback Are Still Baseline Documents
+### 1. Migration and Rollback Are Still Controlled-Evaluation Baselines
 
-현재 migration/rollback은 baseline 초안은 있으나, local staging-profile 결과와 internal cutover rehearsal 결과를 반영한 execution-ready 상태는 아니다.
+현재 migration/rollback은 controlled route subset evaluation까지는 설명 가능하지만, full cutover execution playbook은 아니다.
 
 즉 지금 문서는:
-- 방향은 설명 가능
-- 실제 전환 rehearsal을 하기엔 아직 이르다
+- 제한된 경로 평가까지는 충분함
+- full swap 전환을 결정하기엔 아직 이르다
 
 ## Core Workflow Readiness Snapshot
 
 | Workflow | Current local judgement | Cutover judgement |
 |---|---|---|
-| 회원관리 | baseline과 의미상 동일 | internal rehearsal evidence 필요 |
-| 회원권 업무 | baseline과 의미상 동일 | internal rehearsal evidence 필요 |
-| 예약 관리 | baseline과 의미상 동일 | internal rehearsal evidence 필요 |
-| 출입 관리 | 차이가 있지만 허용 가능 | internal rehearsal evidence 필요 |
+| 회원관리 | baseline과 의미상 동일 | controlled route subset evaluation 가능 |
+| 회원권 업무 | baseline과 의미상 동일 | controlled route subset evaluation 가능 |
+| 예약 관리 | baseline과 의미상 동일 | controlled route subset evaluation 가능 |
+| 출입 관리 | 차이가 있지만 허용 가능 | controlled route subset evaluation 가능 |
 
 ## Recommended Next Decision Path
 
-1. internal cutover rehearsal checklist 실행
-2. blocker log 갱신
-3. migration / rollback baseline에 rehearsal 결과 반영
-4. 그 다음에야 controlled cutover evaluation 여부 판단
+1. controlled route subset evaluation의 노출 방식과 owner를 결정
+2. blocker log를 evaluation 기준으로 계속 갱신
+3. migration / rollback baseline에 evaluation 결과 반영
+4. 그 다음에야 full cutover evaluation 여부 판단
 
 ## What Should Not Happen Yet
 
 - draft PR `#73`를 ready/merge 대상으로 취급
 - full swap 전환 논의
 - internal rehearsal 없이 cutover recommendation 작성
+- full swap을 기본값으로 가정
 
 ## Evidence References
 

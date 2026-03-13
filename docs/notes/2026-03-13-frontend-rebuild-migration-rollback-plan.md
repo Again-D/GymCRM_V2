@@ -161,14 +161,15 @@ Date: 2026-03-13
 현재 시점 권고:
 
 - replacement candidate로 계속 유지
-- local staging-profile smoke와 internal rehearsal 이전에는 cutover 논의를 진행하지 않음
-- migration/rollback은 이 문서를 baseline으로 두고, local smoke / rehearsal 결과가 생긴 뒤 구체화
+- full swap은 하지 않음
+- 다음 단계는 `controlled route subset evaluation`
+- migration/rollback은 이제 rehearsal 이전 baseline이 아니라, route subset evaluation을 지원하는 기준선 문서로 본다
 
 ## Next Action
 
 바로 다음 액션은 이것이다.
 
-1. internal cutover rehearsal checklist 실행
-2. blocker log 갱신
-3. final checkpoint draft 갱신
-4. 이 migration/rollback baseline을 rehearsal evidence에 맞춰 확정본으로 승격
+1. route subset evaluation의 노출 방식과 owner 확정
+2. blocker log를 evaluation 기준으로 계속 업데이트
+3. final checkpoint draft를 evaluation 결과에 따라 다시 갱신
+4. 이 migration/rollback baseline을 controlled evaluation 결과에 맞춰 확정본으로 승격

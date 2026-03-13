@@ -57,12 +57,21 @@ Date: 2026-03-13
 | selected-member or mutation refresh mismatch remains | route subset evaluation 보류 |
 | unexpected local staging-profile or rehearsal blocker remains unresolved | replacement candidate 유지, blocker reduction 계속 |
 
-## Default Recommendation
+## Current Recommendation
 
-현재 기본 권고:
+현재 권고:
 - local staging-profile evidence는 확보됨
-- 다음 판단 게이트는 internal rehearsal
-- 따라서 현재는 `remain replacement candidate, prepare route subset evaluation through rehearsal`
+- internal cutover rehearsal evidence도 문서화됨
+- active blocker는 low-severity local execution constraint 1건만 남아 있음
+
+따라서 현재 판단은:
+
+`Proceed to controlled route subset evaluation`
+
+단, 이 권고는 아래 전제를 유지한다.
+- full swap이 아니라 route subset 평가
+- baseline frontend 기본 진입 경로 유지
+- rebuild는 내부/제한된 exposure 후보로만 취급
 
 ## Evidence To Attach Before Deciding
 

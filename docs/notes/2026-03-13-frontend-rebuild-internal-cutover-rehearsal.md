@@ -82,15 +82,45 @@ rehearsal 후 아래 문서를 같이 업데이트한다.
 - `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-live-api-blocker-log.md`
 - `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-final-candidate-checkpoint-draft.md`
 
+## Rehearsal Evidence
+
+### Exposure Shape
+
+- baseline frontend는 기본 진입 경로로 유지하는 전제를 그대로 유지했다
+- rebuild frontend는 별도 진입 경로/내부 후보 프로젝트로만 취급했다
+- local staging-profile smoke는 rebuild를 backend-allowed dev origin(`5173`)에서 단독 평가하는 방식으로 수행했고, baseline은 parity diff와 기존 local-live evidence로 비교했다
+
+### Auth / Session
+
+- logged-out direct entry to `/members`가 `/login`으로 정리되는 것을 local staging-profile smoke에서 다시 확인했다
+- admin / desk / trainer role matrix가 local staging-profile smoke와 live auth/session note에 모두 기록돼 있다
+- logout 이후 protected state가 남지 않는 경계도 local live + local staging-profile evidence로 확인됐다
+
+### Workflow Safety
+
+- `/members`, `/memberships`, `/reservations`, `/access` 4개 route가 local staging-profile smoke에서 pass 또는 documented acceptable difference 상태로 정리돼 있다
+- selected-member handoff, mutation 후 refresh, unsupported role surface, stale member-row reset이 각각 관련 note와 tests로 고정돼 있다
+
+### Rollback Decision
+
+- rollback trigger는 auth regression, role regression, core workflow blocker, selected-member corruption으로 고정돼 있다
+- blocker owner / severity / workaround / evidence path를 가진 blocker log가 최신 상태다
+- baseline-only fallback recommendation이 migration / rollback baseline 문서와 일치한다
+
 ## Current Recommendation
 
-현재는 이 rehearsal을 **실행 준비 완료 상태**로 본다.
+현재는 이 rehearsal을 **실행 완료 상태**로 본다.
 
-즉:
+결론:
 
-- local staging-profile smoke 결과는 채워졌다
-- 이제 이 문서를 기준으로 cutover 판단 rehearsal을 이어갈 수 있다
+- local staging-profile smoke
+- auth/session parity evidence
+- role matrix
+- core workflow parity diff
+- rollback baseline
 
-아직 rehearsal evidence 자체는 비어 있으므로, recommendation은 다음과 같다.
+을 함께 보면, rebuild는 아직 full swap 대상은 아니지만 **controlled route subset evaluation**으로 넘어갈 수 있는 replacement candidate 상태다.
 
-`Remain replacement candidate, continue blocker reduction`
+현재 recommendation은 다음과 같다.
+
+`Proceed to controlled route subset evaluation`

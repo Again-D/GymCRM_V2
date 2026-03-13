@@ -12,23 +12,7 @@ Date: 2026-03-13
 
 ## Active blockers
 
-### 1. Final candidate checkpoint is still provisional
-
-- Endpoint / route:
-  - replacement candidate overall decision
-- Baseline behavior:
-  - controlled cutover discussion should be grounded in local staging-profile evidence, internal rehearsal evidence, and executable rollback criteria
-- Rebuild behavior:
-  - local staging-profile smoke evidence now exists, but the final candidate judgement is still pre-internal-rehearsal and pre-executable rollback confirmation
-- Severity:
-  - medium
-- Owner:
-  - rebuild replacement-candidate final checkpoint
-- Workaround:
-  - keep draft verdict in `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-final-candidate-checkpoint-draft.md`
-  - maintain rehearsal baseline in `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-internal-cutover-rehearsal.md`
-
-### 2. Local smoke execution still depends on the backend-allowed dev origin
+### 1. Local smoke execution still depends on the backend-allowed dev origin
 
 - Endpoint / route:
   - local browser auth/session parity
@@ -79,3 +63,11 @@ Date: 2026-03-13
 - Evidence:
   - `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-staging-smoke-results.md`
   - logged-out, admin, desk, trainer role matrix and core workflow 4개 smoke가 local staging-profile 환경에서 기록됨
+
+### Final candidate checkpoint / internal rehearsal
+
+- Status: resolved for controlled route subset evaluation
+- Evidence:
+  - `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-internal-cutover-rehearsal.md`
+  - `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-final-candidate-checkpoint-draft.md`
+  - `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-route-subset-cutover-decision.md`
