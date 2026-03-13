@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AuthStateProvider } from "../../app/auth";
@@ -14,6 +14,7 @@ describe("AccessPage", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     cleanup();
   });
 
@@ -159,5 +160,94 @@ describe("AccessPage", () => {
     await waitFor(() => {
       expect(screen.queryByText("김민수")).toBeNull();
     });
+  });
+
+  it("debounces live member search input before issuing another members request", async () => {
+    vi.useFakeTimers();
+    setMockApiModeForTests(false);
+
+    const fetchMock = vi.fn(async (input: string) => {
+      if (input.startsWith("/api/v1/members")) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: [],
+            message: "ok",
+            timestamp: "2026-03-13T00:00:00Z",
+            traceId: "trace-members"
+          })
+        };
+      }
+
+      if (input === "/api/v1/access/presence") {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: {
+              openSessionCount: 0,
+              todayEntryGrantedCount: 0,
+              todayExitCount: 0,
+              todayEntryDeniedCount: 0,
+              openSessions: []
+            },
+            message: "ok",
+            timestamp: "2026-03-13T00:00:00Z",
+            traceId: "trace-presence"
+          })
+        };
+      }
+
+      if (input.startsWith("/api/v1/access/events")) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: [],
+            message: "ok",
+            timestamp: "2026-03-13T00:00:00Z",
+            traceId: "trace-events"
+          })
+        };
+      }
+
+      throw new Error(`Unexpected request: ${input}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <AuthStateProvider
+        value={{
+          securityMode: "jwt",
+          authUser: {
+            userId: 11,
+            username: "jwt-admin",
+            role: "ROLE_CENTER_ADMIN"
+          }
+        }}
+      >
+        <SelectedMemberProvider>
+          <AccessPage />
+        </SelectedMemberProvider>
+      </AuthStateProvider>
+    );
+
+    expect(screen.getByRole("heading", { name: "출입 관리 프로토타입" })).toBeTruthy();
+    await vi.runAllTimersAsync();
+
+    const searchInput = screen.getByPlaceholderText("예: 김민수, 010-1234");
+    fireEvent.change(searchInput, { target: { value: "김" } });
+    fireEvent.change(searchInput, { target: { value: "김민" } });
+
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).startsWith("/api/v1/members")).length).toBe(1);
+
+    await vi.advanceTimersByTimeAsync(249);
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).startsWith("/api/v1/members")).length).toBe(1);
+
+    await vi.advanceTimersByTimeAsync(1);
+    await Promise.resolve();
+
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).startsWith("/api/v1/members")).length).toBe(2);
   });
 });

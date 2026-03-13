@@ -1,5 +1,7 @@
 import { useState } from "react";
 
+import { addMonthsToLocalDate, addDaysToLocalDate, formatLocalDate } from "../../../shared/date";
+
 export type MembershipPeriodPreset = "" | "1w" | "1m" | "3m" | "6m";
 
 export type MembershipDateFilterState = {
@@ -8,26 +10,17 @@ export type MembershipDateFilterState = {
   dateTo: string;
 };
 
-function formatDate(value: Date) {
-  return value.toISOString().slice(0, 10);
-}
-
-function addPresetDuration(base: Date, preset: Exclude<MembershipPeriodPreset, "">) {
-  const next = new Date(base);
+function addPresetDuration(dateText: string, preset: Exclude<MembershipPeriodPreset, "">) {
   if (preset === "1w") {
-    next.setDate(next.getDate() + 7);
-    return next;
+    return addDaysToLocalDate(dateText, 7);
   }
   if (preset === "1m") {
-    next.setMonth(next.getMonth() + 1);
-    return next;
+    return addMonthsToLocalDate(dateText, 1);
   }
   if (preset === "3m") {
-    next.setMonth(next.getMonth() + 3);
-    return next;
+    return addMonthsToLocalDate(dateText, 3);
   }
-  next.setMonth(next.getMonth() + 6);
-  return next;
+  return addMonthsToLocalDate(dateText, 6);
 }
 
 export function useMembershipDateFilter() {
@@ -44,10 +37,11 @@ export function useMembershipDateFilter() {
     }
 
     const today = new Date();
+    const todayText = formatLocalDate(today);
     setDateFilter({
       presetRange: preset,
-      dateFrom: formatDate(today),
-      dateTo: formatDate(addPresetDuration(today, preset))
+      dateFrom: todayText,
+      dateTo: addPresetDuration(todayText, preset)
     });
   }
 

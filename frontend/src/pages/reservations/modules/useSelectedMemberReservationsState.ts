@@ -1,7 +1,6 @@
 import { useRef, useState } from "react";
 
 import { apiGet, apiPost, isMockApiMode } from "../../../api/client";
-import { createMockReservation, patchMockReservation } from "../../../api/mockData";
 import { invalidateQueryDomains, useQueryInvalidationVersion } from "../../../api/queryInvalidation";
 import type { ReservationRow } from "../../members/modules/types";
 
@@ -75,6 +74,7 @@ export function useSelectedMemberReservationsState() {
       return response.data;
     }
 
+    const { createMockReservation } = await import("../../../api/mockData");
     const reservation = createMockReservation(input);
     setSelectedMemberReservations((prev) => [reservation, ...prev]);
     invalidateQueryDomains(["reservationTargets", "selectedMemberReservations"]);
@@ -89,6 +89,7 @@ export function useSelectedMemberReservationsState() {
       return response.data;
     }
 
+    const { patchMockReservation } = await import("../../../api/mockData");
     const nextReservation = patchMockReservation(memberId, reservationId, (reservation) => ({
       ...reservation,
       checkedInAt: reservation.checkedInAt ?? new Date().toISOString()
@@ -109,6 +110,7 @@ export function useSelectedMemberReservationsState() {
       return response.data.reservation;
     }
 
+    const { patchMockReservation } = await import("../../../api/mockData");
     const nextReservation = patchMockReservation(memberId, reservationId, (reservation) => ({
       ...reservation,
       reservationStatus: "COMPLETED",
@@ -132,6 +134,7 @@ export function useSelectedMemberReservationsState() {
       return response.data;
     }
 
+    const { patchMockReservation } = await import("../../../api/mockData");
     const nextReservation = patchMockReservation(memberId, reservationId, (reservation) => ({
       ...reservation,
       reservationStatus: "CANCELLED",
@@ -153,6 +156,7 @@ export function useSelectedMemberReservationsState() {
       return response.data;
     }
 
+    const { patchMockReservation } = await import("../../../api/mockData");
     const nextReservation = patchMockReservation(memberId, reservationId, (reservation) => ({
       ...reservation,
       reservationStatus: "NO_SHOW",

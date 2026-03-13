@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { MembershipPaymentRecord, PurchasedMembership } from "../../members/modules/types";
 import type { ProductRecord } from "../../products/modules/types";
+import { addDaysToLocalDate, todayLocalDate } from "../../../shared/date";
 
 type PaymentMethod = "CASH" | "CARD" | "TRANSFER" | "ETC";
 
@@ -88,7 +89,7 @@ type UseMembershipPrototypeStateArgs = {
 };
 
 function todayText() {
-  return new Date().toISOString().slice(0, 10);
+  return todayLocalDate();
 }
 
 function nowText() {
@@ -96,9 +97,7 @@ function nowText() {
 }
 
 function addDays(dateText: string, days: number) {
-  const next = new Date(`${dateText}T00:00:00`);
-  next.setDate(next.getDate() + days);
-  return next.toISOString().slice(0, 10);
+  return addDaysToLocalDate(dateText, days);
 }
 
 function dateDiffInDays(startDate: string, endDate: string) {

@@ -1,7 +1,6 @@
 import { useRef, useState } from "react";
 
 import { apiGet, apiPost, isMockApiMode } from "../../../api/client";
-import { createMockMembership, patchMockMembership } from "../../../api/mockData";
 import { invalidateQueryDomains, useQueryInvalidationVersion } from "../../../api/queryInvalidation";
 import type { MembershipPaymentRecord, PurchasedMembership } from "../../members/modules/types";
 
@@ -170,6 +169,7 @@ export function useSelectedMemberMembershipsQuery() {
       return response.data;
     }
 
+    const { createMockMembership } = await import("../../../api/mockData");
     const membership = createMockMembership(input);
     membershipIdSeedRef.current = Math.max(membershipIdSeedRef.current + 1, membership.membershipId);
     appendMembership(membership);
@@ -218,6 +218,7 @@ export function useSelectedMemberMembershipsQuery() {
       return response.data;
     }
 
+    const { patchMockMembership } = await import("../../../api/mockData");
     const nextMembership =
       patchMockMembership(membership.memberId, membership.membershipId, (current) => ({
         ...current,
@@ -261,6 +262,7 @@ export function useSelectedMemberMembershipsQuery() {
       return response.data;
     }
 
+    const { patchMockMembership } = await import("../../../api/mockData");
     const nextMembership =
       patchMockMembership(membership.memberId, membership.membershipId, (current) => ({
         ...current,
@@ -340,6 +342,7 @@ export function useSelectedMemberMembershipsQuery() {
     }
 
     const calculation = await previewMembershipRefund(membership, { refundDate: input.refundDate });
+    const { patchMockMembership } = await import("../../../api/mockData");
     const nextMembership =
       patchMockMembership(membership.memberId, membership.membershipId, (current) => ({
         ...current,

@@ -4,6 +4,7 @@ import { formatDate } from "../../shared/format";
 import { useDebouncedValue } from "../../shared/hooks/useDebouncedValue";
 import { usePagination } from "../../shared/hooks/usePagination";
 import { PaginationControls } from "../../shared/ui/PaginationControls";
+import { todayLocalDate } from "../../shared/date";
 import { useSelectedMemberMembershipsQuery } from "../member-context/modules/useSelectedMemberMembershipsQuery";
 import { SelectedMemberContextBadge } from "../members/components/SelectedMemberContextBadge";
 import { useSelectedMemberStore } from "../members/modules/SelectedMemberContext";
@@ -87,7 +88,7 @@ export default function ReservationsPage() {
     resetDeps: [reservationSchedules.length]
   });
 
-  const businessDateText = new Date().toISOString().slice(0, 10);
+  const businessDateText = todayLocalDate();
   const reservableMemberships = selectedMemberMemberships.filter((membership) =>
     isMembershipReservableOn(membership, businessDateText)
   );

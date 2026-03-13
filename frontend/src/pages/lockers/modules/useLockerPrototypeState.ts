@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 
 import { apiPost, isMockApiMode } from "../../../api/client";
-import { createMockLockerAssignment, returnMockLockerAssignment } from "../../../api/mockData";
 import { invalidateQueryDomains } from "../../../api/queryInvalidation";
 import { createEmptyLockerAssignForm, type LockerAssignForm, type LockerFilters } from "./types";
 
@@ -40,13 +39,15 @@ export function useLockerPrototypeState(selectedMemberId?: number | null) {
       }
 
       const result = useMockMutations
-        ? createMockLockerAssignment({
-            lockerSlotId: Number(lockerAssignForm.lockerSlotId),
-            memberId: Number(lockerAssignForm.memberId),
-            startDate: lockerAssignForm.startDate,
-            endDate: lockerAssignForm.endDate,
-            memo: lockerAssignForm.memo.trim() || null
-          })
+        ? await import("../../../api/mockData").then(({ createMockLockerAssignment }) =>
+            createMockLockerAssignment({
+              lockerSlotId: Number(lockerAssignForm.lockerSlotId),
+              memberId: Number(lockerAssignForm.memberId),
+              startDate: lockerAssignForm.startDate,
+              endDate: lockerAssignForm.endDate,
+              memo: lockerAssignForm.memo.trim() || null
+            })
+          )
         : await apiPost("/api/v1/lockers/assignments", {
             lockerSlotId: Number(lockerAssignForm.lockerSlotId),
             memberId: Number(lockerAssignForm.memberId),
@@ -72,7 +73,9 @@ export function useLockerPrototypeState(selectedMemberId?: number | null) {
     setLockerReturnSubmittingId(lockerAssignmentId);
     try {
       const result = useMockMutations
-        ? returnMockLockerAssignment(lockerAssignmentId)
+        ? await import("../../../api/mockData").then(({ returnMockLockerAssignment }) =>
+            returnMockLockerAssignment(lockerAssignmentId)
+          )
         : await apiPost(`/api/v1/lockers/assignments/${lockerAssignmentId}/return`, {});
       invalidateQueryDomains(["lockerSlots", "lockerAssignments"]);
       if ("ok" in result && !result.ok) {

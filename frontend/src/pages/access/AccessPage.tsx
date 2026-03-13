@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import { useAuthState } from "../../app/auth";
 import { formatDate } from "../../shared/format";
+import { useDebouncedValue } from "../../shared/hooks/useDebouncedValue";
 import { usePagination } from "../../shared/hooks/usePagination";
 import { PaginationControls } from "../../shared/ui/PaginationControls";
 import { SelectedMemberContextBadge } from "../members/components/SelectedMemberContextBadge";
@@ -31,6 +32,7 @@ export default function AccessPage() {
   const { authUser, isMockMode } = useAuthState();
   const { selectedMember, selectedMemberId, selectMember } = useSelectedMemberStore();
   const [accessMemberQuery, setAccessMemberQuery] = useState("");
+  const debouncedAccessMemberQuery = useDebouncedValue(accessMemberQuery, 250);
   const {
     members,
     membersLoading,
@@ -91,8 +93,8 @@ export default function AccessPage() {
     if (!isLiveAccessRoleSupported) {
       return;
     }
-    void loadMembers({ name: accessMemberQuery, phone: accessMemberQuery });
-  }, [accessMemberQuery, isLiveAccessRoleSupported]);
+    void loadMembers({ name: debouncedAccessMemberQuery, phone: debouncedAccessMemberQuery });
+  }, [debouncedAccessMemberQuery, isLiveAccessRoleSupported]);
 
   useEffect(() => {
     if (!isLiveAccessRoleSupported) {

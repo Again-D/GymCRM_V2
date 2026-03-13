@@ -1,7 +1,6 @@
 import { useState } from "react";
 
 import { apiPost, isMockApiMode } from "../../../api/client";
-import { createMockAccessEntry, createMockAccessExit } from "../../../api/mockData";
 import { invalidateQueryDomains } from "../../../api/queryInvalidation";
 import type { AccessEventRow } from "./types";
 
@@ -31,6 +30,7 @@ export function useAccessPrototypeState() {
         return true;
       }
 
+      const { createMockAccessEntry } = await import("../../../api/mockData");
       const result = createMockAccessEntry(memberId);
       invalidateQueryDomains(["accessPresence", "accessEvents"]);
       if (!result.ok) {
@@ -57,6 +57,7 @@ export function useAccessPrototypeState() {
         return true;
       }
 
+      const { createMockAccessExit } = await import("../../../api/mockData");
       const result = createMockAccessExit(memberId);
       invalidateQueryDomains(["accessPresence", "accessEvents"]);
       if (!result.ok) {

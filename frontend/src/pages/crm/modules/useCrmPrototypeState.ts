@@ -2,7 +2,6 @@ import { useState } from "react";
 
 import { apiPost, isMockApiMode } from "../../../api/client";
 import { invalidateQueryDomains } from "../../../api/queryInvalidation";
-import { processMockCrmQueue, triggerMockCrmExpiryReminder } from "../../../api/mockData";
 import { createDefaultCrmFilters } from "./types";
 
 export function useCrmPrototypeState() {
@@ -30,7 +29,9 @@ export function useCrmPrototypeState() {
     setCrmTriggerSubmitting(true);
     try {
       const result = useMockMutations
-        ? triggerMockCrmExpiryReminder(daysAhead)
+        ? await import("../../../api/mockData").then(({ triggerMockCrmExpiryReminder }) =>
+            triggerMockCrmExpiryReminder(daysAhead)
+          )
         : await apiPost("/api/v1/crm/messages/triggers/membership-expiry-reminder", {
             daysAhead
           });
@@ -47,7 +48,7 @@ export function useCrmPrototypeState() {
     setCrmProcessSubmitting(true);
     try {
       const result = useMockMutations
-        ? processMockCrmQueue()
+        ? await import("../../../api/mockData").then(({ processMockCrmQueue }) => processMockCrmQueue())
         : await apiPost("/api/v1/crm/messages/process", {
             limit: 100
           });

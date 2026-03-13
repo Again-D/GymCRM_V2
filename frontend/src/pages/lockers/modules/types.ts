@@ -1,3 +1,5 @@
+import { todayLocalDate } from "../../../shared/date";
+
 export type LockerStatus = "AVAILABLE" | "ASSIGNED" | "MAINTENANCE";
 
 export type LockerSlot = {
@@ -47,7 +49,7 @@ export type LockerAssignForm = {
 };
 
 export function createEmptyLockerAssignForm(selectedMemberId?: number | null): LockerAssignForm {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayLocalDate();
   return {
     lockerSlotId: "",
     memberId: selectedMemberId ? String(selectedMemberId) : "",

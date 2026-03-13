@@ -1,3 +1,5 @@
+import { startOfMonthLocalDate, todayLocalDate } from "../../../shared/date";
+
 export type SettlementPaymentMethod = "" | "CASH" | "CARD" | "TRANSFER" | "ETC";
 
 export type SettlementReportFilters = {
@@ -28,9 +30,9 @@ export type SettlementReport = {
 };
 
 export function createDefaultSettlementFilters(): SettlementReportFilters {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayLocalDate();
   return {
-    startDate: `${today.slice(0, 8)}01`,
+    startDate: startOfMonthLocalDate(today),
     endDate: today,
     paymentMethod: "",
     productKeyword: ""
