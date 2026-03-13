@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { apiGet, apiPost, isMockApiMode } from "../../../api/client";
 import { invalidateQueryDomains, useQueryInvalidationVersion } from "../../../api/queryInvalidation";
@@ -19,7 +19,7 @@ export function useSelectedMemberReservationsState() {
   const useMockMutations = isMockApiMode();
   const selectedMemberReservationsVersion = useQueryInvalidationVersion("selectedMemberReservations");
 
-  async function loadSelectedMemberReservations(memberId: number) {
+  const loadSelectedMemberReservations = useCallback(async (memberId: number) => {
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
     setSelectedMemberReservationsLoading(true);
@@ -37,21 +37,21 @@ export function useSelectedMemberReservationsState() {
       if (requestIdRef.current !== requestId) {
         return;
       }
-      setSelectedMemberReservations([]);
+      setSelectedMemberReservations((prev) => (prev.length === 0 ? prev : []));
       setSelectedMemberReservationsError(error instanceof Error ? error.message : "예약 이력을 불러오지 못했습니다.");
     } finally {
       if (requestIdRef.current === requestId) {
         setSelectedMemberReservationsLoading(false);
       }
     }
-  }
+  }, [selectedMemberReservationsVersion]);
 
-  function resetSelectedMemberReservationsState() {
+  const resetSelectedMemberReservationsState = useCallback(() => {
     requestIdRef.current += 1;
-    setSelectedMemberReservations([]);
+    setSelectedMemberReservations((prev) => (prev.length === 0 ? prev : []));
     setSelectedMemberReservationsLoading(false);
     setSelectedMemberReservationsError(null);
-  }
+  }, []);
 
   function replaceReservation(nextReservation: ReservationRow) {
     setSelectedMemberReservations((prev) =>
@@ -61,7 +61,7 @@ export function useSelectedMemberReservationsState() {
     );
   }
 
-  async function createReservation(input: CreateReservationInput) {
+  const createReservation = useCallback(async (input: CreateReservationInput) => {
     if (!useMockMutations) {
       const response = await apiPost<ReservationRow>("/api/v1/reservations", {
         memberId: input.memberId,
@@ -79,9 +79,9 @@ export function useSelectedMemberReservationsState() {
     setSelectedMemberReservations((prev) => [reservation, ...prev]);
     invalidateQueryDomains(["reservationTargets", "selectedMemberReservations"]);
     return reservation;
-  }
+  }, [useMockMutations]);
 
-  async function checkInReservation(memberId: number, reservationId: number) {
+  const checkInReservation = useCallback(async (memberId: number, reservationId: number) => {
     if (!useMockMutations) {
       const response = await apiPost<ReservationRow>(`/api/v1/reservations/${reservationId}/check-in`);
       replaceReservation(response.data);
@@ -100,9 +100,9 @@ export function useSelectedMemberReservationsState() {
     replaceReservation(nextReservation);
     invalidateQueryDomains(["selectedMemberReservations"]);
     return nextReservation;
-  }
+  }, [useMockMutations]);
 
-  async function completeReservation(memberId: number, reservationId: number) {
+  const completeReservation = useCallback(async (memberId: number, reservationId: number) => {
     if (!useMockMutations) {
       const response = await apiPost<{ reservation: ReservationRow }>(`/api/v1/reservations/${reservationId}/complete`);
       replaceReservation(response.data.reservation);
@@ -122,9 +122,9 @@ export function useSelectedMemberReservationsState() {
     replaceReservation(nextReservation);
     invalidateQueryDomains(["reservationTargets", "selectedMemberReservations", "selectedMemberMemberships"]);
     return nextReservation;
-  }
+  }, [useMockMutations]);
 
-  async function cancelReservation(memberId: number, reservationId: number) {
+  const cancelReservation = useCallback(async (memberId: number, reservationId: number) => {
     if (!useMockMutations) {
       const response = await apiPost<ReservationRow>(`/api/v1/reservations/${reservationId}/cancel`, {
         cancelReason: null
@@ -146,9 +146,9 @@ export function useSelectedMemberReservationsState() {
     replaceReservation(nextReservation);
     invalidateQueryDomains(["reservationTargets", "selectedMemberReservations"]);
     return nextReservation;
-  }
+  }, [useMockMutations]);
 
-  async function noShowReservation(memberId: number, reservationId: number) {
+  const noShowReservation = useCallback(async (memberId: number, reservationId: number) => {
     if (!useMockMutations) {
       const response = await apiPost<ReservationRow>(`/api/v1/reservations/${reservationId}/no-show`);
       replaceReservation(response.data);
@@ -168,7 +168,7 @@ export function useSelectedMemberReservationsState() {
     replaceReservation(nextReservation);
     invalidateQueryDomains(["reservationTargets", "selectedMemberReservations", "selectedMemberMemberships"]);
     return nextReservation;
-  }
+  }, [useMockMutations]);
 
   return {
     selectedMemberReservations,

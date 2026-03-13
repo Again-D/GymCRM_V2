@@ -25,7 +25,7 @@ export function useReservationSchedulesQuery() {
       if (requestIdRef.current !== requestId) {
         return;
       }
-      setReservationSchedules([]);
+      setReservationSchedules((prev) => (prev.length === 0 ? prev : []));
       setReservationSchedulesError(error instanceof Error ? error.message : "예약 스케줄을 불러오지 못했습니다.");
     } finally {
       if (requestIdRef.current === requestId) {
@@ -36,7 +36,7 @@ export function useReservationSchedulesQuery() {
 
   const resetReservationSchedulesQuery = useCallback(() => {
     requestIdRef.current += 1;
-    setReservationSchedules([]);
+    setReservationSchedules((prev) => (prev.length === 0 ? prev : []));
     setReservationSchedulesLoading(false);
     setReservationSchedulesError(null);
   }, []);

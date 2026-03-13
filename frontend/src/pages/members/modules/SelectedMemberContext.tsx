@@ -1,4 +1,4 @@
-import { createContext, type PropsWithChildren, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { apiGet } from "../../../api/client";
 import { useAuthState } from "../../../app/auth";
@@ -25,7 +25,7 @@ export function SelectedMemberProvider({ children }: PropsWithChildren) {
   const requestIdRef = useRef(0);
   const authIdentityKeyRef = useRef<string | null>(null);
 
-  async function selectMember(memberId: number) {
+  const selectMember = useCallback(async (memberId: number) => {
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
     setSelectedMemberLoading(true);
@@ -62,15 +62,15 @@ export function SelectedMemberProvider({ children }: PropsWithChildren) {
         setSelectedMemberLoading(false);
       }
     }
-  }
+  }, [authUser]);
 
-  function clearSelectedMember() {
+  const clearSelectedMember = useCallback(() => {
     requestIdRef.current += 1;
     setSelectedMemberId(null);
     setSelectedMember(null);
     setSelectedMemberLoading(false);
     setSelectedMemberError(null);
-  }
+  }, []);
 
   useEffect(() => {
     const nextAuthIdentityKey = authUser ? `${authUser.userId}:${authUser.role}` : "anonymous";
@@ -100,7 +100,7 @@ export function SelectedMemberProvider({ children }: PropsWithChildren) {
       selectMember,
       clearSelectedMember
     }),
-    [selectedMemberId, selectedMember, selectedMemberLoading, selectedMemberError]
+    [selectedMemberId, selectedMember, selectedMemberLoading, selectedMemberError, selectMember, clearSelectedMember]
   );
 
   return <SelectedMemberContext.Provider value={value}>{children}</SelectedMemberContext.Provider>;

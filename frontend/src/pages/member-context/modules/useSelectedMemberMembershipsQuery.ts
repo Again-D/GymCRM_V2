@@ -128,7 +128,7 @@ export function useSelectedMemberMembershipsQuery() {
       if (requestIdRef.current !== requestId) {
         return;
       }
-      setSelectedMemberMemberships([]);
+      setSelectedMemberMemberships((prev) => (prev.length === 0 ? prev : []));
       setSelectedMemberMembershipsError(error instanceof Error ? error.message : "회원권 목록을 불러오지 못했습니다.");
     } finally {
       if (requestIdRef.current === requestId) {
@@ -139,7 +139,7 @@ export function useSelectedMemberMembershipsQuery() {
 
   const resetSelectedMemberMembershipsQuery = useCallback(() => {
     requestIdRef.current += 1;
-    setSelectedMemberMemberships([]);
+    setSelectedMemberMemberships((prev) => (prev.length === 0 ? prev : []));
     setSelectedMemberMembershipsLoading(false);
     setSelectedMemberMembershipsError(null);
   }, []);

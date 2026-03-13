@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import { createDefaultSettlementFilters, type SettlementReportFilters } from "./types";
 
@@ -7,15 +7,15 @@ export function useSettlementPrototypeState() {
   const [settlementPanelMessage, setSettlementPanelMessage] = useState<string | null>(null);
   const [settlementPanelError, setSettlementPanelError] = useState<string | null>(null);
 
-  function clearSettlementFeedback() {
+  const clearSettlementFeedback = useCallback(() => {
     setSettlementPanelMessage(null);
     setSettlementPanelError(null);
-  }
+  }, []);
 
-  function resetSettlementWorkspace() {
+  const resetSettlementWorkspace = useCallback(() => {
     setSettlementFilters(createDefaultSettlementFilters());
     clearSettlementFeedback();
-  }
+  }, [clearSettlementFeedback]);
 
   return {
     settlementFilters,

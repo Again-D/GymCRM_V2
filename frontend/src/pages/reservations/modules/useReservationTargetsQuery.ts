@@ -54,7 +54,7 @@ export function useReservationTargetsQuery() {
         if (requestIdRef.current !== requestId) {
           return;
         }
-        setReservationTargets(cacheRef.current.get(cacheKey) ?? []);
+        setReservationTargets((prev) => (prev.length === 0 ? prev : (cacheRef.current.get(cacheKey) ?? [])));
         return;
       }
 
@@ -75,7 +75,7 @@ export function useReservationTargetsQuery() {
         return;
       }
       cacheRef.current.set(cacheKey, scopedTargets);
-      setReservationTargets(scopedTargets);
+      setReservationTargets((prev) => (scopedTargets.length === 0 && prev.length === 0 ? prev : scopedTargets));
     } catch (error) {
       if (requestIdRef.current !== requestId) {
         return;

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 
 import { usePagination } from "../../shared/hooks/usePagination";
 import { PaginationControls } from "../../shared/ui/PaginationControls";
@@ -61,10 +61,10 @@ export default function SettlementsPage() {
     setSettlementPanelError(settlementReportError);
   }, [setSettlementPanelError, settlementReportError]);
 
-  async function reloadReport(filters = settlementFilters) {
+  const reloadReport = useCallback(async (filters = settlementFilters) => {
     clearSettlementFeedback();
     await loadSettlementReport(filters);
-  }
+  }, [clearSettlementFeedback, loadSettlementReport, settlementFilters]);
 
   return (
     <section className={styles["members-prototype-layout"]}>

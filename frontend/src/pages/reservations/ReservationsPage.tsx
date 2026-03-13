@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { formatDate } from "../../shared/format";
 import { useDebouncedValue } from "../../shared/hooks/useDebouncedValue";
@@ -143,16 +143,16 @@ export default function ReservationsPage() {
     selectedMemberId
   ]);
 
-  function clearPanelFeedback() {
+  const clearPanelFeedback = useCallback(() => {
     setReservationPanelMessage(null);
     setReservationPanelError(null);
-  }
+  }, []);
 
   function scheduleForReservation(reservation: ReservationRow) {
     return reservationSchedules.find((schedule) => schedule.scheduleId === reservation.scheduleId) ?? null;
   }
 
-  async function handleReservationCreateSubmit(event: React.FormEvent<HTMLFormElement>) {
+  const handleReservationCreateSubmit = useCallback(async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     clearPanelFeedback();
 
@@ -192,15 +192,27 @@ export default function ReservationsPage() {
     } catch (error) {
       setReservationPanelError(error instanceof Error ? error.message : "예약 생성에 실패했습니다.");
     }
-  }
+  }, [
+    clearPanelFeedback,
+    createReservation,
+    debouncedReservationTargetsKeyword,
+    loadReservationSchedules,
+    loadReservationTargets,
+    loadSelectedMemberMemberships,
+    loadSelectedMemberReservations,
+    reservableMemberships,
+    reservationCreateForm,
+    reservationSchedules,
+    selectedMemberId
+  ]);
 
-  async function mutateReservation(
+  const mutateReservation = useCallback(async (
     reservationId: number,
     actionName: string,
     mutate: () => Promise<void>,
     canMutate: boolean,
     errorMessage: string
-  ) {
+  ) => {
     clearPanelFeedback();
     if (!canMutate) {
       setReservationPanelError(errorMessage);
@@ -221,7 +233,14 @@ export default function ReservationsPage() {
     } catch (error) {
       setReservationPanelError(error instanceof Error ? error.message : `${actionName}에 실패했습니다.`);
     }
-  }
+  }, [
+    clearPanelFeedback,
+    debouncedReservationTargetsKeyword,
+    loadReservationTargets,
+    loadSelectedMemberMemberships,
+    loadSelectedMemberReservations,
+    selectedMemberId
+  ]);
 
   return (
     <section className={styles["members-prototype-layout"]}>
