@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { apiPost, isMockApiMode } from "../../../api/client";
 import { createMockLockerAssignment, returnMockLockerAssignment } from "../../../api/mockData";
 import { invalidateQueryDomains } from "../../../api/queryInvalidation";
 import { createEmptyLockerAssignForm, type LockerAssignForm, type LockerFilters } from "./types";
@@ -14,6 +15,7 @@ export function useLockerPrototypeState(selectedMemberId?: number | null) {
   const [lockerReturnSubmittingId, setLockerReturnSubmittingId] = useState<number | null>(null);
   const [lockerPanelMessage, setLockerPanelMessage] = useState<string | null>(null);
   const [lockerPanelError, setLockerPanelError] = useState<string | null>(null);
+  const useMockMutations = isMockApiMode();
 
   useEffect(() => {
     setLockerAssignForm(createEmptyLockerAssignForm(selectedMemberId));
@@ -37,15 +39,23 @@ export function useLockerPrototypeState(selectedMemberId?: number | null) {
         return false;
       }
 
-      const result = createMockLockerAssignment({
-        lockerSlotId: Number(lockerAssignForm.lockerSlotId),
-        memberId: Number(lockerAssignForm.memberId),
-        startDate: lockerAssignForm.startDate,
-        endDate: lockerAssignForm.endDate,
-        memo: lockerAssignForm.memo.trim() || null
-      });
+      const result = useMockMutations
+        ? createMockLockerAssignment({
+            lockerSlotId: Number(lockerAssignForm.lockerSlotId),
+            memberId: Number(lockerAssignForm.memberId),
+            startDate: lockerAssignForm.startDate,
+            endDate: lockerAssignForm.endDate,
+            memo: lockerAssignForm.memo.trim() || null
+          })
+        : await apiPost("/api/v1/lockers/assignments", {
+            lockerSlotId: Number(lockerAssignForm.lockerSlotId),
+            memberId: Number(lockerAssignForm.memberId),
+            startDate: lockerAssignForm.startDate,
+            endDate: lockerAssignForm.endDate,
+            memo: lockerAssignForm.memo.trim() || null
+          });
       invalidateQueryDomains(["lockerSlots", "lockerAssignments"]);
-      if (!result.ok) {
+      if ("ok" in result && !result.ok) {
         setLockerPanelError(result.message);
         return false;
       }
@@ -61,9 +71,11 @@ export function useLockerPrototypeState(selectedMemberId?: number | null) {
     clearLockerFeedback();
     setLockerReturnSubmittingId(lockerAssignmentId);
     try {
-      const result = returnMockLockerAssignment(lockerAssignmentId);
+      const result = useMockMutations
+        ? returnMockLockerAssignment(lockerAssignmentId)
+        : await apiPost(`/api/v1/lockers/assignments/${lockerAssignmentId}/return`, {});
       invalidateQueryDomains(["lockerSlots", "lockerAssignments"]);
-      if (!result.ok) {
+      if ("ok" in result && !result.ok) {
         setLockerPanelError(result.message);
         return false;
       }

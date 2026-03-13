@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { apiPatch, apiPost, isMockApiMode } from "../../../api/client";
 import { createMockProduct, toggleMockProductStatus, updateMockProduct } from "../../../api/mockData";
 import { invalidateQueryDomains } from "../../../api/queryInvalidation";
 import {
@@ -69,6 +70,7 @@ export function useProductPrototypeState() {
   const [productPanelError, setProductPanelError] = useState<string | null>(null);
   const [productFormMessage, setProductFormMessage] = useState<string | null>(null);
   const [productFormError, setProductFormError] = useState<string | null>(null);
+  const useMockMutations = isMockApiMode();
 
   function clearProductFeedback() {
     setProductPanelMessage(null);
@@ -124,15 +126,27 @@ export function useProductPrototypeState() {
     try {
       let nextProduct: ProductRecord | null;
       if (productFormMode === "create") {
-        nextProduct = createMockProduct(parsed.value);
-        setProductPanelMessage(`상품 #${nextProduct.productId}를 생성했습니다.`);
-      } else if (selectedProductId != null) {
-        nextProduct = updateMockProduct(selectedProductId, (current) => ({ ...current, ...parsed.value }));
-        if (!nextProduct) {
-          setProductFormError("수정할 상품을 찾을 수 없습니다.");
-          return null;
+        if (useMockMutations) {
+          nextProduct = createMockProduct(parsed.value);
+          setProductPanelMessage(`상품 #${nextProduct.productId}를 생성했습니다.`);
+        } else {
+          const response = await apiPost<ProductRecord>("/api/v1/products", parsed.value);
+          nextProduct = response.data;
+          setProductPanelMessage(response.message);
         }
-        setProductPanelMessage(`상품 #${nextProduct.productId}를 수정했습니다.`);
+      } else if (selectedProductId != null) {
+        if (useMockMutations) {
+          nextProduct = updateMockProduct(selectedProductId, (current) => ({ ...current, ...parsed.value }));
+          if (!nextProduct) {
+            setProductFormError("수정할 상품을 찾을 수 없습니다.");
+            return null;
+          }
+          setProductPanelMessage(`상품 #${nextProduct.productId}를 수정했습니다.`);
+        } else {
+          const response = await apiPatch<ProductRecord>(`/api/v1/products/${selectedProductId}`, parsed.value);
+          nextProduct = response.data;
+          setProductPanelMessage(response.message);
+        }
       } else {
         setProductFormError("수정할 상품이 선택되지 않았습니다.");
         return null;
@@ -159,15 +173,25 @@ export function useProductPrototypeState() {
 
     setProductFormSubmitting(true);
     try {
-      const nextProduct = toggleMockProductStatus(selectedProductId);
-      if (!nextProduct) {
-        setProductPanelError("상태를 변경할 상품을 찾을 수 없습니다.");
-        return null;
+      let nextProduct: ProductRecord | null;
+      if (useMockMutations) {
+        nextProduct = toggleMockProductStatus(selectedProductId);
+        if (!nextProduct) {
+          setProductPanelError("상태를 변경할 상품을 찾을 수 없습니다.");
+          return null;
+        }
+        setProductPanelMessage(`상품 #${nextProduct.productId} 상태를 ${nextProduct.productStatus}로 변경했습니다.`);
+      } else {
+        const nextStatus = selectedProduct?.productStatus === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+        const response = await apiPatch<ProductRecord>(`/api/v1/products/${selectedProductId}/status`, {
+          productStatus: nextStatus
+        });
+        nextProduct = response.data;
+        setProductPanelMessage(response.message);
       }
       invalidateQueryDomains(["products"]);
       setSelectedProduct(nextProduct);
       setProductForm(createProductFormFromRecord(nextProduct));
-      setProductPanelMessage(`상품 #${nextProduct.productId} 상태를 ${nextProduct.productStatus}로 변경했습니다.`);
       return nextProduct;
     } finally {
       setProductFormSubmitting(false);

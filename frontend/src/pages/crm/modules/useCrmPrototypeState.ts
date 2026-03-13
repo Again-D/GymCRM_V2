@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { apiPost, isMockApiMode } from "../../../api/client";
 import { invalidateQueryDomains } from "../../../api/queryInvalidation";
 import { processMockCrmQueue, triggerMockCrmExpiryReminder } from "../../../api/mockData";
 import { createDefaultCrmFilters } from "./types";
@@ -11,6 +12,7 @@ export function useCrmPrototypeState() {
   const [crmProcessSubmitting, setCrmProcessSubmitting] = useState(false);
   const [crmPanelMessage, setCrmPanelMessage] = useState<string | null>(null);
   const [crmPanelError, setCrmPanelError] = useState<string | null>(null);
+  const useMockMutations = isMockApiMode();
 
   function clearCrmFeedback() {
     setCrmPanelMessage(null);
@@ -27,7 +29,11 @@ export function useCrmPrototypeState() {
 
     setCrmTriggerSubmitting(true);
     try {
-      const result = triggerMockCrmExpiryReminder(daysAhead);
+      const result = useMockMutations
+        ? triggerMockCrmExpiryReminder(daysAhead)
+        : await apiPost("/api/v1/crm/messages/triggers/membership-expiry-reminder", {
+            daysAhead
+          });
       invalidateQueryDomains(["crmHistory", "crmQueue"]);
       setCrmPanelMessage(result.message);
       return true;
@@ -40,7 +46,11 @@ export function useCrmPrototypeState() {
     clearCrmFeedback();
     setCrmProcessSubmitting(true);
     try {
-      const result = processMockCrmQueue();
+      const result = useMockMutations
+        ? processMockCrmQueue()
+        : await apiPost("/api/v1/crm/messages/process", {
+            limit: 100
+          });
       invalidateQueryDomains(["crmHistory", "crmQueue"]);
       setCrmPanelMessage(result.message);
       return true;
