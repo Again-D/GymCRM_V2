@@ -3,6 +3,8 @@ import { NavLink, Outlet } from "react-router-dom";
 import { useAuthState } from "../../app/auth";
 import type { ShellRoute } from "../../app/routes";
 
+import styles from "./DashboardLayout.module.css";
+
 export default function DashboardLayout({ routes }: { routes: ShellRoute[] }) {
   const {
     authError,
@@ -16,10 +18,10 @@ export default function DashboardLayout({ routes }: { routes: ShellRoute[] }) {
   } = useAuthState();
 
   return (
-    <div className="app-shell">
-      <aside className="app-shell__sidebar">
-        <strong className="app-shell__brand">GymCRM Rebuild</strong>
-        <div className="auth-panel">
+    <div className={styles["app-shell"]}>
+      <aside className={styles["app-shell__sidebar"]}>
+        <strong className={styles["app-shell__brand"]}>GymCRM Rebuild</strong>
+        <div className={styles["auth-panel"]}>
           <small className="text-muted">{isMockMode ? "Runtime Auth Preset" : "Live Auth Session"}</small>
           <strong>{securityMode === "prototype" ? "Prototype" : authUser ? "JWT Authenticated" : "JWT Anonymous"}</strong>
           <span className="text-muted text-sm">
@@ -50,19 +52,19 @@ export default function DashboardLayout({ routes }: { routes: ShellRoute[] }) {
           {authStatusMessage ? <span className="text-success text-xs">{authStatusMessage}</span> : null}
           {authError ? <span className="text-danger text-xs">{authError}</span> : null}
         </div>
-        <nav className="app-nav">
+        <nav className={styles["app-nav"]}>
           {routes.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
-              className={({ isActive }) => `app-nav__link${isActive ? " is-active" : ""}`}
+              className={({ isActive }) => `${styles["app-nav__link"]}${isActive ? ` ${styles["is-active"]}` : ""}`}
             >
               {item.label}
             </NavLink>
           ))}
         </nav>
       </aside>
-      <main className="app-shell__main">
+      <main className={styles["app-shell__main"]}>
         <Outlet />
       </main>
     </div>

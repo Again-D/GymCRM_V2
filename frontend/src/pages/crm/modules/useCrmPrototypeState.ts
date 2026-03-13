@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import { apiPost, isMockApiMode } from "../../../api/client";
 import { invalidateQueryDomains } from "../../../api/queryInvalidation";
@@ -13,10 +13,10 @@ export function useCrmPrototypeState() {
   const [crmPanelError, setCrmPanelError] = useState<string | null>(null);
   const useMockMutations = isMockApiMode();
 
-  function clearCrmFeedback() {
+  const clearCrmFeedback = useCallback(() => {
     setCrmPanelMessage(null);
     setCrmPanelError(null);
-  }
+  }, []);
 
   async function triggerCrmExpiryReminder() {
     clearCrmFeedback();

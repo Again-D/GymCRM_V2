@@ -5,12 +5,16 @@ import { formatDate } from "../../shared/format";
 import { useDebouncedValue } from "../../shared/hooks/useDebouncedValue";
 import { usePagination } from "../../shared/hooks/usePagination";
 import { PaginationControls } from "../../shared/ui/PaginationControls";
+import { EmptyState } from "../../shared/ui/EmptyState";
+import { SkeletonLoader } from "../../shared/ui/SkeletonLoader";
 import { SelectedMemberContextBadge } from "../members/components/SelectedMemberContextBadge";
 import { useMembersQuery } from "../members/modules/useMembersQuery";
 import { useSelectedMemberStore } from "../members/modules/SelectedMemberContext";
 import type { MemberSummary } from "../members/modules/types";
 import { useAccessPrototypeState } from "./modules/useAccessPrototypeState";
 import { useAccessQueries } from "./modules/useAccessQueries";
+
+import styles from "./AccessPage.module.css";
 
 function formatDateTime(value: string | null) {
   if (!value) {
@@ -120,7 +124,7 @@ export default function AccessPage() {
   const selectedMemberInSearch = members.find((member) => member.memberId === selectedMemberId) ?? selectedMember;
 
   return (
-    <section className="members-prototype-layout">
+    <section className={styles["members-prototype-layout"]}>
       <article className="panel-card">
         <div className="panel-card-header">
           <div>
@@ -156,7 +160,7 @@ export default function AccessPage() {
               </p>
             </div>
           </div>
-          <div className="toolbar-actions">
+          <div className={styles["toolbar-actions"]}>
             <button
               type="button"
               className="primary-button"
@@ -188,7 +192,7 @@ export default function AccessPage() {
 
         <div className="selected-member-card mb-md">
           <h2>오늘 출입 요약</h2>
-          <dl className="selected-member-grid">
+          <dl className={styles["selected-member-grid"]}>
             <div>
               <dt>현재 입장중</dt>
               <dd>{accessPresence?.openSessionCount ?? 0}</dd>
@@ -208,7 +212,7 @@ export default function AccessPage() {
           </dl>
         </div>
 
-        <div className="placeholder-card">
+        <div className={styles["placeholder-card"]}>
           <h2>회원 검색 결과</h2>
           <label>
             회원 검색 (ID/이름/전화)
@@ -220,7 +224,7 @@ export default function AccessPage() {
             />
           </label>
           {membersQueryError ? <p className="error-text">{membersQueryError}</p> : null}
-          <div className="table-shell mt-sm">
+          <div className={`${styles["table-shell"]} mt-sm`}>
             <table className="members-table">
               <thead>
                 <tr>
@@ -235,12 +239,12 @@ export default function AccessPage() {
               <tbody>
                 {memberResultsPagination.pagedItems.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="empty-cell">
+                    <td colSpan={6} className={styles["empty-cell"]}>
                       {!isLiveAccessRoleSupported
                         ? "현재 역할에서는 live 출입 관리용 회원 검색을 제공하지 않습니다."
                         : membersLoading
-                          ? "조회 중..."
-                          : "검색 결과 회원이 없습니다."}
+                          ? <SkeletonLoader type="rectangular" height={40} />
+                          : <EmptyState message="검색 결과 회원이 없습니다." />}
                     </td>
                   </tr>
                 ) : (
@@ -276,7 +280,7 @@ export default function AccessPage() {
         </div>
       </article>
 
-      <aside className="selected-member-card panel-stack">
+      <aside className={`selected-member-card ${styles["panel-stack"]}`}>
         <section>
           <h2>현재 입장중 회원</h2>
           {accessQueryError ? <p className="error-text">{accessQueryError}</p> : null}
@@ -296,7 +300,9 @@ export default function AccessPage() {
                     <td colSpan={4} className="empty-cell">
                       {!isLiveAccessRoleSupported
                         ? "현재 역할에서는 live 입장 현황을 조회할 수 없습니다."
-                        : "현재 입장중 회원이 없습니다."}
+                        : accessPresenceLoading
+                          ? <SkeletonLoader type="rectangular" height={40} />
+                          : <EmptyState message="현재 입장중 회원이 없습니다." />}
                     </td>
                   </tr>
                 ) : (
@@ -327,7 +333,7 @@ export default function AccessPage() {
 
         <section>
           <h2>최근 출입 이벤트</h2>
-          <div className="table-shell">
+          <div className={styles["table-shell"]}>
             <table className="members-table">
               <thead>
                 <tr>
@@ -341,12 +347,12 @@ export default function AccessPage() {
               <tbody>
                 {accessEventsPagination.pagedItems.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="empty-cell">
+                    <td colSpan={5} className={styles["empty-cell"]}>
                       {!isLiveAccessRoleSupported
                         ? "현재 역할에서는 live 출입 이벤트를 조회할 수 없습니다."
                         : accessEventsLoading
-                          ? "출입 이벤트를 불러오는 중..."
-                          : "출입 이벤트가 없습니다."}
+                          ? <SkeletonLoader type="rectangular" height={40} />
+                          : <EmptyState message="출입 이벤트가 없습니다." />}
                     </td>
                   </tr>
                 ) : (

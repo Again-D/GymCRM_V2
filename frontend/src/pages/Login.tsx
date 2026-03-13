@@ -2,13 +2,15 @@ import { useState } from "react";
 
 import { useAuthState } from "../app/auth";
 
+import styles from "./Login.module.css";
+
 export default function Login() {
   const { authError, authStatusMessage, isMockMode, login, loginSubmitting, setRuntimeAuthPreset } = useAuthState();
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
 
   return (
-    <section className="login-shell">
+    <section className={styles["login-shell"]}>
       <h1>로그인</h1>
       {isMockMode ? (
         <>
