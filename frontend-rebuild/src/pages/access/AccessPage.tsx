@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 
+import { useAuthState } from "../../app/auth";
 import { formatDate } from "../../shared/format";
 import { usePagination } from "../../shared/hooks/usePagination";
 import { PaginationControls } from "../../shared/ui/PaginationControls";
-import { MemberContextFallback } from "../member-context/MemberContextFallback";
 import { SelectedMemberContextBadge } from "../members/components/SelectedMemberContextBadge";
 import { useMembersQuery } from "../members/modules/useMembersQuery";
 import { useSelectedMemberStore } from "../members/modules/SelectedMemberContext";
@@ -28,6 +28,7 @@ const eventLabel = {
 } as const;
 
 export default function AccessPage() {
+  const { authUser, isMockMode } = useAuthState();
   const { selectedMember, selectedMemberId, selectMember } = useSelectedMemberStore();
   const [accessMemberQuery, setAccessMemberQuery] = useState("");
   const {
@@ -62,6 +63,8 @@ export default function AccessPage() {
     handleAccessEntry,
     handleAccessExit
   } = useAccessPrototypeState();
+  const isLiveAccessRoleSupported =
+    isMockMode || authUser?.role === "ROLE_CENTER_ADMIN" || authUser?.role === "ROLE_DESK";
 
   const memberResultsPagination = usePagination(members, {
     initialPageSize: 10,
@@ -77,16 +80,23 @@ export default function AccessPage() {
   });
 
   useEffect(() => {
+    if (!isLiveAccessRoleSupported) {
+      return;
+    }
     void loadMembers({ name: accessMemberQuery, phone: accessMemberQuery });
-  }, [accessMemberQuery]);
+  }, [accessMemberQuery, isLiveAccessRoleSupported]);
 
   useEffect(() => {
+    if (!isLiveAccessRoleSupported) {
+      resetAccessQueries();
+      return;
+    }
     void loadAccessPresence();
     void loadAccessEvents(selectedMemberId);
     return () => {
       resetAccessQueries();
     };
-  }, [selectedMemberId]);
+  }, [selectedMemberId, isLiveAccessRoleSupported]);
 
   async function runAccessAction(action: () => Promise<boolean>) {
     const ok = await action();
@@ -98,16 +108,6 @@ export default function AccessPage() {
   }
 
   const selectedMemberInSearch = members.find((member) => member.memberId === selectedMemberId) ?? selectedMember;
-
-  if (!selectedMember) {
-    return (
-      <MemberContextFallback
-        title="출입 관리 프로토타입"
-        description="출입 관리는 선택된 회원 기준으로 빠른 입장/퇴장과 현재 입장중 현황을 다룹니다. 이 화면에서 바로 회원을 선택해 새 operational slice를 검증합니다."
-        submitLabel="이 회원으로 출입 관리"
-      />
-    );
-  }
 
   return (
     <section className="members-prototype-layout">
@@ -121,18 +121,36 @@ export default function AccessPage() {
 
         <SelectedMemberContextBadge />
 
+        {!isLiveAccessRoleSupported ? (
+          <div className="selected-member-card" style={{ marginBottom: 16 }}>
+            <div className="selected-member-card-header">
+              <div>
+                <h2>이 역할은 live 출입 관리 미지원</h2>
+                <p>
+                  현재 live backend는 출입 관리 읽기/쓰기 API를 관리자 또는 데스크 계정에만 열어두고 있습니다.
+                  트레이너 세션에서는 이 화면을 구조 검증용 blocker로만 유지합니다.
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         <div className="selected-member-card" style={{ marginBottom: 16 }}>
           <div className="selected-member-card-header">
             <div>
               <h2>선택 회원 출입 처리</h2>
-              <p>{selectedMemberInSearch ? `#${selectedMemberInSearch.memberId} ${selectedMemberInSearch.memberName}` : "선택 회원 없음"}</p>
+              <p>
+                {selectedMemberInSearch
+                  ? `#${selectedMemberInSearch.memberId} ${selectedMemberInSearch.memberName}`
+                  : "회원을 선택하면 입장/퇴장 액션을 빠르게 실행할 수 있습니다."}
+              </p>
             </div>
           </div>
           <div className="toolbar-actions">
             <button
               type="button"
               className="primary-button"
-              disabled={!selectedMemberId || accessActionSubmitting}
+              disabled={!selectedMemberId || accessActionSubmitting || !isLiveAccessRoleSupported}
               onClick={() => selectedMemberId && void runAccessAction(() => handleAccessEntry(selectedMemberId))}
             >
               {accessActionSubmitting ? "처리 중..." : "입장 처리"}
@@ -140,7 +158,7 @@ export default function AccessPage() {
             <button
               type="button"
               className="secondary-button"
-              disabled={!selectedMemberId || accessActionSubmitting}
+              disabled={!selectedMemberId || accessActionSubmitting || !isLiveAccessRoleSupported}
               onClick={() => selectedMemberId && void runAccessAction(() => handleAccessExit(selectedMemberId))}
             >
               퇴장 처리
@@ -149,7 +167,7 @@ export default function AccessPage() {
               type="button"
               className="secondary-button"
               onClick={() => void reloadAccessData(selectedMemberId)}
-              disabled={accessPresenceLoading || accessEventsLoading}
+              disabled={accessPresenceLoading || accessEventsLoading || !isLiveAccessRoleSupported}
             >
               {accessPresenceLoading || accessEventsLoading ? "새로고침 중..." : "새로고침"}
             </button>
@@ -184,7 +202,12 @@ export default function AccessPage() {
           <h2>회원 검색 결과</h2>
           <label>
             회원 검색 (ID/이름/전화)
-            <input value={accessMemberQuery} onChange={(event) => setAccessMemberQuery(event.target.value)} placeholder="예: 김민수, 010-1234" />
+            <input
+              value={accessMemberQuery}
+              onChange={(event) => setAccessMemberQuery(event.target.value)}
+              placeholder="예: 김민수, 010-1234"
+              disabled={!isLiveAccessRoleSupported}
+            />
           </label>
           {membersQueryError ? <p className="error-text">{membersQueryError}</p> : null}
           <div className="table-shell" style={{ marginTop: 12 }}>
@@ -203,7 +226,11 @@ export default function AccessPage() {
                 {memberResultsPagination.pagedItems.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="empty-cell">
-                      {membersLoading ? "조회 중..." : "검색 결과 회원이 없습니다."}
+                      {!isLiveAccessRoleSupported
+                        ? "현재 역할에서는 live 출입 관리용 회원 검색을 제공하지 않습니다."
+                        : membersLoading
+                          ? "조회 중..."
+                          : "검색 결과 회원이 없습니다."}
                     </td>
                   </tr>
                 ) : (
@@ -257,7 +284,9 @@ export default function AccessPage() {
                 {openSessionsPagination.pagedItems.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="empty-cell">
-                      현재 입장중 회원이 없습니다.
+                      {!isLiveAccessRoleSupported
+                        ? "현재 역할에서는 live 입장 현황을 조회할 수 없습니다."
+                        : "현재 입장중 회원이 없습니다."}
                     </td>
                   </tr>
                 ) : (
@@ -303,7 +332,11 @@ export default function AccessPage() {
                 {accessEventsPagination.pagedItems.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="empty-cell">
-                      {accessEventsLoading ? "출입 이벤트를 불러오는 중..." : "출입 이벤트가 없습니다."}
+                      {!isLiveAccessRoleSupported
+                        ? "현재 역할에서는 live 출입 이벤트를 조회할 수 없습니다."
+                        : accessEventsLoading
+                          ? "출입 이벤트를 불러오는 중..."
+                          : "출입 이벤트가 없습니다."}
                     </td>
                   </tr>
                 ) : (
