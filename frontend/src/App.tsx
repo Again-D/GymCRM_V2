@@ -38,6 +38,7 @@ import {
 import { useLockerQueries } from "./features/lockers/useLockerQueries";
 import { MemberManagementPanels } from "./features/members/MemberManagementPanels";
 import { MembersSection } from "./features/members/MembersSection";
+import { SelectedMemberOwnerProvider, useSelectedMemberOwner } from "./features/members/useSelectedMemberOwner";
 import { type MemberSummary, useMembersQuery } from "./features/members/useMembersQuery";
 import {
   createEmptyPurchaseForm,
@@ -514,8 +515,6 @@ export default function App() {
   const [memberProductFilter, setMemberProductFilter] = useState("");
   const [memberMembershipStatusFilter, setMemberMembershipStatusFilter] = useState("");
   const [trainerOptions, setTrainerOptions] = useState<TrainerSummary[]>([]);
-  const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
-  const [selectedMember, setSelectedMember] = useState<MemberDetail | null>(null);
   const [memberForm, setMemberForm] = useState<MemberFormState>(EMPTY_MEMBER_FORM);
   const [memberFormMode, setMemberFormMode] = useState<"create" | "edit">("create");
   const [memberFormOpen, setMemberFormOpen] = useState(false);
@@ -529,7 +528,6 @@ export default function App() {
   const [purchaseProductLoading, setPurchaseProductLoading] = useState(false);
   const [memberMembershipsByMemberId, setMemberMembershipsByMemberId] = useState<Record<number, PurchasedMembership[]>>({});
   const [memberPaymentsByMemberId, setMemberPaymentsByMemberId] = useState<Record<number, PurchasePayment[]>>({});
-  const memberDetailRequestIdRef = useRef(0);
   const workspaceMemberSearch = useWorkspaceMemberSearchLoader<MemberSummary>(async (keyword) => {
     const params = new URLSearchParams();
     if (keyword) {
@@ -538,6 +536,34 @@ export default function App() {
     const query = params.toString();
     const response = await apiGet<MemberSummary[]>(`/api/v1/members${query ? `?${query}` : ""}`);
     return response.data;
+  });
+  const {
+    securityMode,
+    prototypeNoAuth,
+    authBootstrapping,
+    authAccessToken,
+    authUser,
+    authStatusMessage,
+    authError,
+    loginSubmitting,
+    isPrototypeMode,
+    isJwtMode,
+    isAuthenticated,
+    login,
+    logout
+  } = useAuthSession({
+    formatError: errorMessage,
+    onProtectedUiReset: clearProtectedUiState
+  });
+  const {
+    selectedMemberId,
+    selectedMember,
+    selectedMemberLoading,
+    selectMember: selectSelectedMember,
+    clearSelectedMember,
+    replaceSelectedMember
+  } = useSelectedMemberOwner({
+    authUser
   });
   const membershipWorkspace = useMembershipWorkspaceState(selectedMemberId);
   const {
@@ -748,8 +774,7 @@ export default function App() {
   function clearProtectedUiState() {
     workspaceMemberSearch.invalidate();
     resetMembersQuery();
-    setSelectedMemberId(null);
-    setSelectedMember(null);
+    clearSelectedMember();
     setMemberForm({ ...EMPTY_MEMBER_FORM, joinDate: new Date().toISOString().slice(0, 10) });
     setMemberFormMode("create");
     setMemberFormOpen(false);
@@ -782,25 +807,6 @@ export default function App() {
     resetProductsQuery();
     productWorkspace.resetProductWorkspace();
   }
-
-  const {
-    securityMode,
-    prototypeNoAuth,
-    authBootstrapping,
-    authAccessToken,
-    authUser,
-    authStatusMessage,
-    authError,
-    loginSubmitting,
-    isPrototypeMode,
-    isJwtMode,
-    isAuthenticated,
-    login,
-    logout
-  } = useAuthSession({
-    formatError: errorMessage,
-    onProtectedUiReset: clearProtectedUiState
-  });
 
   const routePreview = routePreviewRoutes.slice(0, 4);
   const activeProductsForPurchase = useMemo(
@@ -890,30 +896,16 @@ export default function App() {
     workspaceMemberSearch.invalidate();
   }
 
-  async function loadMemberDetail(memberId: number, options?: { syncForm?: boolean }): Promise<boolean> {
-    const requestId = memberDetailRequestIdRef.current + 1;
-    memberDetailRequestIdRef.current = requestId;
-    setSelectedMemberId(memberId);
-    setMemberPanelError(null);
-    setPurchaseProductDetail(null);
-    try {
-      const response = await apiGet<MemberDetail>(`/api/v1/members/${memberId}`);
-      if (memberDetailRequestIdRef.current !== requestId) {
-        return false;
-      }
-      setSelectedMember(response.data);
-      await loadMemberMemberships(memberId);
-      if (options?.syncForm !== false) {
-        setMemberForm(memberFormFromDetail(response.data));
-        setMemberFormMode("edit");
-      }
-      return true;
-    } catch (error) {
-      if (memberDetailRequestIdRef.current === requestId) {
-        setMemberPanelError(errorMessage(error));
-      }
-      return false;
+  useEffect(() => {
+    if (selectedMemberId == null) {
+      return;
     }
+    void loadMemberMemberships(selectedMemberId);
+  }, [selectedMemberId]);
+
+  function syncMemberEditor(detail: MemberDetail) {
+    setMemberForm(memberFormFromDetail(detail));
+    setMemberFormMode("edit");
   }
 
   async function loadProductDetail(productId: number, options?: { syncForm?: boolean }): Promise<boolean> {
@@ -1102,7 +1094,8 @@ export default function App() {
         setMemberPanelMessage(response.message);
         invalidateWorkspaceMemberSearchCache();
         await loadMembers();
-        await loadMemberDetail(response.data.memberId);
+        replaceSelectedMember(response.data);
+        syncMemberEditor(response.data);
         setMemberFormOpen(false);
       } else if (selectedMemberId != null) {
         const response = await apiPatch<MemberDetail>(
@@ -1113,8 +1106,8 @@ export default function App() {
         setMemberPanelMessage(response.message);
         invalidateWorkspaceMemberSearchCache();
         await loadMembers();
-        setSelectedMember(response.data);
-        setMemberForm(memberFormFromDetail(response.data));
+        replaceSelectedMember(response.data);
+        syncMemberEditor(response.data);
         setMemberFormOpen(false);
       }
     } catch (error) {
@@ -1513,7 +1506,7 @@ export default function App() {
       await loadReservationSchedules();
       if (selectedMember) {
         // Keep membership workspace cache aligned for status/remaining count display in the same session.
-        await loadMemberDetail(selectedMember.memberId, { syncForm: false });
+        await selectSelectedMember(selectedMember.memberId);
       }
     } catch (error) {
       setReservationPanelError(errorMessage(error));
@@ -1645,8 +1638,7 @@ export default function App() {
 
   function startCreateMember() {
     setMemberFormMode("create");
-    setSelectedMemberId(null);
-    setSelectedMember(null);
+    clearSelectedMember();
     setMemberForm({ ...EMPTY_MEMBER_FORM, joinDate: new Date().toISOString().slice(0, 10) });
     setMemberPanelError(null);
     setMemberPanelMessage(null);
@@ -1668,14 +1660,28 @@ export default function App() {
   }
 
   async function openMemberEditor(memberId: number) {
-    const loaded = await loadMemberDetail(memberId);
-    if (loaded) {
+    setMemberPanelError(null);
+    setPurchaseProductDetail(null);
+    try {
+      const detail = await selectSelectedMember(memberId);
+      if (!detail) {
+        return;
+      }
+      syncMemberEditor(detail);
       setMemberFormOpen(true);
+    } catch (error) {
+      setMemberPanelError(errorMessage(error));
     }
   }
 
   async function selectMember(memberId: number) {
-    await loadMemberDetail(memberId, { syncForm: false });
+    setMemberPanelError(null);
+    setPurchaseProductDetail(null);
+    try {
+      await selectSelectedMember(memberId);
+    } catch (error) {
+      setMemberPanelError(errorMessage(error));
+    }
   }
 
   function navigateToSection(sectionKey: NavSectionKey) {
@@ -1687,16 +1693,28 @@ export default function App() {
   }
 
   async function openMembershipOperationsForMember(memberId: number) {
-    const loaded = await loadMemberDetail(memberId, { syncForm: false });
-    if (loaded) {
+    setMemberPanelError(null);
+    setPurchaseProductDetail(null);
+    try {
+      if (!(await selectSelectedMember(memberId))) {
+        return;
+      }
       navigateToSection("memberships");
+    } catch (error) {
+      setMemberPanelError(errorMessage(error));
     }
   }
 
   async function openReservationManagementForMember(memberId: number) {
-    const loaded = await loadMemberDetail(memberId, { syncForm: false });
-    if (loaded) {
+    setMemberPanelError(null);
+    setPurchaseProductDetail(null);
+    try {
+      if (!(await selectSelectedMember(memberId))) {
+        return;
+      }
       navigateToSection("reservations");
+    } catch (error) {
+      setMemberPanelError(errorMessage(error));
     }
   }
 
@@ -1792,7 +1810,17 @@ export default function App() {
   }
 
   return (
-    <main className="app-shell">
+    <SelectedMemberOwnerProvider
+      value={{
+        selectedMemberId,
+        selectedMember,
+        selectedMemberLoading,
+        selectMember: selectSelectedMember,
+        clearSelectedMember,
+        replaceSelectedMember
+      }}
+    >
+      <main className="app-shell">
       <TopBar
         subtitle={appSubtitle}
         modeBadgeText={modeBadgeText}
@@ -1872,12 +1900,7 @@ export default function App() {
               sessionMembershipCount={selectedMemberMemberships.length}
             />
           ) : activeNavSection === "memberships" ? (
-            <MembershipsSection
-              selectedMember={selectedMember}
-              loadWorkspaceMembers={loadWorkspaceMembers}
-              onSelectWorkspaceMember={(memberId) => loadMemberDetail(memberId, { syncForm: false })}
-              onGoMembers={() => navigateToSection("members")}
-            >
+            <MembershipsSection loadWorkspaceMembers={loadWorkspaceMembers} onGoMembers={() => navigateToSection("members")}>
               <Suspense fallback={<WorkspacePanelFallback />}>
                 <LazyMembershipOperationsPanels
                   key={selectedMember?.memberId ?? "membership-empty"}
@@ -1914,26 +1937,11 @@ export default function App() {
             </MembershipsSection>
           ) : activeNavSection === "reservations" ? (
             <ReservationsSection
-              selectedMember={
-                selectedMember
-                  ? {
-                      memberId: selectedMember.memberId,
-                      memberName: selectedMember.memberName,
-                      phone: selectedMember.phone,
-                      memberStatus: selectedMember.memberStatus,
-                      membershipExpiryDate:
-                        reservationTargets.find((target) => target.memberId === selectedMember.memberId)?.membershipExpiryDate ?? null
-                    }
-                  : null
-              }
               reservationTargets={reservationTargets}
               reservationTargetsLoading={reservationTargetsLoading}
               reservationTargetsKeyword={reservationTargetsKeyword}
               onReservationTargetsKeywordChange={setReservationTargetsKeyword}
               onReservationTargetsSearch={() => void loadReservationTargets()}
-              onSelectReservationTarget={(memberId) => 
-                loadMemberDetail(memberId, { syncForm: false })
-              }
               selectedMemberReservationsCount={selectedMemberReservations.length}
               reservableMembershipsCount={reservableMemberships.length}
               reservableMemberships={reservableMemberships}
@@ -2116,6 +2124,7 @@ export default function App() {
       ) : null}
         </section>
       </div>
-    </main>
+      </main>
+    </SelectedMemberOwnerProvider>
   );
 }
