@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { apiGet, apiPost, isMockApiMode } from "../../../api/client";
 import { invalidateQueryDomains, useQueryInvalidationVersion } from "../../../api/queryInvalidation";
@@ -110,7 +110,7 @@ export function useSelectedMemberMembershipsQuery() {
   const useMockMutations = isMockApiMode();
   const selectedMemberMembershipsVersion = useQueryInvalidationVersion("selectedMemberMemberships");
 
-  async function loadSelectedMemberMemberships(memberId: number) {
+  const loadSelectedMemberMemberships = useCallback(async (memberId: number) => {
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
     setSelectedMemberMembershipsLoading(true);
@@ -135,14 +135,14 @@ export function useSelectedMemberMembershipsQuery() {
         setSelectedMemberMembershipsLoading(false);
       }
     }
-  }
+  }, [selectedMemberMembershipsVersion]);
 
-  function resetSelectedMemberMembershipsQuery() {
+  const resetSelectedMemberMembershipsQuery = useCallback(() => {
     requestIdRef.current += 1;
     setSelectedMemberMemberships([]);
     setSelectedMemberMembershipsLoading(false);
     setSelectedMemberMembershipsError(null);
-  }
+  }, []);
 
   function appendMembership(membership: PurchasedMembership) {
     setSelectedMemberMemberships((prev) => [membership, ...prev]);
@@ -154,7 +154,7 @@ export function useSelectedMemberMembershipsQuery() {
     );
   }
 
-  async function createMembership(input: CreateMembershipInput) {
+  const createMembership = useCallback(async (input: CreateMembershipInput) => {
     if (!useMockMutations) {
       const response = await apiPost<PurchaseMembershipResponse>(`/api/v1/members/${input.memberId}/memberships`, {
         productId: input.productId,
@@ -197,12 +197,12 @@ export function useSelectedMemberMembershipsQuery() {
         chargeAmount: input.paidAmount ?? 0
       }
     };
-  }
+  }, [useMockMutations]);
 
-  async function holdMembership(
+  const holdMembership = useCallback(async (
     membership: PurchasedMembership,
     input: { holdStartDate: string; holdEndDate: string; reason?: string | null; memo?: string | null }
-  ) {
+  ) => {
     if (!useMockMutations) {
       const response = await apiPost<HoldMembershipResponse>(
         `/api/v1/members/${membership.memberId}/memberships/${membership.membershipId}/hold`,
@@ -247,9 +247,9 @@ export function useSelectedMemberMembershipsQuery() {
         recalculatedEndDate: nextMembership.endDate
       }
     };
-  }
+  }, [useMockMutations]);
 
-  async function resumeMembership(membership: PurchasedMembership, input: { resumeDate: string }) {
+  const resumeMembership = useCallback(async (membership: PurchasedMembership, input: { resumeDate: string }) => {
     if (!useMockMutations) {
       const response = await apiPost<ResumeMembershipResponse>(
         `/api/v1/members/${membership.memberId}/memberships/${membership.membershipId}/resume`,
@@ -291,9 +291,9 @@ export function useSelectedMemberMembershipsQuery() {
         recalculatedEndDate: nextMembership.endDate
       }
     };
-  }
+  }, [useMockMutations]);
 
-  async function previewMembershipRefund(membership: PurchasedMembership, input: { refundDate: string }) {
+  const previewMembershipRefund = useCallback(async (membership: PurchasedMembership, input: { refundDate: string }) => {
     if (!useMockMutations) {
       const response = await apiPost<RefundPreviewResponse>(
         `/api/v1/members/${membership.memberId}/memberships/${membership.membershipId}/refund/preview`,
@@ -313,9 +313,9 @@ export function useSelectedMemberMembershipsQuery() {
         refundAmount: membership.productTypeSnapshot === "COUNT" ? 495000 : 99000
       }
     };
-  }
+  }, [useMockMutations]);
 
-  async function refundMembership(
+  const refundMembership = useCallback(async (
     membership: PurchasedMembership,
     input: {
       refundDate: string;
@@ -324,7 +324,7 @@ export function useSelectedMemberMembershipsQuery() {
       refundMemo?: string | null;
       paymentMemo?: string | null;
     }
-  ) {
+  ) => {
     if (!useMockMutations) {
       const response = await apiPost<RefundMembershipResponse>(
         `/api/v1/members/${membership.memberId}/memberships/${membership.membershipId}/refund`,
@@ -381,7 +381,7 @@ export function useSelectedMemberMembershipsQuery() {
       },
       calculation: calculation.calculation
     };
-  }
+  }, [previewMembershipRefund, useMockMutations]);
 
   return {
     selectedMemberMemberships,

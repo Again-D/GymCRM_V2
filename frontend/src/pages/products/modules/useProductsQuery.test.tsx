@@ -85,4 +85,20 @@ describe("useProductsQuery", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it("keeps public query actions stable across rerenders", () => {
+    const { result, rerender } = renderHook(() =>
+      useProductsQuery({
+        getDefaultFilters: () => ({ category: "", status: "" })
+      })
+    );
+
+    const firstLoadProducts = result.current.loadProducts;
+    const firstResetProductsQuery = result.current.resetProductsQuery;
+
+    rerender();
+
+    expect(result.current.loadProducts).toBe(firstLoadProducts);
+    expect(result.current.resetProductsQuery).toBe(firstResetProductsQuery);
+  });
 });

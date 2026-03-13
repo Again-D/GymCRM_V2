@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { apiGet } from "../../../api/client";
 import { useQueryInvalidationVersion } from "../../../api/queryInvalidation";
@@ -8,6 +8,12 @@ type UseProductsQueryOptions = {
   getDefaultFilters: () => ProductFilters;
 };
 
+function useLatestRef<T>(value: T) {
+  const ref = useRef(value);
+  ref.current = value;
+  return ref;
+}
+
 export function useProductsQuery({ getDefaultFilters }: UseProductsQueryOptions) {
   const [products, setProducts] = useState<ProductRecord[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
@@ -15,16 +21,17 @@ export function useProductsQuery({ getDefaultFilters }: UseProductsQueryOptions)
   const requestIdRef = useRef(0);
   const cacheRef = useRef(new Map<string, ProductRecord[]>());
   const inflightRef = useRef(new Map<string, Promise<ProductRecord[]>>());
+  const getDefaultFiltersRef = useLatestRef(getDefaultFilters);
   const productsVersion = useQueryInvalidationVersion("products");
 
-  async function loadProducts(filters?: ProductFilters) {
+  const loadProducts = useCallback(async (filters?: ProductFilters) => {
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
     setProductsLoading(true);
     setProductsQueryError(null);
 
     try {
-      const effectiveFilters = filters ?? getDefaultFilters();
+      const effectiveFilters = filters ?? getDefaultFiltersRef.current();
       const params = new URLSearchParams();
       if (effectiveFilters.category) {
         params.set("category", effectiveFilters.category);
@@ -61,14 +68,14 @@ export function useProductsQuery({ getDefaultFilters }: UseProductsQueryOptions)
         setProductsLoading(false);
       }
     }
-  }
+  }, [productsVersion]);
 
-  function resetProductsQuery() {
+  const resetProductsQuery = useCallback(() => {
     requestIdRef.current += 1;
     setProducts([]);
     setProductsLoading(false);
     setProductsQueryError(null);
-  }
+  }, []);
 
   return {
     products,
