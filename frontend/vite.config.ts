@@ -7,16 +7,16 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     test: {
-      environment: "jsdom"
+      environment: "jsdom",
     },
     server: {
-      port: 5175,
+      port: 5173,
       proxy: {
         "/api": {
           target: env.VITE_DEV_PROXY_TARGET || "http://127.0.0.1:8080",
-          changeOrigin: true
-        }
-      }
-    }
+          changeOrigin: true,
+        },
+      },
+    },
   };
 });
