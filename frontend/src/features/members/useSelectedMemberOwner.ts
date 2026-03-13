@@ -53,7 +53,6 @@ export function useSelectedMemberOwner({ authUser }: UseSelectedMemberOwnerOptio
   async function selectMember(memberId: number) {
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
-    setSelectedMemberId(memberId);
     setSelectedMemberLoading(true);
 
     try {
@@ -61,6 +60,7 @@ export function useSelectedMemberOwner({ authUser }: UseSelectedMemberOwnerOptio
       if (requestIdRef.current !== requestId) {
         return null;
       }
+      setSelectedMemberId(memberId);
       setSelectedMember(response.data);
       return response.data;
     } finally {

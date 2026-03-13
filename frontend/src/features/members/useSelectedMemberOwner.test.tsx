@@ -153,4 +153,24 @@ describe("useSelectedMemberOwner", () => {
     });
     expect(result.current.selectedMemberId).toBeNull();
   });
+
+  it("does not publish selectedMemberId when detail load fails", async () => {
+    apiGetMock.mockRejectedValueOnce(new Error("not found"));
+
+    const { result } = renderHook(() =>
+      useSelectedMemberOwner({
+        authUser: { userId: 1, centerId: 1, loginId: "admin", displayName: "관리자", roleCode: "ROLE_CENTER_ADMIN" }
+      })
+    );
+
+    await expect(
+      act(async () => {
+        await result.current.selectMember(404);
+      })
+    ).rejects.toThrow("not found");
+
+    expect(result.current.selectedMemberId).toBeNull();
+    expect(result.current.selectedMember).toBeNull();
+    expect(result.current.selectedMemberLoading).toBe(false);
+  });
 });
