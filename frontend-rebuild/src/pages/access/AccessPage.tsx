@@ -35,7 +35,8 @@ export default function AccessPage() {
     members,
     membersLoading,
     membersQueryError,
-    loadMembers
+    loadMembers,
+    resetMembersQuery
   } = useMembersQuery({
     getDefaultFilters: () => ({
       name: accessMemberQuery,
@@ -78,6 +79,13 @@ export default function AccessPage() {
     initialPageSize: 10,
     resetDeps: [selectedMemberId, accessEvents.length]
   });
+
+  useEffect(() => {
+    if (!isLiveAccessRoleSupported) {
+      resetMembersQuery();
+      return;
+    }
+  }, [isLiveAccessRoleSupported, resetMembersQuery]);
 
   useEffect(() => {
     if (!isLiveAccessRoleSupported) {

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { apiGet } from "../../../api/client";
 import { useQueryInvalidationVersion } from "../../../api/queryInvalidation";
@@ -78,11 +78,19 @@ export function useMembersQuery({
     }
   }
 
+  const resetMembersQuery = useCallback(() => {
+    requestIdRef.current += 1;
+    setMembers([]);
+    setMembersLoading(false);
+    setMembersQueryError(null);
+  }, []);
+
   return {
     members,
     membersLoading,
     membersQueryError,
     loadMembers,
+    resetMembersQuery,
     setMembers
   } as const;
 }
