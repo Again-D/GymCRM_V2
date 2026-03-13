@@ -58,4 +58,38 @@ describe("useReservationTargetsQuery", () => {
     expect(result.current.reservationTargetsKeyword).toBe("");
     expect(result.current.reservationTargetsError).toBeNull();
   });
+
+  it("reloads when the reservation targets domain is invalidated", async () => {
+    apiGetMock.mockResolvedValue({ data: [] });
+
+    const { result, rerender } = renderHook(
+      ({ invalidationVersion }) =>
+        useReservationTargetsQuery({
+          formatError: () => "load failed",
+          invalidationVersion
+        }),
+      {
+        initialProps: { invalidationVersion: 0 }
+      }
+    );
+
+    act(() => {
+      result.current.setReservationTargetsKeyword("김민수");
+    });
+
+    await act(async () => {
+      await result.current.loadReservationTargets();
+    });
+
+    expect(apiGetMock).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      rerender({ invalidationVersion: 1 });
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(apiGetMock).toHaveBeenCalledTimes(2);
+    });
+  });
 });

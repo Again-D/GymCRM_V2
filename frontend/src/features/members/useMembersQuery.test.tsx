@@ -162,4 +162,43 @@ describe("useMembersQuery", () => {
       "/api/v1/members?trainerId=11&productId=22&membershipOperationalStatus=%ED%99%80%EB%94%A9%EC%A4%91&dateFrom=2026-03-10&dateTo=2026-04-10"
     );
   });
+
+  it("reloads when the members domain is invalidated", async () => {
+    apiGetMock.mockResolvedValue({ data: [] });
+
+    const { result, rerender } = renderHook(
+      ({ invalidationVersion }) =>
+        useMembersQuery({
+          getDefaultFilters: () => ({
+            name: "",
+            phone: "",
+            trainerId: "",
+            productId: "",
+            membershipOperationalStatus: "",
+            dateFrom: "",
+            dateTo: ""
+          }),
+          formatError: () => "load failed",
+          invalidationVersion
+        }),
+      {
+        initialProps: { invalidationVersion: 0 }
+      }
+    );
+
+    await act(async () => {
+      await result.current.loadMembers();
+    });
+
+    expect(apiGetMock).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      rerender({ invalidationVersion: 1 });
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(apiGetMock).toHaveBeenCalledTimes(2);
+    });
+  });
 });

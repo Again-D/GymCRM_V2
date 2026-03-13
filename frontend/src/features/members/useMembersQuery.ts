@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { apiGet } from "../../shared/api/client";
 
 export type MemberSummary = {
@@ -26,6 +26,8 @@ export type MemberQueryFilters = {
 type UseMembersQueryOptions = {
   getDefaultFilters: () => MemberQueryFilters;
   formatError: (error: unknown) => string;
+  enabled?: boolean;
+  invalidationVersion?: number;
 };
 
 function useLatestRef<T>(value: T) {
@@ -37,6 +39,8 @@ function useLatestRef<T>(value: T) {
 export function useMembersQuery({
   getDefaultFilters,
   formatError,
+  enabled = true,
+  invalidationVersion = 0
 }: UseMembersQueryOptions) {
   const [members, setMembers] = useState<MemberSummary[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
@@ -46,10 +50,14 @@ export function useMembersQuery({
   const getDefaultFiltersRef = useLatestRef(getDefaultFilters);
   const formatErrorRef = useLatestRef(formatError);
   const requestIdRef = useRef(0);
+  const hasLoadedRef = useRef(false);
+  const lastFiltersRef = useRef<Partial<MemberQueryFilters> | undefined>(undefined);
 
   async function loadMembers(filters?: Partial<MemberQueryFilters>) {
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
+    hasLoadedRef.current = true;
+    lastFiltersRef.current = filters;
     setMembersLoading(true);
     setMembersQueryError(null);
     try {
@@ -109,10 +117,22 @@ export function useMembersQuery({
 
   function resetMembersQuery() {
     requestIdRef.current += 1;
+    hasLoadedRef.current = false;
+    lastFiltersRef.current = undefined;
     setMembers([]);
     setMembersLoading(false);
     setMembersQueryError(null);
   }
+
+  const loadMembersRef = useLatestRef(loadMembers);
+
+  useEffect(() => {
+    if (!enabled || !hasLoadedRef.current) {
+      return;
+    }
+    void loadMembersRef.current(lastFiltersRef.current);
+  }, [enabled, invalidationVersion]);
+
   return {
     members,
     setMembers,

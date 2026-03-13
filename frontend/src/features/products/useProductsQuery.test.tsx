@@ -108,4 +108,35 @@ describe("useProductsQuery", () => {
     expect(result.current.productsLoading).toBe(false);
     expect(result.current.productsQueryError).toBeNull();
   });
+
+  it("reloads when the products domain is invalidated", async () => {
+    apiGetMock.mockResolvedValue({ data: [] });
+
+    const { result, rerender } = renderHook(
+      ({ invalidationVersion }) =>
+        useProductsQuery({
+          getDefaultFilters: () => ({ category: "", status: "" }),
+          formatError: () => "load failed",
+          invalidationVersion
+        }),
+      {
+        initialProps: { invalidationVersion: 0 }
+      }
+    );
+
+    await act(async () => {
+      await result.current.loadProducts();
+    });
+
+    expect(apiGetMock).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      rerender({ invalidationVersion: 1 });
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(apiGetMock).toHaveBeenCalledTimes(2);
+    });
+  });
 });

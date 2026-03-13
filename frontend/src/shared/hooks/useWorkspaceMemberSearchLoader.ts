@@ -1,6 +1,13 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 
-export function useWorkspaceMemberSearchLoader<T>(fetchRows: (keyword?: string) => Promise<T[]>) {
+type UseWorkspaceMemberSearchLoaderOptions = {
+  invalidationVersion?: number;
+};
+
+export function useWorkspaceMemberSearchLoader<T>(
+  fetchRows: (keyword?: string) => Promise<T[]>,
+  options?: UseWorkspaceMemberSearchLoaderOptions
+) {
   const cacheRef = useRef(new Map<string, T[]>());
   const inFlightRef = useRef(new Map<string, Promise<T[]>>());
 
@@ -34,6 +41,10 @@ export function useWorkspaceMemberSearchLoader<T>(fetchRows: (keyword?: string) 
       inFlightRef.current.delete(normalizedKeyword);
     }
   }
+
+  useEffect(() => {
+    invalidate();
+  }, [options?.invalidationVersion]);
 
   return {
     load,

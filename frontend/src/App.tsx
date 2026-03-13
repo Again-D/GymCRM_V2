@@ -77,6 +77,7 @@ import { useSettlementReportQuery } from "./features/settlements/useSettlementRe
 import { ApiClientError, apiGet, apiPatch, apiPost } from "./shared/api/client";
 import { type AuthTokenResponse, type AuthUserSession, type SecurityMode, useAuthSession } from "./shared/hooks/useAuthSession";
 import { useMembershipDateFilter } from "./shared/hooks/useMembershipDateFilter";
+import { useQueryInvalidation } from "./shared/hooks/useQueryInvalidation";
 import {
   Navigate,
   useLocation,
@@ -528,6 +529,7 @@ export default function App() {
   const [purchaseProductLoading, setPurchaseProductLoading] = useState(false);
   const [memberMembershipsByMemberId, setMemberMembershipsByMemberId] = useState<Record<number, PurchasedMembership[]>>({});
   const [memberPaymentsByMemberId, setMemberPaymentsByMemberId] = useState<Record<number, PurchasePayment[]>>({});
+  const { queryInvalidationVersions, invalidateQueries, resetQueryInvalidation } = useQueryInvalidation();
   const workspaceMemberSearch = useWorkspaceMemberSearchLoader<MemberSummary>(async (keyword) => {
     const params = new URLSearchParams();
     if (keyword) {
@@ -536,6 +538,8 @@ export default function App() {
     const query = params.toString();
     const response = await apiGet<MemberSummary[]>(`/api/v1/members${query ? `?${query}` : ""}`);
     return response.data;
+  }, {
+    invalidationVersion: queryInvalidationVersions.workspaceMemberSearch
   });
   const {
     securityMode,
@@ -716,7 +720,9 @@ export default function App() {
       dateFrom: memberDateFilter.dateFrom,
       dateTo: memberDateFilter.dateTo
     }),
-    formatError: errorMessage
+    formatError: errorMessage,
+    enabled: isAuthenticated,
+    invalidationVersion: queryInvalidationVersions.members
   });
   const {
     products,
@@ -727,7 +733,9 @@ export default function App() {
     resetProductsQuery
   } = useProductsQuery({
     getDefaultFilters: () => productFilters,
-    formatError: errorMessage
+    formatError: errorMessage,
+    enabled: isAuthenticated,
+    invalidationVersion: queryInvalidationVersions.products
   });
   const {
     reservationSchedules,
@@ -736,7 +744,9 @@ export default function App() {
     loadReservationSchedules,
     resetReservationSchedulesQuery
   } = useReservationSchedulesQuery({
-    formatError: errorMessage
+    formatError: errorMessage,
+    enabled: isAuthenticated,
+    invalidationVersion: queryInvalidationVersions.reservationSchedules
   });
   const {
     reservationTargets,
@@ -747,7 +757,9 @@ export default function App() {
     loadReservationTargets,
     resetReservationTargetsQuery
   } = useReservationTargetsQuery({
-    formatError: errorMessage
+    formatError: errorMessage,
+    enabled: isAuthenticated && activeNavSection === "reservations",
+    invalidationVersion: queryInvalidationVersions.reservationTargets
   });
   const {
     settlementReport,
@@ -773,6 +785,7 @@ export default function App() {
 
   function clearProtectedUiState() {
     workspaceMemberSearch.invalidate();
+    resetQueryInvalidation();
     resetMembersQuery();
     clearSelectedMember();
     setMemberForm({ ...EMPTY_MEMBER_FORM, joinDate: new Date().toISOString().slice(0, 10) });
@@ -890,10 +903,6 @@ export default function App() {
       [memberId]: response.data
     }));
     return response.data;
-  }
-
-  function invalidateWorkspaceMemberSearchCache() {
-    workspaceMemberSearch.invalidate();
   }
 
   useEffect(() => {
@@ -1092,8 +1101,7 @@ export default function App() {
         const response = await apiPost<MemberDetail>("/api/v1/members", buildMemberPayload(memberForm));
         setMemberFormMessage(response.message);
         setMemberPanelMessage(response.message);
-        invalidateWorkspaceMemberSearchCache();
-        await loadMembers();
+        invalidateQueries("members", "workspaceMemberSearch");
         replaceSelectedMember(response.data);
         syncMemberEditor(response.data);
         setMemberFormOpen(false);
@@ -1104,8 +1112,7 @@ export default function App() {
         );
         setMemberFormMessage(response.message);
         setMemberPanelMessage(response.message);
-        invalidateWorkspaceMemberSearchCache();
-        await loadMembers();
+        invalidateQueries("members", "workspaceMemberSearch");
         replaceSelectedMember(response.data);
         syncMemberEditor(response.data);
         setMemberFormOpen(false);
@@ -1133,7 +1140,7 @@ export default function App() {
         const response = await apiPost<ProductDetail>("/api/v1/products", buildProductPayload(productForm));
         setProductFormMessage(response.message);
         setProductPanelMessage(response.message);
-        await loadProducts();
+        invalidateQueries("products");
         await loadProductDetail(response.data.productId);
         setProductFormOpen(false);
       } else if (selectedProductId != null) {
@@ -1143,7 +1150,7 @@ export default function App() {
         );
         setProductFormMessage(response.message);
         setProductPanelMessage(response.message);
-        await loadProducts();
+        invalidateQueries("products");
         setSelectedProduct(response.data);
         setProductForm(productFormFromDetail(response.data));
         setProductFormOpen(false);
@@ -1170,7 +1177,7 @@ export default function App() {
       setSelectedProduct(response.data);
       setProductForm(productFormFromDetail(response.data));
       setProductFormMessage(response.message);
-      await loadProducts();
+      invalidateQueries("products");
     } catch (error) {
       setProductFormError(errorMessage(error));
     } finally {
@@ -1221,6 +1228,7 @@ export default function App() {
           [selectedMember.memberId]: [response.data.membership, ...currentRows]
         };
       });
+      invalidateQueries("members", "reservationTargets", "workspaceMemberSearch");
       setMemberPaymentsByMemberId((prev) => {
         const currentRows = prev[selectedMember.memberId] ?? [];
         return {
@@ -1307,8 +1315,7 @@ export default function App() {
       );
 
       patchSessionMembership(membership.memberId, response.data.membership);
-      invalidateWorkspaceMemberSearchCache();
-      await loadMembers();
+      invalidateQueries("members", "reservationTargets", "workspaceMemberSearch");
       setMembershipActionMessageById((prev) => ({ ...prev, [membership.membershipId]: response.message }));
       setMembershipActionDrafts((prev) => ({
         ...prev,
@@ -1353,8 +1360,7 @@ export default function App() {
       );
 
       patchSessionMembership(membership.memberId, response.data.membership);
-      invalidateWorkspaceMemberSearchCache();
-      await loadMembers();
+      invalidateQueries("members", "reservationTargets", "workspaceMemberSearch");
       setMembershipActionMessageById((prev) => ({ ...prev, [membership.membershipId]: response.message }));
     } catch (error) {
       setMembershipActionErrorById((prev) => ({ ...prev, [membership.membershipId]: errorMessage(error) }));
@@ -1412,6 +1418,7 @@ export default function App() {
       );
 
       patchSessionMembership(membership.memberId, response.data.membership);
+      invalidateQueries("members", "reservationTargets", "workspaceMemberSearch");
       setMemberPaymentsByMemberId((prev) => {
         const currentRows = prev[selectedMember.memberId] ?? [];
         return {
@@ -1458,7 +1465,7 @@ export default function App() {
       });
       setReservationPanelMessage(response.message);
       await loadReservationsForMember(selectedMember.memberId);
-      await loadReservationSchedules();
+      invalidateQueries("reservationSchedules", "reservationTargets");
       setReservationCreateForm({ ...EMPTY_RESERVATION_CREATE_FORM });
     } catch (error) {
       setReservationPanelError(errorMessage(error));
@@ -1480,7 +1487,7 @@ export default function App() {
       });
       setReservationPanelMessage(response.message);
       await loadReservationsForMember(selectedMember.memberId);
-      await loadReservationSchedules();
+      invalidateQueries("reservationSchedules", "reservationTargets");
     } catch (error) {
       setReservationPanelError(errorMessage(error));
     } finally {
@@ -1503,7 +1510,7 @@ export default function App() {
           : response.message
       );
       await loadReservationsForMember(selectedMember.memberId);
-      await loadReservationSchedules();
+      invalidateQueries("reservationSchedules", "reservationTargets", "members", "workspaceMemberSearch");
       if (selectedMember) {
         // Keep membership workspace cache aligned for status/remaining count display in the same session.
         await selectSelectedMember(selectedMember.memberId);
@@ -1544,7 +1551,7 @@ export default function App() {
       const response = await apiPost<ReservationRecord>(`/api/v1/reservations/${reservationId}/no-show`);
       setReservationPanelMessage(response.message);
       await loadReservationsForMember(selectedMember.memberId);
-      await loadReservationSchedules();
+      invalidateQueries("reservationSchedules", "reservationTargets");
     } catch (error) {
       setReservationPanelError(errorMessage(error));
     } finally {
