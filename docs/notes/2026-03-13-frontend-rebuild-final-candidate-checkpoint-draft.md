@@ -61,6 +61,7 @@ local live backend 기준으로 다음이 증명돼 있다.
 - staging role matrix evidence
 - staging core workflow 4개 smoke evidence
 - staging-only env/cookie/proxy 차이 확인
+- staging target/credential fill-in 완료
 
 ### 2. Migration and Rollback Are Still Baseline Documents
 
