@@ -28,6 +28,8 @@ Date: 2026-03-13
   - rebuild replacement-candidate phase 4
 - Workaround:
   - local live evidence와 baseline staging smoke를 함께 참고
+- Execution checklist:
+  - `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-staging-smoke-checklist.md`
 
 ## Resolved blockers in this phase
 
