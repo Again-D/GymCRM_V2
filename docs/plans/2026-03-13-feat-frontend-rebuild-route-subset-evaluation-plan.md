@@ -168,26 +168,39 @@ Rejected because:
 
 ### Functional Requirements
 
-- [ ] route subset 4개만 평가 대상으로 제한된다
-- [ ] baseline 기본 진입 경로는 유지된다
+- [x] route subset 4개만 평가 대상으로 제한된다
+- [x] baseline 기본 진입 경로는 유지된다
 - [ ] rebuild는 별도 internal-only URL 기준으로 노출된다
-- [ ] `/members`, `/memberships`, `/reservations`, `/access` 평가 결과가 문서화된다
-- [ ] auth/session, role, selected-member, invalidation 차이점이 기록된다
-- [ ] rollback trigger와 baseline-only fallback 기준이 문서에 반영된다
+- [x] `/members`, `/memberships`, `/reservations`, `/access` 평가 결과가 문서화된다
+- [x] auth/session, role, selected-member, invalidation 차이점이 기록된다
+- [x] rollback trigger와 baseline-only fallback 기준이 문서에 반영된다
 
 ### Non-Functional Requirements
 
 - [ ] 노출 방식(URL, owner, rollback trigger)이 명확하다
-- [ ] blocker severity/owner/evidence 경로가 빠짐없이 기록된다
-- [ ] acceptable difference와 true blocker가 구분된다
+- [x] blocker severity/owner/evidence 경로가 빠짐없이 기록된다
+- [x] acceptable difference와 true blocker가 구분된다
 
 ### Quality Gates
 
-- [ ] route subset evaluation plan note 작성
-- [ ] updated blocker log
-- [ ] updated migration / rollback note
-- [ ] updated final candidate checkpoint
-- [ ] updated route subset cutover decision note
+- [x] route subset evaluation plan note 작성
+- [x] updated blocker log
+- [x] updated migration / rollback note
+- [x] updated final candidate checkpoint
+- [x] updated route subset cutover decision note
+
+## Progress Note
+
+현재 상태:
+
+- local alternate-entry rehearsal은 baseline/rebuild 비교와 screenshot evidence까지 완료됨
+- durable mirror 문서와 실행 절차/입력 시트/최종 체크리스트도 main repo에 반영됨
+- 아직 미완료인 항목은 **실제 internal-only URL과 운영 owner 지정**뿐이다
+
+즉 이 플랜은 문서/로컬 리허설 기준으로는 상당 부분 완료됐지만, 실제 route subset evaluation을 시작하려면 아래 두 값이 더 필요하다.
+
+- rebuild internal-only URL 실제 값
+- exposure owner / rollback decision owner 실제 지정
 
 ## Success Metrics
 
