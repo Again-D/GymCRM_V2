@@ -72,7 +72,7 @@ export default function App() {
 
 function BootstrappingScreen() {
   return (
-    <section style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 32 }}>
+    <section className="centered-screen">
       <div>
         <h1>부트스트래핑 중</h1>
         <p>재구축 프로토타입이 인증 상태를 확인하는 동안 잠시 대기합니다.</p>

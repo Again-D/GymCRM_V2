@@ -72,7 +72,7 @@ export default function SettlementsPage() {
           </div>
         </div>
 
-        <div className="placeholder-card" style={{ marginBottom: 16 }}>
+        <div className="placeholder-card mb-md">
           <h2>리포트 조건</h2>
           <form
             className="members-filter-grid"
@@ -144,7 +144,7 @@ export default function SettlementsPage() {
           {settlementPanelError ? <p className="error-text">{settlementPanelError}</p> : null}
         </div>
 
-        <div className="placeholder-card" style={{ marginBottom: 16 }}>
+        <div className="placeholder-card mb-md">
           <h2>정산 요약</h2>
           <dl className="detail-grid compact-detail-grid">
             <div>
@@ -168,7 +168,7 @@ export default function SettlementsPage() {
 
         <div className="placeholder-card">
           <h2>상품/결제수단 집계</h2>
-          <div className="table-shell" style={{ marginTop: 12 }}>
+          <div className="table-shell mt-sm">
             <table className="members-table">
               <thead>
                 <tr>

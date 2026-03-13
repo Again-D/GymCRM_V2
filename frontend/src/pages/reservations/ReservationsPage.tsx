@@ -399,14 +399,14 @@ export default function ReservationsPage() {
                   ))}
                 </select>
               </label>
-              <label style={{ gridColumn: "1 / -1" }}>
+              <label className="full-span">
                 메모
                 <input
                   value={reservationCreateForm.memo}
                   onChange={(event) => setReservationCreateForm((prev) => ({ ...prev, memo: event.target.value }))}
                 />
               </label>
-              <div className="toolbar-actions" style={{ gridColumn: "1 / -1" }}>
+              <div className="toolbar-actions full-span">
                 <button type="submit" className="primary-button" disabled={!selectedMember || selectedMemberReservationsLoading}>
                   예약 생성
                 </button>

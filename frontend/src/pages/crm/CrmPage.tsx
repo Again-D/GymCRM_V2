@@ -87,7 +87,7 @@ export default function CrmPage() {
         </div>
 
         {!isLiveCrmRoleSupported ? (
-          <div className="selected-member-card" style={{ marginBottom: 16 }}>
+          <div className="selected-member-card mb-md">
             <div className="selected-member-card-header">
               <div>
                 <h2>이 역할은 live CRM 미지원</h2>
@@ -97,7 +97,7 @@ export default function CrmPage() {
           </div>
         ) : null}
 
-        <div className="placeholder-card" style={{ marginBottom: 16 }}>
+        <div className="placeholder-card mb-md">
           <h2>메시지 트리거 / 큐 처리</h2>
           <div className="members-filter-grid">
             <label>
@@ -203,7 +203,7 @@ export default function CrmPage() {
 
           {crmHistoryError ? <p className="error-text">{crmHistoryError}</p> : null}
 
-          <div className="table-shell" style={{ marginTop: 12 }}>
+          <div className="table-shell mt-sm">
             <table className="members-table">
               <thead>
                 <tr>

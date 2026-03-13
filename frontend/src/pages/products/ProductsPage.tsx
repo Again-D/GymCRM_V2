@@ -101,7 +101,7 @@ export default function ProductsPage() {
         </div>
 
         {!canReadLiveProducts ? (
-          <div className="selected-member-card" style={{ marginBottom: 16 }}>
+          <div className="selected-member-card mb-md">
             <div className="selected-member-card-header">
               <div>
                 <h2>이 역할은 live 상품 관리 미지원</h2>
@@ -112,7 +112,7 @@ export default function ProductsPage() {
         ) : null}
 
         {!isMockMode && authUser?.role === "ROLE_DESK" ? (
-          <div className="selected-member-card" style={{ marginBottom: 16 }}>
+          <div className="selected-member-card mb-md">
             <div className="selected-member-card-header">
               <div>
                 <h2>데스크 계정은 읽기 전용</h2>
@@ -399,14 +399,14 @@ export default function ProductsPage() {
               />
               양도 허용
             </label>
-            <label style={{ gridColumn: "1 / -1" }}>
+            <label className="full-span">
               설명
               <textarea
                 value={productForm.description}
                 onChange={(event) => setProductForm((prev) => ({ ...prev, description: event.target.value }))}
               />
             </label>
-            <div className="toolbar-actions" style={{ gridColumn: "1 / -1" }}>
+            <div className="toolbar-actions full-span">
               <button type="submit" className="primary-button" disabled={productFormSubmitting}>
                 {productFormSubmitting ? "저장 중..." : productFormMode === "create" ? "상품 등록" : "상품 저장"}
               </button>

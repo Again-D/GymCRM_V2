@@ -132,7 +132,7 @@ export default function AccessPage() {
         <SelectedMemberContextBadge />
 
         {!isLiveAccessRoleSupported ? (
-          <div className="selected-member-card" style={{ marginBottom: 16 }}>
+          <div className="selected-member-card mb-md">
             <div className="selected-member-card-header">
               <div>
                 <h2>이 역할은 live 출입 관리 미지원</h2>
@@ -145,7 +145,7 @@ export default function AccessPage() {
           </div>
         ) : null}
 
-        <div className="selected-member-card" style={{ marginBottom: 16 }}>
+        <div className="selected-member-card mb-md">
           <div className="selected-member-card-header">
             <div>
               <h2>선택 회원 출입 처리</h2>
@@ -186,7 +186,7 @@ export default function AccessPage() {
           {accessPanelError ? <p className="error-text">{accessPanelError}</p> : null}
         </div>
 
-        <div className="selected-member-card" style={{ marginBottom: 16 }}>
+        <div className="selected-member-card mb-md">
           <h2>오늘 출입 요약</h2>
           <dl className="selected-member-grid">
             <div>
@@ -220,7 +220,7 @@ export default function AccessPage() {
             />
           </label>
           {membersQueryError ? <p className="error-text">{membersQueryError}</p> : null}
-          <div className="table-shell" style={{ marginTop: 12 }}>
+          <div className="table-shell mt-sm">
             <table className="members-table">
               <thead>
                 <tr>
@@ -276,7 +276,7 @@ export default function AccessPage() {
         </div>
       </article>
 
-      <aside className="selected-member-card" style={{ display: "grid", gap: 16 }}>
+      <aside className="selected-member-card panel-stack">
         <section>
           <h2>현재 입장중 회원</h2>
           {accessQueryError ? <p className="error-text">{accessQueryError}</p> : null}

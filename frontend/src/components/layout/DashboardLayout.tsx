@@ -16,26 +16,17 @@ export default function DashboardLayout({ routes }: { routes: ShellRoute[] }) {
   } = useAuthState();
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "240px 1fr", minHeight: "100vh" }}>
-      <aside style={{ padding: 24, borderRight: "1px solid rgba(22, 33, 38, 0.12)" }}>
-        <strong style={{ display: "block", marginBottom: 16 }}>GymCRM Rebuild</strong>
-        <div
-          style={{
-            display: "grid",
-            gap: 8,
-            marginBottom: 20,
-            padding: 12,
-            borderRadius: 12,
-            background: "rgba(22, 33, 38, 0.05)"
-          }}
-        >
-          <small style={{ color: "#4a6169" }}>{isMockMode ? "Runtime Auth Preset" : "Live Auth Session"}</small>
+    <div className="app-shell">
+      <aside className="app-shell__sidebar">
+        <strong className="app-shell__brand">GymCRM Rebuild</strong>
+        <div className="auth-panel">
+          <small className="text-muted">{isMockMode ? "Runtime Auth Preset" : "Live Auth Session"}</small>
           <strong>{securityMode === "prototype" ? "Prototype" : authUser ? "JWT Authenticated" : "JWT Anonymous"}</strong>
-          <span style={{ color: "#4a6169", fontSize: 14 }}>
+          <span className="text-muted text-sm">
             {authUser ? `${authUser.username} · ${authUser.role}` : "로그인 전 상태"}
           </span>
           {isMockMode ? (
-            <div style={{ display: "grid", gap: 8, marginTop: 4 }}>
+            <div className="stack-sm mt-xs">
               <button type="button" className="secondary-button" onClick={() => setRuntimeAuthPreset("prototype-admin")}>
                 Prototype
               </button>
@@ -50,34 +41,28 @@ export default function DashboardLayout({ routes }: { routes: ShellRoute[] }) {
               </button>
             </div>
           ) : (
-            <div style={{ display: "grid", gap: 8, marginTop: 4 }}>
+            <div className="stack-sm mt-xs">
               <button type="button" className="secondary-button" onClick={() => void logout()}>
                 로그아웃
               </button>
             </div>
           )}
-          {authStatusMessage ? <span style={{ color: "#2f6f5e", fontSize: 13 }}>{authStatusMessage}</span> : null}
-          {authError ? <span style={{ color: "#a23d4b", fontSize: 13 }}>{authError}</span> : null}
+          {authStatusMessage ? <span className="text-success text-xs">{authStatusMessage}</span> : null}
+          {authError ? <span className="text-danger text-xs">{authError}</span> : null}
         </div>
-        <nav style={{ display: "grid", gap: 8 }}>
+        <nav className="app-nav">
           {routes.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
-              style={({ isActive }) => ({
-                padding: "12px 14px",
-                borderRadius: 12,
-                background: isActive ? "#162126" : "transparent",
-                color: isActive ? "#f8f4ea" : "#162126",
-                textDecoration: "none"
-              })}
+              className={({ isActive }) => `app-nav__link${isActive ? " is-active" : ""}`}
             >
               {item.label}
             </NavLink>
           ))}
         </nav>
       </aside>
-      <main style={{ padding: 32 }}>
+      <main className="app-shell__main">
         <Outlet />
       </main>
     </div>

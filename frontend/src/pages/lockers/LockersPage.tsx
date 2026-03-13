@@ -111,7 +111,7 @@ export default function LockersPage() {
         </div>
 
         {!isLiveLockerRoleSupported ? (
-          <div className="selected-member-card" style={{ marginBottom: 16 }}>
+          <div className="selected-member-card mb-md">
             <div className="selected-member-card-header">
               <div>
                 <h2>이 역할은 live 라커 관리 미지원</h2>
@@ -123,7 +123,7 @@ export default function LockersPage() {
 
         <SelectedMemberContextBadge />
 
-        <div className="selected-member-card" style={{ marginBottom: 16 }}>
+        <div className="selected-member-card mb-md">
           <div className="selected-member-card-header">
             <div>
               <h2>선택 회원 컨텍스트</h2>
@@ -136,7 +136,7 @@ export default function LockersPage() {
           </div>
         </div>
 
-        <div className="selected-member-card" style={{ marginBottom: 16 }}>
+        <div className="selected-member-card mb-md">
           <h2>라커 슬롯 조회</h2>
           <div className="members-filter-grid">
             <label>
@@ -278,7 +278,7 @@ export default function LockersPage() {
             </label>
           </div>
 
-          <label style={{ display: "grid", gap: 8, marginTop: 16 }}>
+          <label className="stack-sm mt-md">
             메모
             <input
               value={lockerAssignForm.memo}
@@ -288,7 +288,7 @@ export default function LockersPage() {
             />
           </label>
 
-          <div className="toolbar-actions" style={{ marginTop: 16 }}>
+          <div className="toolbar-actions mt-md">
             <button
               type="button"
               className="primary-button"
@@ -305,7 +305,7 @@ export default function LockersPage() {
         </div>
       </article>
 
-      <aside className="selected-member-card" style={{ display: "grid", gap: 16 }}>
+      <aside className="selected-member-card panel-stack">
         <section>
           <h2>배정 목록</h2>
           <div className="table-shell">
