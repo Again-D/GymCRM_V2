@@ -8,27 +8,26 @@ Date: 2026-03-13
 - `memberships`: live read + write path exists
 - `reservations`: live read + write path exists
 - `access`: live read + write path exists
-- `auth/session`: live bootstrap + login/logout parity evidence in progress
+- `auth/session`: live bootstrap + login/logout + role matrix evidence exists
 
 ## Active blockers
 
-### 1. Auth / session parity evidence gap
+### 1. Staging auth / workflow evidence gap
 
 - Endpoint / route:
-  - `/api/v1/auth/login`
-  - `/api/v1/auth/logout`
-  - `/api/v1/auth/refresh`
-  - protected shell routes
+  - staging protected shell routes
+  - staging login/logout/refresh flow
+  - staging role-restricted workflows
 - Baseline behavior:
-  - live 로그인/로그아웃/세션 복구와 protected route bootstrap이 운영 프런트에서 실제 세션 기준으로 동작
+  - staging에서 role/session/cookie/proxy 차이까지 포함한 실제 운영 유사 흐름이 재현돼야 함
 - Rebuild behavior:
-  - foundation과 focused tests는 갖췄지만, live browser evidence와 role matrix evidence가 아직 phase artifact로 완전히 정리되지는 않음
+  - local live parity는 확보했지만, staging smoke evidence는 아직 없음
 - Severity:
   - high
 - Owner:
-  - rebuild replacement-candidate phase 2
+  - rebuild replacement-candidate phase 4
 - Workaround:
-  - baseline frontend로 live auth/session smoke 수행
+  - local live evidence와 baseline staging smoke를 함께 참고
 
 ## Resolved blockers in this phase
 
@@ -51,3 +50,10 @@ Date: 2026-03-13
   - `useAccessQueries` reads live `/api/v1/access/presence` and `/api/v1/access/events`
   - `useAccessPrototypeState` writes live `/api/v1/access/entry` and `/api/v1/access/exit`
   - `/access` surface now matches baseline global workflow and hides unsupported live trainer access
+
+### Auth / session parity evidence
+
+- Status: resolved for local live parity
+- Evidence:
+  - live bootstrap/login/logout tests in `frontend-rebuild/src/app/auth.test.tsx`
+  - browser role matrix and protected route evidence in `docs/notes/2026-03-13-frontend-rebuild-live-auth-session-flow.md`
