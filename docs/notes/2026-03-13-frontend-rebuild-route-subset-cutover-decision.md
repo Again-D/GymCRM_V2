@@ -81,3 +81,5 @@ Date: 2026-03-13
 - migration / rollback plan
 - final candidate checkpoint draft update
 - internal cutover rehearsal note
+- route subset evaluation plan:
+  - `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-route-subset-evaluation-plan.md`

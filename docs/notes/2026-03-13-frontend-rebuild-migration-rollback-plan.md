@@ -85,6 +85,15 @@ Date: 2026-03-13
 
 이 4개는 현재 replacement candidate minimum workflow scope와 동일하다.
 
+실행 형태의 기본 추천은:
+
+- baseline frontend 기본 경로 유지
+- rebuild는 내부 전용 alternate entry에서만 노출
+- route subset 평가 결과가 충분할 때만 더 강한 노출을 검토
+
+세부 shape:
+- `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-route-subset-evaluation-plan.md`
+
 ### Stage 3: Full Cutover Evaluation
 
 다음이 모두 충족될 때만 검토한다.
