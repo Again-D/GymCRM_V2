@@ -49,25 +49,25 @@ Date: 2026-03-13
 
 ### Exposure Owner
 - Name / team:
-  - local evaluator
+  - abc
 - Responsibility:
   - baseline/rebuild URL 분리 유지
 
 ### Rollback Decision Owner
 - Name / team:
-  - local evaluator
+  - abc
 - Responsibility:
   - rebuild URL 평가 중단 및 baseline-only 복귀 판단
 
 ### Reviewer / Approver
 - Name / team:
-  - self-review
+  - abc
 - Responsibility:
   - 결과 문서 정리 및 blocker 분류
 
 ### Evidence Recorder
 - Name / team:
-  - local evaluator
+  - abc
 - Responsibility:
   - screenshot / note / decision 기록
 
@@ -106,7 +106,7 @@ Date: 2026-03-13
 - Local timezone:
   - Asia/Seoul
 - Who will actively observe the session?
-  - local evaluator
+  - abc
 - What is the stop/abort communication path?
   - stop rebuild Vite server and continue baseline-only
 
@@ -175,7 +175,7 @@ Date: 2026-03-13
 - Confirm baseline-only recovery by:
   - reopen baseline URL `http://127.0.0.1:5173`
 - Log owner:
-  - local evaluator
+  - abc
 
 ## 8. Evidence Output Paths
 
@@ -187,13 +187,13 @@ Date: 2026-03-13
 
 ### Notes
 - Blocker log update owner:
-  - local evaluator
+  - abc
 - Migration / rollback note update owner:
-  - local evaluator
+  - abc
 - Candidate checkpoint update owner:
-  - local evaluator
+  - abc
 - Route subset decision update owner:
-  - local evaluator
+  - abc
 
 ## 9. Final Go / No-Go Prompt
 
