@@ -444,12 +444,12 @@ Rejected because:
 
 ### Functional Requirements
 
-- [ ] rebuild가 live API mode에서 core workflow 4개를 지원한다
+- [x] rebuild가 live API mode에서 core workflow 4개를 지원한다
 - [x] rebuild가 live auth/session 흐름에서 baseline과 동등한 route/bootstrap behavior를 보인다
 - [x] admin / desk / trainer role parity가 실제 backend 기준으로 확인된다
-- [ ] local staging-profile 환경에서 core workflow 4개 smoke evidence가 확보된다
-- [ ] migration strategy와 rollback plan이 문서화된다
-- [ ] internal cutover rehearsal note가 작성된다
+- [x] local staging-profile 환경에서 core workflow 4개 smoke evidence가 확보된다
+- [x] migration strategy와 rollback plan이 문서화된다
+- [x] internal cutover rehearsal note가 작성된다
 
 ### Non-Functional Requirements
 
@@ -461,10 +461,10 @@ Rejected because:
 
 - [x] live API parity note 작성
 - [x] auth/session parity note 작성
-- [ ] local staging-profile smoke note 작성
-- [ ] migration/rollback note 작성
-- [ ] final candidate checkpoint 작성
-- [ ] internal cutover rehearsal note 작성
+- [x] local staging-profile smoke note 작성
+- [x] migration/rollback note 작성
+- [x] final candidate checkpoint 작성
+- [x] internal cutover rehearsal note 작성
 
 ## Final Output Checklist
 
@@ -472,10 +472,21 @@ Rejected because:
 - [x] live auth/session parity note
 - [x] role parity matrix
 - [x] core workflow parity diff log
-- [ ] local staging-profile smoke evidence set
-- [ ] migration / rollback document
-- [ ] final go/no-go recommendation
-- [ ] internal cutover rehearsal note
+- [x] local staging-profile smoke evidence set
+- [x] migration / rollback document
+- [x] final go/no-go recommendation
+- [x] internal cutover rehearsal note
+
+## Current Go / No-Go Recommendation
+
+Current decision:
+
+`Proceed to controlled route subset evaluation`
+
+Interpretation:
+- rebuild remains a replacement candidate
+- full swap is still not recommended
+- the next safe step is limited route-subset evaluation for the minimum core workflow scope
 
 ## Success Metrics
 
