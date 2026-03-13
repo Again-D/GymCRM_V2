@@ -1,9 +1,11 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { apiGet } from "../../shared/api/client";
 import type { ReservationScheduleSummary } from "./useReservationWorkspaceState";
 
 type UseReservationSchedulesQueryOptions = {
   formatError: (error: unknown) => string;
+  enabled?: boolean;
+  invalidationVersion?: number;
 };
 
 function useLatestRef<T>(value: T) {
@@ -16,16 +18,22 @@ function canCommitState(shouldCommit?: () => boolean) {
   return shouldCommit?.() ?? true;
 }
 
-export function useReservationSchedulesQuery({ formatError }: UseReservationSchedulesQueryOptions) {
+export function useReservationSchedulesQuery({
+  formatError,
+  enabled = true,
+  invalidationVersion = 0
+}: UseReservationSchedulesQueryOptions) {
   const [reservationSchedules, setReservationSchedules] = useState<ReservationScheduleSummary[]>([]);
   const [reservationSchedulesLoading, setReservationSchedulesLoading] = useState(false);
   const [reservationSchedulesError, setReservationSchedulesError] = useState<string | null>(null);
   const formatErrorRef = useLatestRef(formatError);
   const requestIdRef = useRef(0);
+  const hasLoadedRef = useRef(false);
 
   async function loadReservationSchedules(shouldCommit?: () => boolean) {
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
+    hasLoadedRef.current = true;
     setReservationSchedulesLoading(true);
     setReservationSchedulesError(null);
     try {
@@ -48,10 +56,20 @@ export function useReservationSchedulesQuery({ formatError }: UseReservationSche
 
   function resetReservationSchedulesQuery() {
     requestIdRef.current += 1;
+    hasLoadedRef.current = false;
     setReservationSchedules([]);
     setReservationSchedulesLoading(false);
     setReservationSchedulesError(null);
   }
+
+  const loadReservationSchedulesRef = useLatestRef(loadReservationSchedules);
+
+  useEffect(() => {
+    if (!enabled || !hasLoadedRef.current) {
+      return;
+    }
+    void loadReservationSchedulesRef.current();
+  }, [enabled, invalidationVersion]);
 
   return {
     reservationSchedules,

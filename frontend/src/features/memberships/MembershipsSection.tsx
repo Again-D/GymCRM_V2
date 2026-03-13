@@ -1,30 +1,21 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { useSelectedMemberContext } from "../members/useSelectedMemberOwner";
 import { NoticeText } from "../../shared/ui/NoticeText";
 import { PanelHeader } from "../../shared/ui/PanelHeader";
 import { WorkspaceMemberPicker, type WorkspaceMemberPickerRow } from "../../shared/ui/WorkspaceMemberPicker";
 
-type SelectedMemberSummary = {
-  memberId: number;
-  memberName: string;
-  phone: string;
-  memberStatus: string;
-};
-
 type MembershipsSectionProps = {
-  selectedMember: SelectedMemberSummary | null;
   loadWorkspaceMembers: () => Promise<WorkspaceMemberPickerRow[]>;
-  onSelectWorkspaceMember: (memberId: number) => Promise<boolean>;
   onGoMembers: () => void;
   children: ReactNode;
 };
 
 export function MembershipsSection({
-  selectedMember,
   loadWorkspaceMembers,
-  onSelectWorkspaceMember,
   onGoMembers,
   children
 }: MembershipsSectionProps) {
+  const { selectedMember, selectMember } = useSelectedMemberContext();
   const [isPickerOpen, setIsPickerOpen] = useState(selectedMember == null);
 
   useEffect(() => {
@@ -49,7 +40,7 @@ export function MembershipsSection({
               : undefined
           }
           loadMembers={loadWorkspaceMembers}
-          onSelectMember={onSelectWorkspaceMember}
+          onSelectMember={async (memberId) => Boolean(await selectMember(memberId))}
           onSelected={() => setIsPickerOpen(false)}
           submitLabel={selectedMember ? "이 회원으로 변경" : "이 회원으로 시작"}
           actions={

@@ -38,15 +38,9 @@ import {
 import { useLockerQueries } from "./features/lockers/useLockerQueries";
 import { MemberManagementPanels } from "./features/members/MemberManagementPanels";
 import { MembersSection } from "./features/members/MembersSection";
+import { SelectedMemberOwnerProvider, useSelectedMemberOwner } from "./features/members/useSelectedMemberOwner";
 import { type MemberSummary, useMembersQuery } from "./features/members/useMembersQuery";
-import {
-  createEmptyPurchaseForm,
-  createDefaultMembershipActionDraft,
-  type MembershipActionDraft,
-  type PurchaseFormState,
-  type RefundCalculationApi,
-  useMembershipWorkspaceState
-} from "./features/memberships/useMembershipWorkspaceState";
+import { useMembershipMutations, type PurchasePayment, type PurchasedMembership } from "./features/memberships/useMembershipMutations";
 import { MembershipsSection } from "./features/memberships/MembershipsSection";
 import { ProductsSection } from "./features/products/ProductsSection";
 import {
@@ -76,6 +70,8 @@ import { useSettlementReportQuery } from "./features/settlements/useSettlementRe
 import { ApiClientError, apiGet, apiPatch, apiPost } from "./shared/api/client";
 import { type AuthTokenResponse, type AuthUserSession, type SecurityMode, useAuthSession } from "./shared/hooks/useAuthSession";
 import { useMembershipDateFilter } from "./shared/hooks/useMembershipDateFilter";
+import { useQueryInvalidation } from "./shared/hooks/useQueryInvalidation";
+import type { PurchaseFormState } from "./features/memberships/useMembershipWorkspaceState";
 import {
   Navigate,
   useLocation,
@@ -140,114 +136,12 @@ const LazyProductManagementPanels = lazy(async () => ({
   default: (await import("./features/products/ProductManagementPanels")).ProductManagementPanels
 }));
 
-type PurchasedMembership = {
-  membershipId: number;
-  centerId: number;
-  memberId: number;
-  productId: number;
-  assignedTrainerId: number | null;
-  membershipStatus: "ACTIVE" | "HOLDING" | "REFUNDED" | "EXPIRED";
-  productNameSnapshot: string;
-  productCategorySnapshot: "MEMBERSHIP" | "PT" | "GX" | "ETC";
-  productTypeSnapshot: "DURATION" | "COUNT";
-  priceAmountSnapshot: number;
-  purchasedAt: string;
-  startDate: string;
-  endDate: string | null;
-  totalCount: number | null;
-  remainingCount: number | null;
-  usedCount: number;
-  holdDaysUsed: number;
-  holdCountUsed: number;
-  memo: string | null;
-  activeHoldStatus: "ACTIVE" | "RESUMED" | "CANCELED" | null;
-  activeHoldStartDate: string | null;
-  activeHoldEndDate: string | null;
-};
-
-type PurchasePayment = {
-  paymentId: number;
-  membershipId: number;
-  paymentType: "PURCHASE" | "REFUND";
-  paymentStatus: "COMPLETED" | "CANCELED" | "FAILED";
-  paymentMethod: "CASH" | "CARD" | "TRANSFER" | "ETC";
-  amount: number;
-  paidAt: string;
-  memo: string | null;
-};
-
 type PurchaseCalculation = {
   startDate: string;
   endDate: string | null;
   totalCount: number | null;
   remainingCount: number | null;
   chargeAmount: number;
-};
-
-type PurchaseMembershipResponse = {
-  membership: PurchasedMembership;
-  payment: PurchasePayment;
-  calculation: PurchaseCalculation;
-};
-
-type MembershipHoldRecord = {
-  membershipHoldId: number;
-  centerId: number;
-  membershipId: number;
-  holdStatus: "ACTIVE" | "RESUMED" | "CANCELED";
-  holdStartDate: string;
-  holdEndDate: string;
-  resumedAt: string | null;
-  actualHoldDays: number | null;
-  reason: string | null;
-  memo: string | null;
-};
-
-type HoldPreviewApi = {
-  plannedHoldDays: number;
-  recalculatedEndDate: string | null;
-};
-
-type ResumeCalculationApi = {
-  actualHoldDays: number;
-  recalculatedEndDate: string | null;
-};
-
-type HoldMembershipResponse = {
-  membership: PurchasedMembership;
-  hold: MembershipHoldRecord;
-  preview: HoldPreviewApi;
-};
-
-type ResumeMembershipResponse = {
-  membership: PurchasedMembership;
-  hold: MembershipHoldRecord;
-  calculation: ResumeCalculationApi;
-};
-
-type RefundPreviewResponse = {
-  calculation: RefundCalculationApi;
-};
-
-type MembershipRefundRecord = {
-  membershipRefundId: number;
-  centerId: number;
-  membershipId: number;
-  refundPaymentId: number | null;
-  refundStatus: "COMPLETED" | "CANCELED";
-  refundReason: string | null;
-  originalAmount: number;
-  usedAmount: number;
-  penaltyAmount: number;
-  refundAmount: number;
-  memo: string | null;
-};
-
-type RefundMembershipResponse = {
-  membership: PurchasedMembership;
-  payment: PurchasePayment;
-  refund: MembershipRefundRecord;
-  calculation: RefundCalculationApi;
 };
 
 type MemberFormState = {
@@ -434,63 +328,6 @@ function buildPurchasePreview(product: ProductDetail | null, form: PurchaseFormS
   } as const;
 }
 
-function buildHoldPreview(membership: PurchasedMembership, draft: MembershipActionDraft) {
-  if (membership.membershipStatus !== "ACTIVE") {
-    return null;
-  }
-
-  if (!draft.holdStartDate || !draft.holdEndDate) {
-    return { error: "홀딩 시작일/종료일을 입력해주세요." } as const;
-  }
-
-  const start = new Date(`${draft.holdStartDate}T00:00:00`);
-  const end = new Date(`${draft.holdEndDate}T00:00:00`);
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-    return { error: "홀딩 날짜 형식이 올바르지 않습니다." } as const;
-  }
-  if (end < start) {
-    return { error: "홀딩 종료일은 시작일보다 빠를 수 없습니다." } as const;
-  }
-
-  const plannedHoldDays = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-  let recalculatedEndDate: string | null = null;
-  if (membership.endDate) {
-    const baseEnd = new Date(`${membership.endDate}T00:00:00`);
-    baseEnd.setDate(baseEnd.getDate() + plannedHoldDays);
-    recalculatedEndDate = baseEnd.toISOString().slice(0, 10);
-  }
-
-  return {
-    plannedHoldDays,
-    recalculatedEndDate
-  } as const;
-}
-
-function buildResumePreview(membership: PurchasedMembership, draft: MembershipActionDraft) {
-  if (membership.membershipStatus !== "HOLDING") {
-    return null;
-  }
-  if (!draft.resumeDate) {
-    return { error: "해제일을 입력해주세요." } as const;
-  }
-  const holdStart = new Date(`${draft.holdStartDate}T00:00:00`);
-  const resumeDate = new Date(`${draft.resumeDate}T00:00:00`);
-  if (Number.isNaN(holdStart.getTime()) || Number.isNaN(resumeDate.getTime())) {
-    return { error: "해제 날짜 형식이 올바르지 않습니다." } as const;
-  }
-  if (resumeDate < holdStart) {
-    return { error: "해제일은 홀딩 시작일보다 빠를 수 없습니다." } as const;
-  }
-  const actualHoldDays = Math.floor((resumeDate.getTime() - holdStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-  let recalculatedEndDate: string | null = null;
-  if (membership.endDate) {
-    const currentEnd = new Date(`${membership.endDate}T00:00:00`);
-    currentEnd.setDate(currentEnd.getDate() + actualHoldDays);
-    recalculatedEndDate = currentEnd.toISOString().slice(0, 10);
-  }
-  return { actualHoldDays, recalculatedEndDate } as const;
-}
-
 export default function App() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -514,8 +351,6 @@ export default function App() {
   const [memberProductFilter, setMemberProductFilter] = useState("");
   const [memberMembershipStatusFilter, setMemberMembershipStatusFilter] = useState("");
   const [trainerOptions, setTrainerOptions] = useState<TrainerSummary[]>([]);
-  const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
-  const [selectedMember, setSelectedMember] = useState<MemberDetail | null>(null);
   const [memberForm, setMemberForm] = useState<MemberFormState>(EMPTY_MEMBER_FORM);
   const [memberFormMode, setMemberFormMode] = useState<"create" | "edit">("create");
   const [memberFormOpen, setMemberFormOpen] = useState(false);
@@ -529,7 +364,7 @@ export default function App() {
   const [purchaseProductLoading, setPurchaseProductLoading] = useState(false);
   const [memberMembershipsByMemberId, setMemberMembershipsByMemberId] = useState<Record<number, PurchasedMembership[]>>({});
   const [memberPaymentsByMemberId, setMemberPaymentsByMemberId] = useState<Record<number, PurchasePayment[]>>({});
-  const memberDetailRequestIdRef = useRef(0);
+  const { queryInvalidationVersions, invalidateQueries, resetQueryInvalidation } = useQueryInvalidation();
   const workspaceMemberSearch = useWorkspaceMemberSearchLoader<MemberSummary>(async (keyword) => {
     const params = new URLSearchParams();
     if (keyword) {
@@ -538,30 +373,37 @@ export default function App() {
     const query = params.toString();
     const response = await apiGet<MemberSummary[]>(`/api/v1/members${query ? `?${query}` : ""}`);
     return response.data;
+  }, {
+    invalidationVersion: queryInvalidationVersions.workspaceMemberSearch
   });
-  const membershipWorkspace = useMembershipWorkspaceState(selectedMemberId);
   const {
-    purchaseForm,
-    setPurchaseForm,
-    memberPurchaseSubmitting,
-    setMemberPurchaseSubmitting,
-    memberPurchaseMessage,
-    setMemberPurchaseMessage,
-    memberPurchaseError,
-    setMemberPurchaseError,
-    membershipActionDrafts,
-    setMembershipActionDrafts,
-    membershipActionSubmittingId,
-    setMembershipActionSubmittingId,
-    membershipActionMessageById,
-    setMembershipActionMessageById,
-    membershipActionErrorById,
-    setMembershipActionErrorById,
-    membershipRefundPreviewById,
-    setMembershipRefundPreviewById,
-    membershipRefundPreviewLoadingId,
-    setMembershipRefundPreviewLoadingId
-  } = membershipWorkspace;
+    securityMode,
+    prototypeNoAuth,
+    authBootstrapping,
+    authAccessToken,
+    authUser,
+    authStatusMessage,
+    authError,
+    loginSubmitting,
+    isPrototypeMode,
+    isJwtMode,
+    isAuthenticated,
+    login,
+    logout
+  } = useAuthSession({
+    formatError: errorMessage,
+    onProtectedUiReset: clearProtectedUiState
+  });
+  const {
+    selectedMemberId,
+    selectedMember,
+    selectedMemberLoading,
+    selectMember: selectSelectedMember,
+    clearSelectedMember,
+    replaceSelectedMember
+  } = useSelectedMemberOwner({
+    authUser
+  });
   const reservationWorkspace = useReservationWorkspaceState(selectedMemberId);
   const {
     reservationRowsByMemberId,
@@ -690,7 +532,9 @@ export default function App() {
       dateFrom: memberDateFilter.dateFrom,
       dateTo: memberDateFilter.dateTo
     }),
-    formatError: errorMessage
+    formatError: errorMessage,
+    enabled: isAuthenticated,
+    invalidationVersion: queryInvalidationVersions.members
   });
   const {
     products,
@@ -701,7 +545,9 @@ export default function App() {
     resetProductsQuery
   } = useProductsQuery({
     getDefaultFilters: () => productFilters,
-    formatError: errorMessage
+    formatError: errorMessage,
+    enabled: isAuthenticated,
+    invalidationVersion: queryInvalidationVersions.products
   });
   const {
     reservationSchedules,
@@ -710,7 +556,9 @@ export default function App() {
     loadReservationSchedules,
     resetReservationSchedulesQuery
   } = useReservationSchedulesQuery({
-    formatError: errorMessage
+    formatError: errorMessage,
+    enabled: isAuthenticated,
+    invalidationVersion: queryInvalidationVersions.reservationSchedules
   });
   const {
     reservationTargets,
@@ -721,7 +569,9 @@ export default function App() {
     loadReservationTargets,
     resetReservationTargetsQuery
   } = useReservationTargetsQuery({
-    formatError: errorMessage
+    formatError: errorMessage,
+    enabled: isAuthenticated && activeNavSection === "reservations",
+    invalidationVersion: queryInvalidationVersions.reservationTargets
   });
   const {
     settlementReport,
@@ -747,9 +597,9 @@ export default function App() {
 
   function clearProtectedUiState() {
     workspaceMemberSearch.invalidate();
+    resetQueryInvalidation();
     resetMembersQuery();
-    setSelectedMemberId(null);
-    setSelectedMember(null);
+    clearSelectedMember();
     setMemberForm({ ...EMPTY_MEMBER_FORM, joinDate: new Date().toISOString().slice(0, 10) });
     setMemberFormMode("create");
     setMemberFormOpen(false);
@@ -764,7 +614,7 @@ export default function App() {
     setMemberMembershipStatusFilter("");
     resetMemberDateFilter();
     setTrainerOptions([]);
-    membershipWorkspace.resetMembershipWorkspace();
+    resetMembershipWorkspace();
     setPurchaseProductDetail(null);
     setMemberMembershipsByMemberId({});
     setMemberPaymentsByMemberId({});
@@ -783,25 +633,6 @@ export default function App() {
     productWorkspace.resetProductWorkspace();
   }
 
-  const {
-    securityMode,
-    prototypeNoAuth,
-    authBootstrapping,
-    authAccessToken,
-    authUser,
-    authStatusMessage,
-    authError,
-    loginSubmitting,
-    isPrototypeMode,
-    isJwtMode,
-    isAuthenticated,
-    login,
-    logout
-  } = useAuthSession({
-    formatError: errorMessage,
-    onProtectedUiReset: clearProtectedUiState
-  });
-
   const routePreview = routePreviewRoutes.slice(0, 4);
   const activeProductsForPurchase = useMemo(
     () => products.filter((product) => product.productStatus === "ACTIVE"),
@@ -815,6 +646,40 @@ export default function App() {
   const effectiveSettlementPanelError = settlementPanelError ?? settlementReportError;
   const effectiveCrmPanelError = crmPanelError ?? crmHistoryError;
   const effectiveProductPanelError = productPanelError ?? productsQueryError;
+  const membershipMutations = useMembershipMutations({
+    selectedMember,
+    setPurchaseProductDetail,
+    setMemberMembershipsByMemberId,
+    setMemberPaymentsByMemberId,
+    invalidateQueries,
+    refreshSelectedMember: selectSelectedMember,
+    parseRequiredNumber,
+    normalizeOptionalText,
+    formatError: errorMessage
+  });
+  const {
+    purchaseForm,
+    setPurchaseForm,
+    memberPurchaseSubmitting,
+    memberPurchaseMessage,
+    memberPurchaseError,
+    setMemberPurchaseError,
+    membershipActionSubmittingId,
+    membershipActionMessageById,
+    membershipActionErrorById,
+    membershipRefundPreviewById,
+    membershipRefundPreviewLoadingId,
+    updateMembershipActionDraft,
+    getMembershipActionDraft,
+    handleMembershipPurchaseSubmit,
+    handleMembershipHoldSubmit,
+    handleMembershipResumeSubmit,
+    handleMembershipRefundPreview,
+    handleMembershipRefundSubmit,
+    buildHoldPreview,
+    buildResumePreview,
+    resetMembershipWorkspace
+  } = membershipMutations;
   const memberTrainerOptions =
     authUser?.roleCode === "ROLE_TRAINER"
       ? [{ userId: authUser.userId, centerId: authUser.centerId, loginId: authUser.loginId, displayName: authUser.displayName }]
@@ -886,34 +751,16 @@ export default function App() {
     return response.data;
   }
 
-  function invalidateWorkspaceMemberSearchCache() {
-    workspaceMemberSearch.invalidate();
-  }
-
-  async function loadMemberDetail(memberId: number, options?: { syncForm?: boolean }): Promise<boolean> {
-    const requestId = memberDetailRequestIdRef.current + 1;
-    memberDetailRequestIdRef.current = requestId;
-    setSelectedMemberId(memberId);
-    setMemberPanelError(null);
-    setPurchaseProductDetail(null);
-    try {
-      const response = await apiGet<MemberDetail>(`/api/v1/members/${memberId}`);
-      if (memberDetailRequestIdRef.current !== requestId) {
-        return false;
-      }
-      setSelectedMember(response.data);
-      await loadMemberMemberships(memberId);
-      if (options?.syncForm !== false) {
-        setMemberForm(memberFormFromDetail(response.data));
-        setMemberFormMode("edit");
-      }
-      return true;
-    } catch (error) {
-      if (memberDetailRequestIdRef.current === requestId) {
-        setMemberPanelError(errorMessage(error));
-      }
-      return false;
+  useEffect(() => {
+    if (selectedMemberId == null) {
+      return;
     }
+    void loadMemberMemberships(selectedMemberId);
+  }, [selectedMemberId]);
+
+  function syncMemberEditor(detail: MemberDetail) {
+    setMemberForm(memberFormFromDetail(detail));
+    setMemberFormMode("edit");
   }
 
   async function loadProductDetail(productId: number, options?: { syncForm?: boolean }): Promise<boolean> {
@@ -1100,9 +947,9 @@ export default function App() {
         const response = await apiPost<MemberDetail>("/api/v1/members", buildMemberPayload(memberForm));
         setMemberFormMessage(response.message);
         setMemberPanelMessage(response.message);
-        invalidateWorkspaceMemberSearchCache();
-        await loadMembers();
-        await loadMemberDetail(response.data.memberId);
+        invalidateQueries("members", "workspaceMemberSearch");
+        replaceSelectedMember(response.data);
+        syncMemberEditor(response.data);
         setMemberFormOpen(false);
       } else if (selectedMemberId != null) {
         const response = await apiPatch<MemberDetail>(
@@ -1111,10 +958,9 @@ export default function App() {
         );
         setMemberFormMessage(response.message);
         setMemberPanelMessage(response.message);
-        invalidateWorkspaceMemberSearchCache();
-        await loadMembers();
-        setSelectedMember(response.data);
-        setMemberForm(memberFormFromDetail(response.data));
+        invalidateQueries("members", "workspaceMemberSearch");
+        replaceSelectedMember(response.data);
+        syncMemberEditor(response.data);
         setMemberFormOpen(false);
       }
     } catch (error) {
@@ -1140,7 +986,7 @@ export default function App() {
         const response = await apiPost<ProductDetail>("/api/v1/products", buildProductPayload(productForm));
         setProductFormMessage(response.message);
         setProductPanelMessage(response.message);
-        await loadProducts();
+        invalidateQueries("products");
         await loadProductDetail(response.data.productId);
         setProductFormOpen(false);
       } else if (selectedProductId != null) {
@@ -1150,7 +996,7 @@ export default function App() {
         );
         setProductFormMessage(response.message);
         setProductPanelMessage(response.message);
-        await loadProducts();
+        invalidateQueries("products");
         setSelectedProduct(response.data);
         setProductForm(productFormFromDetail(response.data));
         setProductFormOpen(false);
@@ -1177,264 +1023,11 @@ export default function App() {
       setSelectedProduct(response.data);
       setProductForm(productFormFromDetail(response.data));
       setProductFormMessage(response.message);
-      await loadProducts();
+      invalidateQueries("products");
     } catch (error) {
       setProductFormError(errorMessage(error));
     } finally {
       setProductFormSubmitting(false);
-    }
-  }
-
-  async function handleMembershipPurchaseSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!selectedMember) {
-      setMemberPurchaseError("구매할 회원을 먼저 선택해주세요.");
-      return;
-    }
-    if (!purchaseForm.productId) {
-      setMemberPurchaseError("구매할 상품을 선택해주세요.");
-      return;
-    }
-    if (!purchaseProductDetail) {
-      setMemberPurchaseError("상품 상세 정보를 불러오는 중이거나 선택되지 않았습니다.");
-      return;
-    }
-    if (purchasePreview && "error" in purchasePreview) {
-      setMemberPurchaseError(purchasePreview.error ?? "구매 미리보기를 확인해주세요.");
-      return;
-    }
-
-    setMemberPurchaseSubmitting(true);
-    setMemberPurchaseError(null);
-    setMemberPurchaseMessage(null);
-    try {
-      const response = await apiPost<PurchaseMembershipResponse>(
-        `/api/v1/members/${selectedMember.memberId}/memberships`,
-        {
-          productId: Number.parseInt(purchaseForm.productId, 10),
-          startDate: purchaseForm.startDate || null,
-          paidAmount: purchaseForm.paidAmount.trim() ? parseRequiredNumber(purchaseForm.paidAmount) : null,
-          paymentMethod: purchaseForm.paymentMethod,
-          membershipMemo: normalizeOptionalText(purchaseForm.membershipMemo),
-          paymentMemo: normalizeOptionalText(purchaseForm.paymentMemo)
-        }
-      );
-
-      setMemberPurchaseMessage(response.message);
-      setMemberMembershipsByMemberId((prev) => {
-        const currentRows = prev[selectedMember.memberId] ?? [];
-        return {
-          ...prev,
-          [selectedMember.memberId]: [response.data.membership, ...currentRows]
-        };
-      });
-      setMemberPaymentsByMemberId((prev) => {
-        const currentRows = prev[selectedMember.memberId] ?? [];
-        return {
-          ...prev,
-          [selectedMember.memberId]: [response.data.payment, ...currentRows]
-        };
-      });
-      setMembershipActionDrafts((prev) => ({
-        ...prev,
-        [response.data.membership.membershipId]: createDefaultMembershipActionDraft()
-      }));
-      setPurchaseForm(createEmptyPurchaseForm());
-      setPurchaseProductDetail(null);
-    } catch (error) {
-      setMemberPurchaseError(errorMessage(error));
-    } finally {
-      setMemberPurchaseSubmitting(false);
-    }
-  }
-
-  function updateMembershipActionDraft(
-    membershipId: number,
-    updater: (draft: MembershipActionDraft) => MembershipActionDraft
-  ) {
-    setMembershipActionDrafts((prev) => {
-      const current = prev[membershipId] ?? createDefaultMembershipActionDraft();
-      const nextState = {
-        ...prev,
-        [membershipId]: updater(current)
-      };
-      return nextState;
-    });
-    setMembershipRefundPreviewById((prev) => {
-      if (!(membershipId in prev)) {
-        return prev;
-      }
-      const next = { ...prev };
-      delete next[membershipId];
-      return next;
-    });
-  }
-
-  function getMembershipActionDraft(membershipId: number): MembershipActionDraft {
-    return membershipActionDrafts[membershipId] ?? createDefaultMembershipActionDraft();
-  }
-
-  function patchSessionMembership(memberId: number, updatedMembership: PurchasedMembership) {
-    setMemberMembershipsByMemberId((prev) => {
-      const currentRows = prev[memberId] ?? [];
-      return {
-        ...prev,
-        [memberId]: currentRows.map((row) => (row.membershipId === updatedMembership.membershipId ? updatedMembership : row))
-      };
-    });
-  }
-
-  async function handleMembershipHoldSubmit(membership: PurchasedMembership) {
-    if (!selectedMember) {
-      return;
-    }
-    const draft = getMembershipActionDraft(membership.membershipId);
-    const preview = buildHoldPreview(membership, draft);
-    if (preview && "error" in preview) {
-      setMembershipActionErrorById((prev) => ({
-        ...prev,
-        [membership.membershipId]: preview.error ?? "홀딩 미리보기를 확인해주세요."
-      }));
-      setMembershipActionMessageById((prev) => ({ ...prev, [membership.membershipId]: "" }));
-      return;
-    }
-
-    setMembershipActionSubmittingId(membership.membershipId);
-    setMembershipActionErrorById((prev) => ({ ...prev, [membership.membershipId]: "" }));
-    setMembershipActionMessageById((prev) => ({ ...prev, [membership.membershipId]: "" }));
-    try {
-      const response = await apiPost<HoldMembershipResponse>(
-        `/api/v1/members/${membership.memberId}/memberships/${membership.membershipId}/hold`,
-        {
-          holdStartDate: draft.holdStartDate || null,
-          holdEndDate: draft.holdEndDate || null,
-          reason: normalizeOptionalText(draft.holdReason),
-          memo: normalizeOptionalText(draft.holdMemo)
-        }
-      );
-
-      patchSessionMembership(membership.memberId, response.data.membership);
-      invalidateWorkspaceMemberSearchCache();
-      await loadMembers();
-      setMembershipActionMessageById((prev) => ({ ...prev, [membership.membershipId]: response.message }));
-      setMembershipActionDrafts((prev) => ({
-        ...prev,
-        [membership.membershipId]: {
-          ...(prev[membership.membershipId] ?? createDefaultMembershipActionDraft()),
-          holdStartDate: response.data.hold.holdStartDate,
-          holdEndDate: response.data.hold.holdEndDate,
-          resumeDate: response.data.hold.holdEndDate
-        }
-      }));
-    } catch (error) {
-      setMembershipActionErrorById((prev) => ({ ...prev, [membership.membershipId]: errorMessage(error) }));
-    } finally {
-      setMembershipActionSubmittingId(null);
-    }
-  }
-
-  async function handleMembershipResumeSubmit(membership: PurchasedMembership) {
-    if (!selectedMember) {
-      return;
-    }
-    const draft = getMembershipActionDraft(membership.membershipId);
-    const preview = buildResumePreview(membership, draft);
-    if (preview && "error" in preview) {
-      setMembershipActionErrorById((prev) => ({
-        ...prev,
-        [membership.membershipId]: preview.error ?? "홀딩 해제 미리보기를 확인해주세요."
-      }));
-      setMembershipActionMessageById((prev) => ({ ...prev, [membership.membershipId]: "" }));
-      return;
-    }
-
-    setMembershipActionSubmittingId(membership.membershipId);
-    setMembershipActionErrorById((prev) => ({ ...prev, [membership.membershipId]: "" }));
-    setMembershipActionMessageById((prev) => ({ ...prev, [membership.membershipId]: "" }));
-    try {
-      const response = await apiPost<ResumeMembershipResponse>(
-        `/api/v1/members/${membership.memberId}/memberships/${membership.membershipId}/resume`,
-        {
-          resumeDate: draft.resumeDate || null
-        }
-      );
-
-      patchSessionMembership(membership.memberId, response.data.membership);
-      invalidateWorkspaceMemberSearchCache();
-      await loadMembers();
-      setMembershipActionMessageById((prev) => ({ ...prev, [membership.membershipId]: response.message }));
-    } catch (error) {
-      setMembershipActionErrorById((prev) => ({ ...prev, [membership.membershipId]: errorMessage(error) }));
-    } finally {
-      setMembershipActionSubmittingId(null);
-    }
-  }
-
-  async function handleMembershipRefundPreview(membership: PurchasedMembership) {
-    if (!selectedMember) {
-      return;
-    }
-    const draft = getMembershipActionDraft(membership.membershipId);
-
-    setMembershipRefundPreviewLoadingId(membership.membershipId);
-    setMembershipActionErrorById((prev) => ({ ...prev, [membership.membershipId]: "" }));
-    setMembershipActionMessageById((prev) => ({ ...prev, [membership.membershipId]: "" }));
-    try {
-      const response = await apiPost<RefundPreviewResponse>(
-        `/api/v1/members/${membership.memberId}/memberships/${membership.membershipId}/refund/preview`,
-        {
-          refundDate: draft.refundDate || null
-        }
-      );
-      setMembershipRefundPreviewById((prev) => ({
-        ...prev,
-        [membership.membershipId]: response.data.calculation
-      }));
-      setMembershipActionMessageById((prev) => ({ ...prev, [membership.membershipId]: response.message }));
-    } catch (error) {
-      setMembershipActionErrorById((prev) => ({ ...prev, [membership.membershipId]: errorMessage(error) }));
-    } finally {
-      setMembershipRefundPreviewLoadingId(null);
-    }
-  }
-
-  async function handleMembershipRefundSubmit(membership: PurchasedMembership) {
-    if (!selectedMember) {
-      return;
-    }
-    const draft = getMembershipActionDraft(membership.membershipId);
-    setMembershipActionSubmittingId(membership.membershipId);
-    setMembershipActionErrorById((prev) => ({ ...prev, [membership.membershipId]: "" }));
-    setMembershipActionMessageById((prev) => ({ ...prev, [membership.membershipId]: "" }));
-    try {
-      const response = await apiPost<RefundMembershipResponse>(
-        `/api/v1/members/${membership.memberId}/memberships/${membership.membershipId}/refund`,
-        {
-          refundDate: draft.refundDate || null,
-          refundPaymentMethod: draft.refundPaymentMethod,
-          refundReason: normalizeOptionalText(draft.refundReason),
-          refundMemo: normalizeOptionalText(draft.refundMemo),
-          paymentMemo: normalizeOptionalText(draft.refundPaymentMemo)
-        }
-      );
-
-      patchSessionMembership(membership.memberId, response.data.membership);
-      setMemberPaymentsByMemberId((prev) => {
-        const currentRows = prev[selectedMember.memberId] ?? [];
-        return {
-          ...prev,
-          [selectedMember.memberId]: [response.data.payment, ...currentRows]
-        };
-      });
-      setMembershipRefundPreviewById((prev) => ({
-        ...prev,
-        [membership.membershipId]: response.data.calculation
-      }));
-      setMembershipActionMessageById((prev) => ({ ...prev, [membership.membershipId]: response.message }));
-    } catch (error) {
-      setMembershipActionErrorById((prev) => ({ ...prev, [membership.membershipId]: errorMessage(error) }));
-    } finally {
-      setMembershipActionSubmittingId(null);
     }
   }
 
@@ -1465,7 +1058,7 @@ export default function App() {
       });
       setReservationPanelMessage(response.message);
       await loadReservationsForMember(selectedMember.memberId);
-      await loadReservationSchedules();
+      invalidateQueries("reservationSchedules", "reservationTargets");
       setReservationCreateForm({ ...EMPTY_RESERVATION_CREATE_FORM });
     } catch (error) {
       setReservationPanelError(errorMessage(error));
@@ -1487,7 +1080,7 @@ export default function App() {
       });
       setReservationPanelMessage(response.message);
       await loadReservationsForMember(selectedMember.memberId);
-      await loadReservationSchedules();
+      invalidateQueries("reservationSchedules", "reservationTargets");
     } catch (error) {
       setReservationPanelError(errorMessage(error));
     } finally {
@@ -1510,10 +1103,10 @@ export default function App() {
           : response.message
       );
       await loadReservationsForMember(selectedMember.memberId);
-      await loadReservationSchedules();
+      invalidateQueries("reservationSchedules", "reservationTargets", "members", "workspaceMemberSearch");
       if (selectedMember) {
         // Keep membership workspace cache aligned for status/remaining count display in the same session.
-        await loadMemberDetail(selectedMember.memberId, { syncForm: false });
+        await selectSelectedMember(selectedMember.memberId);
       }
     } catch (error) {
       setReservationPanelError(errorMessage(error));
@@ -1551,7 +1144,7 @@ export default function App() {
       const response = await apiPost<ReservationRecord>(`/api/v1/reservations/${reservationId}/no-show`);
       setReservationPanelMessage(response.message);
       await loadReservationsForMember(selectedMember.memberId);
-      await loadReservationSchedules();
+      invalidateQueries("reservationSchedules", "reservationTargets");
     } catch (error) {
       setReservationPanelError(errorMessage(error));
     } finally {
@@ -1645,8 +1238,7 @@ export default function App() {
 
   function startCreateMember() {
     setMemberFormMode("create");
-    setSelectedMemberId(null);
-    setSelectedMember(null);
+    clearSelectedMember();
     setMemberForm({ ...EMPTY_MEMBER_FORM, joinDate: new Date().toISOString().slice(0, 10) });
     setMemberPanelError(null);
     setMemberPanelMessage(null);
@@ -1668,14 +1260,28 @@ export default function App() {
   }
 
   async function openMemberEditor(memberId: number) {
-    const loaded = await loadMemberDetail(memberId);
-    if (loaded) {
+    setMemberPanelError(null);
+    setPurchaseProductDetail(null);
+    try {
+      const detail = await selectSelectedMember(memberId);
+      if (!detail) {
+        return;
+      }
+      syncMemberEditor(detail);
       setMemberFormOpen(true);
+    } catch (error) {
+      setMemberPanelError(errorMessage(error));
     }
   }
 
   async function selectMember(memberId: number) {
-    await loadMemberDetail(memberId, { syncForm: false });
+    setMemberPanelError(null);
+    setPurchaseProductDetail(null);
+    try {
+      await selectSelectedMember(memberId);
+    } catch (error) {
+      setMemberPanelError(errorMessage(error));
+    }
   }
 
   function navigateToSection(sectionKey: NavSectionKey) {
@@ -1687,16 +1293,28 @@ export default function App() {
   }
 
   async function openMembershipOperationsForMember(memberId: number) {
-    const loaded = await loadMemberDetail(memberId, { syncForm: false });
-    if (loaded) {
+    setMemberPanelError(null);
+    setPurchaseProductDetail(null);
+    try {
+      if (!(await selectSelectedMember(memberId))) {
+        return;
+      }
       navigateToSection("memberships");
+    } catch (error) {
+      setMemberPanelError(errorMessage(error));
     }
   }
 
   async function openReservationManagementForMember(memberId: number) {
-    const loaded = await loadMemberDetail(memberId, { syncForm: false });
-    if (loaded) {
+    setMemberPanelError(null);
+    setPurchaseProductDetail(null);
+    try {
+      if (!(await selectSelectedMember(memberId))) {
+        return;
+      }
       navigateToSection("reservations");
+    } catch (error) {
+      setMemberPanelError(errorMessage(error));
     }
   }
 
@@ -1792,7 +1410,17 @@ export default function App() {
   }
 
   return (
-    <main className="app-shell">
+    <SelectedMemberOwnerProvider
+      value={{
+        selectedMemberId,
+        selectedMember,
+        selectedMemberLoading,
+        selectMember: selectSelectedMember,
+        clearSelectedMember,
+        replaceSelectedMember
+      }}
+    >
+      <main className="app-shell">
       <TopBar
         subtitle={appSubtitle}
         modeBadgeText={modeBadgeText}
@@ -1872,12 +1500,7 @@ export default function App() {
               sessionMembershipCount={selectedMemberMemberships.length}
             />
           ) : activeNavSection === "memberships" ? (
-            <MembershipsSection
-              selectedMember={selectedMember}
-              loadWorkspaceMembers={loadWorkspaceMembers}
-              onSelectWorkspaceMember={(memberId) => loadMemberDetail(memberId, { syncForm: false })}
-              onGoMembers={() => navigateToSection("members")}
-            >
+            <MembershipsSection loadWorkspaceMembers={loadWorkspaceMembers} onGoMembers={() => navigateToSection("members")}>
               <Suspense fallback={<WorkspacePanelFallback />}>
                 <LazyMembershipOperationsPanels
                   key={selectedMember?.memberId ?? "membership-empty"}
@@ -1890,7 +1513,12 @@ export default function App() {
                   purchaseProductLoading={purchaseProductLoading}
                   purchaseProductDetail={purchaseProductDetail}
                   purchasePreview={purchasePreview}
-                  handleMembershipPurchaseSubmit={handleMembershipPurchaseSubmit}
+                  handleMembershipPurchaseSubmit={(event: FormEvent<HTMLFormElement>) =>
+                    handleMembershipPurchaseSubmit(event, {
+                      purchaseProductDetail,
+                      purchasePreview
+                    })
+                  }
                   memberPurchaseSubmitting={memberPurchaseSubmitting}
                   memberPurchaseMessage={memberPurchaseMessage}
                   memberPurchaseError={memberPurchaseError}
@@ -1914,26 +1542,11 @@ export default function App() {
             </MembershipsSection>
           ) : activeNavSection === "reservations" ? (
             <ReservationsSection
-              selectedMember={
-                selectedMember
-                  ? {
-                      memberId: selectedMember.memberId,
-                      memberName: selectedMember.memberName,
-                      phone: selectedMember.phone,
-                      memberStatus: selectedMember.memberStatus,
-                      membershipExpiryDate:
-                        reservationTargets.find((target) => target.memberId === selectedMember.memberId)?.membershipExpiryDate ?? null
-                    }
-                  : null
-              }
               reservationTargets={reservationTargets}
               reservationTargetsLoading={reservationTargetsLoading}
               reservationTargetsKeyword={reservationTargetsKeyword}
               onReservationTargetsKeywordChange={setReservationTargetsKeyword}
               onReservationTargetsSearch={() => void loadReservationTargets()}
-              onSelectReservationTarget={(memberId) => 
-                loadMemberDetail(memberId, { syncForm: false })
-              }
               selectedMemberReservationsCount={selectedMemberReservations.length}
               reservableMembershipsCount={reservableMemberships.length}
               reservableMemberships={reservableMemberships}
@@ -2116,6 +1729,7 @@ export default function App() {
       ) : null}
         </section>
       </div>
-    </main>
+      </main>
+    </SelectedMemberOwnerProvider>
   );
 }

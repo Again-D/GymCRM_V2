@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useSelectedMemberContext } from "../members/useSelectedMemberOwner";
 import { NoticeText } from "../../shared/ui/NoticeText";
 import { OverlayPanel } from "../../shared/ui/OverlayPanel";
 import { PaginationControls } from "../../shared/ui/PaginationControls";
@@ -6,14 +7,6 @@ import { PanelHeader } from "../../shared/ui/PanelHeader";
 import { usePagination } from "../../shared/hooks/usePagination";
 import { formatDate, formatDateTime } from "../../shared/utils/format";
 import { EmptyTableRow } from "../../shared/ui/EmptyTableRow";
-
-type SelectedMemberSummary = {
-  memberId: number;
-  memberName: string;
-  phone: string;
-  memberStatus: "ACTIVE" | "INACTIVE";
-  membershipExpiryDate: string | null;
-};
 
 type ReservationTargetSummary = {
   memberId: number;
@@ -46,13 +39,11 @@ type ReservationRow = {
 };
 
 type ReservationsSectionProps = {
-  selectedMember: SelectedMemberSummary | null;
   reservationTargets: ReservationTargetSummary[];
   reservationTargetsLoading: boolean;
   reservationTargetsKeyword: string;
   onReservationTargetsKeywordChange: (value: string) => void;
   onReservationTargetsSearch: () => void;
-  onSelectReservationTarget: (memberId: number) => Promise<boolean>;
   selectedMemberReservationsCount: number;
   reservableMembershipsCount: number;
   reservableMemberships: ReservableMembershipRow[];
@@ -64,13 +55,11 @@ type ReservationsSectionProps = {
 };
 
 export function ReservationsSection({
-  selectedMember,
   reservationTargets,
   reservationTargetsLoading,
   reservationTargetsKeyword,
   onReservationTargetsKeywordChange,
   onReservationTargetsSearch,
-  onSelectReservationTarget,
   selectedMemberReservationsCount,
   reservableMembershipsCount,
   reservableMemberships,
@@ -80,6 +69,7 @@ export function ReservationsSection({
   onGoMembers,
   children
 }: ReservationsSectionProps) {
+  const { selectedMember, selectMember } = useSelectedMemberContext();
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const reservationTargetsPagination = usePagination(reservationTargets, {
     initialPageSize: 10,
@@ -146,7 +136,7 @@ export function ReservationsSection({
                     key={target.memberId}
                     className={selectedMember?.memberId === target.memberId ? "is-selected" : undefined}
                     onClick={async () => {
-                      const loaded = await onSelectReservationTarget(target.memberId);
+                      const loaded = await selectMember(target.memberId);
                       if (loaded) {
                         setIsDetailOpen(true);
                       }
@@ -165,7 +155,7 @@ export function ReservationsSection({
                         className="secondary-button"
                         onClick={(event) => {
                           event.stopPropagation();
-                          void onSelectReservationTarget(target.memberId);
+                          void selectMember(target.memberId);
                         }}
                       >
                         {selectedMember?.memberId === target.memberId ? "선택됨" : "선택"}
