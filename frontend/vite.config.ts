@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => {
       environment: "jsdom"
     },
     server: {
-      port: 5173,
+      port: 5175,
       proxy: {
         "/api": {
           target: env.VITE_DEV_PROXY_TARGET || "http://127.0.0.1:8080",
