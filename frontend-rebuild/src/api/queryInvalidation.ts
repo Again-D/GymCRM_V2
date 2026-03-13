@@ -3,6 +3,8 @@ import { useSyncExternalStore } from "react";
 export type QueryDomain =
   | "products"
   | "members"
+  | "selectedMemberMemberships"
+  | "selectedMemberReservations"
   | "reservationTargets"
   | "settlementReport"
   | "crmHistory"

@@ -33,25 +33,58 @@ type RefundPreview = {
   refundAmount: number;
 };
 
-type CreateLocalMembership = (input: {
+type CreateMembership = (input: {
+  productId: number;
   memberId: number;
   productNameSnapshot: string;
   productTypeSnapshot: "DURATION" | "COUNT";
   startDate: string;
   endDate: string | null;
   remainingCount: number | null;
-}) => PurchasedMembership;
+  paymentMethod: PaymentMethod;
+  paidAmount: number | null;
+  membershipMemo: string | null;
+  paymentMemo: string | null;
+}) => Promise<{ membership: PurchasedMembership; payment: MembershipPaymentRecord }>;
 
-type PatchLocalMembership = (
-  membershipId: number,
-  updater: (membership: PurchasedMembership) => PurchasedMembership
-) => void;
+type HoldMembership = (
+  membership: PurchasedMembership,
+  input: { holdStartDate: string; holdEndDate: string; reason?: string | null; memo?: string | null }
+) => Promise<{ membership: PurchasedMembership }>;
+
+type ResumeMembership = (
+  membership: PurchasedMembership,
+  input: { resumeDate: string }
+) => Promise<{ membership: PurchasedMembership }>;
+
+type PreviewRefund = (
+  membership: PurchasedMembership,
+  input: { refundDate: string }
+) => Promise<{ calculation: RefundPreview }>;
+
+type RefundMembership = (
+  membership: PurchasedMembership,
+  input: {
+    refundDate: string;
+    refundPaymentMethod: PaymentMethod;
+    refundReason?: string | null;
+    refundMemo?: string | null;
+    paymentMemo?: string | null;
+  }
+) => Promise<{
+  membership: PurchasedMembership;
+  payment: MembershipPaymentRecord;
+  calculation: RefundPreview;
+}>;
 
 type UseMembershipPrototypeStateArgs = {
   selectedMemberId: number | null;
   availableProducts: ProductRecord[];
-  createLocalMembership: CreateLocalMembership;
-  patchLocalMembership: PatchLocalMembership;
+  createMembership: CreateMembership;
+  holdMembership: HoldMembership;
+  resumeMembership: ResumeMembership;
+  previewMembershipRefund: PreviewRefund;
+  refundMembership: RefundMembership;
 };
 
 function todayText() {
@@ -98,7 +131,7 @@ function createDefaultMembershipActionDraft(): MembershipActionDraft {
 }
 
 export function useMembershipPrototypeState(args: UseMembershipPrototypeStateArgs) {
-  const { selectedMemberId, availableProducts, createLocalMembership, patchLocalMembership } = args;
+  const { selectedMemberId, availableProducts, createMembership, holdMembership, resumeMembership, previewMembershipRefund, refundMembership } = args;
   const [purchaseForm, setPurchaseForm] = useState<PurchaseFormState>(() => createEmptyPurchaseForm());
   const [payments, setPayments] = useState<MembershipPaymentRecord[]>([]);
   const [membershipActionDrafts, setMembershipActionDrafts] = useState<Record<number, MembershipActionDraft>>({});
@@ -151,13 +184,16 @@ export function useMembershipPrototypeState(args: UseMembershipPrototypeStateArg
     });
   }
 
-  function appendPayment(record: Omit<MembershipPaymentRecord, "paymentId" | "paidAt">) {
-    paymentIdSeedRef.current += 1;
-    const nextPayment: MembershipPaymentRecord = {
-      paymentId: paymentIdSeedRef.current,
-      paidAt: nowText(),
-      ...record
-    };
+  function appendPayment(record: MembershipPaymentRecord | Omit<MembershipPaymentRecord, "paymentId" | "paidAt">) {
+    const nextPayment: MembershipPaymentRecord =
+      "paymentId" in record && "paidAt" in record
+        ? record
+        : {
+            paymentId: (paymentIdSeedRef.current += 1),
+            paidAt: nowText(),
+            ...record
+          };
+    paymentIdSeedRef.current = Math.max(paymentIdSeedRef.current, nextPayment.paymentId);
     setPayments((prev) => [nextPayment, ...prev]);
     return nextPayment;
   }
@@ -230,7 +266,7 @@ export function useMembershipPrototypeState(args: UseMembershipPrototypeStateArg
     } as const;
   }
 
-  function handlePurchaseSubmit() {
+  async function handlePurchaseSubmit() {
     clearPanelFeedback();
 
     if (selectedMemberId == null) {
@@ -244,21 +280,26 @@ export function useMembershipPrototypeState(args: UseMembershipPrototypeStateArg
       return null;
     }
 
-    const membership = createLocalMembership(membershipInput);
-    appendPayment({
-      membershipId: membership.membershipId,
-      paymentType: "PURCHASE",
-      paymentStatus: "PAID",
-      paymentMethod: purchaseForm.paymentMethod,
-      amount: purchasePreview.chargeAmount,
-      memo: purchaseForm.paymentMemo || purchaseForm.membershipMemo || null
-    });
-    setPurchaseForm(createEmptyPurchaseForm());
-    setMembershipPanelMessage(`회원권 #${membership.membershipId}를 생성했습니다.`);
-    return membership;
+    try {
+      const result = await createMembership({
+        ...membershipInput,
+        productId: purchasePreview.product.productId,
+        paymentMethod: purchaseForm.paymentMethod,
+        paidAmount: purchasePreview.chargeAmount,
+        membershipMemo: purchaseForm.membershipMemo || null,
+        paymentMemo: purchaseForm.paymentMemo || purchaseForm.membershipMemo || null
+      });
+      appendPayment(result.payment);
+      setPurchaseForm(createEmptyPurchaseForm());
+      setMembershipPanelMessage(`회원권 #${result.membership.membershipId}를 생성했습니다.`);
+      return result.membership;
+    } catch (error) {
+      setMembershipPanelError(error instanceof Error ? error.message : "회원권 생성에 실패했습니다.");
+      return null;
+    }
   }
 
-  function handleHoldSubmit(membership: PurchasedMembership) {
+  async function handleHoldSubmit(membership: PurchasedMembership) {
     clearPanelFeedback();
     const preview = buildHoldPreview(membership);
     if ("error" in preview) {
@@ -266,16 +307,20 @@ export function useMembershipPrototypeState(args: UseMembershipPrototypeStateArg
       return;
     }
 
-    patchLocalMembership(membership.membershipId, (current) => ({
-      ...current,
-      membershipStatus: "HOLDING",
-      endDate: preview.recalculatedEndDate,
-      activeHoldStatus: "ACTIVE"
-    }));
-    setMembershipPanelMessage(`회원권 #${membership.membershipId}를 홀딩했습니다.`);
+    try {
+      await holdMembership(membership, {
+        holdStartDate: getMembershipActionDraft(membership.membershipId).holdStartDate,
+        holdEndDate: getMembershipActionDraft(membership.membershipId).holdEndDate,
+        reason: getMembershipActionDraft(membership.membershipId).holdReason || null,
+        memo: null
+      });
+      setMembershipPanelMessage(`회원권 #${membership.membershipId}를 홀딩했습니다.`);
+    } catch (error) {
+      setMembershipPanelError(error instanceof Error ? error.message : "회원권 홀딩에 실패했습니다.");
+    }
   }
 
-  function handleResumeSubmit(membership: PurchasedMembership) {
+  async function handleResumeSubmit(membership: PurchasedMembership) {
     clearPanelFeedback();
     const preview = buildResumePreview(membership);
     if ("error" in preview) {
@@ -283,47 +328,56 @@ export function useMembershipPrototypeState(args: UseMembershipPrototypeStateArg
       return;
     }
 
-    patchLocalMembership(membership.membershipId, (current) => ({
-      ...current,
-      membershipStatus: "ACTIVE",
-      endDate: preview.recalculatedEndDate,
-      activeHoldStatus: null
-    }));
-    setMembershipPanelMessage(`회원권 #${membership.membershipId} 홀딩을 해제했습니다.`);
+    try {
+      await resumeMembership(membership, {
+        resumeDate: getMembershipActionDraft(membership.membershipId).resumeDate
+      });
+      setMembershipPanelMessage(`회원권 #${membership.membershipId} 홀딩을 해제했습니다.`);
+    } catch (error) {
+      setMembershipPanelError(error instanceof Error ? error.message : "홀딩 해제에 실패했습니다.");
+    }
   }
 
-  function handleRefundPreview(membership: PurchasedMembership) {
+  async function handleRefundPreview(membership: PurchasedMembership) {
     clearPanelFeedback();
     const preview = buildRefundPreview(membership);
     if ("error" in preview) {
       setMembershipPanelError(preview.error ?? "환불 미리보기를 계산하지 못했습니다.");
       return null;
     }
-    setMembershipRefundPreviewById((prev) => ({ ...prev, [membership.membershipId]: preview }));
-    return preview;
+    try {
+      const response = await previewMembershipRefund(membership, {
+        refundDate: getMembershipActionDraft(membership.membershipId).refundDate
+      });
+      setMembershipRefundPreviewById((prev) => ({ ...prev, [membership.membershipId]: response.calculation }));
+      return response.calculation;
+    } catch (error) {
+      setMembershipPanelError(error instanceof Error ? error.message : "환불 미리보기를 계산하지 못했습니다.");
+      return null;
+    }
   }
 
-  function handleRefundSubmit(membership: PurchasedMembership) {
+  async function handleRefundSubmit(membership: PurchasedMembership) {
     clearPanelFeedback();
-    const preview = handleRefundPreview(membership);
+    const preview = await handleRefundPreview(membership);
     if (!preview) {
       return;
     }
 
-    patchLocalMembership(membership.membershipId, (current) => ({
-      ...current,
-      membershipStatus: "REFUNDED",
-      activeHoldStatus: null
-    }));
-    appendPayment({
-      membershipId: membership.membershipId,
-      paymentType: "REFUND",
-      paymentStatus: "REFUNDED",
-      paymentMethod: getMembershipActionDraft(membership.membershipId).refundPaymentMethod,
-      amount: -preview.refundAmount,
-      memo: getMembershipActionDraft(membership.membershipId).refundMemo || null
-    });
-    setMembershipPanelMessage(`회원권 #${membership.membershipId}를 환불 처리했습니다.`);
+    try {
+      const result = await refundMembership(membership, {
+        refundDate: getMembershipActionDraft(membership.membershipId).refundDate,
+        refundPaymentMethod: getMembershipActionDraft(membership.membershipId).refundPaymentMethod,
+        refundReason: getMembershipActionDraft(membership.membershipId).refundReason || null,
+        refundMemo: getMembershipActionDraft(membership.membershipId).refundMemo || null,
+        paymentMemo: null
+      });
+      appendPayment(result.payment);
+      setMembershipRefundPreviewById((prev) => ({ ...prev, [membership.membershipId]: result.calculation }));
+      setMembershipPanelMessage(`회원권 #${membership.membershipId}를 환불 처리했습니다.`);
+    } catch (error) {
+      setMembershipPanelError(error instanceof Error ? error.message : "회원권 환불에 실패했습니다.");
+    }
   }
 
   return {

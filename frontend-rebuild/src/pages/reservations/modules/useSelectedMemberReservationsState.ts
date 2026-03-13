@@ -1,23 +1,24 @@
 import { useRef, useState } from "react";
 
-import { apiGet } from "../../../api/client";
+import { apiGet, apiPost, isMockApiMode } from "../../../api/client";
+import { createMockReservation, patchMockReservation } from "../../../api/mockData";
+import { invalidateQueryDomains, useQueryInvalidationVersion } from "../../../api/queryInvalidation";
 import type { ReservationRow } from "../../members/modules/types";
 
 type CreateReservationInput = {
+  memberId: number;
   membershipId: number;
   scheduleId: number;
+  memo?: string;
 };
-
-function nowText() {
-  return new Date().toISOString();
-}
 
 export function useSelectedMemberReservationsState() {
   const [selectedMemberReservations, setSelectedMemberReservations] = useState<ReservationRow[]>([]);
   const [selectedMemberReservationsLoading, setSelectedMemberReservationsLoading] = useState(false);
   const [selectedMemberReservationsError, setSelectedMemberReservationsError] = useState<string | null>(null);
   const requestIdRef = useRef(0);
-  const reservationIdSeedRef = useRef(90000);
+  const useMockMutations = isMockApiMode();
+  const selectedMemberReservationsVersion = useQueryInvalidationVersion("selectedMemberReservations");
 
   async function loadSelectedMemberReservations(memberId: number) {
     const requestId = requestIdRef.current + 1;
@@ -26,7 +27,9 @@ export function useSelectedMemberReservationsState() {
     setSelectedMemberReservationsError(null);
 
     try {
-      const response = await apiGet<ReservationRow[]>(`/api/v1/members/${memberId}/reservations`);
+      const response = await apiGet<ReservationRow[]>(
+        `/api/v1/members/${memberId}/reservations?version=${selectedMemberReservationsVersion}`
+      );
       if (requestIdRef.current !== requestId) {
         return;
       }
@@ -51,61 +54,116 @@ export function useSelectedMemberReservationsState() {
     setSelectedMemberReservationsError(null);
   }
 
-  function createReservation(input: CreateReservationInput) {
-    reservationIdSeedRef.current += 1;
-    const reservation: ReservationRow = {
-      reservationId: reservationIdSeedRef.current,
-      membershipId: input.membershipId,
-      scheduleId: input.scheduleId,
-      reservationStatus: "CONFIRMED",
-      reservedAt: nowText(),
-      cancelledAt: null,
-      completedAt: null,
-      noShowAt: null,
-      checkedInAt: null
-    };
-    setSelectedMemberReservations((prev) => [reservation, ...prev]);
-    return reservation;
-  }
-
-  function patchReservation(
-    reservationId: number,
-    updater: (reservation: ReservationRow) => ReservationRow
-  ) {
+  function replaceReservation(nextReservation: ReservationRow) {
     setSelectedMemberReservations((prev) =>
-      prev.map((reservation) => (reservation.reservationId === reservationId ? updater(reservation) : reservation))
+      prev.map((reservation) =>
+        reservation.reservationId === nextReservation.reservationId ? nextReservation : reservation
+      )
     );
   }
 
-  function checkInReservation(reservationId: number) {
-    patchReservation(reservationId, (reservation) => ({
-      ...reservation,
-      checkedInAt: reservation.checkedInAt ?? nowText()
-    }));
+  async function createReservation(input: CreateReservationInput) {
+    if (!useMockMutations) {
+      const response = await apiPost<ReservationRow>("/api/v1/reservations", {
+        memberId: input.memberId,
+        membershipId: input.membershipId,
+        scheduleId: input.scheduleId,
+        memo: input.memo ?? null
+      });
+      setSelectedMemberReservations((prev) => [response.data, ...prev]);
+      invalidateQueryDomains(["reservationTargets", "selectedMemberReservations"]);
+      return response.data;
+    }
+
+    const reservation = createMockReservation(input);
+    setSelectedMemberReservations((prev) => [reservation, ...prev]);
+    invalidateQueryDomains(["reservationTargets", "selectedMemberReservations"]);
+    return reservation;
   }
 
-  function completeReservation(reservationId: number) {
-    patchReservation(reservationId, (reservation) => ({
+  async function checkInReservation(memberId: number, reservationId: number) {
+    if (!useMockMutations) {
+      const response = await apiPost<ReservationRow>(`/api/v1/reservations/${reservationId}/check-in`);
+      replaceReservation(response.data);
+      invalidateQueryDomains(["selectedMemberReservations"]);
+      return response.data;
+    }
+
+    const nextReservation = patchMockReservation(memberId, reservationId, (reservation) => ({
+      ...reservation,
+      checkedInAt: reservation.checkedInAt ?? new Date().toISOString()
+    }));
+    if (!nextReservation) {
+      throw new Error("예약을 찾을 수 없습니다.");
+    }
+    replaceReservation(nextReservation);
+    invalidateQueryDomains(["selectedMemberReservations"]);
+    return nextReservation;
+  }
+
+  async function completeReservation(memberId: number, reservationId: number) {
+    if (!useMockMutations) {
+      const response = await apiPost<{ reservation: ReservationRow }>(`/api/v1/reservations/${reservationId}/complete`);
+      replaceReservation(response.data.reservation);
+      invalidateQueryDomains(["reservationTargets", "selectedMemberReservations", "selectedMemberMemberships"]);
+      return response.data.reservation;
+    }
+
+    const nextReservation = patchMockReservation(memberId, reservationId, (reservation) => ({
       ...reservation,
       reservationStatus: "COMPLETED",
-      completedAt: nowText()
+      completedAt: new Date().toISOString()
     }));
+    if (!nextReservation) {
+      throw new Error("예약을 찾을 수 없습니다.");
+    }
+    replaceReservation(nextReservation);
+    invalidateQueryDomains(["reservationTargets", "selectedMemberReservations", "selectedMemberMemberships"]);
+    return nextReservation;
   }
 
-  function cancelReservation(reservationId: number) {
-    patchReservation(reservationId, (reservation) => ({
+  async function cancelReservation(memberId: number, reservationId: number) {
+    if (!useMockMutations) {
+      const response = await apiPost<ReservationRow>(`/api/v1/reservations/${reservationId}/cancel`, {
+        cancelReason: null
+      });
+      replaceReservation(response.data);
+      invalidateQueryDomains(["reservationTargets", "selectedMemberReservations"]);
+      return response.data;
+    }
+
+    const nextReservation = patchMockReservation(memberId, reservationId, (reservation) => ({
       ...reservation,
       reservationStatus: "CANCELLED",
-      cancelledAt: nowText()
+      cancelledAt: new Date().toISOString()
     }));
+    if (!nextReservation) {
+      throw new Error("예약을 찾을 수 없습니다.");
+    }
+    replaceReservation(nextReservation);
+    invalidateQueryDomains(["reservationTargets", "selectedMemberReservations"]);
+    return nextReservation;
   }
 
-  function noShowReservation(reservationId: number) {
-    patchReservation(reservationId, (reservation) => ({
+  async function noShowReservation(memberId: number, reservationId: number) {
+    if (!useMockMutations) {
+      const response = await apiPost<ReservationRow>(`/api/v1/reservations/${reservationId}/no-show`);
+      replaceReservation(response.data);
+      invalidateQueryDomains(["reservationTargets", "selectedMemberReservations", "selectedMemberMemberships"]);
+      return response.data;
+    }
+
+    const nextReservation = patchMockReservation(memberId, reservationId, (reservation) => ({
       ...reservation,
       reservationStatus: "NO_SHOW",
-      noShowAt: nowText()
+      noShowAt: new Date().toISOString()
     }));
+    if (!nextReservation) {
+      throw new Error("예약을 찾을 수 없습니다.");
+    }
+    replaceReservation(nextReservation);
+    invalidateQueryDomains(["reservationTargets", "selectedMemberReservations", "selectedMemberMemberships"]);
+    return nextReservation;
   }
 
   return {

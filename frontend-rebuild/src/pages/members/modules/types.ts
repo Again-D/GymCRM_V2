@@ -41,7 +41,7 @@ export type MembershipPaymentRecord = {
   paymentId: number;
   membershipId: number;
   paymentType: "PURCHASE" | "REFUND";
-  paymentStatus: "PAID" | "REFUNDED";
+  paymentStatus: "PAID" | "REFUNDED" | "COMPLETED" | "CANCELED" | "FAILED";
   paymentMethod: "CASH" | "CARD" | "TRANSFER" | "ETC";
   amount: number;
   paidAt: string;

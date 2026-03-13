@@ -36,8 +36,11 @@ export default function MembershipsPage() {
     selectedMemberMembershipsError,
     loadSelectedMemberMemberships,
     resetSelectedMemberMembershipsQuery,
-    createLocalMembership,
-    patchLocalMembership
+    createMembership,
+    holdMembership,
+    resumeMembership,
+    previewMembershipRefund,
+    refundMembership
   } = useSelectedMemberMembershipsQuery();
   const { products, productsLoading, productsQueryError, loadProducts, resetProductsQuery } = useProductsQuery({
     getDefaultFilters: () => ({
@@ -66,8 +69,11 @@ export default function MembershipsPage() {
   } = useMembershipPrototypeState({
     selectedMemberId,
     availableProducts: products,
-    createLocalMembership,
-    patchLocalMembership
+    createMembership,
+    holdMembership,
+    resumeMembership,
+    previewMembershipRefund,
+    refundMembership
   });
 
   useEffect(() => {
@@ -116,7 +122,7 @@ export default function MembershipsPage() {
             className="members-filter-grid"
             onSubmit={(event) => {
               event.preventDefault();
-              handlePurchaseSubmit();
+              void handlePurchaseSubmit();
             }}
           >
             <label>
@@ -306,7 +312,7 @@ export default function MembershipsPage() {
                                   <button
                                     type="button"
                                     className="secondary-button"
-                                    onClick={() => handleHoldSubmit(membership)}
+                                    onClick={() => void handleHoldSubmit(membership)}
                                   >
                                     홀딩
                                   </button>
@@ -333,7 +339,7 @@ export default function MembershipsPage() {
                                   <button
                                     type="button"
                                     className="secondary-button"
-                                    onClick={() => handleResumeSubmit(membership)}
+                                    onClick={() => void handleResumeSubmit(membership)}
                                   >
                                     홀딩 해제
                                   </button>
@@ -389,14 +395,14 @@ export default function MembershipsPage() {
                                     <button
                                       type="button"
                                       className="secondary-button"
-                                      onClick={() => handleRefundPreview(membership)}
+                                      onClick={() => void handleRefundPreview(membership)}
                                     >
                                       환불 미리보기
                                     </button>
                                     <button
                                       type="button"
                                       className="secondary-button"
-                                      onClick={() => handleRefundSubmit(membership)}
+                                      onClick={() => void handleRefundSubmit(membership)}
                                     >
                                       환불 확정
                                     </button>

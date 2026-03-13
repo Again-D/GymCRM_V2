@@ -22,8 +22,11 @@ describe("products to memberships parity", () => {
   });
 
   it("lets memberships re-read newly created active products through the shared product domain", async () => {
-    const createLocalMembership = vi.fn();
-    const patchLocalMembership = vi.fn();
+    const createMembership = vi.fn();
+    const holdMembership = vi.fn();
+    const resumeMembership = vi.fn();
+    const previewMembershipRefund = vi.fn();
+    const refundMembership = vi.fn();
 
     const { result, rerender } = renderHook(() => {
       const productsQuery = useProductsQuery({
@@ -33,8 +36,11 @@ describe("products to memberships parity", () => {
       const membershipState = useMembershipPrototypeState({
         selectedMemberId: 101,
         availableProducts: productsQuery.products,
-        createLocalMembership,
-        patchLocalMembership
+        createMembership,
+        holdMembership,
+        resumeMembership,
+        previewMembershipRefund,
+        refundMembership
       });
 
       return {

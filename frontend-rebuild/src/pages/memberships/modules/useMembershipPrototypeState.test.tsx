@@ -40,26 +40,44 @@ const availableProducts: ProductRecord[] = [
 ];
 
 describe("useMembershipPrototypeState", () => {
-  it("creates a membership and purchase payment from the preview", () => {
-    const createLocalMembership = vi.fn().mockImplementation((input) => ({
-      membershipId: 99001,
-      memberId: input.memberId,
-      productNameSnapshot: input.productNameSnapshot,
-      productTypeSnapshot: input.productTypeSnapshot,
-      membershipStatus: "ACTIVE",
-      startDate: input.startDate,
-      endDate: input.endDate,
-      remainingCount: input.remainingCount,
-      activeHoldStatus: null
-    }));
-    const patchLocalMembership = vi.fn();
+  it("creates a membership and purchase payment from the preview", async () => {
+    const createMembership = vi.fn().mockResolvedValue({
+      membership: {
+        membershipId: 99001,
+        memberId: 101,
+        productNameSnapshot: "PT 10회권",
+        productTypeSnapshot: "COUNT",
+        membershipStatus: "ACTIVE",
+        startDate: "2026-03-13",
+        endDate: null,
+        remainingCount: 10,
+        activeHoldStatus: null
+      },
+      payment: {
+        paymentId: 88001,
+        membershipId: 99001,
+        paymentType: "PURCHASE",
+        paymentStatus: "PAID",
+        paymentMethod: "CASH",
+        amount: 510000,
+        paidAt: "2026-03-13T10:00:00Z",
+        memo: "테스트 결제"
+      }
+    });
+    const holdMembership = vi.fn();
+    const resumeMembership = vi.fn();
+    const previewMembershipRefund = vi.fn();
+    const refundMembership = vi.fn();
 
     const { result } = renderHook(() =>
       useMembershipPrototypeState({
         selectedMemberId: 101,
         availableProducts,
-        createLocalMembership,
-        patchLocalMembership
+        createMembership,
+        holdMembership,
+        resumeMembership,
+        previewMembershipRefund,
+        refundMembership
       })
     );
 
@@ -72,12 +90,13 @@ describe("useMembershipPrototypeState", () => {
       }));
     });
 
-    act(() => {
-      result.current.handlePurchaseSubmit();
+    await act(async () => {
+      await result.current.handlePurchaseSubmit();
     });
 
-    expect(createLocalMembership).toHaveBeenCalledWith(
+    expect(createMembership).toHaveBeenCalledWith(
       expect.objectContaining({
+        productId: 2,
         memberId: 101,
         productNameSnapshot: "PT 10회권",
         productTypeSnapshot: "COUNT",
@@ -92,9 +111,39 @@ describe("useMembershipPrototypeState", () => {
     });
   });
 
-  it("patches membership hold, resume, and refund transitions", () => {
-    const createLocalMembership = vi.fn();
-    const patchLocalMembership = vi.fn();
+  it("runs hold, resume, and refund mutations through the async action layer", async () => {
+    const createMembership = vi.fn();
+    const holdMembership = vi.fn().mockResolvedValue({ membership: { membershipId: 9002 } });
+    const resumeMembership = vi.fn().mockResolvedValue({ membership: { membershipId: 9002 } });
+    const previewMembershipRefund = vi.fn().mockResolvedValue({
+      calculation: {
+        refundDate: "2026-03-13",
+        originalAmount: 180000,
+        usedAmount: 63000,
+        penaltyAmount: 18000,
+        refundAmount: 99000
+      }
+    });
+    const refundMembership = vi.fn().mockResolvedValue({
+      membership: { membershipId: 9002 },
+      payment: {
+        paymentId: 88002,
+        membershipId: 9002,
+        paymentType: "REFUND",
+        paymentStatus: "REFUNDED",
+        paymentMethod: "CASH",
+        amount: -99000,
+        paidAt: "2026-03-13T11:00:00Z",
+        memo: null
+      },
+      calculation: {
+        refundDate: "2026-03-13",
+        originalAmount: 180000,
+        usedAmount: 63000,
+        penaltyAmount: 18000,
+        refundAmount: 99000
+      }
+    });
     const membership = {
       membershipId: 9002,
       memberId: 101,
@@ -111,18 +160,28 @@ describe("useMembershipPrototypeState", () => {
       useMembershipPrototypeState({
         selectedMemberId: 101,
         availableProducts,
-        createLocalMembership,
-        patchLocalMembership
+        createMembership,
+        holdMembership,
+        resumeMembership,
+        previewMembershipRefund,
+        refundMembership
       })
     );
 
-    act(() => {
-      result.current.handleHoldSubmit(membership);
-      result.current.handleResumeSubmit({ ...membership, membershipStatus: "HOLDING", activeHoldStatus: "ACTIVE" });
-      result.current.handleRefundSubmit(membership);
+    await act(async () => {
+      await result.current.handleHoldSubmit(membership);
+      await result.current.handleResumeSubmit({
+        ...membership,
+        membershipStatus: "HOLDING",
+        activeHoldStatus: "ACTIVE"
+      });
+      await result.current.handleRefundSubmit(membership);
     });
 
-    expect(patchLocalMembership).toHaveBeenCalledTimes(3);
+    expect(holdMembership).toHaveBeenCalledTimes(1);
+    expect(resumeMembership).toHaveBeenCalledTimes(1);
+    expect(previewMembershipRefund).toHaveBeenCalledTimes(1);
+    expect(refundMembership).toHaveBeenCalledTimes(1);
     expect(result.current.payments[result.current.payments.length - 1]).toMatchObject({
       membershipId: 9002,
       paymentType: "REFUND",

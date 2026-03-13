@@ -141,7 +141,7 @@ export default function ReservationsPage() {
     return reservationSchedules.find((schedule) => schedule.scheduleId === reservation.scheduleId) ?? null;
   }
 
-  function handleReservationCreateSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleReservationCreateSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     clearPanelFeedback();
 
@@ -160,23 +160,33 @@ export default function ReservationsPage() {
       return;
     }
 
-    const reservation = createReservation({
-      membershipId,
-      scheduleId
-    });
-
-    setReservationCreateForm({
-      membershipId: "",
-      scheduleId: "",
-      memo: ""
-    });
-    setReservationPanelMessage(`예약 #${reservation.reservationId}를 생성했습니다.`);
+    try {
+      const reservation = await createReservation({
+        memberId: selectedMemberId,
+        membershipId,
+        scheduleId,
+        memo: reservationCreateForm.memo
+      });
+      await Promise.all([
+        loadSelectedMemberReservations(selectedMemberId),
+        loadSelectedMemberMemberships(selectedMemberId),
+        loadReservationTargets(debouncedReservationTargetsKeyword)
+      ]);
+      setReservationCreateForm({
+        membershipId: "",
+        scheduleId: "",
+        memo: ""
+      });
+      setReservationPanelMessage(`예약 #${reservation.reservationId}를 생성했습니다.`);
+    } catch (error) {
+      setReservationPanelError(error instanceof Error ? error.message : "예약 생성에 실패했습니다.");
+    }
   }
 
-  function mutateReservation(
+  async function mutateReservation(
     reservationId: number,
     actionName: string,
-    mutate: () => void,
+    mutate: () => Promise<void>,
     canMutate: boolean,
     errorMessage: string
   ) {
@@ -185,8 +195,21 @@ export default function ReservationsPage() {
       setReservationPanelError(errorMessage);
       return;
     }
-    mutate();
-    setReservationPanelMessage(actionName);
+    if (!selectedMemberId) {
+      setReservationPanelError("회원을 먼저 선택해야 합니다.");
+      return;
+    }
+    try {
+      await mutate();
+      await Promise.all([
+        loadSelectedMemberReservations(selectedMemberId),
+        loadSelectedMemberMemberships(selectedMemberId),
+        loadReservationTargets(debouncedReservationTargetsKeyword)
+      ]);
+      setReservationPanelMessage(actionName);
+    } catch (error) {
+      setReservationPanelError(error instanceof Error ? error.message : `${actionName}에 실패했습니다.`);
+    }
   }
 
   return (
@@ -436,7 +459,10 @@ export default function ReservationsPage() {
                                     mutateReservation(
                                       reservation.reservationId,
                                       `예약 #${reservation.reservationId} 체크인 처리`,
-                                      () => checkInReservation(reservation.reservationId),
+                                      () =>
+                                        selectedMemberId == null
+                                          ? Promise.reject(new Error("회원을 먼저 선택해야 합니다."))
+                                          : checkInReservation(selectedMemberId, reservation.reservationId).then(() => undefined),
                                       canCheckIn,
                                       "체크인 가능한 예약이 아닙니다."
                                     )
@@ -452,7 +478,10 @@ export default function ReservationsPage() {
                                     mutateReservation(
                                       reservation.reservationId,
                                       `예약 #${reservation.reservationId} 완료 처리`,
-                                      () => completeReservation(reservation.reservationId),
+                                      () =>
+                                        selectedMemberId == null
+                                          ? Promise.reject(new Error("회원을 먼저 선택해야 합니다."))
+                                          : completeReservation(selectedMemberId, reservation.reservationId).then(() => undefined),
                                       canMutate,
                                       "확정 예약만 완료 처리할 수 있습니다."
                                     )
@@ -468,7 +497,10 @@ export default function ReservationsPage() {
                                     mutateReservation(
                                       reservation.reservationId,
                                       `예약 #${reservation.reservationId} 취소 처리`,
-                                      () => cancelReservation(reservation.reservationId),
+                                      () =>
+                                        selectedMemberId == null
+                                          ? Promise.reject(new Error("회원을 먼저 선택해야 합니다."))
+                                          : cancelReservation(selectedMemberId, reservation.reservationId).then(() => undefined),
                                       canMutate,
                                       "확정 예약만 취소할 수 있습니다."
                                     )
@@ -484,7 +516,10 @@ export default function ReservationsPage() {
                                     mutateReservation(
                                       reservation.reservationId,
                                       `예약 #${reservation.reservationId} 노쇼 처리`,
-                                      () => noShowReservation(reservation.reservationId),
+                                      () =>
+                                        selectedMemberId == null
+                                          ? Promise.reject(new Error("회원을 먼저 선택해야 합니다."))
+                                          : noShowReservation(selectedMemberId, reservation.reservationId).then(() => undefined),
                                       canNoShow,
                                       "종료된 미체크인 확정 예약만 노쇼 처리할 수 있습니다."
                                     )

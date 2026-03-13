@@ -477,6 +477,7 @@ let mockCrmHistoryRows = cloneCrmHistoryRows(initialCrmHistoryRows);
 let mockSettlementTransactions = initialSettlementTransactions.map((transaction) => ({ ...transaction }));
 let mockDataVersion = 0;
 let membershipIdSeed = 99000;
+let reservationIdSeed = 5002;
 let accessSessionIdSeed = 92000;
 let accessEventIdSeed = 97000;
 let lockerAssignmentIdSeed = 98000;
@@ -821,6 +822,7 @@ export function resetMockData() {
   mockSettlementTransactions = cloneSettlementTransactions(initialSettlementTransactions);
   mockDataVersion = 0;
   membershipIdSeed = 99000;
+  reservationIdSeed = 5002;
   accessSessionIdSeed = 92000;
   accessEventIdSeed = 97000;
   lockerAssignmentIdSeed = 98000;
@@ -875,6 +877,44 @@ export function patchMockMembership(
     return null;
   }
   return nextMembership;
+}
+
+export function createMockReservation(input: { memberId: number; membershipId: number; scheduleId: number; memo?: string | null }) {
+  const reservations = mockReservationsByMemberId.get(input.memberId) ?? [];
+  reservationIdSeed += 1;
+  const reservation: ReservationRow = {
+    reservationId: reservationIdSeed,
+    membershipId: input.membershipId,
+    scheduleId: input.scheduleId,
+    reservationStatus: "CONFIRMED",
+    reservedAt: new Date().toISOString(),
+    cancelledAt: null,
+    completedAt: null,
+    noShowAt: null,
+    checkedInAt: null
+  };
+  mockReservationsByMemberId.set(input.memberId, [reservation, ...reservations]);
+  bumpMockDataVersion();
+  return { ...reservation };
+}
+
+export function patchMockReservation(
+  memberId: number,
+  reservationId: number,
+  updater: (reservation: ReservationRow) => ReservationRow
+) {
+  const reservations = mockReservationsByMemberId.get(memberId) ?? [];
+  let nextReservation: ReservationRow | null = null;
+  const nextReservations = reservations.map((reservation) => {
+    if (reservation.reservationId !== reservationId) {
+      return reservation;
+    }
+    nextReservation = updater({ ...reservation });
+    return nextReservation;
+  });
+  mockReservationsByMemberId.set(memberId, nextReservations);
+  bumpMockDataVersion();
+  return nextReservation ? { ...(nextReservation as ReservationRow) } : null;
 }
 
 export function createMockAccessEntry(memberId: number) {
