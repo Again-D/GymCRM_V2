@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 
+import { useAuthState } from "../../app/auth";
 import { formatDate } from "../../shared/format";
 import { usePagination } from "../../shared/hooks/usePagination";
 import { PaginationControls } from "../../shared/ui/PaginationControls";
@@ -19,6 +20,7 @@ function formatDateTime(value: string | null) {
 }
 
 export default function CrmPage() {
+  const { authUser, isMockMode } = useAuthState();
   const {
     crmFilters,
     setCrmFilters,
@@ -33,6 +35,8 @@ export default function CrmPage() {
     processCrmQueue
   } = useCrmPrototypeState();
   const { crmHistoryRows, crmHistoryLoading, crmHistoryError, loadCrmHistory, resetCrmHistoryQuery } = useCrmHistoryQuery();
+  const isLiveCrmRoleSupported =
+    isMockMode || authUser?.role === "ROLE_CENTER_ADMIN" || authUser?.role === "ROLE_DESK";
 
   const historyPagination = usePagination(crmHistoryRows, {
     initialPageSize: 10,
@@ -40,11 +44,16 @@ export default function CrmPage() {
   });
 
   useEffect(() => {
+    if (!isLiveCrmRoleSupported) {
+      clearCrmFeedback();
+      resetCrmHistoryQuery();
+      return;
+    }
     void loadCrmHistory(crmFilters);
     return () => {
       resetCrmHistoryQuery();
     };
-  }, []);
+  }, [isLiveCrmRoleSupported]);
 
   async function reloadHistory(filters = crmFilters) {
     await loadCrmHistory(filters);
@@ -74,6 +83,17 @@ export default function CrmPage() {
           </div>
         </div>
 
+        {!isLiveCrmRoleSupported ? (
+          <div className="selected-member-card" style={{ marginBottom: 16 }}>
+            <div className="selected-member-card-header">
+              <div>
+                <h2>이 역할은 live CRM 미지원</h2>
+                <p>현재 live backend는 CRM trigger/process/history API를 관리자 또는 데스크 계정에만 열어두고 있습니다.</p>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         <div className="placeholder-card" style={{ marginBottom: 16 }}>
           <h2>메시지 트리거 / 큐 처리</h2>
           <div className="members-filter-grid">
@@ -84,14 +104,25 @@ export default function CrmPage() {
                 min={0}
                 max={30}
                 value={crmTriggerDaysAhead}
+                disabled={!isLiveCrmRoleSupported}
                 onChange={(event) => setCrmTriggerDaysAhead(event.target.value)}
               />
             </label>
             <div className="toolbar-actions">
-              <button type="button" className="primary-button" onClick={() => void runTrigger()} disabled={crmTriggerSubmitting}>
+              <button
+                type="button"
+                className="primary-button"
+                onClick={() => void runTrigger()}
+                disabled={crmTriggerSubmitting || !isLiveCrmRoleSupported}
+              >
                 {crmTriggerSubmitting ? "적재 중..." : "만료임박 트리거"}
               </button>
-              <button type="button" className="secondary-button" onClick={() => void runProcess()} disabled={crmProcessSubmitting}>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => void runProcess()}
+                disabled={crmProcessSubmitting || !isLiveCrmRoleSupported}
+              >
                 {crmProcessSubmitting ? "처리 중..." : "큐 처리"}
               </button>
             </div>
@@ -113,6 +144,7 @@ export default function CrmPage() {
               상태
               <select
                 value={crmFilters.sendStatus}
+                disabled={!isLiveCrmRoleSupported}
                 onChange={(event) =>
                   setCrmFilters((prev) => ({
                     ...prev,
@@ -134,6 +166,7 @@ export default function CrmPage() {
                 min={1}
                 max={500}
                 value={crmFilters.limit}
+                disabled={!isLiveCrmRoleSupported}
                 onChange={(event) =>
                   setCrmFilters((prev) => ({
                     ...prev,
@@ -143,7 +176,7 @@ export default function CrmPage() {
               />
             </label>
             <div className="toolbar-actions">
-              <button type="submit" className="primary-button" disabled={crmHistoryLoading}>
+              <button type="submit" className="primary-button" disabled={crmHistoryLoading || !isLiveCrmRoleSupported}>
                 {crmHistoryLoading ? "조회 중..." : "조회"}
               </button>
               <button
@@ -183,7 +216,11 @@ export default function CrmPage() {
                 {historyPagination.pagedItems.length === 0 ? (
                   <tr>
                     <td colSpan={10} className="empty-cell">
-                      {crmHistoryLoading ? "조회 중..." : "메시지 이력이 없습니다."}
+                      {!isLiveCrmRoleSupported
+                        ? "현재 역할에서는 live CRM 이력을 조회할 수 없습니다."
+                        : crmHistoryLoading
+                          ? "조회 중..."
+                          : "메시지 이력이 없습니다."}
                     </td>
                   </tr>
                 ) : (

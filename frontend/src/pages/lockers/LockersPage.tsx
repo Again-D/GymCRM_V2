@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from "react";
 
+import { useAuthState } from "../../app/auth";
 import { usePagination } from "../../shared/hooks/usePagination";
 import { PaginationControls } from "../../shared/ui/PaginationControls";
 import { SelectedMemberContextBadge } from "../members/components/SelectedMemberContextBadge";
@@ -9,12 +10,14 @@ import { useLockerPrototypeState } from "./modules/useLockerPrototypeState";
 import { useLockerQueries } from "./modules/useLockerQueries";
 
 export default function LockersPage() {
+  const { authUser, isMockMode } = useAuthState();
   const { selectedMember, selectedMemberId } = useSelectedMemberStore();
   const {
     members,
     membersLoading,
     membersQueryError,
-    loadMembers
+    loadMembers,
+    resetMembersQuery
   } = useMembersQuery({
     getDefaultFilters: () => ({
       name: "",
@@ -47,6 +50,8 @@ export default function LockersPage() {
     reloadLockerData,
     resetLockerQueries
   } = useLockerQueries();
+  const isLiveLockerRoleSupported =
+    isMockMode || authUser?.role === "ROLE_CENTER_ADMIN" || authUser?.role === "ROLE_DESK";
 
   const slotsPagination = usePagination(lockerSlots, {
     initialPageSize: 10,
@@ -63,15 +68,23 @@ export default function LockersPage() {
   );
 
   useEffect(() => {
+    if (!isLiveLockerRoleSupported) {
+      resetMembersQuery();
+      return;
+    }
     void loadMembers();
-  }, []);
+  }, [isLiveLockerRoleSupported]);
 
   useEffect(() => {
+    if (!isLiveLockerRoleSupported) {
+      resetLockerQueries();
+      return;
+    }
     void reloadLockerData(lockerFilters);
     return () => {
       resetLockerQueries();
     };
-  }, [lockerFilters.lockerStatus, lockerFilters.lockerZone]);
+  }, [lockerFilters.lockerStatus, lockerFilters.lockerZone, isLiveLockerRoleSupported]);
 
   async function runLockerAssign() {
     const ok = await handleLockerAssign();
@@ -97,6 +110,17 @@ export default function LockersPage() {
           </div>
         </div>
 
+        {!isLiveLockerRoleSupported ? (
+          <div className="selected-member-card" style={{ marginBottom: 16 }}>
+            <div className="selected-member-card-header">
+              <div>
+                <h2>이 역할은 live 라커 관리 미지원</h2>
+                <p>현재 live backend는 라커 조회/배정/반납 API를 관리자 또는 데스크 계정에만 열어두고 있습니다.</p>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         <SelectedMemberContextBadge />
 
         <div className="selected-member-card" style={{ marginBottom: 16 }}>
@@ -119,6 +143,7 @@ export default function LockersPage() {
               상태
               <select
                 value={lockerFilters.lockerStatus}
+                disabled={!isLiveLockerRoleSupported}
                 onChange={(event) =>
                   setLockerFilters((prev) => ({ ...prev, lockerStatus: event.target.value as typeof prev.lockerStatus }))
                 }
@@ -133,6 +158,7 @@ export default function LockersPage() {
               구역
               <input
                 value={lockerFilters.lockerZone}
+                disabled={!isLiveLockerRoleSupported}
                 onChange={(event) => setLockerFilters((prev) => ({ ...prev, lockerZone: event.target.value }))}
                 placeholder="예: A"
               />
@@ -158,7 +184,11 @@ export default function LockersPage() {
                 {slotsPagination.pagedItems.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="empty-cell">
-                      {lockerSlotsLoading ? "라커 슬롯을 불러오는 중..." : "조회된 라커 슬롯이 없습니다."}
+                      {!isLiveLockerRoleSupported
+                        ? "현재 역할에서는 live 라커 슬롯을 조회할 수 없습니다."
+                        : lockerSlotsLoading
+                          ? "라커 슬롯을 불러오는 중..."
+                          : "조회된 라커 슬롯이 없습니다."}
                     </td>
                   </tr>
                 ) : (
@@ -199,6 +229,7 @@ export default function LockersPage() {
               라커 슬롯
               <select
                 value={lockerAssignForm.lockerSlotId}
+                disabled={!isLiveLockerRoleSupported}
                 onChange={(event) => setLockerAssignForm((prev) => ({ ...prev, lockerSlotId: event.target.value }))}
               >
                 <option value="">선택</option>
@@ -214,6 +245,7 @@ export default function LockersPage() {
               회원
               <select
                 value={lockerAssignForm.memberId}
+                disabled={!isLiveLockerRoleSupported}
                 onChange={(event) => setLockerAssignForm((prev) => ({ ...prev, memberId: event.target.value }))}
               >
                 <option value="">선택</option>
@@ -230,6 +262,7 @@ export default function LockersPage() {
               <input
                 type="date"
                 value={lockerAssignForm.startDate}
+                disabled={!isLiveLockerRoleSupported}
                 onChange={(event) => setLockerAssignForm((prev) => ({ ...prev, startDate: event.target.value }))}
               />
             </label>
@@ -239,6 +272,7 @@ export default function LockersPage() {
               <input
                 type="date"
                 value={lockerAssignForm.endDate}
+                disabled={!isLiveLockerRoleSupported}
                 onChange={(event) => setLockerAssignForm((prev) => ({ ...prev, endDate: event.target.value }))}
               />
             </label>
@@ -248,16 +282,24 @@ export default function LockersPage() {
             메모
             <input
               value={lockerAssignForm.memo}
+              disabled={!isLiveLockerRoleSupported}
               onChange={(event) => setLockerAssignForm((prev) => ({ ...prev, memo: event.target.value }))}
               placeholder="예: 1개월 계약"
             />
           </label>
 
           <div className="toolbar-actions" style={{ marginTop: 16 }}>
-            <button type="button" className="primary-button" disabled={lockerAssignSubmitting} onClick={() => void runLockerAssign()}>
+            <button
+              type="button"
+              className="primary-button"
+              disabled={lockerAssignSubmitting || !isLiveLockerRoleSupported}
+              onClick={() => void runLockerAssign()}
+            >
               {lockerAssignSubmitting ? "배정 중..." : "라커 배정"}
             </button>
-            <span>{membersLoading ? "회원 목록 로딩 중..." : `배정 가능한 슬롯 ${availableSlots.length}건`}</span>
+            <span>
+              {!isLiveLockerRoleSupported ? "현재 역할에서는 live 라커 배정이 비활성화됩니다." : membersLoading ? "회원 목록 로딩 중..." : `배정 가능한 슬롯 ${availableSlots.length}건`}
+            </span>
           </div>
           {membersQueryError ? <p className="error-text">{membersQueryError}</p> : null}
         </div>
@@ -283,7 +325,11 @@ export default function LockersPage() {
                 {assignmentsPagination.pagedItems.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="empty-cell">
-                      {lockerAssignmentsLoading ? "라커 배정 목록을 불러오는 중..." : "라커 배정 이력이 없습니다."}
+                      {!isLiveLockerRoleSupported
+                        ? "현재 역할에서는 live 라커 배정 목록을 조회할 수 없습니다."
+                        : lockerAssignmentsLoading
+                          ? "라커 배정 목록을 불러오는 중..."
+                          : "라커 배정 이력이 없습니다."}
                     </td>
                   </tr>
                 ) : (
@@ -302,7 +348,7 @@ export default function LockersPage() {
                           <button
                             type="button"
                             className="secondary-button"
-                            disabled={lockerReturnSubmittingId === assignment.lockerAssignmentId}
+                            disabled={lockerReturnSubmittingId === assignment.lockerAssignmentId || !isLiveLockerRoleSupported}
                             onClick={() => void runLockerReturn(assignment.lockerAssignmentId)}
                           >
                             {lockerReturnSubmittingId === assignment.lockerAssignmentId ? "반납 중..." : "반납"}

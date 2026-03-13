@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 
+import { useAuthState } from "../../app/auth";
 import { usePagination } from "../../shared/hooks/usePagination";
 import { PaginationControls } from "../../shared/ui/PaginationControls";
 import { useProductsQuery } from "./modules/useProductsQuery";
@@ -22,6 +23,7 @@ function productTypeSummary(product: ProductRecord) {
 }
 
 export default function ProductsPage() {
+  const { authUser, isMockMode } = useAuthState();
   const {
     productFilters,
     setProductFilters,
@@ -45,17 +47,29 @@ export default function ProductsPage() {
   const { products, productsLoading, productsQueryError, loadProducts, resetProductsQuery } = useProductsQuery({
     getDefaultFilters: createDefaultProductFilters
   });
+  const canReadLiveProducts = isMockMode || authUser?.role === "ROLE_CENTER_ADMIN" || authUser?.role === "ROLE_DESK";
+  const canMutateProducts = isMockMode || authUser?.role === "ROLE_CENTER_ADMIN";
   const productsPagination = usePagination(products, {
     initialPageSize: 10,
     resetDeps: [products.length, productFilters.category, productFilters.status]
   });
 
   useEffect(() => {
+    if (!canReadLiveProducts) {
+      resetProductsQuery();
+      return;
+    }
     void loadProducts(productFilters);
     return () => {
       resetProductsQuery();
     };
-  }, [productFilters.category, productFilters.status]);
+  }, [productFilters.category, productFilters.status, canReadLiveProducts]);
+
+  useEffect(() => {
+    if (!canMutateProducts && productFormOpen) {
+      closeProductForm();
+    }
+  }, [canMutateProducts, productFormOpen]);
 
   async function runSubmit() {
     const product = await handleProductSubmit();
@@ -79,10 +93,34 @@ export default function ProductsPage() {
             <h1>상품 관리 프로토타입</h1>
             <p>shared products domain 위에 `/products` 전용 CRUD form/action state를 얹어서 새 구조의 admin slice를 검증합니다.</p>
           </div>
-          <button type="button" className="secondary-button" onClick={startCreateProduct}>
-            신규 등록
-          </button>
+          {canMutateProducts ? (
+            <button type="button" className="secondary-button" onClick={startCreateProduct}>
+              신규 등록
+            </button>
+          ) : null}
         </div>
+
+        {!canReadLiveProducts ? (
+          <div className="selected-member-card" style={{ marginBottom: 16 }}>
+            <div className="selected-member-card-header">
+              <div>
+                <h2>이 역할은 live 상품 관리 미지원</h2>
+                <p>현재 live backend는 상품 관리 화면을 관리자/데스크 읽기, 관리자 쓰기 범위로만 열어두고 있습니다.</p>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {!isMockMode && authUser?.role === "ROLE_DESK" ? (
+          <div className="selected-member-card" style={{ marginBottom: 16 }}>
+            <div className="selected-member-card-header">
+              <div>
+                <h2>데스크 계정은 읽기 전용</h2>
+                <p>상품 등록, 수정, 상태 변경은 관리자 계정에서만 수행할 수 있습니다.</p>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         <form
           className="members-filter-grid"
@@ -126,9 +164,9 @@ export default function ProductsPage() {
             </select>
           </label>
           <div className="toolbar-actions">
-            <button type="submit" className="primary-button" disabled={productsLoading}>
-              {productsLoading ? "조회 중..." : "조회"}
-            </button>
+              <button type="submit" className="primary-button" disabled={productsLoading}>
+                {productsLoading ? "조회 중..." : "조회"}
+              </button>
             <button
               type="button"
               className="secondary-button"
@@ -164,7 +202,11 @@ export default function ProductsPage() {
               {productsPagination.pagedItems.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="empty-cell">
-                    {productsLoading ? "상품 목록을 불러오는 중..." : "조회된 상품이 없습니다."}
+                    {!canReadLiveProducts
+                      ? "현재 역할에서는 live 상품 목록을 조회할 수 없습니다."
+                      : productsLoading
+                        ? "상품 목록을 불러오는 중..."
+                        : "조회된 상품이 없습니다."}
                   </td>
                 </tr>
               ) : (
@@ -181,9 +223,13 @@ export default function ProductsPage() {
                       </span>
                     </td>
                     <td>
-                      <button type="button" className="secondary-button" onClick={() => openProductEditor(product)}>
-                        편집
-                      </button>
+                      {canMutateProducts ? (
+                        <button type="button" className="secondary-button" onClick={() => openProductEditor(product)}>
+                          편집
+                        </button>
+                      ) : (
+                        "-"
+                      )}
                     </td>
                   </tr>
                 ))
@@ -212,13 +258,20 @@ export default function ProductsPage() {
             <p>page-local form state만 이 패널이 소유하고, product read는 shared domain에서 유지합니다.</p>
           </div>
           {productFormOpen && productFormMode === "edit" && selectedProduct ? (
-            <button type="button" className="secondary-button" disabled={productFormSubmitting} onClick={() => void runStatusToggle()}>
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={productFormSubmitting || !canMutateProducts}
+              onClick={() => void runStatusToggle()}
+            >
               상태 토글 ({selectedProduct.productStatus})
             </button>
           ) : null}
         </div>
 
-        {!productFormOpen ? (
+        {!canMutateProducts ? (
+          <p>이 역할에서는 상품 편집/등록을 사용할 수 없습니다.</p>
+        ) : !productFormOpen ? (
           <p>등록 또는 편집을 시작하면 이 패널에 form이 열립니다.</p>
         ) : (
           <form
