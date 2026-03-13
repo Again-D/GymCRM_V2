@@ -31,6 +31,21 @@ Date: 2026-03-13
 - Execution checklist:
   - `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-staging-smoke-checklist.md`
 
+### 2. Final candidate checkpoint is still provisional
+
+- Endpoint / route:
+  - replacement candidate overall decision
+- Baseline behavior:
+  - cutover discussion should be grounded in staging evidence and executable rollback criteria
+- Rebuild behavior:
+  - local live evidence is strong, but final candidate judgement is still pre-staging only
+- Severity:
+  - medium
+- Owner:
+  - rebuild replacement-candidate final checkpoint
+- Workaround:
+  - keep draft verdict in `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-final-candidate-checkpoint-draft.md`
+
 ## Resolved blockers in this phase
 
 ### Memberships live writes
