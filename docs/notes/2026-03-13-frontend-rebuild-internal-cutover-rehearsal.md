@@ -66,12 +66,12 @@ Date: 2026-03-13
 
 ## Rehearsal Checklist
 
-- [ ] route subset 4개가 local staging-profile smoke 기준으로 pass 또는 documented acceptable difference 상태다
-- [ ] auth/session parity note가 최신 상태다
-- [ ] role matrix evidence가 최신 상태다
-- [ ] blocker log가 최신 상태다
-- [ ] rollback trigger가 migration/rollback baseline과 일치한다
-- [ ] final checkpoint draft가 현재 판단과 일치한다
+- [x] route subset 4개가 local staging-profile smoke 기준으로 pass 또는 documented acceptable difference 상태다
+- [x] auth/session parity note가 최신 상태다
+- [x] role matrix evidence가 최신 상태다
+- [x] blocker log가 최신 상태다
+- [x] rollback trigger가 migration/rollback baseline과 일치한다
+- [x] final checkpoint draft가 현재 판단과 일치한다
 
 ## Output To Update
 
@@ -88,9 +88,9 @@ rehearsal 후 아래 문서를 같이 업데이트한다.
 
 즉:
 
-- local staging-profile smoke 결과가 채워지면
-- 바로 이 문서를 기준으로 cutover 판단 rehearsal을 이어갈 수 있다
+- local staging-profile smoke 결과는 채워졌다
+- 이제 이 문서를 기준으로 cutover 판단 rehearsal을 이어갈 수 있다
 
-아직은 evidence가 비어 있으므로, recommendation은 다음과 같다.
+아직 rehearsal evidence 자체는 비어 있으므로, recommendation은 다음과 같다.
 
 `Remain replacement candidate, continue blocker reduction`

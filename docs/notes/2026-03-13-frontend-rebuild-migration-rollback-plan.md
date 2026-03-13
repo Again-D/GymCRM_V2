@@ -44,12 +44,12 @@ Date: 2026-03-13
 
 ## Preconditions Before Any Controlled Cutover
 
-- [ ] local staging-profile smoke checklist 완료
-- [ ] core workflow 4개에 대한 local staging-profile evidence 확보
-- [ ] auth/session parity가 local staging-profile에서도 재현됨
-- [ ] role parity가 local staging-profile에서도 재현됨
-- [ ] active blocker 목록이 최신 상태임
-- [ ] internal cutover rehearsal note 작성
+- [x] local staging-profile smoke checklist 완료
+- [x] core workflow 4개에 대한 local staging-profile evidence 확보
+- [x] auth/session parity가 local staging-profile에서도 재현됨
+- [x] role parity가 local staging-profile에서도 재현됨
+- [x] active blocker 목록이 최신 상태임
+- [x] internal cutover rehearsal note 작성
 
 참조:
 - `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-staging-smoke-checklist.md`
@@ -168,7 +168,7 @@ Date: 2026-03-13
 
 바로 다음 액션은 이것이다.
 
-1. local staging-profile smoke checklist 실행
+1. internal cutover rehearsal checklist 실행
 2. blocker log 갱신
-3. internal cutover rehearsal note 작성
-4. 이 migration/rollback baseline을 local smoke / rehearsal evidence에 맞춰 확정본으로 승격
+3. final checkpoint draft 갱신
+4. 이 migration/rollback baseline을 rehearsal evidence에 맞춰 확정본으로 승격

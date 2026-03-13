@@ -29,12 +29,12 @@ Date: 2026-03-13
 
 ## Preconditions
 
-- [ ] local staging-profile smoke results note 작성
-- [ ] local smoke blocker가 high severity 없이 정리됨
-- [ ] auth/session parity가 local staging-profile에서도 유지됨
-- [ ] role restrictions가 baseline과 같은 수준으로 설명 가능함
-- [ ] rollback trigger/owner가 채워짐
-- [ ] internal cutover rehearsal note 작성
+- [x] local staging-profile smoke results note 작성
+- [x] local smoke blocker가 high severity 없이 정리됨
+- [x] auth/session parity가 local staging-profile에서도 유지됨
+- [x] role restrictions가 baseline과 같은 수준으로 설명 가능함
+- [x] rollback trigger/owner가 채워짐
+- [x] internal cutover rehearsal note 작성
 
 ## Non-Candidate Routes For First Exposure
 
@@ -60,8 +60,9 @@ Date: 2026-03-13
 ## Default Recommendation
 
 현재 기본 권고:
-- local staging-profile evidence와 internal rehearsal이 충분하면 `route subset evaluation`
-- 그렇지 않으면 `remain replacement candidate`
+- local staging-profile evidence는 확보됨
+- 다음 판단 게이트는 internal rehearsal
+- 따라서 현재는 `remain replacement candidate, prepare route subset evaluation through rehearsal`
 
 ## Evidence To Attach Before Deciding
 

@@ -12,34 +12,14 @@ Date: 2026-03-13
 
 ## Active blockers
 
-### 1. Local staging-profile auth / workflow evidence gap
-
-- Endpoint / route:
-  - local staging-profile protected shell routes
-  - local staging-profile login/logout/refresh flow
-  - local staging-profile role-restricted workflows
-- Baseline behavior:
-  - local staging-profile 환경에서 role/session/security-profile 차이까지 포함한 운영 유사 흐름이 재현돼야 함
-- Rebuild behavior:
-  - local live parity는 확보했지만, local staging-profile smoke evidence는 아직 없음
-- Severity:
-  - high
-- Owner:
-  - rebuild replacement-candidate phase 4
-- Workaround:
-  - local live evidence와 baseline local smoke를 함께 참고
-- Execution checklist:
-  - `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-staging-smoke-checklist.md`
-  - `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-staging-execution-prep.md`
-
-### 2. Final candidate checkpoint is still provisional
+### 1. Final candidate checkpoint is still provisional
 
 - Endpoint / route:
   - replacement candidate overall decision
 - Baseline behavior:
-  - cutover discussion should be grounded in local staging-profile evidence, internal rehearsal evidence, and executable rollback criteria
+  - controlled cutover discussion should be grounded in local staging-profile evidence, internal rehearsal evidence, and executable rollback criteria
 - Rebuild behavior:
-  - local live evidence is strong, but final candidate judgement is still pre-local-staging-profile / pre-rehearsal only
+  - local staging-profile smoke evidence now exists, but the final candidate judgement is still pre-internal-rehearsal and pre-executable rollback confirmation
 - Severity:
   - medium
 - Owner:
@@ -47,6 +27,22 @@ Date: 2026-03-13
 - Workaround:
   - keep draft verdict in `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-final-candidate-checkpoint-draft.md`
   - maintain rehearsal baseline in `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-internal-cutover-rehearsal.md`
+
+### 2. Local smoke execution still depends on the backend-allowed dev origin
+
+- Endpoint / route:
+  - local browser auth/session parity
+- Baseline behavior:
+  - the authenticated local smoke should run through the same dev-origin assumptions the backend already allows
+- Rebuild behavior:
+  - rebuild login works at `127.0.0.1:5173`, but the same browser flow at `127.0.0.1:5176` trips backend CORS and returns `403 Invalid CORS request`
+- Severity:
+  - low
+- Owner:
+  - local replacement-candidate execution environment
+- Workaround:
+  - run the rebuild app on `127.0.0.1:5173` during local staging-profile smoke
+  - use parity diff notes instead of simultaneous side-by-side browser execution
 
 ## Resolved blockers in this phase
 
@@ -76,3 +72,10 @@ Date: 2026-03-13
 - Evidence:
   - live bootstrap/login/logout tests in `frontend-rebuild/src/app/auth.test.tsx`
   - browser role matrix and protected route evidence in `docs/notes/2026-03-13-frontend-rebuild-live-auth-session-flow.md`
+
+### Local staging-profile auth / workflow evidence gap
+
+- Status: resolved
+- Evidence:
+  - `/Users/abc/projects/GymCRM_V2/.worktrees/codex/refactor-frontend-rebuild-v1/docs/notes/2026-03-13-frontend-rebuild-staging-smoke-results.md`
+  - logged-out, admin, desk, trainer role matrix and core workflow 4개 smoke가 local staging-profile 환경에서 기록됨

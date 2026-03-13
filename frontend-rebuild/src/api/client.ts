@@ -1,5 +1,10 @@
 const DEFAULT_USE_MOCK_DATA = import.meta.env.MODE === "test" || import.meta.env.VITE_REBUILD_MOCK_DATA === "1";
-const API_BASE_URL = import.meta.env.VITE_REBUILD_API_BASE_URL ?? import.meta.env.VITE_API_BASE_URL ?? "";
+// In local dev we want to default to Vite's same-origin /api proxy. Falling back to the root app's
+// VITE_API_BASE_URL makes the rebuild app call the backend directly from a different origin (5176),
+// which turns local staging-profile smoke into a CORS problem instead of an auth/runtime check.
+const API_BASE_URL = import.meta.env.DEV
+  ? import.meta.env.VITE_REBUILD_API_BASE_URL ?? ""
+  : import.meta.env.VITE_REBUILD_API_BASE_URL ?? import.meta.env.VITE_API_BASE_URL ?? "";
 let mockApiModeOverride: boolean | null = null;
 
 type ApiAuthHooks = {
