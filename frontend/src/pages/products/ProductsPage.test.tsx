@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AuthStateProvider } from "../../app/auth";
@@ -68,5 +68,48 @@ describe("ProductsPage", () => {
     expect(await screen.findByRole("heading", { name: "상품 관리 프로토타입" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "이 역할은 live 상품 관리 미지원" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "신규 등록" })).toBeNull();
+  });
+
+  it("does not trigger live product requests from unsupported-role controls", async () => {
+    setMockApiModeForTests(false);
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: [],
+        message: "ok",
+        timestamp: "2026-03-13T00:00:00Z",
+        traceId: "trace-products"
+      })
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <AuthStateProvider
+        value={{
+          securityMode: "jwt",
+          authUser: {
+            userId: 41,
+            username: "trainer-a",
+            role: "ROLE_TRAINER"
+          }
+        }}
+      >
+        <ProductsPage />
+      </AuthStateProvider>
+    );
+
+    expect(await screen.findByRole("heading", { name: "이 역할은 live 상품 관리 미지원" })).toBeTruthy();
+
+    const submitButton = screen.getByRole("button", { name: "조회" });
+    const resetButton = screen.getByRole("button", { name: "초기화" });
+
+    expect(submitButton).toHaveProperty("disabled", true);
+    expect(resetButton).toHaveProperty("disabled", true);
+
+    fireEvent.click(submitButton);
+    fireEvent.click(resetButton);
+
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

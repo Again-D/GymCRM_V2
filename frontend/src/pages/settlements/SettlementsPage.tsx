@@ -45,7 +45,7 @@ export default function SettlementsPage() {
     return () => {
       resetSettlementReportQuery();
     };
-  }, []);
+  }, [loadSettlementReport, resetSettlementReportQuery, settlementFilters]);
 
   useEffect(() => {
     if (settlementReportMessage) {

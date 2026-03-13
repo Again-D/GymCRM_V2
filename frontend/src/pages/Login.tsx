@@ -4,8 +4,8 @@ import { useAuthState } from "../app/auth";
 
 export default function Login() {
   const { authError, authStatusMessage, isMockMode, login, loginSubmitting, setRuntimeAuthPreset } = useAuthState();
-  const [loginId, setLoginId] = useState("center-admin");
-  const [password, setPassword] = useState("dev-admin-1234!");
+  const [loginId, setLoginId] = useState("");
+  const [password, setPassword] = useState("");
 
   return (
     <section style={{ maxWidth: 540 }}>

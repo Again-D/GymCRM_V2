@@ -99,14 +99,14 @@ export default function ReservationsPage() {
 
   useEffect(() => {
     void loadReservationTargets(debouncedReservationTargetsKeyword);
-  }, [debouncedReservationTargetsKeyword]);
+  }, [debouncedReservationTargetsKeyword, loadReservationTargets]);
 
   useEffect(() => {
     void loadReservationSchedules();
     return () => {
       resetReservationSchedulesQuery();
     };
-  }, []);
+  }, [loadReservationSchedules, resetReservationSchedulesQuery]);
 
   useEffect(() => {
     if (selectedMemberId == null) {
@@ -131,7 +131,13 @@ export default function ReservationsPage() {
     });
     setReservationPanelMessage(null);
     setReservationPanelError(null);
-  }, [selectedMemberId]);
+  }, [
+    loadSelectedMemberMemberships,
+    loadSelectedMemberReservations,
+    resetSelectedMemberMembershipsQuery,
+    resetSelectedMemberReservationsState,
+    selectedMemberId
+  ]);
 
   function clearPanelFeedback() {
     setReservationPanelMessage(null);

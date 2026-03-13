@@ -73,7 +73,7 @@ export default function LockersPage() {
       return;
     }
     void loadMembers();
-  }, [isLiveLockerRoleSupported]);
+  }, [isLiveLockerRoleSupported, loadMembers, resetMembersQuery]);
 
   useEffect(() => {
     if (!isLiveLockerRoleSupported) {
@@ -84,7 +84,7 @@ export default function LockersPage() {
     return () => {
       resetLockerQueries();
     };
-  }, [lockerFilters.lockerStatus, lockerFilters.lockerZone, isLiveLockerRoleSupported]);
+  }, [isLiveLockerRoleSupported, lockerFilters, reloadLockerData, resetLockerQueries]);
 
   async function runLockerAssign() {
     const ok = await handleLockerAssign();

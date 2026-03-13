@@ -1,4 +1,5 @@
 import { act, renderHook } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { setMockApiModeForTests } from "../../../api/client";
@@ -120,5 +121,18 @@ describe("useReservationTargetsQuery", () => {
     expect(
       fetchMock.mock.calls.filter(([url]) => url === "/api/v1/reservations/targets?keyword=%EA%B9%80%EB%AF%BC%EC%88%98").length
     ).toBe(1);
+  });
+
+  it("keeps reservation target actions stable across rerenders", () => {
+    const wrapper = ({ children }: { children: ReactNode }) => <AuthStateProvider>{children}</AuthStateProvider>;
+    const { result, rerender } = renderHook(() => useReservationTargetsQuery(), { wrapper });
+
+    const firstLoad = result.current.loadReservationTargets;
+    const firstSetKeyword = result.current.setReservationTargetsKeyword;
+
+    rerender();
+
+    expect(result.current.loadReservationTargets).toBe(firstLoad);
+    expect(result.current.setReservationTargetsKeyword).toBe(firstSetKeyword);
   });
 });

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { apiGet } from "../../../api/client";
 import { useQueryInvalidationVersion } from "../../../api/queryInvalidation";
@@ -19,7 +19,7 @@ export function useLockerQueries() {
   const lockerSlotsVersion = useQueryInvalidationVersion("lockerSlots");
   const lockerAssignmentsVersion = useQueryInvalidationVersion("lockerAssignments");
 
-  async function loadLockerSlots(filters?: LockerFilters) {
+  const loadLockerSlots = useCallback(async (filters?: LockerFilters) => {
     const requestId = lockerSlotsRequestIdRef.current + 1;
     lockerSlotsRequestIdRef.current = requestId;
     setLockerSlotsLoading(true);
@@ -62,9 +62,9 @@ export function useLockerQueries() {
         setLockerSlotsLoading(false);
       }
     }
-  }
+  }, [lockerSlotsVersion]);
 
-  async function loadLockerAssignments(activeOnly = false) {
+  const loadLockerAssignments = useCallback(async (activeOnly = false) => {
     const requestId = lockerAssignmentsRequestIdRef.current + 1;
     lockerAssignmentsRequestIdRef.current = requestId;
     setLockerAssignmentsLoading(true);
@@ -100,13 +100,13 @@ export function useLockerQueries() {
         setLockerAssignmentsLoading(false);
       }
     }
-  }
+  }, [lockerAssignmentsVersion]);
 
-  async function reloadLockerData(filters?: LockerFilters, activeOnly = false) {
+  const reloadLockerData = useCallback(async (filters?: LockerFilters, activeOnly = false) => {
     await Promise.all([loadLockerSlots(filters), loadLockerAssignments(activeOnly)]);
-  }
+  }, [loadLockerAssignments, loadLockerSlots]);
 
-  function resetLockerQueries() {
+  const resetLockerQueries = useCallback(() => {
     lockerSlotsRequestIdRef.current += 1;
     lockerAssignmentsRequestIdRef.current += 1;
     setLockerSlots([]);
@@ -114,7 +114,7 @@ export function useLockerQueries() {
     setLockerAssignments([]);
     setLockerAssignmentsLoading(false);
     setLockerQueryError(null);
-  }
+  }, []);
 
   return {
     lockerSlots,

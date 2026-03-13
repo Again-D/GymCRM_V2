@@ -192,4 +192,38 @@ describe("useSettlementReportQuery", () => {
     expect(result.current.settlementReport?.startDate).toBe("2026-04-01");
     expect(result.current.settlementReportMessage).toBe("new message");
   });
+
+  it("keeps settlement query actions stable across rerenders", () => {
+    const { result, rerender } = renderHook(
+      ({ getDefaultFilters }) =>
+        useSettlementReportQuery({
+          getDefaultFilters
+        }),
+      {
+        initialProps: {
+          getDefaultFilters: () => ({
+            startDate: "2026-03-01",
+            endDate: "2026-03-31",
+            paymentMethod: "",
+            productKeyword: ""
+          })
+        }
+      }
+    );
+
+    const firstLoad = result.current.loadSettlementReport;
+    const firstReset = result.current.resetSettlementReportQuery;
+
+    rerender({
+      getDefaultFilters: () => ({
+        startDate: "2026-04-01",
+        endDate: "2026-04-30",
+        paymentMethod: "CARD",
+        productKeyword: "PT"
+      })
+    });
+
+    expect(result.current.loadSettlementReport).toBe(firstLoad);
+    expect(result.current.resetSettlementReportQuery).toBe(firstReset);
+  });
 });

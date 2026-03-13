@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { apiGet } from "../../../api/client";
 import { useQueryInvalidationVersion } from "../../../api/queryInvalidation";
@@ -19,7 +19,7 @@ export function useAccessQueries() {
   const accessEventsVersion = useQueryInvalidationVersion("accessEvents");
   const accessPresenceVersion = useQueryInvalidationVersion("accessPresence");
 
-  async function loadAccessEvents(memberId?: number | null) {
+  const loadAccessEvents = useCallback(async (memberId?: number | null) => {
     const requestId = accessEventsRequestIdRef.current + 1;
     accessEventsRequestIdRef.current = requestId;
     setAccessEventsLoading(true);
@@ -60,9 +60,9 @@ export function useAccessQueries() {
         setAccessEventsLoading(false);
       }
     }
-  }
+  }, [accessEventsVersion]);
 
-  async function loadAccessPresence() {
+  const loadAccessPresence = useCallback(async () => {
     const requestId = accessPresenceRequestIdRef.current + 1;
     accessPresenceRequestIdRef.current = requestId;
     setAccessPresenceLoading(true);
@@ -97,13 +97,13 @@ export function useAccessQueries() {
         setAccessPresenceLoading(false);
       }
     }
-  }
+  }, [accessPresenceVersion]);
 
-  async function reloadAccessData(memberId?: number | null) {
+  const reloadAccessData = useCallback(async (memberId?: number | null) => {
     await Promise.all([loadAccessPresence(), loadAccessEvents(memberId)]);
-  }
+  }, [loadAccessEvents, loadAccessPresence]);
 
-  function resetAccessQueries() {
+  const resetAccessQueries = useCallback(() => {
     accessEventsRequestIdRef.current += 1;
     accessPresenceRequestIdRef.current += 1;
     setAccessEvents([]);
@@ -111,7 +111,7 @@ export function useAccessQueries() {
     setAccessEventsLoading(false);
     setAccessPresenceLoading(false);
     setAccessQueryError(null);
-  }
+  }, []);
 
   return {
     accessEvents,

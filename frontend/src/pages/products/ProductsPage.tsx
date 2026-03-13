@@ -63,13 +63,13 @@ export default function ProductsPage() {
     return () => {
       resetProductsQuery();
     };
-  }, [productFilters.category, productFilters.status, canReadLiveProducts]);
+  }, [canReadLiveProducts, loadProducts, productFilters, resetProductsQuery]);
 
   useEffect(() => {
     if (!canMutateProducts && productFormOpen) {
       closeProductForm();
     }
-  }, [canMutateProducts, productFormOpen]);
+  }, [canMutateProducts, closeProductForm, productFormOpen]);
 
   async function runSubmit() {
     const product = await handleProductSubmit();
@@ -126,6 +126,9 @@ export default function ProductsPage() {
           className="members-filter-grid"
           onSubmit={(event) => {
             event.preventDefault();
+            if (!canReadLiveProducts) {
+              return;
+            }
             void loadProducts(productFilters);
           }}
         >
@@ -164,13 +167,17 @@ export default function ProductsPage() {
             </select>
           </label>
           <div className="toolbar-actions">
-              <button type="submit" className="primary-button" disabled={productsLoading}>
-                {productsLoading ? "조회 중..." : "조회"}
-              </button>
+            <button type="submit" className="primary-button" disabled={productsLoading || !canReadLiveProducts}>
+              {productsLoading ? "조회 중..." : "조회"}
+            </button>
             <button
               type="button"
               className="secondary-button"
+              disabled={!canReadLiveProducts}
               onClick={() => {
+                if (!canReadLiveProducts) {
+                  return;
+                }
                 clearProductFeedback();
                 const nextFilters = createDefaultProductFilters();
                 setProductFilters(nextFilters);

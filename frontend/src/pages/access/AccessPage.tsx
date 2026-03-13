@@ -94,7 +94,7 @@ export default function AccessPage() {
       return;
     }
     void loadMembers({ name: debouncedAccessMemberQuery, phone: debouncedAccessMemberQuery });
-  }, [debouncedAccessMemberQuery, isLiveAccessRoleSupported]);
+  }, [debouncedAccessMemberQuery, isLiveAccessRoleSupported, loadMembers]);
 
   useEffect(() => {
     if (!isLiveAccessRoleSupported) {
@@ -106,7 +106,7 @@ export default function AccessPage() {
     return () => {
       resetAccessQueries();
     };
-  }, [selectedMemberId, isLiveAccessRoleSupported]);
+  }, [isLiveAccessRoleSupported, loadAccessEvents, loadAccessPresence, resetAccessQueries, selectedMemberId]);
 
   async function runAccessAction(action: () => Promise<boolean>) {
     const ok = await action();

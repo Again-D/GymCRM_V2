@@ -53,9 +53,12 @@ export default function CrmPage() {
     return () => {
       resetCrmHistoryQuery();
     };
-  }, [isLiveCrmRoleSupported]);
+  }, [clearCrmFeedback, crmFilters, isLiveCrmRoleSupported, loadCrmHistory, resetCrmHistoryQuery]);
 
   async function reloadHistory(filters = crmFilters) {
+    if (!isLiveCrmRoleSupported) {
+      return;
+    }
     await loadCrmHistory(filters);
   }
 
@@ -182,7 +185,11 @@ export default function CrmPage() {
               <button
                 type="button"
                 className="secondary-button"
+                disabled={!isLiveCrmRoleSupported}
                 onClick={() => {
+                  if (!isLiveCrmRoleSupported) {
+                    return;
+                  }
                   clearCrmFeedback();
                   const nextFilters = createDefaultCrmFilters();
                   setCrmFilters(nextFilters);

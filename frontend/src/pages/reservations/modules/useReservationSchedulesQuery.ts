@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { apiGet } from "../../../api/client";
 import type { ReservationScheduleSummary } from "../../members/modules/types";
@@ -9,7 +9,7 @@ export function useReservationSchedulesQuery() {
   const [reservationSchedulesError, setReservationSchedulesError] = useState<string | null>(null);
   const requestIdRef = useRef(0);
 
-  async function loadReservationSchedules() {
+  const loadReservationSchedules = useCallback(async () => {
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
     setReservationSchedulesLoading(true);
@@ -32,14 +32,14 @@ export function useReservationSchedulesQuery() {
         setReservationSchedulesLoading(false);
       }
     }
-  }
+  }, []);
 
-  function resetReservationSchedulesQuery() {
+  const resetReservationSchedulesQuery = useCallback(() => {
     requestIdRef.current += 1;
     setReservationSchedules([]);
     setReservationSchedulesLoading(false);
     setReservationSchedulesError(null);
-  }
+  }, []);
 
   return {
     reservationSchedules,

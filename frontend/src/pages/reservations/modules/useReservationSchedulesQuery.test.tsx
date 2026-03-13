@@ -108,4 +108,16 @@ describe("useReservationSchedulesQuery", () => {
     expect(result.current.reservationSchedules).toEqual([]);
     expect(result.current.reservationSchedulesLoading).toBe(false);
   });
+
+  it("keeps reservation schedule actions stable across rerenders", () => {
+    const { result, rerender } = renderHook(() => useReservationSchedulesQuery());
+
+    const firstLoad = result.current.loadReservationSchedules;
+    const firstReset = result.current.resetReservationSchedulesQuery;
+
+    rerender();
+
+    expect(result.current.loadReservationSchedules).toBe(firstLoad);
+    expect(result.current.resetReservationSchedulesQuery).toBe(firstReset);
+  });
 });

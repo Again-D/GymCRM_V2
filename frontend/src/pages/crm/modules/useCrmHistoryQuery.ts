@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { apiGet } from "../../../api/client";
 import { useQueryInvalidationVersion } from "../../../api/queryInvalidation";
@@ -17,7 +17,7 @@ export function useCrmHistoryQuery() {
   const inflightRef = useRef(new Map<string, Promise<CrmHistoryRow[]>>());
   const crmHistoryVersion = useQueryInvalidationVersion("crmHistory");
 
-  async function loadCrmHistory(filters: CrmFilters) {
+  const loadCrmHistory = useCallback(async (filters: CrmFilters) => {
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
     setCrmHistoryLoading(true);
@@ -60,14 +60,14 @@ export function useCrmHistoryQuery() {
         setCrmHistoryLoading(false);
       }
     }
-  }
+  }, [crmHistoryVersion]);
 
-  function resetCrmHistoryQuery() {
+  const resetCrmHistoryQuery = useCallback(() => {
     requestIdRef.current += 1;
     setCrmHistoryRows([]);
     setCrmHistoryLoading(false);
     setCrmHistoryError(null);
-  }
+  }, []);
 
   return {
     crmHistoryRows,

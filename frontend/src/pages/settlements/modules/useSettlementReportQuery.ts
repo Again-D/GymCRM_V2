@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { apiGet } from "../../../api/client";
 import { useQueryInvalidationVersion } from "../../../api/queryInvalidation";
@@ -13,6 +13,12 @@ type SettlementReportCacheValue = {
   message: string;
 };
 
+function useLatestRef<T>(value: T) {
+  const ref = useRef(value);
+  ref.current = value;
+  return ref;
+}
+
 export function useSettlementReportQuery({ getDefaultFilters }: UseSettlementReportQueryOptions) {
   const [settlementReport, setSettlementReport] = useState<SettlementReport | null>(null);
   const [settlementReportLoading, setSettlementReportLoading] = useState(false);
@@ -21,10 +27,11 @@ export function useSettlementReportQuery({ getDefaultFilters }: UseSettlementRep
   const requestIdRef = useRef(0);
   const cacheRef = useRef(new Map<string, SettlementReportCacheValue>());
   const inflightRef = useRef(new Map<string, Promise<SettlementReportCacheValue>>());
+  const getDefaultFiltersRef = useLatestRef(getDefaultFilters);
   const settlementReportVersion = useQueryInvalidationVersion("settlementReport");
   const productsVersion = useQueryInvalidationVersion("products");
 
-  async function loadSettlementReport(filters?: SettlementReportFilters) {
+  const loadSettlementReport = useCallback(async (filters?: SettlementReportFilters) => {
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
     setSettlementReportLoading(true);
@@ -32,7 +39,7 @@ export function useSettlementReportQuery({ getDefaultFilters }: UseSettlementRep
     setSettlementReportMessage(null);
 
     try {
-      const effectiveFilters = filters ?? getDefaultFilters();
+      const effectiveFilters = filters ?? getDefaultFiltersRef.current();
       const params = new URLSearchParams();
       params.set("startDate", effectiveFilters.startDate);
       params.set("endDate", effectiveFilters.endDate);
@@ -77,15 +84,15 @@ export function useSettlementReportQuery({ getDefaultFilters }: UseSettlementRep
         setSettlementReportLoading(false);
       }
     }
-  }
+  }, [productsVersion, settlementReportVersion]);
 
-  function resetSettlementReportQuery() {
+  const resetSettlementReportQuery = useCallback(() => {
     requestIdRef.current += 1;
     setSettlementReport(null);
     setSettlementReportLoading(false);
     setSettlementReportError(null);
     setSettlementReportMessage(null);
-  }
+  }, []);
 
   return {
     settlementReport,

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { apiGet } from "../../../api/client";
 import { useQueryInvalidationVersion } from "../../../api/queryInvalidation";
@@ -15,6 +15,12 @@ export type ReservationTargetSummary = {
   confirmedReservationCount: number;
 };
 
+function useLatestRef<T>(value: T) {
+  const ref = useRef(value);
+  ref.current = value;
+  return ref;
+}
+
 export function useReservationTargetsQuery() {
   const { authUser } = useAuthState();
   const [reservationTargets, setReservationTargets] = useState<ReservationTargetSummary[]>([]);
@@ -24,15 +30,17 @@ export function useReservationTargetsQuery() {
   const requestIdRef = useRef(0);
   const cacheRef = useRef(new Map<string, ReservationTargetSummary[]>());
   const inflightRef = useRef(new Map<string, Promise<ReservationTargetSummary[]>>());
+  const authUserRef = useLatestRef(authUser);
+  const reservationTargetsKeywordRef = useLatestRef(reservationTargetsKeyword);
   const reservationTargetsVersion = useQueryInvalidationVersion("reservationTargets");
 
-  async function loadReservationTargets(keyword?: string) {
+  const loadReservationTargets = useCallback(async (keyword?: string) => {
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
     setReservationTargetsLoading(true);
     setReservationTargetsError(null);
 
-    const effectiveKeyword = keyword ?? reservationTargetsKeyword;
+    const effectiveKeyword = keyword ?? reservationTargetsKeywordRef.current;
     const params = new URLSearchParams();
     if (effectiveKeyword.trim()) {
       params.set("keyword", effectiveKeyword.trim());
@@ -40,7 +48,8 @@ export function useReservationTargetsQuery() {
 
     try {
       const query = params.toString();
-      const cacheKey = `${authUser?.role ?? "anon"}:${authUser?.userId ?? "none"}:${reservationTargetsVersion}:${query}`;
+      const currentAuthUser = authUserRef.current;
+      const cacheKey = `${currentAuthUser?.role ?? "anon"}:${currentAuthUser?.userId ?? "none"}:${reservationTargetsVersion}:${query}`;
       if (cacheRef.current.has(cacheKey)) {
         if (requestIdRef.current !== requestId) {
           return;
@@ -54,7 +63,7 @@ export function useReservationTargetsQuery() {
         responsePromise = apiGet<ReservationTargetSummary[]>(
           `/api/v1/reservations/targets${query ? `?${query}` : ""}`
         )
-          .then((response) => filterMemberIdsForAuth(response.data, authUser))
+          .then((response) => filterMemberIdsForAuth(response.data, currentAuthUser))
           .finally(() => {
             inflightRef.current.delete(cacheKey);
           });
@@ -77,7 +86,7 @@ export function useReservationTargetsQuery() {
         setReservationTargetsLoading(false);
       }
     }
-  }
+  }, [reservationTargetsVersion]);
 
   return {
     reservationTargets,

@@ -113,4 +113,20 @@ describe("useLockerQueries", () => {
     expect(result.current.lockerSlots.length).toBeGreaterThan(0);
     expect(result.current.lockerSlots[0]?.lockerCode).toBe("A-02");
   });
+
+  it("keeps locker query actions stable across rerenders", () => {
+    const { result, rerender } = renderHook(() => useLockerQueries());
+
+    const firstLoadSlots = result.current.loadLockerSlots;
+    const firstLoadAssignments = result.current.loadLockerAssignments;
+    const firstReload = result.current.reloadLockerData;
+    const firstReset = result.current.resetLockerQueries;
+
+    rerender();
+
+    expect(result.current.loadLockerSlots).toBe(firstLoadSlots);
+    expect(result.current.loadLockerAssignments).toBe(firstLoadAssignments);
+    expect(result.current.reloadLockerData).toBe(firstReload);
+    expect(result.current.resetLockerQueries).toBe(firstReset);
+  });
 });

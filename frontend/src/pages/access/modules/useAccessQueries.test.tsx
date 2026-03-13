@@ -117,4 +117,20 @@ describe("useAccessQueries", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(result.current.accessPresence?.openSessionCount).toBe(2);
   });
+
+  it("keeps access query actions stable across rerenders", () => {
+    const { result, rerender } = renderHook(() => useAccessQueries());
+
+    const firstLoadEvents = result.current.loadAccessEvents;
+    const firstLoadPresence = result.current.loadAccessPresence;
+    const firstReload = result.current.reloadAccessData;
+    const firstReset = result.current.resetAccessQueries;
+
+    rerender();
+
+    expect(result.current.loadAccessEvents).toBe(firstLoadEvents);
+    expect(result.current.loadAccessPresence).toBe(firstLoadPresence);
+    expect(result.current.reloadAccessData).toBe(firstReload);
+    expect(result.current.resetAccessQueries).toBe(firstReset);
+  });
 });

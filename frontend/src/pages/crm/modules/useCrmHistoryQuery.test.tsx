@@ -112,4 +112,16 @@ describe("useCrmHistoryQuery", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(result.current.crmHistoryRows[0]?.sendStatus).toBe("SENT");
   });
+
+  it("keeps crm query actions stable across rerenders", () => {
+    const { result, rerender } = renderHook(() => useCrmHistoryQuery());
+
+    const firstLoad = result.current.loadCrmHistory;
+    const firstReset = result.current.resetCrmHistoryQuery;
+
+    rerender();
+
+    expect(result.current.loadCrmHistory).toBe(firstLoad);
+    expect(result.current.resetCrmHistoryQuery).toBe(firstReset);
+  });
 });
