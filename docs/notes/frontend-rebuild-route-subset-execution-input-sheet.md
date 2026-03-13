@@ -28,84 +28,125 @@ Date: 2026-03-13
 ## 1. URL Contract
 
 ### Baseline URL
-- Value:
-- Owner:
-- Notes:
+- Value: `http://127.0.0.1:5173`
+- Owner: local evaluator
+- Notes: baseline Vite dev server local rehearsal URL
 
 ### Rebuild Internal-Only URL
-- Value:
-- Owner:
-- Notes:
+- Value: `http://127.0.0.1:5175`
+- Owner: local evaluator
+- Notes: rebuild Vite dev server local alternate-entry URL
 
 ### URL Exposure Rule
 - Who can access rebuild URL?
+  - local evaluator only
 - How is access restricted?
+  - local machine loopback URL only
 - Is baseline URL guaranteed to remain default?
+  - yes
 
 ## 2. Exposure and Rollback Owners
 
 ### Exposure Owner
 - Name / team:
+  - local evaluator
 - Responsibility:
+  - baseline/rebuild URL 분리 유지
 
 ### Rollback Decision Owner
 - Name / team:
+  - local evaluator
 - Responsibility:
+  - rebuild URL 평가 중단 및 baseline-only 복귀 판단
 
 ### Reviewer / Approver
 - Name / team:
+  - self-review
 - Responsibility:
+  - 결과 문서 정리 및 blocker 분류
 
 ### Evidence Recorder
 - Name / team:
+  - local evaluator
 - Responsibility:
+  - screenshot / note / decision 기록
 
 ## 3. Role Accounts For Evaluation
 
 ### Admin
 - Login ID:
+  - N/A
 - Password delivery method:
+  - N/A
 - Notes:
+  - 이번 실행은 backend health가 `prototypeNoAuth=true`로 떠서 role smoke 대신 local rehearsal로 수행
 
 ### Desk
 - Login ID:
+  - N/A
 - Password delivery method:
+  - N/A
 - Notes:
+  - local rehearsal only
 
 ### Trainer
 - Login ID:
+  - N/A
 - Password delivery method:
+  - N/A
 - Notes:
+  - local rehearsal only
 
 ## 4. Evaluation Window
 
 - Planned start:
+  - 2026-03-13 local rehearsal
 - Planned end:
+  - same-session completion
 - Local timezone:
+  - Asia/Seoul
 - Who will actively observe the session?
+  - local evaluator
 - What is the stop/abort communication path?
+  - stop rebuild Vite server and continue baseline-only
 
 ## 5. Route Checklist Assignment
 
 ### `/members`
 - Primary checker:
+  - local evaluator
 - Secondary reviewer:
+  - self-review
 - Evidence path:
+  - `/Users/abc/projects/GymCRM_V2/docs/testing/artifacts/route-subset-baseline-members-local.png`
+  - `/Users/abc/projects/GymCRM_V2/docs/testing/artifacts/route-subset-rebuild-members-local.png`
 
 ### `/memberships`
 - Primary checker:
+  - local evaluator
 - Secondary reviewer:
+  - self-review
 - Evidence path:
+  - `/Users/abc/projects/GymCRM_V2/docs/testing/artifacts/route-subset-baseline-memberships-local.png`
+  - `/Users/abc/projects/GymCRM_V2/docs/testing/artifacts/route-subset-rebuild-memberships-local.png`
 
 ### `/reservations`
 - Primary checker:
+  - local evaluator
 - Secondary reviewer:
+  - self-review
 - Evidence path:
+  - `/Users/abc/projects/GymCRM_V2/docs/testing/artifacts/route-subset-baseline-reservations-local.png`
+  - `/Users/abc/projects/GymCRM_V2/docs/testing/artifacts/route-subset-rebuild-reservations-local.png`
 
 ### `/access`
 - Primary checker:
+  - local evaluator
 - Secondary reviewer:
+  - self-review
 - Evidence path:
+  - `/Users/abc/projects/GymCRM_V2/docs/testing/artifacts/route-subset-baseline-access-local.png`
+  - `/Users/abc/projects/GymCRM_V2/docs/testing/artifacts/route-subset-rebuild-access-local.png`
 
 ## 6. Required Preconditions
 
@@ -130,20 +171,29 @@ Date: 2026-03-13
 
 ### Immediate rollback action
 - Rebuild URL exposure off by:
+  - stop local rebuild server on `127.0.0.1:5175`
 - Confirm baseline-only recovery by:
+  - reopen baseline URL `http://127.0.0.1:5173`
 - Log owner:
+  - local evaluator
 
 ## 8. Evidence Output Paths
 
 ### Screenshots
 - Directory:
+  - `/Users/abc/projects/GymCRM_V2/docs/testing/artifacts`
 - Naming convention:
+  - `route-subset-{baseline|rebuild}-{route}-local.png`
 
 ### Notes
 - Blocker log update owner:
+  - local evaluator
 - Migration / rollback note update owner:
+  - local evaluator
 - Candidate checkpoint update owner:
+  - local evaluator
 - Route subset decision update owner:
+  - local evaluator
 
 ## 9. Final Go / No-Go Prompt
 
@@ -157,6 +207,7 @@ Date: 2026-03-13
 
 - Decision before evaluation:
   - `Proceed`
-  - `Pause`
 - Reason:
+  - baseline/rebuild local alternate entry가 분리돼 있고 4개 route baseline/rebuild screenshot 비교가 가능함
 - Follow-up if paused:
+  - N/A
