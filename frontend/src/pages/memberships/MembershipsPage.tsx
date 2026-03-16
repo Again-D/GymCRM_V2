@@ -20,8 +20,11 @@ function formatCurrency(amount: number) {
 
 function buildStatusText(membership: PurchasedMembership) {
   if (membership.membershipStatus === "HOLDING") {
-    return membership.activeHoldStatus === "ACTIVE" ? "HOLDING (ON)" : "HOLDING";
+    return membership.activeHoldStatus === "ACTIVE" ? "홀딩 중" : "홀딩";
   }
+  if (membership.membershipStatus === "ACTIVE") return "활성";
+  if (membership.membershipStatus === "REFUNDED") return "환불됨";
+  if (membership.membershipStatus === "EXPIRED") return "만료";
   return membership.membershipStatus;
 }
 
@@ -103,9 +106,9 @@ export default function MembershipsPage() {
   if (!selectedMember) {
     return (
       <MemberContextFallback
-        title="Membership Operations"
-        description="Membership management is performed on a per-member basis. Please select a member to proceed with purchase, hold, or refund actions."
-        submitLabel="Select Member to Start"
+        title="회원권 업무"
+        description="회원권 업무는 회원 단위로 진행됩니다. 구매, 홀딩, 환불 작업을 시작하려면 먼저 회원을 선택해 주세요."
+        submitLabel="회원 선택 후 시작"
       />
     );
   }
@@ -123,13 +126,13 @@ export default function MembershipsPage() {
       <article className="panel-card">
         <div className="ops-hero">
           <div className="ops-hero__copy">
-            <span className="ops-eyebrow">Lifecycle Console</span>
-            <h1 className="ops-title">Membership Operations</h1>
-            <p className="ops-subtitle">Purchase, hold, resume, and refund memberships from one operational surface without losing the selected-member context.</p>
+            <span className="ops-eyebrow">생애주기 콘솔</span>
+            <h1 className="ops-title">회원권 업무</h1>
+            <p className="ops-subtitle">구매, 홀딩, 재개, 환불을 한 화면에서 처리하며 선택된 회원 컨텍스트를 유지합니다.</p>
             <div className="ops-meta">
-              <span className="ops-meta__pill">Purchase-first</span>
-              <span className="ops-meta__pill">Modal actions</span>
-              <span className="ops-meta__pill">Payment-aware</span>
+              <span className="ops-meta__pill">구매 우선</span>
+              <span className="ops-meta__pill">모달 액션</span>
+              <span className="ops-meta__pill">결제 연동</span>
             </div>
           </div>
           <button 
@@ -137,25 +140,25 @@ export default function MembershipsPage() {
             className="primary-button"
             onClick={() => setActiveModal('purchase')}
           >
-            New Registration
+            신규 등록
           </button>
         </div>
 
         <div className="ops-stat-strip">
           <div className="ops-stat-card">
-            <span className="ops-stat-card__label">Focused Member</span>
+            <span className="ops-stat-card__label">선택된 회원</span>
             <span className="ops-stat-card__value">#{selectedMember.memberId}</span>
             <span className="ops-stat-card__hint">{selectedMember.memberName}</span>
           </div>
           <div className="ops-stat-card">
-            <span className="ops-stat-card__label">Membership Rows</span>
+            <span className="ops-stat-card__label">회원권 건수</span>
             <span className="ops-stat-card__value">{selectedMemberMemberships.length}</span>
-            <span className="ops-stat-card__hint">Loaded subscriptions for current member</span>
+            <span className="ops-stat-card__hint">현재 회원의 회원권 구독 내역 수</span>
           </div>
           <div className="ops-stat-card">
-            <span className="ops-stat-card__label">Session Payments</span>
+            <span className="ops-stat-card__label">세션 결제</span>
             <span className="ops-stat-card__value">{payments.length}</span>
-            <span className="ops-stat-card__hint">New payment records produced in this session</span>
+            <span className="ops-stat-card__hint">이번 세션에서 발생한 결제 건수</span>
           </div>
         </div>
 
@@ -165,26 +168,26 @@ export default function MembershipsPage() {
           <section className="ops-section">
             <div className="ops-section__header">
               <div>
-                <h2 className="ops-section__title">Active Subscriptions</h2>
-                <p className="ops-section__subtitle">Operational state and next actions for the currently focused member.</p>
+                <h2 className="ops-section__title">활성 회원권</h2>
+                <p className="ops-section__subtitle">현재 선택된 회원의 구독 상태와 가능한 액션을 확인합니다.</p>
               </div>
             </div>
 
             {selectedMemberMembershipsLoading ? (
-              <div className="pill muted">Syncing membership data...</div>
+              <div className="pill muted">회원권 데이터 동기화 중...</div>
             ) : selectedMemberMemberships.length === 0 ? (
-              <div className="ops-empty">No active or past memberships found for this member.</div>
+              <div className="ops-empty">이 회원의 활성 또는 과거 회원권을 찾을 수 없습니다.</div>
             ) : (
               <div className="table-shell">
                 <table className="members-table">
                   <thead>
                     <tr>
                       <th>ID</th>
-                      <th>Product</th>
-                      <th>Status</th>
-                      <th>Validity</th>
-                      <th>Usage</th>
-                      <th style={{ textAlign: 'right' }}>Actions</th>
+                      <th>상품</th>
+                      <th>상태</th>
+                      <th>유효 기간</th>
+                      <th>이용 횟수</th>
+                      <th style={{ textAlign: 'right' }}>액션</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -207,11 +210,11 @@ export default function MembershipsPage() {
                         </td>
                         <td className="text-sm">
                           {membership.startDate} ~ <br/>
-                          <span className="text-muted">{membership.endDate ?? "PERPETUAL"}</span>
+                          <span className="text-muted">{membership.endDate ?? "무기한"}</span>
                         </td>
                         <td>
                           {membership.remainingCount != null ? (
-                            <strong className="text-sm">{membership.remainingCount} Left</strong>
+                            <strong className="text-sm">{membership.remainingCount}회 남음</strong>
                           ) : (
                             <span className="text-muted">-</span>
                           )}
@@ -228,7 +231,7 @@ export default function MembershipsPage() {
                                     setActiveModal('hold');
                                   }}
                                 >
-                                  Hold
+                                  홀딩
                                 </button>
                                 <button 
                                   type="button" 
@@ -239,7 +242,7 @@ export default function MembershipsPage() {
                                     setActiveModal('refund');
                                   }}
                                 >
-                                  Refund
+                                  환불
                                 </button>
                               </>
                             )}
@@ -252,7 +255,7 @@ export default function MembershipsPage() {
                                   setActiveModal('resume');
                                 }}
                               >
-                                Resume
+                                재개
                               </button>
                             )}
                           </div>
@@ -268,13 +271,13 @@ export default function MembershipsPage() {
           <section className="ops-section">
             <div className="ops-section__header">
               <div>
-                <h2 className="ops-section__title">Payment History (Session Only)</h2>
-                <p className="ops-section__subtitle">Immediate accounting feedback for the actions you just executed.</p>
+                <h2 className="ops-section__title">결제 이력 (세션 한정)</h2>
+                <p className="ops-section__subtitle">방금 실행한 작업의 결제 결과를 즉시 확인합니다.</p>
               </div>
             </div>
             <div className="ops-block ops-block--soft">
               {payments.length === 0 ? (
-                <p className="text-muted text-sm">No payment records generated in this session.</p>
+                <p className="text-muted text-sm">이번 세션에서 생성된 결제 내역이 없습니다.</p>
               ) : (
                 <div className="stack-sm">
                   {payments.map((payment) => (
@@ -285,7 +288,7 @@ export default function MembershipsPage() {
                           <span className="pill ok" style={{ fontSize: '10px' }}>{payment.paymentStatus}</span>
                         </div>
                         <div className="text-sm" style={{ fontWeight: 600 }}>{paymentLabel(payment)}</div>
-                        <div className="text-xs text-muted mt-xs">Rel. Membership: #{payment.membershipId}</div>
+                        <div className="text-xs text-muted mt-xs">연결 회원권: #{payment.membershipId}</div>
                       </div>
                       <div style={{ textAlign: 'right', fontWeight: 700 }}>
                         {formatCurrency(payment.amount)}
@@ -307,11 +310,11 @@ export default function MembershipsPage() {
         <Modal 
           isOpen={activeModal === 'purchase'} 
           onClose={handleCloseModal} 
-          title="New Membership Registration"
+          title="신규 회원권 등록"
           size="md"
           footer={
             <>
-              <button type="button" className="secondary-button" onClick={handleCloseModal}>Cancel</button>
+              <button type="button" className="secondary-button" onClick={handleCloseModal}>취소</button>
               <button 
                 type="button" 
                 className="primary-button" 
@@ -321,14 +324,14 @@ export default function MembershipsPage() {
                   if (res) handleCloseModal();
                 }}
               >
-                Confirm Purchase
+                구매 확정
               </button>
             </>
           }
         >
           <div className="stack-md">
             <label className="stack-sm">
-              <span className="text-sm">Select Product</span>
+              <span className="text-sm">상품 선택</span>
               <select
                 className="input"
                 value={purchaseForm.productId}
@@ -337,7 +340,7 @@ export default function MembershipsPage() {
                   setPurchaseForm((prev) => ({ ...prev, productId: event.target.value }));
                 }}
               >
-                <option value="">-- Choose a product --</option>
+                <option value="">-- 상품을 선택하세요 --</option>
                 {products.map((product) => (
                   <option key={product.productId} value={product.productId}>
                     {product.productName} ({product.productType}) · {formatCurrency(product.priceAmount)}
@@ -347,7 +350,7 @@ export default function MembershipsPage() {
             </label>
             <div className="row-actions" style={{ gap: '16px' }}>
               <label className="stack-sm" style={{ flex: 1 }}>
-                <span className="text-sm">Effective Date</span>
+                <span className="text-sm">시작일</span>
                 <input
                   type="date"
                   className="input"
@@ -359,7 +362,7 @@ export default function MembershipsPage() {
                 />
               </label>
               <label className="stack-sm" style={{ flex: 1 }}>
-                <span className="text-sm">Payment Method</span>
+                <span className="text-sm">결제 수단</span>
                 <select
                   className="input"
                   value={purchaseForm.paymentMethod}
@@ -370,34 +373,34 @@ export default function MembershipsPage() {
                     }))
                   }
                 >
-                  <option value="CASH">Cash</option>
-                  <option value="CARD">Card</option>
-                  <option value="TRANSFER">Bank Transfer</option>
-                  <option value="ETC">Other</option>
+                  <option value="CASH">현금</option>
+                  <option value="CARD">카드</option>
+                  <option value="TRANSFER">계좌이체</option>
+                  <option value="ETC">기타</option>
                 </select>
               </label>
             </div>
             
             <label className="stack-sm">
-              <span className="text-sm">Settlement Amount</span>
+              <span className="text-sm">결제 금액</span>
               <input
                 className="input"
                 value={purchaseForm.paidAmount}
                 onChange={(event) => setPurchaseForm((prev) => ({ ...prev, paidAmount: event.target.value }))}
-                placeholder="Leave blank for original price"
+                placeholder="비워두면 정가로 처리됩니다"
               />
             </label>
 
             {purchasePreview && (
               <div className="panel-card" style={{ background: 'var(--bg-base)', padding: '16px' }}>
-                <strong className="text-xs text-muted" style={{ textTransform: 'uppercase' }}>Purchase Preview</strong>
+                <strong className="text-xs text-muted" style={{ textTransform: 'uppercase' }}>구매 미리보기</strong>
                 <div className="mt-sm stack-sm">
                    <div className="row-actions" style={{ justifyContent: 'space-between' }}>
-                     <span className="text-sm">Duration</span>
+                     <span className="text-sm">기간</span>
                      <span className="text-sm" style={{ fontWeight: 600 }}>{purchasePreview.startDate} ~ {purchasePreview.endDate ?? "-"}</span>
                    </div>
                    <div className="row-actions" style={{ justifyContent: 'space-between' }}>
-                     <span className="text-sm">Charge Amount</span>
+                     <span className="text-sm">청구 금액</span>
                      <span className="text-sm" style={{ fontWeight: 700 }}>{formatCurrency(purchasePreview.chargeAmount)}</span>
                    </div>
                 </div>
@@ -409,10 +412,10 @@ export default function MembershipsPage() {
         <Modal
           isOpen={activeModal === 'hold' && targetMembership != null}
           onClose={handleCloseModal}
-          title={`Hold Membership #${targetMembership?.membershipId}`}
+          title={`회원권 #${targetMembership?.membershipId} 홀딩`}
           footer={
             <>
-              <button type="button" className="secondary-button" onClick={handleCloseModal}>Cancel</button>
+              <button type="button" className="secondary-button" onClick={handleCloseModal}>취소</button>
               <button 
                 type="button" 
                 className="primary-button"
@@ -423,7 +426,7 @@ export default function MembershipsPage() {
                   }
                 }}
               >
-                Process Hold
+                홀딩 처리
               </button>
             </>
           }
@@ -461,10 +464,10 @@ export default function MembershipsPage() {
                 </label>
               </div>
               <label className="stack-sm">
-                <span className="text-sm">Reason</span>
+                <span className="text-sm">사유</span>
                 <input
                   className="input"
-                  placeholder="e.g. Vacation, Injury"
+                  placeholder="예: 여행, 부상"
                   value={currentDraft.holdReason}
                   onChange={(event) =>
                     updateMembershipActionDraft(targetMembership.membershipId, (prev) => ({
@@ -477,7 +480,7 @@ export default function MembershipsPage() {
               <div className="pill info mt-sm" style={{ display: 'block' }}>
                 {(() => {
                   const preview = buildHoldPreview(targetMembership);
-                  return 'error' in preview ? preview.error : `Impact: ${preview.plannedHoldDays} days added. Recalculated expiry: ${preview.recalculatedEndDate ?? "-"}`;
+                  return 'error' in preview ? preview.error : `영향: ${preview.plannedHoldDays}일 추가. 재계산된 만료일: ${preview.recalculatedEndDate ?? "-"}`;  
                 })()}
               </div>
             </div>
@@ -487,10 +490,10 @@ export default function MembershipsPage() {
         <Modal
            isOpen={activeModal === 'resume' && targetMembership != null}
            onClose={handleCloseModal}
-           title="Release Membership Hold"
+           title="회원권 홀딩 해제"
            footer={
              <>
-               <button type="button" className="secondary-button" onClick={handleCloseModal}>Cancel</button>
+               <button type="button" className="secondary-button" onClick={handleCloseModal}>취소</button>
                <button 
                 type="button" 
                 className="primary-button"
@@ -501,7 +504,7 @@ export default function MembershipsPage() {
                   }
                 }}
                >
-                 Resume Now
+                 지금 재개
                </button>
              </>
            }
@@ -525,7 +528,7 @@ export default function MembershipsPage() {
                 <div className="pill info mt-sm" style={{ display: 'block' }}>
                   {(() => {
                     const preview = buildResumePreview(targetMembership);
-                    return 'error' in preview ? preview.error : `Resume calculated. New expiry: ${preview.recalculatedEndDate ?? "-"}`;
+                    return 'error' in preview ? preview.error : `재개 계산 완료. 새 만료일: ${preview.recalculatedEndDate ?? "-"}`;  
                   })()}
                 </div>
              </div>
@@ -535,11 +538,11 @@ export default function MembershipsPage() {
         <Modal
           isOpen={activeModal === 'refund' && targetMembership != null}
           onClose={handleCloseModal}
-          title="Process Membership Refund"
+          title="회원권 환불 처리"
           size="md"
           footer={
             <>
-              <button type="button" className="secondary-button" onClick={handleCloseModal}>Cancel</button>
+              <button type="button" className="secondary-button" onClick={handleCloseModal}>취소</button>
               <button 
                 type="button" 
                 className="primary-button"
@@ -551,7 +554,7 @@ export default function MembershipsPage() {
                   }
                 }}
               >
-                Confirm Refund
+                환불 확정
               </button>
             </>
           }
@@ -560,7 +563,7 @@ export default function MembershipsPage() {
             <div className="stack-md">
                <div className="row-actions" style={{ gap: '16px' }}>
                 <label className="stack-sm" style={{ flex: 1 }}>
-                  <span className="text-sm">Base Refund Date</span>
+                  <span className="text-sm">환불 기준일</span>
                   <input
                     type="date"
                     className="input"
@@ -574,7 +577,7 @@ export default function MembershipsPage() {
                   />
                 </label>
                 <label className="stack-sm" style={{ flex: 1 }}>
-                  <span className="text-sm">Refund Method</span>
+                  <span className="text-sm">환불 수단</span>
                   <select
                     className="input"
                     value={currentDraft.refundPaymentMethod}
@@ -585,14 +588,14 @@ export default function MembershipsPage() {
                       }))
                     }
                   >
-                    <option value="CASH">Cash</option>
-                    <option value="CARD">Card</option>
-                    <option value="TRANSFER">Transfer</option>
+                    <option value="CASH">현금</option>
+                    <option value="CARD">카드</option>
+                    <option value="TRANSFER">계좌이체</option>
                   </select>
                 </label>
               </div>
               <label className="stack-sm">
-                <span className="text-sm">Notes</span>
+                <span className="text-sm">메모</span>
                 <input
                   className="input"
                   value={currentDraft.refundMemo}
@@ -611,22 +614,22 @@ export default function MembershipsPage() {
                 style={{ alignSelf: 'flex-start' }}
                 onClick={() => void handleRefundPreview(targetMembership)}
               >
-                Calculate Refund Amount
+                환불 금액 계산
               </button>
 
               {membershipRefundPreviewById[targetMembership.membershipId] && (
                 <div className="panel-card" style={{ background: 'var(--bg-base)', padding: '16px' }}>
                   <div className="stack-sm">
                     <div className="row-actions" style={{ justifyContent: 'space-between' }}>
-                      <span className="text-sm">Original Amount</span>
+                      <span className="text-sm">원래 금액</span>
                       <span>{formatCurrency(membershipRefundPreviewById[targetMembership.membershipId].originalAmount)}</span>
                     </div>
                     <div className="row-actions" style={{ justifyContent: 'space-between' }}>
-                      <span className="text-sm">Used Amount</span>
+                      <span className="text-sm">사용 금액</span>
                       <span>- {formatCurrency(membershipRefundPreviewById[targetMembership.membershipId].usedAmount)}</span>
                     </div>
                     <div className="row-actions" style={{ justifyContent: 'space-between', borderTop: '1px solid var(--border-minimal)', paddingTop: '8px', marginTop: '4px' }}>
-                      <span className="text-sm" style={{ fontWeight: 600 }}>Refund Total</span>
+                      <span className="text-sm" style={{ fontWeight: 600 }}>환불 합계</span>
                       <span className="text-sm" style={{ fontWeight: 700, color: 'var(--status-danger)' }}>
                         {formatCurrency(membershipRefundPreviewById[targetMembership.membershipId].refundAmount)}
                       </span>

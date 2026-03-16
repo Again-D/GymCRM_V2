@@ -34,10 +34,10 @@ function formatDateTime(value: string | null) {
 }
 
 const statusMap: Record<string, { label: string; class: string }> = {
-  "CONFIRMED": { label: "CONFIRMED", class: "pill ok" },
-  "ATTENDED": { label: "ATTENDED", class: "pill info" },
-  "CANCELLED": { label: "CANCELLED", class: "pill muted" },
-  "NO_SHOW": { label: "NO-SHOW", class: "pill danger" }
+  "CONFIRMED": { label: "예약 확정", class: "pill ok" },
+  "ATTENDED": { label: "출석", class: "pill info" },
+  "CANCELLED": { label: "취소", class: "pill muted" },
+  "NO_SHOW": { label: "노쇼", class: "pill danger" }
 };
 
 export default function ReservationsPage() {
@@ -144,7 +144,7 @@ export default function ReservationsPage() {
     clearPanelFeedback();
 
     if (!selectedMemberId) {
-      setReservationPanelError("Member not selected.");
+      setReservationPanelError("회원이 선택되지 않았습니다.");
       return;
     }
 
@@ -154,7 +154,7 @@ export default function ReservationsPage() {
     const schedule = reservationSchedules.find((item) => item.scheduleId === scheduleId);
 
     if (!membership || !schedule) {
-      setReservationPanelError("Missing membership or schedule selection.");
+      setReservationPanelError("회원권 또는 수업 일정을 선택해 주세요.");
       return;
     }
 
@@ -171,10 +171,10 @@ export default function ReservationsPage() {
         loadReservationTargets(debouncedReservationTargetsKeyword)
       ]);
       setReservationCreateForm({ membershipId: "", scheduleId: "", memo: "" });
-      setReservationPanelMessage(`Success: Reservation #${reservation.reservationId} created.`);
+      setReservationPanelMessage(`예약 #${reservation.reservationId}이(가) 생성되었습니다.`);
       setIsNewModalOpen(false);
     } catch (error) {
-      setReservationPanelError(error instanceof Error ? error.message : "Failed to create reservation.");
+      setReservationPanelError(error instanceof Error ? error.message : "예약 생성에 실패했습니다.");
     }
   };
 
@@ -199,9 +199,9 @@ export default function ReservationsPage() {
         loadSelectedMemberMemberships(selectedMemberId),
         loadReservationTargets(debouncedReservationTargetsKeyword)
       ]);
-      setReservationPanelMessage(`Success: ${actionLabel}`);
+      setReservationPanelMessage(`완료: ${actionLabel}`);
     } catch (error) {
-      setReservationPanelError(error instanceof Error ? error.message : `${actionLabel} failed.`);
+      setReservationPanelError(error instanceof Error ? error.message : `${actionLabel} 처리 실패.`);
     }
   }, [
     clearPanelFeedback,
@@ -216,32 +216,32 @@ export default function ReservationsPage() {
     <section className="ops-shell">
       <div className="ops-hero">
         <div className="ops-hero__copy">
-          <span className="ops-eyebrow">Booking Surface</span>
-          <h1 className="ops-title">Reservation Operations</h1>
-          <p className="ops-subtitle">Select a member, inspect active bookings, and issue new reservations without leaving the operational workbench.</p>
+          <span className="ops-eyebrow">예약 업무</span>
+          <h1 className="ops-title">예약 관리</h1>
+          <p className="ops-subtitle">회원을 선택하고 현재 예약을 확인하며 서비스 화면을 벗어나지 않고 새 예약을 등록할 수 있습니다.</p>
           <div className="ops-meta">
-            <span className="ops-meta__pill">Directory + workbench</span>
-            <span className="ops-meta__pill">Membership aware</span>
-            <span className="ops-meta__pill">Fast state actions</span>
+            <span className="ops-meta__pill">디렉터리 + 워크벤치</span>
+            <span className="ops-meta__pill">회원권 연동</span>
+            <span className="ops-meta__pill">빠른 상태 처리</span>
           </div>
         </div>
       </div>
 
       <div className="ops-stat-strip">
         <div className="ops-stat-card">
-          <span className="ops-stat-card__label">Reservation Targets</span>
+          <span className="ops-stat-card__label">예약 대상 회원</span>
           <span className="ops-stat-card__value">{reservationTargets.length}</span>
-          <span className="ops-stat-card__hint">Members currently available in the reservation directory</span>
+          <span className="ops-stat-card__hint">예약 디렉터리에서 확인할 수 있는 회원 수</span>
         </div>
         <div className="ops-stat-card">
-          <span className="ops-stat-card__label">Focused Member</span>
+          <span className="ops-stat-card__label">선택된 회원</span>
           <span className="ops-stat-card__value">{selectedMember ? `#${selectedMember.memberId}` : "-"}</span>
-          <span className="ops-stat-card__hint">{selectedMember?.memberName ?? "No member selected yet"}</span>
+          <span className="ops-stat-card__hint">{selectedMember?.memberName ?? "선택된 회원이 없습니다"}</span>
         </div>
         <div className="ops-stat-card">
-          <span className="ops-stat-card__label">Current Bookings</span>
+          <span className="ops-stat-card__label">현재 예약</span>
           <span className="ops-stat-card__value">{selectedMemberReservations.length}</span>
-          <span className="ops-stat-card__hint">Rows loaded in the active workbench</span>
+          <span className="ops-stat-card__hint">현재 워크벤치에 로드된 예약 수</span>
         </div>
       </div>
 
@@ -251,8 +251,8 @@ export default function ReservationsPage() {
       <article className="panel-card">
         <div className="ops-section__header">
           <div>
-            <h2 className="ops-section__title">Reservation Directory</h2>
-            <p className="ops-section__subtitle">Find a member and pin them into the booking workbench.</p>
+            <h2 className="ops-section__title">예약 디렉터리</h2>
+            <p className="ops-section__subtitle">회원을 찾아 예약 워크벤치로 고정합니다.</p>
           </div>
         </div>
 
@@ -265,12 +265,12 @@ export default function ReservationsPage() {
           }}
         >
           <label className="stack-sm">
-            <span className="text-xs text-muted" style={{ fontWeight: 600 }}>Member Lookup</span>
+            <span className="text-xs text-muted" style={{ fontWeight: 600 }}>회원 검색</span>
             <input
               className="input"
               value={reservationTargetsKeyword}
               onChange={(event) => setReservationTargetsKeyword(event.target.value)}
-              placeholder="Name or Phone..."
+              placeholder="이름 또는 전화번호"
             />
           </label>
         </form>
@@ -279,14 +279,14 @@ export default function ReservationsPage() {
           <table className="members-table">
             <thead>
               <tr>
-                <th>Member</th>
-                <th style={{ textAlign: 'center' }}>Active</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
+                <th>회원</th>
+                <th style={{ textAlign: 'center' }}>예약 수</th>
+                <th style={{ textAlign: 'right' }}>액션</th>
               </tr>
             </thead>
             <tbody>
               {targetsPagination.pagedItems.length === 0 ? (
-                <tr><td colSpan={3} className="empty-cell" style={{ padding: '32px' }}>No records found.</td></tr>
+                <tr><td colSpan={3} className="empty-cell" style={{ padding: '32px' }}>조건에 맞는 회원이 없습니다.</td></tr>
               ) : (
                 targetsPagination.pagedItems.map((target) => (
                   <tr key={target.memberId} className={selectedMember?.memberId === target.memberId ? "is-selected-row" : undefined}>
@@ -297,7 +297,7 @@ export default function ReservationsPage() {
                       </div>
                     </td>
                     <td style={{ textAlign: 'center' }}>
-                      <span className="pill info" style={{ fontSize: '11px' }}>{target.confirmedReservationCount} Slots</span>
+                      <span className="pill info" style={{ fontSize: '11px' }}>{target.confirmedReservationCount}개</span>
                     </td>
                     <td style={{ textAlign: 'right' }}>
                       <button
@@ -307,7 +307,7 @@ export default function ReservationsPage() {
                         disabled={selectedMemberLoading}
                         onClick={() => void selectMember(target.memberId)}
                       >
-                        {selectedMember?.memberId === target.memberId ? "Active" : "Focus"}
+                        {selectedMember?.memberId === target.memberId ? "선택 중" : "선택"}
                       </button>
                     </td>
                   </tr>
@@ -336,8 +336,8 @@ export default function ReservationsPage() {
       <article className="panel-card">
         <header className="panel-card-header mb-md">
           <div>
-            <h2 className="brand-title" style={{ fontSize: '1.25rem' }}>Operational Workbench</h2>
-            <p className="text-muted text-xs">Actions and histories for the focused member.</p>
+            <h2 className="brand-title" style={{ fontSize: '1.25rem' }}>예약 워크벤치</h2>
+            <p className="text-muted text-xs">선택된 회원의 예약 액션과 이력을 확인합니다.</p>
           </div>
           {selectedMember && (
             <button 
@@ -345,14 +345,14 @@ export default function ReservationsPage() {
               className="primary-button"
               onClick={() => setIsNewModalOpen(true)}
             >
-              New Booking
+              신규 예약
             </button>
           )}
         </header>
 
         {!selectedMember ? (
           <div className="ops-empty">
-            Select a member from the directory to start reservation operations.
+            디렉터리에서 회원을 선택하여 예약 작업을 시작하세요.
           </div>
         ) : (
           <div className="stack-lg">
@@ -361,22 +361,22 @@ export default function ReservationsPage() {
             <section>
               <div className="ops-section__header">
                 <div>
-                  <h3 className="ops-section__title">Current Reservations</h3>
-                  <p className="ops-section__subtitle">Confirmed, attended, cancelled, and no-show history for the focused member.</p>
+                  <h3 className="ops-section__title">현재 예약</h3>
+                  <p className="ops-section__subtitle">선택된 회원의 확정, 출석, 취소, 노쇼 이력을 확인합니다.</p>
                 </div>
               </div>
               <div className="table-shell">
                 <table className="members-table">
                   <thead>
                     <tr>
-                      <th>Time</th>
-                      <th>Status</th>
-                      <th style={{ textAlign: 'right' }}>Actions</th>
+                      <th>예약 시간</th>
+                      <th>상태</th>
+                      <th style={{ textAlign: 'right' }}>액션</th>
                     </tr>
                   </thead>
                   <tbody>
                     {reservationsPagination.pagedItems.length === 0 ? (
-                      <tr><td colSpan={3} className="empty-cell" style={{ padding: '32px' }}>No bookings on record.</td></tr>
+                      <tr><td colSpan={3} className="empty-cell" style={{ padding: '32px' }}>예약 내역이 없습니다.</td></tr>
                     ) : (
                       reservationsPagination.pagedItems.map((reservation) => {
                         const statusInfo = statusMap[reservation.reservationStatus] || { label: reservation.reservationStatus, class: 'pill muted' };
@@ -400,7 +400,7 @@ export default function ReservationsPage() {
                                   type="button" 
                                   className="secondary-button ops-action-button"
                                   disabled={!canCheckIn}
-                                  onClick={() => mutateReservation(reservation.reservationId, "Checked-in", () => checkInReservation(selectedMemberId!, reservation.reservationId).then(()=>undefined), canCheckIn, "Already checked in or invalid status.")}
+                                  onClick={() => mutateReservation(reservation.reservationId, "체크인 처리", () => checkInReservation(selectedMemberId!, reservation.reservationId).then(()=>undefined), canCheckIn, "이미 체크인되었거나 유효하지 않은 상태입니다.")}
                                 >
                                   CheckIn
                                 </button>
@@ -408,7 +408,7 @@ export default function ReservationsPage() {
                                   type="button" 
                                   className="secondary-button ops-action-button"
                                   disabled={!canMutate}
-                                  onClick={() => mutateReservation(reservation.reservationId, "Marked Complete", () => completeReservation(selectedMemberId!, reservation.reservationId).then(()=>undefined), canMutate, "Only confirmed bookings can be completed.")}
+                                  onClick={() => mutateReservation(reservation.reservationId, "완료 처리", () => completeReservation(selectedMemberId!, reservation.reservationId).then(()=>undefined), canMutate, "확정된 예약만 완료 처리할 수 있습니다.")}
                                 >
                                   Done
                                 </button>
@@ -417,7 +417,7 @@ export default function ReservationsPage() {
                                   className="secondary-button ops-action-button"
                                   style={{ color: 'var(--status-danger)' }}
                                   disabled={!canMutate}
-                                  onClick={() => mutateReservation(reservation.reservationId, "Cancelled", () => cancelReservation(selectedMemberId!, reservation.reservationId).then(()=>undefined), canMutate, "Only confirmed bookings can be cancelled.")}
+                                  onClick={() => mutateReservation(reservation.reservationId, "예약 취소", () => cancelReservation(selectedMemberId!, reservation.reservationId).then(()=>undefined), canMutate, "확정된 예약만 취소할 수 있습니다.")}
                                 >
                                   Void
                                 </button>
@@ -436,32 +436,32 @@ export default function ReservationsPage() {
 
         {(reservationPanelMessage || reservationPanelError) && (
           <div className="mt-md">
-            {reservationPanelMessage && <div className="pill ok full-span" style={{ justifyContent: 'center' }}>{reservationPanelMessage}</div>}
-            {reservationPanelError && <div className="pill danger full-span" style={{ justifyContent: 'center' }}>{reservationPanelError}</div>}
+            {reservationPanelMessage && <div className="pill ok full-span" >{reservationPanelMessage}</div>}
+            {reservationPanelError && <div className="pill danger full-span" >{reservationPanelError}</div>}
           </div>
         )}
 
         <Modal
           isOpen={isNewModalOpen}
           onClose={() => setIsNewModalOpen(false)}
-          title="Create New Booking"
+          title="Create 신규 예약"
           footer={
             <>
-              <button type="button" className="secondary-button" onClick={() => setIsNewModalOpen(false)}>Cancel</button>
+              <button type="button" className="secondary-button" onClick={() => setIsNewModalOpen(false)}>취소</button>
               <button 
                 type="button" 
                 className="primary-button"
                 disabled={!reservationCreateForm.membershipId || !reservationCreateForm.scheduleId}
                 onClick={handleReservationCreateSubmit}
               >
-                Confirm Booking
+                예약 확정
               </button>
             </>
           }
         >
           <div className="stack-md">
             <label className="stack-sm">
-                <span className="text-sm">Target Membership</span>
+                <span className="text-sm">대상 회원권</span>
                 <select
                   className="input"
                   value={reservationCreateForm.membershipId}
@@ -469,7 +469,7 @@ export default function ReservationsPage() {
                     setReservationCreateForm((prev) => ({ ...prev, membershipId: event.target.value }))
                   }
                 >
-                  <option value="">-- Select Valid Subscription --</option>
+                  <option value="">-- 유효한 회원권 선택 --</option>
                   {reservableMemberships.map((membership) => (
                     <option key={membership.membershipId} value={membership.membershipId}>
                       #{membership.membershipId} · {membership.productNameSnapshot}
@@ -477,12 +477,12 @@ export default function ReservationsPage() {
                   ))}
                 </select>
                 {reservableMemberships.length === 0 && (
-                  <span className="text-xs text-danger">No valid memberships available for this member.</span>
+                  <span className="text-xs text-danger">이 회원에게 유효한 회원권이 없습니다.</span>
                 )}
               </label>
               
               <label className="stack-sm">
-                <span className="text-sm">Available Slots</span>
+                <span className="text-sm">수업 일정</span>
                 <select
                   className="input"
                   value={reservationCreateForm.scheduleId}
@@ -490,7 +490,7 @@ export default function ReservationsPage() {
                     setReservationCreateForm((prev) => ({ ...prev, scheduleId: event.target.value }))
                   }
                 >
-                  <option value="">-- Choose Schedule --</option>
+                  <option value="">-- 수업 일정 선택 --</option>
                   {reservationSchedules.map((schedule) => (
                     <option key={schedule.scheduleId} value={schedule.scheduleId}>
                       {schedule.slotTitle} ({schedule.trainerName}) · {formatDate(schedule.startAt)}
@@ -500,11 +500,11 @@ export default function ReservationsPage() {
               </label>
 
               <label className="stack-sm">
-                <span className="text-sm">Internal Note</span>
+                <span className="text-sm">내부 메모</span>
                 <textarea
                   className="input"
                   style={{ minHeight: '80px', resize: 'vertical' }}
-                  placeholder="Operational notes..."
+                  placeholder="운영 메모를 입력하세요"
                   value={reservationCreateForm.memo}
                   onChange={(event) => setReservationCreateForm((prev) => ({ ...prev, memo: event.target.value }))}
                 />
