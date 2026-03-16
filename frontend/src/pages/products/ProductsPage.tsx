@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { useAuthState } from "../../app/auth";
 import { usePagination } from "../../shared/hooks/usePagination";
@@ -6,10 +6,7 @@ import { PaginationControls } from "../../shared/ui/PaginationControls";
 import { useProductsQuery } from "./modules/useProductsQuery";
 import { useProductPrototypeState } from "./modules/useProductPrototypeState";
 import { createDefaultProductFilters, type ProductRecord } from "./modules/types";
-import { EmptyState } from "../../shared/ui/EmptyState";
-import { SkeletonLoader } from "../../shared/ui/SkeletonLoader";
-
-import styles from "./ProductsPage.module.css";
+import { Modal } from "../../shared/ui/Modal";
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("ko-KR", {
@@ -21,9 +18,9 @@ function formatCurrency(amount: number) {
 
 function productTypeSummary(product: ProductRecord) {
   if (product.productType === "DURATION") {
-    return `DURATION · ${product.validityDays ?? "-"}일`;
+    return `기간형 · ${product.validityDays ?? "-"}일`;
   }
-  return `COUNT · ${product.totalCount ?? "-"}회`;
+  return `횟수형 · ${product.totalCount ?? "-"}회`;
 }
 
 export default function ProductsPage() {
@@ -48,11 +45,14 @@ export default function ProductsPage() {
     handleProductSubmit,
     handleProductStatusToggle
   } = useProductPrototypeState();
+  
   const { products, productsLoading, productsQueryError, loadProducts, resetProductsQuery } = useProductsQuery({
     getDefaultFilters: createDefaultProductFilters
   });
+
   const canReadLiveProducts = isMockMode || authUser?.role === "ROLE_CENTER_ADMIN" || authUser?.role === "ROLE_DESK";
   const canMutateProducts = isMockMode || authUser?.role === "ROLE_CENTER_ADMIN";
+  
   const productsPagination = usePagination(products, {
     initialPageSize: 10,
     resetDeps: [products.length, productFilters.category, productFilters.status]
@@ -90,55 +90,61 @@ export default function ProductsPage() {
   }
 
   return (
-    <section className={styles["members-prototype-layout"]}>
-      <article className="panel-card">
-        <div className="panel-card-header">
-          <div>
-            <h1>상품 관리 프로토타입</h1>
-            <p>shared products domain 위에 `/products` 전용 CRUD form/action state를 얹어서 새 구조의 admin slice를 검증합니다.</p>
+    <section className="ops-shell">
+      <div className="ops-hero">
+        <div className="ops-hero__copy">
+          <span className="ops-eyebrow">상품 카탈로그</span>
+          <h1 className="ops-title">상품 및 서비스 관리</h1>
+          <p className="ops-subtitle">회원권, PT, 그룹수업, 기타 상품을 한 곳에서 관리할 수 있는 카탈로그 화면입니다.</p>
+          <div className="ops-meta">
+            <span className="ops-meta__pill">카탈로그 필터</span>
+            <span className="ops-meta__pill">상태 제어</span>
+            <span className="ops-meta__pill">모달 편집</span>
           </div>
-          {canMutateProducts ? (
-            <button type="button" className="secondary-button" onClick={startCreateProduct}>
-              신규 등록
-            </button>
-          ) : null}
+        </div>
+        {canMutateProducts && (
+          <button type="button" className="primary-button" onClick={startCreateProduct}>
+            신규 상품 등록
+          </button>
+        )}
+      </div>
+
+      <div className="ops-kpi-grid">
+        <div className="ops-kpi-card">
+          <span className="ops-kpi-card__label">조회 상품 수</span>
+          <span className="ops-kpi-card__value">{products.length}</span>
+          <span className="ops-kpi-card__hint">현재 조건으로 불러온 상품 수입니다.</span>
+        </div>
+        <div className="ops-kpi-card">
+          <span className="ops-kpi-card__label">활성 상품</span>
+          <span className="ops-kpi-card__value">{products.filter((product) => product.productStatus === "ACTIVE").length}</span>
+          <span className="ops-kpi-card__hint">판매 또는 배정 가능한 활성 상품 수입니다.</span>
+        </div>
+        <div className="ops-kpi-card">
+          <span className="ops-kpi-card__label">편집 모드</span>
+          <span className="ops-kpi-card__value">{productFormOpen ? (productFormMode === "create" ? "등록" : "수정") : "-"}</span>
+          <span className="ops-kpi-card__hint">{selectedProduct ? selectedProduct.productName : "현재 열린 모달이 없습니다."}</span>
+        </div>
+        <div className="ops-kpi-card">
+          <span className="ops-kpi-card__label">라이브 접근</span>
+          <span className="ops-kpi-card__value">{canReadLiveProducts ? "가능" : "잠김"}</span>
+          <span className="ops-kpi-card__hint">권한에 따라 조회 및 수정 가능 여부가 달라집니다.</span>
+        </div>
+      </div>
+
+      <article className="panel-card">
+        <div className="ops-section__header">
+          <div>
+            <h2 className="ops-section__title">상품 목록</h2>
+            <p className="ops-section__subtitle">분류와 상태를 기준으로 상품을 필터링하고 모달 편집을 열 수 있습니다.</p>
+          </div>
         </div>
 
-        {!canReadLiveProducts ? (
-          <div className="selected-member-card mb-md">
-            <div className="selected-member-card-header">
-              <div>
-                <h2>이 역할은 live 상품 관리 미지원</h2>
-                <p>현재 live backend는 상품 관리 화면을 관리자/데스크 읽기, 관리자 쓰기 범위로만 열어두고 있습니다.</p>
-              </div>
-            </div>
-          </div>
-        ) : null}
-
-        {!isMockMode && authUser?.role === "ROLE_DESK" ? (
-          <div className="selected-member-card mb-md">
-            <div className="selected-member-card-header">
-              <div>
-                <h2>데스크 계정은 읽기 전용</h2>
-                <p>상품 등록, 수정, 상태 변경은 관리자 계정에서만 수행할 수 있습니다.</p>
-              </div>
-            </div>
-          </div>
-        ) : null}
-
-        <form
-          className={styles["members-filter-grid"]}
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (!canReadLiveProducts) {
-              return;
-            }
-            void loadProducts(productFilters);
-          }}
-        >
-          <label>
-            카테고리
+        <div className="members-filter-grid" style={{ marginBottom: '24px' }}>
+          <label className="stack-sm">
+            <span className="text-xs text-muted brand-title">상품 분류</span>
             <select
+              className="input"
               value={productFilters.category}
               onChange={(event) =>
                 setProductFilters((prev) => ({
@@ -147,16 +153,17 @@ export default function ProductsPage() {
                 }))
               }
             >
-              <option value="">전체</option>
-              <option value="MEMBERSHIP">MEMBERSHIP</option>
+              <option value="">전체 분류</option>
+              <option value="MEMBERSHIP">회원권</option>
               <option value="PT">PT</option>
-              <option value="GX">GX</option>
-              <option value="ETC">ETC</option>
+              <option value="GX">그룹수업</option>
+              <option value="ETC">기타</option>
             </select>
           </label>
-          <label>
-            상태
+          <label className="stack-sm">
+            <span className="text-xs text-muted brand-title">판매 상태</span>
             <select
+              className="input"
               value={productFilters.status}
               onChange={(event) =>
                 setProductFilters((prev) => ({
@@ -165,144 +172,146 @@ export default function ProductsPage() {
                 }))
               }
             >
-              <option value="">전체</option>
-              <option value="ACTIVE">ACTIVE</option>
-              <option value="INACTIVE">INACTIVE</option>
+              <option value="">전체 상태</option>
+              <option value="ACTIVE">활성</option>
+              <option value="INACTIVE">비활성</option>
             </select>
           </label>
-          <div className={styles["toolbar-actions"]}>
-            <button type="submit" className="primary-button" disabled={productsLoading || !canReadLiveProducts}>
-              {productsLoading ? "조회 중..." : "조회"}
-            </button>
-            <button
-              type="button"
-              className="secondary-button"
-              disabled={!canReadLiveProducts}
-              onClick={() => {
-                if (!canReadLiveProducts) {
-                  return;
-                }
-                clearProductFeedback();
-                const nextFilters = createDefaultProductFilters();
-                setProductFilters(nextFilters);
-                void loadProducts(nextFilters);
-              }}
-            >
-              초기화
-            </button>
+          <div className="row-actions" style={{ alignItems: 'flex-end', marginLeft: 'auto' }}>
+             <button
+                type="button"
+                className="secondary-button"
+                disabled={!canReadLiveProducts}
+                onClick={() => {
+                  clearProductFeedback();
+                  const nextFilters = createDefaultProductFilters();
+                  setProductFilters(nextFilters);
+                  void loadProducts(nextFilters);
+                }}
+              >
+                필터 초기화
+              </button>
+              <button type="button" className="secondary-button" onClick={() => void loadProducts(productFilters)} disabled={productsLoading || !canReadLiveProducts}>
+                {productsLoading ? "동기화 중..." : "적용"}
+              </button>
           </div>
-        </form>
+        </div>
 
-        {productPanelMessage ? <p>{productPanelMessage}</p> : null}
-        {productPanelError || productsQueryError ? <p className="error-text">{productPanelError ?? productsQueryError}</p> : null}
+        {!canReadLiveProducts && (
+          <div className="field-ops-note field-ops-note--restricted mb-md">
+            <span className="field-ops-note__label">라이브 제한</span>
+            <div className="mt-xs text-sm">현재 권한에서는 실시간 상품 카탈로그를 조회하거나 수정할 수 없습니다.</div>
+          </div>
+        )}
 
-        <div className={styles["table-shell"]}>
+        {(productPanelMessage || productPanelError || productsQueryError) && (
+          <div className="ops-feedback-stack mb-md">
+            {productPanelMessage && <div className="pill ok full-span">{productPanelMessage}</div>}
+            {(productPanelError || productsQueryError) && <div className="pill danger full-span">{productPanelError ?? productsQueryError}</div>}
+          </div>
+        )}
+
+        <div className="table-shell">
           <table className="members-table">
             <thead>
               <tr>
-                <th>ID</th>
-                <th>상품명</th>
-                <th>카테고리</th>
-                <th>유형</th>
+                <th>상품 정보</th>
+                <th>분류</th>
                 <th>가격</th>
                 <th>상태</th>
-                <th>액션</th>
+                <th style={{ textAlign: 'right' }}>액션</th>
               </tr>
             </thead>
             <tbody>
-              {productsPagination.pagedItems.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className={styles["empty-cell"]}>
-                    {!canReadLiveProducts
-                      ? "현재 역할에서는 live 상품 목록을 조회할 수 없습니다."
-                      : productsLoading
-                        ? <SkeletonLoader type="rectangular" height={40} />
-                        : <EmptyState message="조회된 상품이 없습니다." />}
+              {productsPagination.pagedItems.map((product) => (
+                <tr key={product.productId} className={product.productId === selectedProductId ? "is-selected-row" : ""}>
+                  <td>
+                    <div className="stack-sm">
+                      <span className="text-sm brand-title">{product.productName}</span>
+                      <span className="text-xs text-muted">ID: #{product.productId} · {productTypeSummary(product)}</span>
+                    </div>
+                  </td>
+                  <td><span className="pill muted">{product.productCategory ?? "미분류"}</span></td>
+                  <td><span className="brand-title text-sm">{formatCurrency(product.priceAmount)}</span></td>
+                  <td>
+                    <span className={product.productStatus === "ACTIVE" ? "pill ok" : "pill muted"}>
+                      {product.productStatus}
+                    </span>
+                  </td>
+                  <td className="ops-right">
+                    {canMutateProducts && (
+                      <button type="button" className="secondary-button ops-action-button" onClick={() => openProductEditor(product)}>
+                        관리
+                      </button>
+                    )}
                   </td>
                 </tr>
-              ) : (
-                productsPagination.pagedItems.map((product) => (
-                  <tr key={product.productId} className={product.productId === selectedProductId ? "is-selected" : ""}>
-                    <td>{product.productId}</td>
-                    <td>{product.productName}</td>
-                    <td>{product.productCategory ?? "-"}</td>
-                    <td>{productTypeSummary(product)}</td>
-                    <td>{formatCurrency(product.priceAmount)}</td>
-                    <td>
-                      <span className={product.productStatus === "ACTIVE" ? "pill ok" : "pill muted"}>
-                        {product.productStatus}
-                      </span>
-                    </td>
-                    <td>
-                      {canMutateProducts ? (
-                        <button type="button" className="secondary-button" onClick={() => openProductEditor(product)}>
-                          편집
-                        </button>
-                      ) : (
-                        "-"
-                      )}
-                    </td>
-                  </tr>
-                ))
+              ))}
+              {productsPagination.pagedItems.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="empty-cell">
+                    {!canReadLiveProducts ? "현재 권한에서는 상품 정보를 조회할 수 없습니다." : "등록된 상품이 없습니다."}
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
         </div>
 
-        <PaginationControls
-          page={productsPagination.page}
-          totalPages={productsPagination.totalPages}
-          pageSize={productsPagination.pageSize}
-          pageSizeOptions={[10, 20]}
-          totalItems={productsPagination.totalItems}
-          startItemIndex={productsPagination.startItemIndex}
-          endItemIndex={productsPagination.endItemIndex}
-          onPageChange={productsPagination.setPage}
-          onPageSizeChange={productsPagination.setPageSize}
-        />
+        <div className="mt-md">
+          <PaginationControls {...productsPagination} pageSizeOptions={[10, 20]} onPageChange={productsPagination.setPage} onPageSizeChange={productsPagination.setPageSize} />
+        </div>
       </article>
 
-      <aside className="panel-card">
-        <div className="panel-card-header">
-          <div>
-            <h2>{productFormMode === "create" ? "상품 등록" : `상품 수정 #${selectedProductId ?? "-"}`}</h2>
-            <p>page-local form state만 이 패널이 소유하고, product read는 shared domain에서 유지합니다.</p>
-          </div>
-          {productFormOpen && productFormMode === "edit" && selectedProduct ? (
-            <button
-              type="button"
-              className="secondary-button"
-              disabled={productFormSubmitting || !canMutateProducts}
-              onClick={() => void runStatusToggle()}
+      {/* PRODUCT EDITOR MODAL */}
+      <Modal
+        isOpen={productFormOpen}
+        onClose={closeProductForm}
+        title={productFormMode === "create" ? "신규 상품 등록" : `상품 #${selectedProductId} 수정`}
+        footer={
+          <>
+            <button className="secondary-button" onClick={closeProductForm}>취소</button>
+            <button 
+              className="primary-button" 
+              onClick={() => void runSubmit()}
+              disabled={productFormSubmitting}
             >
-              상태 토글 ({selectedProduct.productStatus})
+              {productFormSubmitting ? "저장 중..." : "저장"}
             </button>
-          ) : null}
-        </div>
+          </>
+        }
+      >
+        <div className="stack-md">
+          {productFormMode === "edit" && selectedProduct && (
+             <div className="row-actions" style={{ justifyContent: 'flex-end', marginBottom: '8px' }}>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  style={{ fontSize: '11px', color: selectedProduct.productStatus === "ACTIVE" ? 'var(--status-danger)' : 'var(--status-ok)' }}
+                  disabled={productFormSubmitting || !canMutateProducts}
+                  onClick={() => void runStatusToggle()}
+                >
+                  {selectedProduct.productStatus === "ACTIVE" ? "비활성으로 변경" : "활성으로 변경"}
+                </button>
+             </div>
+          )}
 
-        {!canMutateProducts ? (
-          <p>이 역할에서는 상품 편집/등록을 사용할 수 없습니다.</p>
-        ) : !productFormOpen ? (
-          <p>등록 또는 편집을 시작하면 이 패널에 form이 열립니다.</p>
-        ) : (
-          <form
-            className={styles["members-filter-grid"]}
-            onSubmit={(event) => {
-              event.preventDefault();
-              void runSubmit();
-            }}
-          >
-            {productFormError ? <p className="error-text">{productFormError}</p> : null}
-            <label>
-              상품명
+          {productFormError && <div className="pill danger full-span">{productFormError}</div>}
+
+          <div className="ops-field-grid-2">
+            <label className="stack-sm">
+              <span className="text-sm">상품명</span>
               <input
+                className="input"
+                placeholder="상품명을 입력하세요"
                 value={productForm.productName}
                 onChange={(event) => setProductForm((prev) => ({ ...prev, productName: event.target.value }))}
               />
             </label>
-            <label>
-              카테고리
+            <label className="stack-sm">
+              <span className="text-sm">분류</span>
               <select
+                className="input"
                 value={productForm.productCategory}
                 onChange={(event) =>
                   setProductForm((prev) => ({
@@ -311,16 +320,20 @@ export default function ProductsPage() {
                   }))
                 }
               >
-                <option value="">선택 안함</option>
-                <option value="MEMBERSHIP">MEMBERSHIP</option>
+                <option value="">-- 분류 선택 --</option>
+                <option value="MEMBERSHIP">회원권</option>
                 <option value="PT">PT</option>
-                <option value="GX">GX</option>
-                <option value="ETC">ETC</option>
+                <option value="GX">그룹수업</option>
+                <option value="ETC">기타 서비스</option>
               </select>
             </label>
-            <label>
-              유형
+          </div>
+
+          <div className="ops-field-grid-2">
+            <label className="stack-sm">
+              <span className="text-sm">상품 유형</span>
               <select
+                className="input"
                 value={productForm.productType}
                 onChange={(event) =>
                   setProductForm((prev) => ({
@@ -329,98 +342,88 @@ export default function ProductsPage() {
                   }))
                 }
               >
-                <option value="DURATION">DURATION</option>
-                <option value="COUNT">COUNT</option>
+                <option value="DURATION">기간형</option>
+                <option value="COUNT">횟수형</option>
               </select>
             </label>
-            <label>
-              가격
+            <label className="stack-sm">
+              <span className="text-sm">판매 금액</span>
               <input
+                className="input"
+                placeholder="금액을 입력하세요"
                 value={productForm.priceAmount}
                 onChange={(event) => setProductForm((prev) => ({ ...prev, priceAmount: event.target.value }))}
               />
             </label>
-            <label>
-              유효일수
+          </div>
+
+          <div className="ops-field-grid-2">
+            <label className="stack-sm">
+              <span className="text-sm">유효 기간(일)</span>
               <input
+                className="input"
                 value={productForm.validityDays}
                 disabled={productForm.productType !== "DURATION"}
                 onChange={(event) => setProductForm((prev) => ({ ...prev, validityDays: event.target.value }))}
               />
             </label>
-            <label>
-              총횟수
+            <label className="stack-sm">
+              <span className="text-sm">총 이용 횟수</span>
               <input
+                className="input"
                 value={productForm.totalCount}
                 disabled={productForm.productType !== "COUNT"}
                 onChange={(event) => setProductForm((prev) => ({ ...prev, totalCount: event.target.value }))}
               />
             </label>
-            <label>
-              상태
-              <select
-                value={productForm.productStatus}
-                onChange={(event) =>
-                  setProductForm((prev) => ({
-                    ...prev,
-                    productStatus: event.target.value as typeof prev.productStatus
-                  }))
-                }
-              >
-                <option value="ACTIVE">ACTIVE</option>
-                <option value="INACTIVE">INACTIVE</option>
-              </select>
-            </label>
-            <label className={styles["checkbox-row"]}>
-              <input
-                type="checkbox"
-                checked={productForm.allowHold}
-                onChange={(event) => setProductForm((prev) => ({ ...prev, allowHold: event.target.checked }))}
-              />
-              홀딩 허용
-            </label>
-            <label>
-              최대 홀딩일
-              <input
-                value={productForm.maxHoldDays}
-                disabled={!productForm.allowHold}
-                onChange={(event) => setProductForm((prev) => ({ ...prev, maxHoldDays: event.target.value }))}
-              />
-            </label>
-            <label>
-              최대 홀딩횟수
-              <input
-                value={productForm.maxHoldCount}
-                disabled={!productForm.allowHold}
-                onChange={(event) => setProductForm((prev) => ({ ...prev, maxHoldCount: event.target.value }))}
-              />
-            </label>
-            <label className={styles["checkbox-row"]}>
-              <input
-                type="checkbox"
-                checked={productForm.allowTransfer}
-                onChange={(event) => setProductForm((prev) => ({ ...prev, allowTransfer: event.target.checked }))}
-              />
-              양도 허용
-            </label>
-            <label className={styles["full-span"]}>
-              설명
-              <textarea
-                value={productForm.description}
-                onChange={(event) => setProductForm((prev) => ({ ...prev, description: event.target.value }))}
-              />
-            </label>
-            <div className={`${styles["toolbar-actions"]} ${styles["full-span"]}`}>
-              <button type="submit" className="primary-button" disabled={productFormSubmitting}>
-                {productFormSubmitting ? "저장 중..." : productFormMode === "create" ? "상품 등록" : "상품 저장"}
-              </button>
-              <button type="button" className="secondary-button" onClick={closeProductForm}>
-                닫기
-              </button>
-            </div>
-          </form>
-        )}
-      </aside>
+          </div>
+
+          <div className="ops-policy-block">
+             <span className="ops-kpi-card__label">운영 정책</span>
+             <div className="ops-policy-row mt-sm">
+                <label className="row-actions">
+                  <input
+                    type="checkbox"
+                    checked={productForm.allowHold}
+                    onChange={(event) => setProductForm((prev) => ({ ...prev, allowHold: event.target.checked }))}
+                  />
+                  <span className="text-sm">홀딩 허용</span>
+                </label>
+                <label className="row-actions">
+                  <input
+                    type="checkbox"
+                    checked={productForm.allowTransfer}
+                    onChange={(event) => setProductForm((prev) => ({ ...prev, allowTransfer: event.target.checked }))}
+                  />
+                  <span className="text-sm">양도 허용</span>
+                </label>
+             </div>
+             {productForm.allowHold && (
+                <div className="ops-field-grid-2 mt-sm">
+                  <label className="stack-sm">
+                    <span className="text-xs">최대 일수</span>
+                    <input className="input" value={productForm.maxHoldDays} onChange={(e) => setProductForm(p => ({ ...p, maxHoldDays: e.target.value }))} />
+                  </label>
+                  <label className="stack-sm">
+                    <span className="text-xs">최대 횟수</span>
+                    <input className="input" value={productForm.maxHoldCount} onChange={(e) => setProductForm(p => ({ ...p, maxHoldCount: e.target.value }))} />
+                  </label>
+                </div>
+             )}
+          </div>
+
+          <label className="stack-sm">
+            <span className="text-sm">내부 설명</span>
+            <textarea
+              className="input"
+              style={{ minHeight: '80px', resize: 'vertical' }}
+              value={productForm.description}
+              onChange={(event) => setProductForm((prev) => ({ ...prev, description: event.target.value }))}
+            />
+          </label>
+        </div>
+      </Modal>
+
     </section>
   );
 }

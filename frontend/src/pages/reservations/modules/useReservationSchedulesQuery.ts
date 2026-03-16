@@ -4,9 +4,14 @@ import { apiGet } from "../../../api/client";
 import type { ReservationScheduleSummary } from "../../members/modules/types";
 
 export function useReservationSchedulesQuery() {
-  const [reservationSchedules, setReservationSchedules] = useState<ReservationScheduleSummary[]>([]);
-  const [reservationSchedulesLoading, setReservationSchedulesLoading] = useState(false);
-  const [reservationSchedulesError, setReservationSchedulesError] = useState<string | null>(null);
+  const [reservationSchedules, setReservationSchedules] = useState<
+    ReservationScheduleSummary[]
+  >([]);
+  const [reservationSchedulesLoading, setReservationSchedulesLoading] =
+    useState(false);
+  const [reservationSchedulesError, setReservationSchedulesError] = useState<
+    string | null
+  >(null);
   const requestIdRef = useRef(0);
 
   const loadReservationSchedules = useCallback(async () => {
@@ -16,7 +21,9 @@ export function useReservationSchedulesQuery() {
     setReservationSchedulesError(null);
 
     try {
-      const response = await apiGet<ReservationScheduleSummary[]>("/api/v1/reservations/schedules");
+      const response = await apiGet<ReservationScheduleSummary[]>(
+        "/api/v1/reservations/schedules",
+      );
       if (requestIdRef.current !== requestId) {
         return;
       }
@@ -26,7 +33,11 @@ export function useReservationSchedulesQuery() {
         return;
       }
       setReservationSchedules((prev) => (prev.length === 0 ? prev : []));
-      setReservationSchedulesError(error instanceof Error ? error.message : "예약 스케줄을 불러오지 못했습니다.");
+      setReservationSchedulesError(
+        error instanceof Error
+          ? error.message
+          : "예약 스케줄을 불러오지 못했습니다.",
+      );
     } finally {
       if (requestIdRef.current === requestId) {
         setReservationSchedulesLoading(false);
@@ -46,6 +57,6 @@ export function useReservationSchedulesQuery() {
     reservationSchedulesLoading,
     reservationSchedulesError,
     loadReservationSchedules,
-    resetReservationSchedulesQuery
+    resetReservationSchedulesQuery,
   } as const;
 }

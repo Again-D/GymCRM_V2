@@ -8,7 +8,7 @@ import {
   createProductFormFromRecord,
   type ProductFilters,
   type ProductFormState,
-  type ProductRecord
+  type ProductRecord,
 } from "./types";
 
 function parseOptionalNumber(value: string) {
@@ -30,9 +30,18 @@ function buildProductInput(productForm: ProductFormState) {
     return { error: "가격은 0보다 큰 숫자여야 합니다." } as const;
   }
 
-  const validityDays = productForm.productType === "DURATION" ? parseOptionalNumber(productForm.validityDays) : null;
-  const totalCount = productForm.productType === "COUNT" ? parseOptionalNumber(productForm.totalCount) : null;
-  if (productForm.productType === "DURATION" && (!validityDays || validityDays <= 0)) {
+  const validityDays =
+    productForm.productType === "DURATION"
+      ? parseOptionalNumber(productForm.validityDays)
+      : null;
+  const totalCount =
+    productForm.productType === "COUNT"
+      ? parseOptionalNumber(productForm.totalCount)
+      : null;
+  if (
+    productForm.productType === "DURATION" &&
+    (!validityDays || validityDays <= 0)
+  ) {
     return { error: "기간형 상품은 유효일수를 입력해야 합니다." } as const;
   }
   if (productForm.productType === "COUNT" && (!totalCount || totalCount <= 0)) {
@@ -48,26 +57,46 @@ function buildProductInput(productForm: ProductFormState) {
       validityDays,
       totalCount,
       allowHold: productForm.allowHold,
-      maxHoldDays: productForm.allowHold ? parseOptionalNumber(productForm.maxHoldDays) : null,
-      maxHoldCount: productForm.allowHold ? parseOptionalNumber(productForm.maxHoldCount) : null,
+      maxHoldDays: productForm.allowHold
+        ? parseOptionalNumber(productForm.maxHoldDays)
+        : null,
+      maxHoldCount: productForm.allowHold
+        ? parseOptionalNumber(productForm.maxHoldCount)
+        : null,
       allowTransfer: productForm.allowTransfer,
       productStatus: productForm.productStatus,
-      description: productForm.description.trim() || null
-    }
+      description: productForm.description.trim() || null,
+    },
   } as const;
 }
 
 export function useProductPrototypeState() {
-  const [productFilters, setProductFilters] = useState<ProductFilters>(createDefaultProductFilters());
-  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
-  const [selectedProduct, setSelectedProduct] = useState<ProductRecord | null>(null);
-  const [productForm, setProductForm] = useState<ProductFormState>(createEmptyProductForm());
-  const [productFormMode, setProductFormMode] = useState<"create" | "edit">("create");
+  const [productFilters, setProductFilters] = useState<ProductFilters>(
+    createDefaultProductFilters(),
+  );
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(
+    null,
+  );
+  const [selectedProduct, setSelectedProduct] = useState<ProductRecord | null>(
+    null,
+  );
+  const [productForm, setProductForm] = useState<ProductFormState>(
+    createEmptyProductForm(),
+  );
+  const [productFormMode, setProductFormMode] = useState<"create" | "edit">(
+    "create",
+  );
   const [productFormOpen, setProductFormOpen] = useState(false);
   const [productFormSubmitting, setProductFormSubmitting] = useState(false);
-  const [productPanelMessage, setProductPanelMessage] = useState<string | null>(null);
-  const [productPanelError, setProductPanelError] = useState<string | null>(null);
-  const [productFormMessage, setProductFormMessage] = useState<string | null>(null);
+  const [productPanelMessage, setProductPanelMessage] = useState<string | null>(
+    null,
+  );
+  const [productPanelError, setProductPanelError] = useState<string | null>(
+    null,
+  );
+  const [productFormMessage, setProductFormMessage] = useState<string | null>(
+    null,
+  );
   const [productFormError, setProductFormError] = useState<string | null>(null);
   const useMockMutations = isMockApiMode();
 
@@ -128,23 +157,36 @@ export function useProductPrototypeState() {
         if (useMockMutations) {
           const { createMockProduct } = await import("../../../api/mockData");
           nextProduct = createMockProduct(parsed.value);
-          setProductPanelMessage(`상품 #${nextProduct.productId}를 생성했습니다.`);
+          setProductPanelMessage(
+            `상품 #${nextProduct.productId}를 생성했습니다.`,
+          );
         } else {
-          const response = await apiPost<ProductRecord>("/api/v1/products", parsed.value);
+          const response = await apiPost<ProductRecord>(
+            "/api/v1/products",
+            parsed.value,
+          );
           nextProduct = response.data;
           setProductPanelMessage(response.message);
         }
       } else if (selectedProductId != null) {
         if (useMockMutations) {
           const { updateMockProduct } = await import("../../../api/mockData");
-          nextProduct = updateMockProduct(selectedProductId, (current) => ({ ...current, ...parsed.value }));
+          nextProduct = updateMockProduct(selectedProductId, (current) => ({
+            ...current,
+            ...parsed.value,
+          }));
           if (!nextProduct) {
             setProductFormError("수정할 상품을 찾을 수 없습니다.");
             return null;
           }
-          setProductPanelMessage(`상품 #${nextProduct.productId}를 수정했습니다.`);
+          setProductPanelMessage(
+            `상품 #${nextProduct.productId}를 수정했습니다.`,
+          );
         } else {
-          const response = await apiPatch<ProductRecord>(`/api/v1/products/${selectedProductId}`, parsed.value);
+          const response = await apiPatch<ProductRecord>(
+            `/api/v1/products/${selectedProductId}`,
+            parsed.value,
+          );
           nextProduct = response.data;
           setProductPanelMessage(response.message);
         }
@@ -176,18 +218,25 @@ export function useProductPrototypeState() {
     try {
       let nextProduct: ProductRecord | null;
       if (useMockMutations) {
-        const { toggleMockProductStatus } = await import("../../../api/mockData");
+        const { toggleMockProductStatus } =
+          await import("../../../api/mockData");
         nextProduct = toggleMockProductStatus(selectedProductId);
         if (!nextProduct) {
           setProductPanelError("상태를 변경할 상품을 찾을 수 없습니다.");
           return null;
         }
-        setProductPanelMessage(`상품 #${nextProduct.productId} 상태를 ${nextProduct.productStatus}로 변경했습니다.`);
+        setProductPanelMessage(
+          `상품 #${nextProduct.productId} 상태를 ${nextProduct.productStatus}로 변경했습니다.`,
+        );
       } else {
-        const nextStatus = selectedProduct?.productStatus === "ACTIVE" ? "INACTIVE" : "ACTIVE";
-        const response = await apiPatch<ProductRecord>(`/api/v1/products/${selectedProductId}/status`, {
-          productStatus: nextStatus
-        });
+        const nextStatus =
+          selectedProduct?.productStatus === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+        const response = await apiPatch<ProductRecord>(
+          `/api/v1/products/${selectedProductId}/status`,
+          {
+            productStatus: nextStatus,
+          },
+        );
         nextProduct = response.data;
         setProductPanelMessage(response.message);
       }
@@ -222,6 +271,6 @@ export function useProductPrototypeState() {
     closeProductForm,
     resetProductsWorkspace,
     handleProductSubmit,
-    handleProductStatusToggle
+    handleProductStatusToggle,
   } as const;
 }

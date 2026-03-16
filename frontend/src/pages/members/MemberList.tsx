@@ -3,7 +3,7 @@ import { SelectedMemberSummaryCard } from "./components/SelectedMemberSummaryCar
 
 export default function MemberList() {
   return (
-    <div className="members-prototype-layout">
+    <div className="members-prototype-layout ops-shell">
       <MemberListSection />
       <SelectedMemberSummaryCard />
     </div>

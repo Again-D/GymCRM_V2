@@ -5,10 +5,6 @@ import { PaginationControls } from "../../shared/ui/PaginationControls";
 import { useSettlementPrototypeState } from "./modules/useSettlementPrototypeState";
 import { useSettlementReportQuery } from "./modules/useSettlementReportQuery";
 import { createDefaultSettlementFilters } from "./modules/types";
-import { EmptyState } from "../../shared/ui/EmptyState";
-import { SkeletonLoader } from "../../shared/ui/SkeletonLoader";
-
-import styles from "./SettlementsPage.module.css";
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("ko-KR", {
@@ -29,6 +25,7 @@ export default function SettlementsPage() {
     clearSettlementFeedback,
     resetSettlementWorkspace
   } = useSettlementPrototypeState();
+  
   const {
     settlementReport,
     settlementReportLoading,
@@ -39,6 +36,7 @@ export default function SettlementsPage() {
   } = useSettlementReportQuery({
     getDefaultFilters: createDefaultSettlementFilters
   });
+
   const rowsPagination = usePagination(settlementReport?.rows ?? [], {
     initialPageSize: 10,
     resetDeps: [settlementReport?.rows.length ?? 0, settlementFilters.startDate, settlementFilters.endDate, settlementFilters.paymentMethod, settlementFilters.productKeyword]
@@ -67,43 +65,87 @@ export default function SettlementsPage() {
   }, [clearSettlementFeedback, loadSettlementReport, settlementFilters]);
 
   return (
-    <section className={styles["members-prototype-layout"]}>
-      <article className="panel-card">
-        <div className="panel-card-header">
-          <div>
-            <h1>정산 리포트 프로토타입</h1>
-            <p>report query ownership, broad filter state, summary/table rendering을 새 구조에서 검증합니다.</p>
+    <section className="ops-shell">
+      <div className="ops-hero">
+        <div className="ops-hero__copy">
+          <span className="ops-eyebrow">정산 콘솔</span>
+          <h1 className="ops-title">정산 리포트</h1>
+          <p className="ops-subtitle">매출, 환불, 결제 수단별 집계를 빠르게 확인할 수 있는 정산 작업 화면입니다.</p>
+          <div className="ops-meta">
+            <span className="ops-meta__pill">매출 집계</span>
+            <span className="ops-meta__pill">필터 기반 분석</span>
+            <span className="ops-meta__pill">거래 요약</span>
           </div>
         </div>
+        <button
+          type="button"
+          className="secondary-button ops-action-button"
+          onClick={() => {
+            resetSettlementWorkspace();
+            const nextFilters = createDefaultSettlementFilters();
+            void loadSettlementReport(nextFilters);
+          }}
+        >
+          필터 초기화
+        </button>
+      </div>
 
-        <div className={`${styles["placeholder-card"]} mb-md`}>
-          <h2>리포트 조건</h2>
+      <div className="ops-kpi-grid">
+        {[
+          { label: "총 매출", value: formatCurrency(settlementReport?.totalGrossSales ?? 0), hint: "환불 차감 전 기준 매출" },
+          { label: "총 환불", value: formatCurrency(settlementReport?.totalRefundAmount ?? 0), hint: "조회 구간 내 환불 금액" },
+          { label: "순매출", value: formatCurrency(settlementReport?.totalNetSales ?? 0), hint: "환불을 제외한 순수 매출" },
+          { label: "거래 건수", value: String(settlementReport?.rows.length ?? 0), hint: "리포트에 집계된 거래 행 수" }
+        ].map((kpi) => (
+          <div key={kpi.label} className="ops-kpi-card">
+            <span className="ops-kpi-card__label">{kpi.label}</span>
+            <span className="ops-kpi-card__value">{kpi.value}</span>
+            <span className="ops-kpi-card__hint">{kpi.hint}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* FILTER & DATA CONSOLE */}
+      <section className="ops-surface-grid ops-surface-grid--narrow-sidebar">
+        
+        {/* PARAMS PANEL */}
+        <article className="panel-card">
+          <div className="ops-section__header">
+            <div>
+              <h2 className="ops-section__title">리포트 조건</h2>
+              <p className="ops-section__subtitle">조회 기간, 결제 수단, 상품 키워드를 조정해 결과를 확인합니다.</p>
+            </div>
+          </div>
+          
           <form
-            className={styles["members-filter-grid"]}
+            className="stack-md"
             onSubmit={(event) => {
               event.preventDefault();
               void reloadReport();
             }}
           >
-            <label>
-              시작일
+            <label className="stack-sm">
+              <span className="text-xs text-muted brand-title">시작일</span>
               <input
+                className="input"
                 type="date"
                 value={settlementFilters.startDate}
                 onChange={(event) => setSettlementFilters((prev) => ({ ...prev, startDate: event.target.value }))}
               />
             </label>
-            <label>
-              종료일
+            <label className="stack-sm">
+              <span className="text-xs text-muted brand-title">종료일</span>
               <input
+                className="input"
                 type="date"
                 value={settlementFilters.endDate}
                 onChange={(event) => setSettlementFilters((prev) => ({ ...prev, endDate: event.target.value }))}
               />
             </label>
-            <label>
-              결제수단
+            <label className="stack-sm">
+              <span className="text-xs text-muted brand-title">결제 수단</span>
               <select
+                className="input"
                 value={settlementFilters.paymentMethod}
                 onChange={(event) =>
                   setSettlementFilters((prev) => ({
@@ -112,113 +154,91 @@ export default function SettlementsPage() {
                   }))
                 }
               >
-                <option value="">전체</option>
-                <option value="CASH">CASH</option>
-                <option value="CARD">CARD</option>
-                <option value="TRANSFER">TRANSFER</option>
-                <option value="ETC">ETC</option>
+                <option value="">전체 결제 수단</option>
+                <option value="CASH">현금</option>
+                <option value="CARD">카드</option>
+                <option value="TRANSFER">계좌이체</option>
+                <option value="ETC">기타</option>
               </select>
             </label>
-            <label>
-              상품명 키워드
+            <label className="stack-sm">
+              <span className="text-xs text-muted brand-title">상품 검색</span>
               <input
+                className="input"
                 value={settlementFilters.productKeyword}
                 onChange={(event) => setSettlementFilters((prev) => ({ ...prev, productKeyword: event.target.value }))}
-                placeholder="예: PT 10회권"
+                placeholder="상품명 키워드"
               />
             </label>
-            <div className={styles["toolbar-actions"]}>
-              <button type="submit" className="primary-button" disabled={settlementReportLoading}>
-                {settlementReportLoading ? "집계 중..." : "집계"}
-              </button>
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={() => {
-                  resetSettlementWorkspace();
-                  const nextFilters = createDefaultSettlementFilters();
-                  void loadSettlementReport(nextFilters);
-                }}
-              >
-                초기화
-              </button>
-            </div>
+
+            <button type="submit" className="primary-button full-span mt-sm" disabled={settlementReportLoading}>
+              {settlementReportLoading ? "집계 중..." : "리포트 조회"}
+            </button>
           </form>
-          {settlementPanelMessage ? <p>{settlementPanelMessage}</p> : null}
-          {settlementPanelError ? <p className="error-text">{settlementPanelError}</p> : null}
-        </div>
 
-        <div className={`${styles["placeholder-card"]} mb-md`}>
-          <h2>정산 요약</h2>
-          <dl className={`${styles["detail-grid"]} ${styles["compact-detail-grid"]}`}>
-            <div>
-              <dt>총 매출</dt>
-              <dd>{formatCurrency(settlementReport?.totalGrossSales ?? 0)}</dd>
+          {(settlementPanelMessage || settlementPanelError) && (
+            <div className="ops-feedback-stack mt-md">
+              {settlementPanelMessage && <div className="pill ok full-span">{settlementPanelMessage}</div>}
+              {settlementPanelError && <div className="pill danger full-span">{settlementPanelError}</div>}
             </div>
-            <div>
-              <dt>총 환불</dt>
-              <dd>{formatCurrency(settlementReport?.totalRefundAmount ?? 0)}</dd>
-            </div>
-            <div>
-              <dt>순매출</dt>
-              <dd>{formatCurrency(settlementReport?.totalNetSales ?? 0)}</dd>
-            </div>
-            <div>
-              <dt>집계 행 수</dt>
-              <dd>{settlementReport?.rows.length ?? 0}</dd>
-            </div>
-          </dl>
-        </div>
+          )}
+        </article>
 
-        <div className={styles["placeholder-card"]}>
-          <h2>상품/결제수단 집계</h2>
-          <div className={`${styles["table-shell"]} mt-sm`}>
+        {/* DATA TABLE PANEL */}
+        <article className="panel-card">
+          <div className="ops-section__header">
+            <div>
+              <h2 className="ops-section__title">거래 집계 결과</h2>
+              <p className="ops-section__subtitle">상품과 결제 수단별로 총매출과 순매출을 비교합니다.</p>
+            </div>
+          </div>
+
+          <div className="table-shell">
             <table className="members-table">
               <thead>
                 <tr>
-                  <th>상품명</th>
-                  <th>결제수단</th>
-                  <th>총매출</th>
-                  <th>환불</th>
-                  <th>순매출</th>
-                  <th>건수</th>
+                  <th>상품 / 분류</th>
+                  <th>결제 수단</th>
+                  <th style={{ textAlign: 'right' }}>총매출</th>
+                  <th style={{ textAlign: 'right' }}>순매출</th>
                 </tr>
               </thead>
               <tbody>
-                {rowsPagination.pagedItems.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className={styles["empty-cell"]}>
-                      {settlementReportLoading ? <SkeletonLoader type="rectangular" height={40} /> : <EmptyState message="집계 데이터가 없습니다." />}
+                {rowsPagination.pagedItems.map((row) => (
+                  <tr key={`${row.productName}-${row.paymentMethod}`}>
+                    <td>
+                      <div className="stack-sm">
+                        <span className="text-sm brand-title">{row.productName}</span>
+                        <span className="text-xs text-muted">{row.transactionCount}건 거래</span>
+                      </div>
+                    </td>
+                    <td><span className="pill muted">{row.paymentMethod}</span></td>
+                    <td className="ops-right">
+                      <div className="stack-sm">
+                        <span className="text-sm">{formatCurrency(row.grossSales)}</span>
+                        {row.refundAmount > 0 && <span className="text-xs text-danger">-{formatCurrency(row.refundAmount)} 환불</span>}
+                      </div>
+                    </td>
+                    <td className="ops-right">
+                      <span className="text-sm brand-title" style={{ color: 'var(--status-ok)' }}>{formatCurrency(row.netSales)}</span>
                     </td>
                   </tr>
-                ) : (
-                  rowsPagination.pagedItems.map((row) => (
-                    <tr key={`${row.productName}-${row.paymentMethod}`}>
-                      <td>{row.productName}</td>
-                      <td>{row.paymentMethod}</td>
-                      <td>{formatCurrency(row.grossSales)}</td>
-                      <td>{formatCurrency(row.refundAmount)}</td>
-                      <td>{formatCurrency(row.netSales)}</td>
-                      <td>{row.transactionCount}</td>
-                    </tr>
-                  ))
+                ))}
+                {rowsPagination.pagedItems.length === 0 && (
+                   <tr>
+                    <td colSpan={4} className="empty-cell">
+                      {settlementReportLoading ? "정산 데이터를 집계하는 중..." : "현재 조건에 해당하는 거래가 없습니다."}
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>
           </div>
-          <PaginationControls
-            page={rowsPagination.page}
-            totalPages={rowsPagination.totalPages}
-            pageSize={rowsPagination.pageSize}
-            pageSizeOptions={[10, 20, 50]}
-            totalItems={rowsPagination.totalItems}
-            startItemIndex={rowsPagination.startItemIndex}
-            endItemIndex={rowsPagination.endItemIndex}
-            onPageChange={rowsPagination.setPage}
-            onPageSizeChange={rowsPagination.setPageSize}
-          />
-        </div>
-      </article>
+          <div className="mt-md">
+            <PaginationControls {...rowsPagination} pageSizeOptions={[10, 20]} onPageChange={rowsPagination.setPage} onPageSizeChange={rowsPagination.setPageSize} />
+          </div>
+        </article>
+      </section>
     </section>
   );
 }

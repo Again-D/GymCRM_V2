@@ -45,8 +45,8 @@ describe("LockersPage", () => {
       </AuthStateProvider>
     );
 
-    expect(await screen.findByRole("heading", { name: "라커 관리 프로토타입" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "이 역할은 live 라커 관리 미지원" })).toBeTruthy();
-    expect(screen.getByText("현재 역할에서는 live 라커 슬롯을 조회할 수 없습니다.")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "라커 관리" })).toBeTruthy();
+    expect(screen.getByText("현재 권한에서는 라커 작업을 수정할 수 없습니다.")).toBeTruthy();
+    expect(screen.getByText(/라커 목록 불러오는 중...|조건에 맞는 라커가 없습니다./)).toBeTruthy();
   });
 });

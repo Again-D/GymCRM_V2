@@ -2,17 +2,27 @@ import { useEffect, useState } from "react";
 
 import { apiPost, isMockApiMode } from "../../../api/client";
 import { invalidateQueryDomains } from "../../../api/queryInvalidation";
-import { createEmptyLockerAssignForm, type LockerAssignForm, type LockerFilters } from "./types";
+import {
+  createEmptyLockerAssignForm,
+  type LockerAssignForm,
+  type LockerFilters,
+} from "./types";
 
 export function useLockerPrototypeState(selectedMemberId?: number | null) {
   const [lockerFilters, setLockerFilters] = useState<LockerFilters>({
     lockerStatus: "",
-    lockerZone: ""
+    lockerZone: "",
   });
-  const [lockerAssignForm, setLockerAssignForm] = useState<LockerAssignForm>(() => createEmptyLockerAssignForm(selectedMemberId));
+  const [lockerAssignForm, setLockerAssignForm] = useState<LockerAssignForm>(
+    () => createEmptyLockerAssignForm(selectedMemberId),
+  );
   const [lockerAssignSubmitting, setLockerAssignSubmitting] = useState(false);
-  const [lockerReturnSubmittingId, setLockerReturnSubmittingId] = useState<number | null>(null);
-  const [lockerPanelMessage, setLockerPanelMessage] = useState<string | null>(null);
+  const [lockerReturnSubmittingId, setLockerReturnSubmittingId] = useState<
+    number | null
+  >(null);
+  const [lockerPanelMessage, setLockerPanelMessage] = useState<string | null>(
+    null,
+  );
   const [lockerPanelError, setLockerPanelError] = useState<string | null>(null);
   const useMockMutations = isMockApiMode();
 
@@ -39,21 +49,22 @@ export function useLockerPrototypeState(selectedMemberId?: number | null) {
       }
 
       const result = useMockMutations
-        ? await import("../../../api/mockData").then(({ createMockLockerAssignment }) =>
-            createMockLockerAssignment({
-              lockerSlotId: Number(lockerAssignForm.lockerSlotId),
-              memberId: Number(lockerAssignForm.memberId),
-              startDate: lockerAssignForm.startDate,
-              endDate: lockerAssignForm.endDate,
-              memo: lockerAssignForm.memo.trim() || null
-            })
+        ? await import("../../../api/mockData").then(
+            ({ createMockLockerAssignment }) =>
+              createMockLockerAssignment({
+                lockerSlotId: Number(lockerAssignForm.lockerSlotId),
+                memberId: Number(lockerAssignForm.memberId),
+                startDate: lockerAssignForm.startDate,
+                endDate: lockerAssignForm.endDate,
+                memo: lockerAssignForm.memo.trim() || null,
+              }),
           )
         : await apiPost("/api/v1/lockers/assignments", {
             lockerSlotId: Number(lockerAssignForm.lockerSlotId),
             memberId: Number(lockerAssignForm.memberId),
             startDate: lockerAssignForm.startDate,
             endDate: lockerAssignForm.endDate,
-            memo: lockerAssignForm.memo.trim() || null
+            memo: lockerAssignForm.memo.trim() || null,
           });
       invalidateQueryDomains(["lockerSlots", "lockerAssignments"]);
       if ("ok" in result && !result.ok) {
@@ -73,10 +84,14 @@ export function useLockerPrototypeState(selectedMemberId?: number | null) {
     setLockerReturnSubmittingId(lockerAssignmentId);
     try {
       const result = useMockMutations
-        ? await import("../../../api/mockData").then(({ returnMockLockerAssignment }) =>
-            returnMockLockerAssignment(lockerAssignmentId)
+        ? await import("../../../api/mockData").then(
+            ({ returnMockLockerAssignment }) =>
+              returnMockLockerAssignment(lockerAssignmentId),
           )
-        : await apiPost(`/api/v1/lockers/assignments/${lockerAssignmentId}/return`, {});
+        : await apiPost(
+            `/api/v1/lockers/assignments/${lockerAssignmentId}/return`,
+            {},
+          );
       invalidateQueryDomains(["lockerSlots", "lockerAssignments"]);
       if ("ok" in result && !result.ok) {
         setLockerPanelError(result.message);
@@ -100,6 +115,6 @@ export function useLockerPrototypeState(selectedMemberId?: number | null) {
     lockerPanelError,
     clearLockerFeedback,
     handleLockerAssign,
-    handleLockerReturn
+    handleLockerReturn,
   } as const;
 }

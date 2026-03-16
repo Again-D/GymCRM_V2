@@ -1,10 +1,14 @@
-const DEFAULT_USE_MOCK_DATA = import.meta.env.MODE === "test" || import.meta.env.VITE_REBUILD_MOCK_DATA === "1";
+const DEFAULT_USE_MOCK_DATA =
+  import.meta.env.MODE === "test" ||
+  import.meta.env.VITE_REBUILD_MOCK_DATA === "1";
 // In local dev we want to default to Vite's same-origin /api proxy. Falling back to the root app's
 // VITE_API_BASE_URL makes the rebuild app call the backend directly from a different origin (5176),
 // which turns local staging-profile smoke into a CORS problem instead of an auth/runtime check.
 const API_BASE_URL = import.meta.env.DEV
-  ? import.meta.env.VITE_REBUILD_API_BASE_URL ?? ""
-  : import.meta.env.VITE_REBUILD_API_BASE_URL ?? import.meta.env.VITE_API_BASE_URL ?? "";
+  ? (import.meta.env.VITE_REBUILD_API_BASE_URL ?? "")
+  : (import.meta.env.VITE_REBUILD_API_BASE_URL ??
+    import.meta.env.VITE_API_BASE_URL ??
+    "");
 let mockApiModeOverride: boolean | null = null;
 
 type ApiAuthHooks = {
@@ -37,7 +41,15 @@ export class ApiClientError extends Error {
   detail?: string;
   traceId?: string;
 
-  constructor(message: string, options: { status: number; code?: string; detail?: string; traceId?: string }) {
+  constructor(
+    message: string,
+    options: {
+      status: number;
+      code?: string;
+      detail?: string;
+      traceId?: string;
+    },
+  ) {
     super(message);
     this.name = "ApiClientError";
     this.status = options.status;
@@ -84,7 +96,7 @@ async function refreshAccessTokenShared(): Promise<string | null> {
 async function request<T>(
   path: string,
   init?: RequestInit,
-  options?: { skipAuthRetry?: boolean; overrideAccessToken?: string | null }
+  options?: { skipAuthRetry?: boolean; overrideAccessToken?: string | null },
 ): Promise<ApiEnvelope<T>> {
   if (isMockApiMode()) {
     return resolveMockEnvelope<T>(path);
@@ -95,7 +107,8 @@ async function request<T>(
     headers.set("Content-Type", "application/json");
   }
 
-  const accessToken = options?.overrideAccessToken ?? apiAuthHooks?.getAccessToken();
+  const accessToken =
+    options?.overrideAccessToken ?? apiAuthHooks?.getAccessToken();
   if (accessToken) {
     headers.set("Authorization", `Bearer ${accessToken}`);
   }
@@ -103,7 +116,7 @@ async function request<T>(
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers,
-    credentials: "include"
+    credentials: "include",
   });
 
   let payload: ApiEnvelope<T> | null = null;
@@ -126,7 +139,10 @@ async function request<T>(
       try {
         const nextAccessToken = await refreshAccessTokenShared();
         if (nextAccessToken) {
-          return request<T>(path, init, { skipAuthRetry: true, overrideAccessToken: nextAccessToken });
+          return request<T>(path, init, {
+            skipAuthRetry: true,
+            overrideAccessToken: nextAccessToken,
+          });
         }
       } catch {
         // Fall through to unauthorized handling.
@@ -134,16 +150,21 @@ async function request<T>(
       apiAuthHooks?.onUnauthorized?.();
     }
 
-    throw new ApiClientError(payload?.message ?? `API request failed: ${response.status}`, {
-      status: response.status,
-      code: payload?.error?.code,
-      detail: payload?.error?.detail,
-      traceId: payload?.traceId
-    });
+    throw new ApiClientError(
+      payload?.message ?? `API request failed: ${response.status}`,
+      {
+        status: response.status,
+        code: payload?.error?.code,
+        detail: payload?.error?.detail,
+        traceId: payload?.traceId,
+      },
+    );
   }
 
   if (!payload) {
-    throw new ApiClientError("응답을 해석할 수 없습니다.", { status: response.status });
+    throw new ApiClientError("응답을 해석할 수 없습니다.", {
+      status: response.status,
+    });
   }
 
   return payload;
@@ -153,16 +174,22 @@ export function apiGet<T>(path: string): Promise<ApiEnvelope<T>> {
   return request<T>(path, { method: "GET" });
 }
 
-export function apiPost<T>(path: string, body?: unknown): Promise<ApiEnvelope<T>> {
+export function apiPost<T>(
+  path: string,
+  body?: unknown,
+): Promise<ApiEnvelope<T>> {
   return request<T>(path, {
     method: "POST",
-    body: body === undefined ? undefined : JSON.stringify(body)
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
 }
 
-export function apiPatch<T>(path: string, body: unknown): Promise<ApiEnvelope<T>> {
+export function apiPatch<T>(
+  path: string,
+  body: unknown,
+): Promise<ApiEnvelope<T>> {
   return request<T>(path, {
     method: "PATCH",
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
   });
 }

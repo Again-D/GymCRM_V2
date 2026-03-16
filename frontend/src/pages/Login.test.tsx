@@ -20,7 +20,8 @@ describe("Login", () => {
       <AuthStateProvider
         value={{
           securityMode: "jwt",
-          authUser: null
+          authUser: null,
+          authBootstrapping: false
         }}
       >
         <Login />

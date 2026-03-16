@@ -11,7 +11,7 @@ describe("CrmPage", () => {
       ok: true,
       json: async () => ({
         success: true,
-        data: { rows: [] },
+        data: [],
         message: "ok",
         timestamp: "2026-03-13T00:00:00Z",
         traceId: "trace-crm"
@@ -42,9 +42,9 @@ describe("CrmPage", () => {
       </AuthStateProvider>
     );
 
-    expect(await screen.findByRole("heading", { name: "CRM 메시지 프로토타입" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "이 역할은 live CRM 미지원" })).toBeTruthy();
-    expect(screen.getByText("현재 역할에서는 live CRM 이력을 조회할 수 없습니다.")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "CRM 운영" })).toBeTruthy();
+    expect(screen.getByText("현재 권한에서는 CRM 발송 작업을 실행할 수 없습니다.")).toBeTruthy();
+    expect(screen.getByText("발송 이력이 없습니다.")).toBeTruthy();
   });
 
   it("does not trigger live crm requests from unsupported-role controls", async () => {
@@ -53,7 +53,7 @@ describe("CrmPage", () => {
       ok: true,
       json: async () => ({
         success: true,
-        data: { rows: [] },
+        data: [],
         message: "ok",
         timestamp: "2026-03-13T00:00:00Z",
         traceId: "trace-crm"
@@ -76,16 +76,13 @@ describe("CrmPage", () => {
       </AuthStateProvider>
     );
 
-    expect(await screen.findByRole("heading", { name: "이 역할은 live CRM 미지원" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "CRM 운영" })).toBeTruthy();
 
-    const submitButton = screen.getByRole("button", { name: "조회" });
-    const resetButton = screen.getByRole("button", { name: "초기화" });
+    const syncButton = screen.getByRole("button", { name: "로그 새로고침" });
 
-    expect(submitButton).toHaveProperty("disabled", true);
-    expect(resetButton).toHaveProperty("disabled", true);
+    expect(syncButton).toHaveProperty("disabled", true);
 
-    fireEvent.click(submitButton);
-    fireEvent.click(resetButton);
+    fireEvent.click(syncButton);
 
     expect(fetchMock).not.toHaveBeenCalled();
   });

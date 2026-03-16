@@ -6,7 +6,9 @@ import type { AccessEventRow } from "./types";
 
 export function useAccessPrototypeState() {
   const [accessActionSubmitting, setAccessActionSubmitting] = useState(false);
-  const [accessPanelMessage, setAccessPanelMessage] = useState<string | null>(null);
+  const [accessPanelMessage, setAccessPanelMessage] = useState<string | null>(
+    null,
+  );
   const [accessPanelError, setAccessPanelError] = useState<string | null>(null);
   const useMockMutations = isMockApiMode();
 
@@ -23,7 +25,7 @@ export function useAccessPrototypeState() {
         await apiPost<AccessEventRow>("/api/v1/access/entry", {
           memberId,
           membershipId: null,
-          reservationId: null
+          reservationId: null,
         });
         invalidateQueryDomains(["accessPresence", "accessEvents"]);
         setAccessPanelMessage("입장 처리되었습니다.");
@@ -50,7 +52,7 @@ export function useAccessPrototypeState() {
     try {
       if (!useMockMutations) {
         await apiPost<AccessEventRow>("/api/v1/access/exit", {
-          memberId
+          memberId,
         });
         invalidateQueryDomains(["accessPresence", "accessEvents"]);
         setAccessPanelMessage("퇴장 처리되었습니다.");
@@ -77,6 +79,6 @@ export function useAccessPrototypeState() {
     accessPanelError,
     clearAccessFeedback,
     handleAccessEntry,
-    handleAccessExit
+    handleAccessExit,
   } as const;
 }

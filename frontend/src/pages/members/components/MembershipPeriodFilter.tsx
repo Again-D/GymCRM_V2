@@ -8,10 +8,10 @@ type MembershipPeriodFilterProps = {
 };
 
 const PRESETS: Array<{ value: Exclude<MembershipPeriodPreset, "">; label: string }> = [
-  { value: "1w", label: "1주일" },
-  { value: "1m", label: "1개월" },
-  { value: "3m", label: "3개월" },
-  { value: "6m", label: "6개월" }
+  { value: "1w", label: "1W" },
+  { value: "1m", label: "1M" },
+  { value: "3m", label: "3M" },
+  { value: "6m", label: "6M" }
 ];
 
 export function MembershipPeriodFilter({
@@ -22,13 +22,14 @@ export function MembershipPeriodFilter({
 }: MembershipPeriodFilterProps) {
   return (
     <div className="period-filter">
-      <span>회원권 유효기간</span>
+      <span className="text-sm" style={{ fontWeight: 600 }}>만료 기간</span>
       <div className="period-preset-row">
         {PRESETS.map((preset) => (
           <button
             key={preset.value}
             type="button"
             className={value.presetRange === preset.value ? "period-chip is-active" : "period-chip"}
+            style={{ padding: '6px 12px', fontSize: '12px' }}
             onClick={() => onPresetChange(preset.value)}
           >
             {preset.label}
@@ -37,11 +38,11 @@ export function MembershipPeriodFilter({
       </div>
       <div className="period-date-row">
         <label>
-          시작일
+          <span className="text-xs text-muted">시작일</span>
           <input type="date" value={value.dateFrom} onChange={(event) => onDateFromChange(event.target.value)} />
         </label>
         <label>
-          종료일
+          <span className="text-xs text-muted">종료일</span>
           <input type="date" value={value.dateTo} onChange={(event) => onDateToChange(event.target.value)} />
         </label>
       </div>

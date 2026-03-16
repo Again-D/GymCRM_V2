@@ -27,7 +27,7 @@ export const shellRoutes: ShellRoute[] = [
     description: "운영 요약 / 빠른 진입",
     protected: true,
     showInSidebar: true,
-    showInDashboard: false
+    showInDashboard: false,
   },
   {
     key: "members",
@@ -36,7 +36,7 @@ export const shellRoutes: ShellRoute[] = [
     description: "회원 목록 / 검색 / 상태 확인",
     protected: true,
     showInSidebar: true,
-    showInDashboard: true
+    showInDashboard: true,
   },
   {
     key: "memberships",
@@ -45,7 +45,7 @@ export const shellRoutes: ShellRoute[] = [
     description: "구매 / 홀딩 / 해제 / 환불",
     protected: true,
     showInSidebar: true,
-    showInDashboard: true
+    showInDashboard: true,
   },
   {
     key: "reservations",
@@ -54,7 +54,7 @@ export const shellRoutes: ShellRoute[] = [
     description: "예약 생성 / 변경 / 완료",
     protected: true,
     showInSidebar: true,
-    showInDashboard: true
+    showInDashboard: true,
   },
   {
     key: "access",
@@ -63,7 +63,7 @@ export const shellRoutes: ShellRoute[] = [
     description: "입장 / 퇴장 / 현재 입장",
     protected: true,
     showInSidebar: true,
-    showInDashboard: true
+    showInDashboard: true,
   },
   {
     key: "lockers",
@@ -72,7 +72,7 @@ export const shellRoutes: ShellRoute[] = [
     description: "슬롯 조회 / 배정 / 반납",
     protected: true,
     showInSidebar: true,
-    showInDashboard: false
+    showInDashboard: false,
   },
   {
     key: "crm",
@@ -81,7 +81,7 @@ export const shellRoutes: ShellRoute[] = [
     description: "트리거 / 큐 / 발송 이력",
     protected: true,
     showInSidebar: true,
-    showInDashboard: false
+    showInDashboard: false,
   },
   {
     key: "settlements",
@@ -90,7 +90,7 @@ export const shellRoutes: ShellRoute[] = [
     description: "기간별 정산 집계",
     protected: true,
     showInSidebar: true,
-    showInDashboard: false
+    showInDashboard: false,
   },
   {
     key: "products",
@@ -99,11 +99,13 @@ export const shellRoutes: ShellRoute[] = [
     description: "상품 목록 / 정책",
     protected: true,
     showInSidebar: true,
-    showInDashboard: true
-  }
+    showInDashboard: true,
+  },
 ];
 
-const shellRouteByPath = new Map(shellRoutes.map((route) => [route.path, route]));
+const shellRouteByPath = new Map(
+  shellRoutes.map((route) => [route.path, route]),
+);
 
 export function getShellRouteByPath(pathname: string) {
   return shellRouteByPath.get(pathname) ?? null;

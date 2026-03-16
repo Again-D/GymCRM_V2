@@ -11,11 +11,22 @@ describe("AccessPage", () => {
   beforeEach(() => {
     setMockApiModeForTests(true);
     resetMockData();
+    vi.stubGlobal('matchMedia', vi.fn().mockImplementation(query => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })));
   });
 
   afterEach(() => {
     vi.useRealTimers();
     cleanup();
+    vi.unstubAllGlobals();
   });
 
   it("stays usable without selected member context", async () => {
@@ -27,10 +38,10 @@ describe("AccessPage", () => {
       </AuthStateProvider>
     );
 
-    expect(await screen.findByRole("heading", { name: "출입 관리 프로토타입" })).toBeTruthy();
-    expect(screen.getByText("현재 입장중 회원")).toBeTruthy();
-    expect(screen.getByText("최근 출입 이벤트")).toBeTruthy();
-    expect(screen.getByText("회원을 선택하면 입장/퇴장 액션을 빠르게 실행할 수 있습니다.")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "출입 모니터링" })).toBeTruthy();
+    expect(screen.getByText("현재 입장 회원")).toBeTruthy();
+    expect(screen.getByText("출입 이력")).toBeTruthy();
+    expect(screen.getAllByText("선택된 회원 없음").length).toBeGreaterThan(0);
   });
 
   it("shows trainer unsupported note in live mode", async () => {
@@ -53,10 +64,10 @@ describe("AccessPage", () => {
       </AuthStateProvider>
     );
 
-    expect(await screen.findByRole("heading", { name: "출입 관리 프로토타입" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "이 역할은 live 출입 관리 미지원" })).toBeTruthy();
-    expect(screen.getByText("현재 역할에서는 live 입장 현황을 조회할 수 없습니다.")).toBeTruthy();
-    expect(screen.getByText("현재 역할에서는 live 출입 이벤트를 조회할 수 없습니다.")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "출입 모니터링" })).toBeTruthy();
+    expect(screen.getByText("현재 권한에서는 실시간 출입 API를 사용할 수 없습니다.")).toBeTruthy();
+    expect(screen.getByText("현재 권한에서는 출입 제어를 사용할 수 없습니다.")).toBeTruthy();
+    expect(screen.getByText("현재 입장 중인 회원이 없습니다.")).toBeTruthy();
   });
 
   it("clears previously loaded member search results when live access becomes unsupported", async () => {
@@ -73,7 +84,7 @@ describe("AccessPage", () => {
                 memberId: 101,
                 memberName: "김민수",
                 phone: "010-1234-5678",
-                membershipOperationalStatus: "홀딩중",
+                membershipOperationalStatus: "ACTIVE",
                 membershipExpiryDate: "2026-06-30"
               }
             ],
@@ -84,22 +95,24 @@ describe("AccessPage", () => {
         };
       }
 
+      const defaultPresence = {
+        success: true,
+        data: {
+          openSessionCount: 0,
+          todayEntryGrantedCount: 0,
+          todayExitCount: 0,
+          todayEntryDeniedCount: 0,
+          openSessions: []
+        },
+        message: "ok",
+        timestamp: "2026-03-13T00:00:00Z",
+        traceId: "trace-presence"
+      };
+
       if (input === "/api/v1/access/presence") {
         return {
           ok: true,
-          json: async () => ({
-            success: true,
-            data: {
-              openSessionCount: 0,
-              todayEntryGrantedCount: 0,
-              todayExitCount: 0,
-              todayEntryDeniedCount: 0,
-              openSessions: []
-            },
-            message: "ok",
-            timestamp: "2026-03-13T00:00:00Z",
-            traceId: "trace-presence"
-          })
+          json: async () => defaultPresence
         };
       }
 
@@ -156,7 +169,7 @@ describe("AccessPage", () => {
       </AuthStateProvider>
     );
 
-    expect(await screen.findByRole("heading", { name: "이 역할은 live 출입 관리 미지원" })).toBeTruthy();
+    expect(await screen.findByText("현재 권한에서는 실시간 출입 API를 사용할 수 없습니다.")).toBeTruthy();
     await waitFor(() => {
       expect(screen.queryByText("김민수")).toBeNull();
     });
@@ -191,10 +204,7 @@ describe("AccessPage", () => {
               todayExitCount: 0,
               todayEntryDeniedCount: 0,
               openSessions: []
-            },
-            message: "ok",
-            timestamp: "2026-03-13T00:00:00Z",
-            traceId: "trace-presence"
+            }
           })
         };
       }
@@ -204,10 +214,7 @@ describe("AccessPage", () => {
           ok: true,
           json: async () => ({
             success: true,
-            data: [],
-            message: "ok",
-            timestamp: "2026-03-13T00:00:00Z",
-            traceId: "trace-events"
+            data: []
           })
         };
       }
@@ -233,10 +240,10 @@ describe("AccessPage", () => {
       </AuthStateProvider>
     );
 
-    expect(screen.getByRole("heading", { name: "출입 관리 프로토타입" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "출입 모니터링" })).toBeTruthy();
     await vi.runAllTimersAsync();
 
-    const searchInput = screen.getByPlaceholderText("예: 김민수, 010-1234");
+    const searchInput = screen.getByPlaceholderText("회원 ID 스캔 또는 이름 검색");
     fireEvent.change(searchInput, { target: { value: "김" } });
     fireEvent.change(searchInput, { target: { value: "김민" } });
 

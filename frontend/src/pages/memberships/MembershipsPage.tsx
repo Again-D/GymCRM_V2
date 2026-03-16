@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { MemberContextFallback } from "../member-context/MemberContextFallback";
 import { useSelectedMemberMembershipsQuery } from "../member-context/modules/useSelectedMemberMembershipsQuery";
@@ -8,6 +8,7 @@ import type { MembershipPaymentRecord, PurchasedMembership } from "../members/mo
 import { createDefaultProductFilters } from "../products/modules/types";
 import { useProductsQuery } from "../products/modules/useProductsQuery";
 import { useMembershipPrototypeState } from "./modules/useMembershipPrototypeState";
+import { Modal } from "../../shared/ui/Modal";
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("ko-KR", {
@@ -19,8 +20,11 @@ function formatCurrency(amount: number) {
 
 function buildStatusText(membership: PurchasedMembership) {
   if (membership.membershipStatus === "HOLDING") {
-    return membership.activeHoldStatus === "ACTIVE" ? "HOLDING · ACTIVE_HOLD" : "HOLDING";
+    return membership.activeHoldStatus === "ACTIVE" ? "홀딩 중" : "홀딩";
   }
+  if (membership.membershipStatus === "ACTIVE") return "활성";
+  if (membership.membershipStatus === "REFUNDED") return "환불됨";
+  if (membership.membershipStatus === "EXPIRED") return "만료";
   return membership.membershipStatus;
 }
 
@@ -42,12 +46,14 @@ export default function MembershipsPage() {
     previewMembershipRefund,
     refundMembership
   } = useSelectedMemberMembershipsQuery();
+  
   const { products, productsLoading, productsQueryError, loadProducts, resetProductsQuery } = useProductsQuery({
     getDefaultFilters: () => ({
       ...createDefaultProductFilters(),
       status: "ACTIVE"
     })
   });
+
   const {
     purchaseForm,
     setPurchaseForm,
@@ -76,6 +82,9 @@ export default function MembershipsPage() {
     refundMembership
   });
 
+  const [activeModal, setActiveModal] = useState<'purchase' | 'hold' | 'resume' | 'refund' | null>(null);
+  const [targetMembership, setTargetMembership] = useState<PurchasedMembership | null>(null);
+
   useEffect(() => {
     if (selectedMemberId == null) {
       resetSelectedMemberMembershipsQuery();
@@ -97,136 +106,77 @@ export default function MembershipsPage() {
   if (!selectedMember) {
     return (
       <MemberContextFallback
-        title="회원권 업무 프로토타입"
-        description="회원권 업무는 선택된 회원 기준으로 동작합니다. 이 화면에서 바로 회원을 선택해 다음 prototype slice를 이어갈 수 있습니다."
-        submitLabel="이 회원으로 시작"
+        title="회원권 업무"
+        description="회원권 업무는 회원 단위로 진행됩니다. 구매, 홀딩, 환불 작업을 시작하려면 먼저 회원을 선택해 주세요."
+        submitLabel="회원 선택 후 시작"
       />
     );
   }
 
+  const handleCloseModal = () => {
+    setActiveModal(null);
+    setTargetMembership(null);
+    clearPanelFeedback();
+  };
+
+  const currentDraft = targetMembership ? getMembershipActionDraft(targetMembership.membershipId) : null;
+
   return (
-    <section className="members-prototype-layout">
+    <section className="ops-shell">
       <article className="panel-card">
-        <div className="panel-card-header">
-          <div>
-            <h1>회원권 업무 프로토타입</h1>
-            <p>선택 회원 회원권 query 위에 purchase / hold / resume / refund action surface를 얹어서 새 구조에서 업무 흐름을 설명합니다.</p>
+        <div className="ops-hero">
+          <div className="ops-hero__copy">
+            <span className="ops-eyebrow">생애주기 콘솔</span>
+            <h1 className="ops-title">회원권 업무</h1>
+            <p className="ops-subtitle">구매, 홀딩, 재개, 환불을 한 화면에서 처리하며 선택된 회원 컨텍스트를 유지합니다.</p>
+            <div className="ops-meta">
+              <span className="ops-meta__pill">구매 우선</span>
+              <span className="ops-meta__pill">모달 액션</span>
+              <span className="ops-meta__pill">결제 연동</span>
+            </div>
+          </div>
+          <button 
+            type="button" 
+            className="primary-button"
+            onClick={() => setActiveModal('purchase')}
+          >
+            신규 등록
+          </button>
+        </div>
+
+        <div className="ops-stat-strip">
+          <div className="ops-stat-card">
+            <span className="ops-stat-card__label">선택된 회원</span>
+            <span className="ops-stat-card__value">#{selectedMember.memberId}</span>
+            <span className="ops-stat-card__hint">{selectedMember.memberName}</span>
+          </div>
+          <div className="ops-stat-card">
+            <span className="ops-stat-card__label">회원권 건수</span>
+            <span className="ops-stat-card__value">{selectedMemberMemberships.length}</span>
+            <span className="ops-stat-card__hint">현재 회원의 회원권 구독 내역 수</span>
+          </div>
+          <div className="ops-stat-card">
+            <span className="ops-stat-card__label">세션 결제</span>
+            <span className="ops-stat-card__value">{payments.length}</span>
+            <span className="ops-stat-card__hint">이번 세션에서 발생한 결제 건수</span>
           </div>
         </div>
 
         <SelectedMemberContextBadge />
 
-        <div className="placeholder-card">
-          <h2>회원권 구매</h2>
-          <form
-            className="members-filter-grid"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void handlePurchaseSubmit();
-            }}
-          >
-            <label>
-              상품 선택
-              <select
-                value={purchaseForm.productId}
-                onChange={(event) => {
-                  clearPanelFeedback();
-                  setPurchaseForm((prev) => ({ ...prev, productId: event.target.value }));
-                }}
-              >
-                <option value="">선택하세요</option>
-                {products.map((product) => (
-                  <option key={product.productId} value={product.productId}>
-                    {product.productName} · {product.productType} · {formatCurrency(product.priceAmount)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              시작일
-              <input
-                type="date"
-                value={purchaseForm.startDate}
-                onChange={(event) => {
-                  clearPanelFeedback();
-                  setPurchaseForm((prev) => ({ ...prev, startDate: event.target.value }));
-                }}
-              />
-            </label>
-            <label>
-              결제수단
-              <select
-                value={purchaseForm.paymentMethod}
-                onChange={(event) =>
-                  setPurchaseForm((prev) => ({
-                    ...prev,
-                    paymentMethod: event.target.value as typeof prev.paymentMethod
-                  }))
-                }
-              >
-                <option value="CASH">현금</option>
-                <option value="CARD">카드</option>
-                <option value="TRANSFER">이체</option>
-                <option value="ETC">기타</option>
-              </select>
-            </label>
-            <label>
-              결제금액
-              <input
-                value={purchaseForm.paidAmount}
-                onChange={(event) => setPurchaseForm((prev) => ({ ...prev, paidAmount: event.target.value }))}
-                placeholder="비우면 상품가"
-              />
-            </label>
-            <label>
-              회원권 메모
-              <input
-                value={purchaseForm.membershipMemo}
-                onChange={(event) => setPurchaseForm((prev) => ({ ...prev, membershipMemo: event.target.value }))}
-              />
-            </label>
-            <label>
-              결제 메모
-              <input
-                value={purchaseForm.paymentMemo}
-                onChange={(event) => setPurchaseForm((prev) => ({ ...prev, paymentMemo: event.target.value }))}
-              />
-            </label>
-            <div className="placeholder-card">
-              <strong>구매 미리보기</strong>
-              {!purchasePreview ? (
-                <p>상품을 선택하면 미리보기를 표시합니다.</p>
-              ) : (
-                <ul>
-                  <li>유형: {purchasePreview.product.productType}</li>
-                  <li>시작일: {purchasePreview.startDate}</li>
-                  <li>만료일: {purchasePreview.endDate ?? "-"}</li>
-                  <li>잔여횟수: {purchasePreview.remainingCount ?? "-"}</li>
-                  <li>청구금액: {formatCurrency(purchasePreview.chargeAmount)}</li>
-                </ul>
-              )}
+        <div className="mt-lg ops-shell">
+          <section className="ops-section">
+            <div className="ops-section__header">
+              <div>
+                <h2 className="ops-section__title">활성 회원권</h2>
+                <p className="ops-section__subtitle">현재 선택된 회원의 구독 상태와 가능한 액션을 확인합니다.</p>
+              </div>
             </div>
-            <div className="toolbar-actions">
-              <button type="submit" className="primary-button" disabled={!purchaseForm.productId}>
-                회원권 구매
-              </button>
-            </div>
-          </form>
-        </div>
 
-        {membershipPanelMessage ? <p>{membershipPanelMessage}</p> : null}
-        {membershipPanelError ? <p className="error-text">{membershipPanelError}</p> : null}
-        {selectedMemberMembershipsError ? <p className="error-text">{selectedMemberMembershipsError}</p> : null}
-        {productsQueryError ? <p className="error-text">{productsQueryError}</p> : null}
-        {productsLoading ? <p>상품 목록을 동기화하는 중...</p> : null}
-
-        <div className="placeholder-stack">
-          <div className="placeholder-card">
-            <h2>선택 회원 회원권 목록</h2>
             {selectedMemberMembershipsLoading ? (
-              <p>회원권 목록을 불러오는 중...</p>
+              <div className="pill muted">회원권 데이터 동기화 중...</div>
             ) : selectedMemberMemberships.length === 0 ? (
-              <p>선택 회원의 회원권이 없습니다.</p>
+              <div className="ops-empty">이 회원의 활성 또는 과거 회원권을 찾을 수 없습니다.</div>
             ) : (
               <div className="table-shell">
                 <table className="members-table">
@@ -235,214 +185,461 @@ export default function MembershipsPage() {
                       <th>ID</th>
                       <th>상품</th>
                       <th>상태</th>
-                      <th>시작일</th>
-                      <th>만료일</th>
-                      <th>잔여횟수</th>
-                      <th>액션</th>
+                      <th>유효 기간</th>
+                      <th>이용 횟수</th>
+                      <th style={{ textAlign: 'right' }}>액션</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {selectedMemberMemberships.map((membership) => {
-                      const draft = getMembershipActionDraft(membership.membershipId);
-                      const holdPreview = buildHoldPreview(membership);
-                      const resumePreview = buildResumePreview(membership);
-                      const refundPreview = membershipRefundPreviewById[membership.membershipId];
-                      const holdPreviewText =
-                        "error" in holdPreview
-                          ? holdPreview.error
-                          : `홀딩 ${holdPreview.plannedHoldDays}일 / 예상 만료일 ${holdPreview.recalculatedEndDate ?? "-"}`;
-                      const resumePreviewText =
-                        "error" in resumePreview || !("actualHoldDays" in resumePreview)
-                          ? resumePreview.error
-                          : `예상 홀딩일수 ${resumePreview.actualHoldDays}일 / 해제 후 만료일 ${resumePreview.recalculatedEndDate ?? "-"}`;
-
-                      return (
-                        <tr key={membership.membershipId}>
-                          <td>{membership.membershipId}</td>
-                          <td>{membership.productNameSnapshot}</td>
-                          <td>{buildStatusText(membership)}</td>
-                          <td>{membership.startDate}</td>
-                          <td>{membership.endDate ?? "-"}</td>
-                          <td>{membership.remainingCount ?? "-"}</td>
-                          <td>
-                            <div className="placeholder-stack">
-                              {membership.membershipStatus === "ACTIVE" ? (
-                                <div className="placeholder-card">
-                                  <strong>홀딩</strong>
-                                  <label>
-                                    시작일
-                                    <input
-                                      type="date"
-                                      value={draft.holdStartDate}
-                                      onChange={(event) =>
-                                        updateMembershipActionDraft(membership.membershipId, (prev) => ({
-                                          ...prev,
-                                          holdStartDate: event.target.value
-                                        }))
-                                      }
-                                    />
-                                  </label>
-                                  <label>
-                                    종료일
-                                    <input
-                                      type="date"
-                                      value={draft.holdEndDate}
-                                      onChange={(event) =>
-                                        updateMembershipActionDraft(membership.membershipId, (prev) => ({
-                                          ...prev,
-                                          holdEndDate: event.target.value,
-                                          resumeDate: event.target.value || prev.resumeDate
-                                        }))
-                                      }
-                                    />
-                                  </label>
-                                  <label>
-                                    사유
-                                    <input
-                                      value={draft.holdReason}
-                                      onChange={(event) =>
-                                        updateMembershipActionDraft(membership.membershipId, (prev) => ({
-                                          ...prev,
-                                          holdReason: event.target.value
-                                        }))
-                                      }
-                                    />
-                                  </label>
-                                  <p>{holdPreviewText}</p>
-                                  <button
-                                    type="button"
-                                    className="secondary-button"
-                                    onClick={() => void handleHoldSubmit(membership)}
-                                  >
-                                    홀딩
-                                  </button>
-                                </div>
-                              ) : null}
-
-                              {membership.membershipStatus === "HOLDING" && membership.activeHoldStatus === "ACTIVE" ? (
-                                <div className="placeholder-card">
-                                  <strong>홀딩 해제</strong>
-                                  <label>
-                                    해제일
-                                    <input
-                                      type="date"
-                                      value={draft.resumeDate}
-                                      onChange={(event) =>
-                                        updateMembershipActionDraft(membership.membershipId, (prev) => ({
-                                          ...prev,
-                                          resumeDate: event.target.value
-                                        }))
-                                      }
-                                    />
-                                  </label>
-                                  <p>{resumePreviewText}</p>
-                                  <button
-                                    type="button"
-                                    className="secondary-button"
-                                    onClick={() => void handleResumeSubmit(membership)}
-                                  >
-                                    홀딩 해제
-                                  </button>
-                                </div>
-                              ) : null}
-
-                              {membership.membershipStatus === "ACTIVE" ? (
-                                <div className="placeholder-card">
-                                  <strong>환불</strong>
-                                  <label>
-                                    환불 기준일
-                                    <input
-                                      type="date"
-                                      value={draft.refundDate}
-                                      onChange={(event) =>
-                                        updateMembershipActionDraft(membership.membershipId, (prev) => ({
-                                          ...prev,
-                                          refundDate: event.target.value
-                                        }))
-                                      }
-                                    />
-                                  </label>
-                                  <label>
-                                    환불 수단
-                                    <select
-                                      value={draft.refundPaymentMethod}
-                                      onChange={(event) =>
-                                        updateMembershipActionDraft(membership.membershipId, (prev) => ({
-                                          ...prev,
-                                          refundPaymentMethod: event.target.value as typeof prev.refundPaymentMethod
-                                        }))
-                                      }
-                                    >
-                                      <option value="CASH">현금</option>
-                                      <option value="CARD">카드</option>
-                                      <option value="TRANSFER">이체</option>
-                                      <option value="ETC">기타</option>
-                                    </select>
-                                  </label>
-                                  <label>
-                                    환불 메모
-                                    <input
-                                      value={draft.refundMemo}
-                                      onChange={(event) =>
-                                        updateMembershipActionDraft(membership.membershipId, (prev) => ({
-                                          ...prev,
-                                          refundMemo: event.target.value
-                                        }))
-                                      }
-                                    />
-                                  </label>
-                                  <div className="row-actions">
-                                    <button
-                                      type="button"
-                                      className="secondary-button"
-                                      onClick={() => void handleRefundPreview(membership)}
-                                    >
-                                      환불 미리보기
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="secondary-button"
-                                      onClick={() => void handleRefundSubmit(membership)}
-                                    >
-                                      환불 확정
-                                    </button>
-                                  </div>
-                                  {refundPreview ? (
-                                    <p>
-                                      원금 {formatCurrency(refundPreview.originalAmount)} / 사용분{" "}
-                                      {formatCurrency(refundPreview.usedAmount)} / 환불액{" "}
-                                      {formatCurrency(refundPreview.refundAmount)}
-                                    </p>
-                                  ) : null}
-                                </div>
-                              ) : null}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {selectedMemberMemberships.map((membership) => (
+                      <tr key={membership.membershipId}>
+                        <td><strong>{membership.membershipId}</strong></td>
+                        <td>
+                          <div className="stack-sm">
+                            <span>{membership.productNameSnapshot}</span>
+                            <span className="text-xs text-muted">{membership.productTypeSnapshot}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <span className={
+                            membership.membershipStatus === 'ACTIVE' ? 'pill ok' : 
+                            membership.membershipStatus === 'HOLDING' ? 'pill hold' : 'pill muted'
+                          }>
+                            {buildStatusText(membership)}
+                          </span>
+                        </td>
+                        <td className="text-sm">
+                          {membership.startDate} ~ <br/>
+                          <span className="text-muted">{membership.endDate ?? "무기한"}</span>
+                        </td>
+                        <td>
+                          {membership.remainingCount != null ? (
+                            <strong className="text-sm">{membership.remainingCount}회 남음</strong>
+                          ) : (
+                            <span className="text-muted">-</span>
+                          )}
+                        </td>
+                        <td>
+                          <div className="ops-table-actions">
+                            {membership.membershipStatus === 'ACTIVE' && (
+                              <>
+                                <button 
+                                  type="button" 
+                                  className="secondary-button ops-action-button"
+                                  onClick={() => {
+                                    setTargetMembership(membership);
+                                    setActiveModal('hold');
+                                  }}
+                                >
+                                  홀딩
+                                </button>
+                                <button 
+                                  type="button" 
+                                  className="secondary-button ops-action-button"
+                                  style={{ color: 'var(--status-danger)' }}
+                                  onClick={() => {
+                                    setTargetMembership(membership);
+                                    setActiveModal('refund');
+                                  }}
+                                >
+                                  환불
+                                </button>
+                              </>
+                            )}
+                            {membership.membershipStatus === 'HOLDING' && membership.activeHoldStatus === 'ACTIVE' && (
+                              <button 
+                                type="button" 
+                                className="primary-button ops-action-button"
+                                onClick={() => {
+                                  setTargetMembership(membership);
+                                  setActiveModal('resume');
+                                }}
+                              >
+                                재개
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
             )}
-          </div>
+          </section>
 
-          <div className="placeholder-card">
-            <h2>이번 세션 결제 이력</h2>
-            {payments.length === 0 ? (
-              <p>아직 prototype session에서 생성된 결제 이력이 없습니다.</p>
-            ) : (
-              <ul>
-                {payments.map((payment) => (
-                  <li key={payment.paymentId}>
-                    #{payment.paymentId} · 회원권 {payment.membershipId} · {paymentLabel(payment)} ·{" "}
-                    {formatCurrency(payment.amount)}
-                  </li>
+          <section className="ops-section">
+            <div className="ops-section__header">
+              <div>
+                <h2 className="ops-section__title">결제 이력 (세션 한정)</h2>
+                <p className="ops-section__subtitle">방금 실행한 작업의 결제 결과를 즉시 확인합니다.</p>
+              </div>
+            </div>
+            <div className="ops-block ops-block--soft">
+              {payments.length === 0 ? (
+                <p className="text-muted text-sm">이번 세션에서 생성된 결제 내역이 없습니다.</p>
+              ) : (
+                <div className="stack-sm">
+                  {payments.map((payment) => (
+                    <div key={payment.paymentId} className="ops-block">
+                      <div style={{ flex: 1 }}>
+                        <div className="row-actions" style={{ justifyContent: 'space-between', marginBottom: '4px' }}>
+                          <span className="text-xs text-muted">ID: #{payment.paymentId}</span>
+                          <span className="pill ok" style={{ fontSize: '10px' }}>{payment.paymentStatus}</span>
+                        </div>
+                        <div className="text-sm" style={{ fontWeight: 600 }}>{paymentLabel(payment)}</div>
+                        <div className="text-xs text-muted mt-xs">연결 회원권: #{payment.membershipId}</div>
+                      </div>
+                      <div style={{ textAlign: 'right', fontWeight: 700 }}>
+                        {formatCurrency(payment.amount)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+
+        {membershipPanelMessage && <div className="pill ok full-span mt-md">{membershipPanelMessage}</div>}
+        {membershipPanelError && <div className="pill danger full-span mt-md">{membershipPanelError}</div>}
+        {selectedMemberMembershipsError && <div className="pill danger full-span mt-md">{selectedMemberMembershipsError}</div>}
+
+        {/* MODALS */}
+        
+        <Modal 
+          isOpen={activeModal === 'purchase'} 
+          onClose={handleCloseModal} 
+          title="신규 회원권 등록"
+          size="md"
+          footer={
+            <>
+              <button type="button" className="secondary-button" onClick={handleCloseModal}>취소</button>
+              <button 
+                type="button" 
+                className="primary-button" 
+                disabled={!purchaseForm.productId}
+                onClick={async () => {
+                  const res = await handlePurchaseSubmit();
+                  if (res) handleCloseModal();
+                }}
+              >
+                구매 확정
+              </button>
+            </>
+          }
+        >
+          <div className="stack-md">
+            <label className="stack-sm">
+              <span className="text-sm">상품 선택</span>
+              <select
+                className="input"
+                value={purchaseForm.productId}
+                onChange={(event) => {
+                  clearPanelFeedback();
+                  setPurchaseForm((prev) => ({ ...prev, productId: event.target.value }));
+                }}
+              >
+                <option value="">-- 상품을 선택하세요 --</option>
+                {products.map((product) => (
+                  <option key={product.productId} value={product.productId}>
+                    {product.productName} ({product.productType}) · {formatCurrency(product.priceAmount)}
+                  </option>
                 ))}
-              </ul>
+              </select>
+            </label>
+            <div className="row-actions" style={{ gap: '16px' }}>
+              <label className="stack-sm" style={{ flex: 1 }}>
+                <span className="text-sm">시작일</span>
+                <input
+                  type="date"
+                  className="input"
+                  value={purchaseForm.startDate}
+                  onChange={(event) => {
+                    clearPanelFeedback();
+                    setPurchaseForm((prev) => ({ ...prev, startDate: event.target.value }));
+                  }}
+                />
+              </label>
+              <label className="stack-sm" style={{ flex: 1 }}>
+                <span className="text-sm">결제 수단</span>
+                <select
+                  className="input"
+                  value={purchaseForm.paymentMethod}
+                  onChange={(event) =>
+                    setPurchaseForm((prev) => ({
+                      ...prev,
+                      paymentMethod: event.target.value as typeof prev.paymentMethod
+                    }))
+                  }
+                >
+                  <option value="CASH">현금</option>
+                  <option value="CARD">카드</option>
+                  <option value="TRANSFER">계좌이체</option>
+                  <option value="ETC">기타</option>
+                </select>
+              </label>
+            </div>
+            
+            <label className="stack-sm">
+              <span className="text-sm">결제 금액</span>
+              <input
+                className="input"
+                value={purchaseForm.paidAmount}
+                onChange={(event) => setPurchaseForm((prev) => ({ ...prev, paidAmount: event.target.value }))}
+                placeholder="비워두면 정가로 처리됩니다"
+              />
+            </label>
+
+            {purchasePreview && (
+              <div className="panel-card" style={{ background: 'var(--bg-base)', padding: '16px' }}>
+                <strong className="text-xs text-muted" style={{ textTransform: 'uppercase' }}>구매 미리보기</strong>
+                <div className="mt-sm stack-sm">
+                   <div className="row-actions" style={{ justifyContent: 'space-between' }}>
+                     <span className="text-sm">기간</span>
+                     <span className="text-sm" style={{ fontWeight: 600 }}>{purchasePreview.startDate} ~ {purchasePreview.endDate ?? "-"}</span>
+                   </div>
+                   <div className="row-actions" style={{ justifyContent: 'space-between' }}>
+                     <span className="text-sm">청구 금액</span>
+                     <span className="text-sm" style={{ fontWeight: 700 }}>{formatCurrency(purchasePreview.chargeAmount)}</span>
+                   </div>
+                </div>
+              </div>
             )}
           </div>
-        </div>
+        </Modal>
+
+        <Modal
+          isOpen={activeModal === 'hold' && targetMembership != null}
+          onClose={handleCloseModal}
+          title={`회원권 #${targetMembership?.membershipId} 홀딩`}
+          footer={
+            <>
+              <button type="button" className="secondary-button" onClick={handleCloseModal}>취소</button>
+              <button 
+                type="button" 
+                className="primary-button"
+                onClick={async () => {
+                  if (targetMembership) {
+                    await handleHoldSubmit(targetMembership);
+                    handleCloseModal();
+                  }
+                }}
+              >
+                홀딩 처리
+              </button>
+            </>
+          }
+        >
+          {targetMembership && currentDraft && (
+            <div className="stack-md">
+              <div className="row-actions" style={{ gap: '16px' }}>
+                <label className="stack-sm" style={{ flex: 1 }}>
+                  <span className="text-sm">Start Date</span>
+                  <input
+                    type="date"
+                    className="input"
+                    value={currentDraft.holdStartDate}
+                    onChange={(event) =>
+                      updateMembershipActionDraft(targetMembership.membershipId, (prev) => ({
+                        ...prev,
+                        holdStartDate: event.target.value
+                      }))
+                    }
+                  />
+                </label>
+                <label className="stack-sm" style={{ flex: 1 }}>
+                  <span className="text-sm">End Date</span>
+                  <input
+                    type="date"
+                    className="input"
+                    value={currentDraft.holdEndDate}
+                    onChange={(event) =>
+                      updateMembershipActionDraft(targetMembership.membershipId, (prev) => ({
+                        ...prev,
+                        holdEndDate: event.target.value
+                      }))
+                    }
+                  />
+                </label>
+              </div>
+              <label className="stack-sm">
+                <span className="text-sm">사유</span>
+                <input
+                  className="input"
+                  placeholder="예: 여행, 부상"
+                  value={currentDraft.holdReason}
+                  onChange={(event) =>
+                    updateMembershipActionDraft(targetMembership.membershipId, (prev) => ({
+                      ...prev,
+                      holdReason: event.target.value
+                    }))
+                  }
+                />
+              </label>
+              <div className="pill info mt-sm" style={{ display: 'block' }}>
+                {(() => {
+                  const preview = buildHoldPreview(targetMembership);
+                  return 'error' in preview ? preview.error : `영향: ${preview.plannedHoldDays}일 추가. 재계산된 만료일: ${preview.recalculatedEndDate ?? "-"}`;  
+                })()}
+              </div>
+            </div>
+          )}
+        </Modal>
+
+        <Modal
+           isOpen={activeModal === 'resume' && targetMembership != null}
+           onClose={handleCloseModal}
+           title="회원권 홀딩 해제"
+           footer={
+             <>
+               <button type="button" className="secondary-button" onClick={handleCloseModal}>취소</button>
+               <button 
+                type="button" 
+                className="primary-button"
+                onClick={async () => {
+                  if (targetMembership) {
+                    await handleResumeSubmit(targetMembership);
+                    handleCloseModal();
+                  }
+                }}
+               >
+                 지금 재개
+               </button>
+             </>
+           }
+        >
+          {targetMembership && currentDraft && (
+             <div className="stack-md">
+                <label className="stack-sm">
+                  <span className="text-sm">Resume Date</span>
+                  <input
+                    type="date"
+                    className="input"
+                    value={currentDraft.resumeDate}
+                    onChange={(event) =>
+                      updateMembershipActionDraft(targetMembership.membershipId, (prev) => ({
+                        ...prev,
+                        resumeDate: event.target.value
+                      }))
+                    }
+                  />
+                </label>
+                <div className="pill info mt-sm" style={{ display: 'block' }}>
+                  {(() => {
+                    const preview = buildResumePreview(targetMembership);
+                    return 'error' in preview ? preview.error : `재개 계산 완료. 새 만료일: ${preview.recalculatedEndDate ?? "-"}`;  
+                  })()}
+                </div>
+             </div>
+          )}
+        </Modal>
+
+        <Modal
+          isOpen={activeModal === 'refund' && targetMembership != null}
+          onClose={handleCloseModal}
+          title="회원권 환불 처리"
+          size="md"
+          footer={
+            <>
+              <button type="button" className="secondary-button" onClick={handleCloseModal}>취소</button>
+              <button 
+                type="button" 
+                className="primary-button"
+                style={{ background: 'var(--status-danger)', borderColor: 'var(--status-danger)' }}
+                onClick={async () => {
+                  if (targetMembership) {
+                    await handleRefundSubmit(targetMembership);
+                    handleCloseModal();
+                  }
+                }}
+              >
+                환불 확정
+              </button>
+            </>
+          }
+        >
+          {targetMembership && currentDraft && (
+            <div className="stack-md">
+               <div className="row-actions" style={{ gap: '16px' }}>
+                <label className="stack-sm" style={{ flex: 1 }}>
+                  <span className="text-sm">환불 기준일</span>
+                  <input
+                    type="date"
+                    className="input"
+                    value={currentDraft.refundDate}
+                    onChange={(event) =>
+                      updateMembershipActionDraft(targetMembership.membershipId, (prev) => ({
+                        ...prev,
+                        refundDate: event.target.value
+                      }))
+                    }
+                  />
+                </label>
+                <label className="stack-sm" style={{ flex: 1 }}>
+                  <span className="text-sm">환불 수단</span>
+                  <select
+                    className="input"
+                    value={currentDraft.refundPaymentMethod}
+                    onChange={(event) =>
+                      updateMembershipActionDraft(targetMembership.membershipId, (prev) => ({
+                        ...prev,
+                        refundPaymentMethod: event.target.value as any
+                      }))
+                    }
+                  >
+                    <option value="CASH">현금</option>
+                    <option value="CARD">카드</option>
+                    <option value="TRANSFER">계좌이체</option>
+                  </select>
+                </label>
+              </div>
+              <label className="stack-sm">
+                <span className="text-sm">메모</span>
+                <input
+                  className="input"
+                  value={currentDraft.refundMemo}
+                  onChange={(event) =>
+                    updateMembershipActionDraft(targetMembership.membershipId, (prev) => ({
+                      ...prev,
+                      refundMemo: event.target.value
+                    }))
+                  }
+                />
+              </label>
+
+              <button 
+                type="button" 
+                className="secondary-button"
+                style={{ alignSelf: 'flex-start' }}
+                onClick={() => void handleRefundPreview(targetMembership)}
+              >
+                환불 금액 계산
+              </button>
+
+              {membershipRefundPreviewById[targetMembership.membershipId] && (
+                <div className="panel-card" style={{ background: 'var(--bg-base)', padding: '16px' }}>
+                  <div className="stack-sm">
+                    <div className="row-actions" style={{ justifyContent: 'space-between' }}>
+                      <span className="text-sm">원래 금액</span>
+                      <span>{formatCurrency(membershipRefundPreviewById[targetMembership.membershipId].originalAmount)}</span>
+                    </div>
+                    <div className="row-actions" style={{ justifyContent: 'space-between' }}>
+                      <span className="text-sm">사용 금액</span>
+                      <span>- {formatCurrency(membershipRefundPreviewById[targetMembership.membershipId].usedAmount)}</span>
+                    </div>
+                    <div className="row-actions" style={{ justifyContent: 'space-between', borderTop: '1px solid var(--border-minimal)', paddingTop: '8px', marginTop: '4px' }}>
+                      <span className="text-sm" style={{ fontWeight: 600 }}>환불 합계</span>
+                      <span className="text-sm" style={{ fontWeight: 700, color: 'var(--status-danger)' }}>
+                        {formatCurrency(membershipRefundPreviewById[targetMembership.membershipId].refundAmount)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </Modal>
       </article>
     </section>
   );
