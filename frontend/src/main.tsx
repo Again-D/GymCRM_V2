@@ -4,14 +4,19 @@ import { BrowserRouter } from "react-router-dom";
 
 import App from "./App";
 import { AuthStateProvider } from "./app/auth";
+import { ThemeProvider, initializeThemeOnDocument } from "./app/theme";
 import "./index.css";
+
+initializeThemeOnDocument();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <AuthStateProvider>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
+      <ThemeProvider>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </ThemeProvider>
     </AuthStateProvider>
   </React.StrictMode>
 );

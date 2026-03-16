@@ -20,38 +20,73 @@ export default function DashboardLayout({ routes }: { routes: ShellRoute[] }) {
   return (
     <div className={styles["app-shell"]}>
       <aside className={styles["app-shell__sidebar"]}>
-        <strong className={styles["app-shell__brand"]}>GymCRM Rebuild</strong>
+        <div className={styles["app-shell__brand"]}>
+          GymCRM Ops
+        </div>
+        
         <div className={styles["auth-panel"]}>
-          <small className="text-muted">{isMockMode ? "Runtime Auth Preset" : "Live Auth Session"}</small>
-          <strong>{securityMode === "prototype" ? "Prototype" : authUser ? "JWT Authenticated" : "JWT Anonymous"}</strong>
-          <span className="text-muted text-sm">
-            {authUser ? `${authUser.username} · ${authUser.role}` : "로그인 전 상태"}
-          </span>
-          {isMockMode ? (
-            <div className="stack-sm mt-xs">
-              <button type="button" className="secondary-button" onClick={() => setRuntimeAuthPreset("prototype-admin")}>
-                Prototype
+          <div className={styles["auth-header"]}>
+            <span className={styles["auth-label"]}>
+              {isMockMode ? "Runtime Profile" : "Live Session"}
+            </span>
+            <span className={styles["auth-user"]}>
+              {securityMode === "prototype" ? "System Prototype" : authUser?.username ?? "Anonymous Operator"}
+            </span>
+            {authUser && (
+              <span className={styles["auth-meta"]}>
+                {authUser.role} · {authUser.email}
+              </span>
+            )}
+          </div>
+
+          <div className="stack-sm">
+            {isMockMode ? (
+              <div className="row-actions" style={{ gap: '4px' }}>
+                <button 
+                  type="button" 
+                  className="secondary-button" 
+                  style={{ padding: '6px 8px', fontSize: '11px', flex: 1 }}
+                  onClick={() => setRuntimeAuthPreset("prototype-admin")}
+                >
+                  Proto
+                </button>
+                <button 
+                  type="button" 
+                  className="secondary-button" 
+                  style={{ padding: '6px 8px', fontSize: '11px', flex: 1 }}
+                  onClick={() => setRuntimeAuthPreset("jwt-admin")}
+                >
+                  Admin
+                </button>
+                <button 
+                  type="button" 
+                  className="secondary-button" 
+                  style={{ padding: '6px 8px', fontSize: '11px', flex: 1 }}
+                  onClick={clearRuntimeSession}
+                >
+                  Clear
+                </button>
+              </div>
+            ) : (
+              <button 
+                type="button" 
+                className="secondary-button" 
+                style={{ width: '100%', padding: '8px' }}
+                onClick={() => void logout()}
+              >
+                Sign Out
               </button>
-              <button type="button" className="secondary-button" onClick={() => setRuntimeAuthPreset("jwt-admin")}>
-                JWT 관리자
-              </button>
-              <button type="button" className="secondary-button" onClick={() => setRuntimeAuthPreset("jwt-trainer")}>
-                JWT 트레이너
-              </button>
-              <button type="button" className="secondary-button" onClick={clearRuntimeSession}>
-                JWT 로그아웃 상태
-              </button>
-            </div>
-          ) : (
-            <div className="stack-sm mt-xs">
-              <button type="button" className="secondary-button" onClick={() => void logout()}>
-                로그아웃
-              </button>
+            )}
+          </div>
+          
+          {(authStatusMessage || authError) && (
+            <div className="mt-xs">
+              {authStatusMessage && <span className="text-success text-xs">{authStatusMessage}</span>}
+              {authError && <span className="text-danger text-xs">{authError}</span>}
             </div>
           )}
-          {authStatusMessage ? <span className="text-success text-xs">{authStatusMessage}</span> : null}
-          {authError ? <span className="text-danger text-xs">{authError}</span> : null}
         </div>
+
         <nav className={styles["app-nav"]}>
           {routes.map((item) => (
             <NavLink
@@ -64,6 +99,7 @@ export default function DashboardLayout({ routes }: { routes: ShellRoute[] }) {
           ))}
         </nav>
       </aside>
+
       <main className={styles["app-shell__main"]}>
         <Outlet />
       </main>

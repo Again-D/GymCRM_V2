@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useAuthState } from "../../app/auth";
 import { usePagination } from "../../shared/hooks/usePagination";
@@ -8,14 +8,21 @@ import { useMembersQuery } from "../members/modules/useMembersQuery";
 import { useSelectedMemberStore } from "../members/modules/SelectedMemberContext";
 import { useLockerPrototypeState } from "./modules/useLockerPrototypeState";
 import { useLockerQueries } from "./modules/useLockerQueries";
-import { EmptyState } from "../../shared/ui/EmptyState";
-import { SkeletonLoader } from "../../shared/ui/SkeletonLoader";
+import { Modal } from "../../shared/ui/Modal";
 
-import styles from "./LockersPage.module.css";
+const statusMap: Record<string, { label: string; class: string }> = {
+  "AVAILABLE": { label: "AVAILABLE", class: "pill ok" },
+  "ASSIGNED": { label: "ASSIGNED", class: "pill info" },
+  "MAINTENANCE": { label: "MAINTENANCE", class: "pill danger" },
+  "ACTIVE": { label: "ACTIVE", class: "pill ok" },
+  "RETURNED": { label: "RETURNED", class: "pill muted" }
+};
 
 export default function LockersPage() {
   const { authUser, isMockMode } = useAuthState();
   const { selectedMember, selectedMemberId } = useSelectedMemberStore();
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+
   const {
     members,
     membersLoading,
@@ -31,6 +38,7 @@ export default function LockersPage() {
       dateTo: ""
     })
   });
+
   const {
     lockerFilters,
     setLockerFilters,
@@ -43,17 +51,17 @@ export default function LockersPage() {
     handleLockerAssign,
     handleLockerReturn
   } = useLockerPrototypeState(selectedMemberId);
+
   const {
     lockerSlots,
     lockerSlotsLoading,
     lockerAssignments,
     lockerAssignmentsLoading,
     lockerQueryError,
-    loadLockerSlots,
-    loadLockerAssignments,
     reloadLockerData,
     resetLockerQueries
   } = useLockerQueries();
+
   const isLiveLockerRoleSupported =
     isMockMode || authUser?.role === "ROLE_CENTER_ADMIN" || authUser?.role === "ROLE_DESK";
 
@@ -94,6 +102,7 @@ export default function LockersPage() {
     const ok = await handleLockerAssign();
     if (ok) {
       await reloadLockerData(lockerFilters);
+      setIsAssignModalOpen(false);
     }
   }
 
@@ -105,282 +114,268 @@ export default function LockersPage() {
   }
 
   return (
-    <section className={styles["members-prototype-layout"]}>
+    <section className="members-page-grid" style={{ gridTemplateColumns: 'minmax(0, 1.2fr) 1fr', gap: '24px', alignItems: 'start' }}>
+      
+      {/* INVENTORY PANEL */}
       <article className="panel-card">
-        <div className="panel-card-header">
+        <header className="panel-card-header mb-md">
           <div>
-            <h1>라커 관리 프로토타입</h1>
-            <p>global read surface는 그대로 유지하고, selected member는 라커 배정 form의 optional prefill로만 사용합니다.</p>
+            <h1 className="brand-title" style={{ fontSize: '1.25rem' }}>Locker Inventory</h1>
+            <p className="text-muted text-xs">Manage physical storage slots and availability.</p>
           </div>
-        </div>
+          <button 
+            type="button" 
+            className="primary-button" 
+            onClick={() => setIsAssignModalOpen(true)}
+            disabled={!isLiveLockerRoleSupported}
+          >
+            New Assignment
+          </button>
+        </header>
 
-        {!isLiveLockerRoleSupported ? (
-          <div className="selected-member-card mb-md">
-            <div className="selected-member-card-header">
-              <div>
-                <h2>이 역할은 live 라커 관리 미지원</h2>
-                <p>현재 live backend는 라커 조회/배정/반납 API를 관리자 또는 데스크 계정에만 열어두고 있습니다.</p>
-              </div>
-            </div>
-          </div>
-        ) : null}
-
-        <SelectedMemberContextBadge />
-
-        <div className="selected-member-card mb-md">
-          <div className="selected-member-card-header">
-            <div>
-              <h2>선택 회원 컨텍스트</h2>
-              <p>
-                {selectedMember
-                  ? `현재 배정 form에 #${selectedMember.memberId} ${selectedMember.memberName} 이(가) 기본 선택됩니다.`
-                  : "선택 회원이 없어도 라커 슬롯 조회와 배정 목록은 그대로 사용할 수 있습니다."}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="selected-member-card mb-md">
-          <h2>라커 슬롯 조회</h2>
-          <div className={styles["members-filter-grid"]}>
-            <label>
-              상태
-              <select
-                value={lockerFilters.lockerStatus}
-                disabled={!isLiveLockerRoleSupported}
-                onChange={(event) =>
-                  setLockerFilters((prev) => ({ ...prev, lockerStatus: event.target.value as typeof prev.lockerStatus }))
-                }
-              >
-                <option value="">전체</option>
-                <option value="AVAILABLE">AVAILABLE</option>
-                <option value="ASSIGNED">ASSIGNED</option>
-                <option value="MAINTENANCE">MAINTENANCE</option>
-              </select>
-            </label>
-            <label>
-              구역
-              <input
-                value={lockerFilters.lockerZone}
-                disabled={!isLiveLockerRoleSupported}
-                onChange={(event) => setLockerFilters((prev) => ({ ...prev, lockerZone: event.target.value }))}
-                placeholder="예: A"
-              />
-            </label>
-          </div>
-
-          {lockerPanelMessage ? <p>{lockerPanelMessage}</p> : null}
-          {lockerPanelError || lockerQueryError ? <p className="error-text">{lockerPanelError ?? lockerQueryError}</p> : null}
-
-          <div className={styles["table-shell"]}>
-            <table className="members-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>코드</th>
-                  <th>구역</th>
-                  <th>등급</th>
-                  <th>상태</th>
-                  <th>메모</th>
-                </tr>
-              </thead>
-              <tbody>
-                {slotsPagination.pagedItems.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className={styles["empty-cell"]}>
-                      {!isLiveLockerRoleSupported
-                        ? "현재 역할에서는 live 라커 슬롯을 조회할 수 없습니다."
-                        : lockerSlotsLoading
-                          ? "라커 슬롯을 불러오는 중..."
-                          : "조회된 라커 슬롯이 없습니다."}
-                    </td>
-                  </tr>
-                ) : (
-                  slotsPagination.pagedItems.map((slot: any) => (
-                    <tr key={slot.lockerSlotId}>
-                      <td>{slot.lockerSlotId}</td>
-                      <td>{slot.lockerCode}</td>
-                      <td>{slot.lockerZone ?? "-"}</td>
-                      <td>{slot.lockerGrade ?? "-"}</td>
-                      <td>
-                        <span className={slot.lockerStatus === "AVAILABLE" ? "pill ok" : "pill muted"}>{slot.lockerStatus}</span>
-                      </td>
-                      <td>{slot.memo ?? "-"}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          <PaginationControls
-            page={slotsPagination.page}
-            totalPages={slotsPagination.totalPages}
-            pageSize={slotsPagination.pageSize}
-            pageSizeOptions={[10, 20]}
-            totalItems={slotsPagination.totalItems}
-            startItemIndex={slotsPagination.startItemIndex}
-            endItemIndex={slotsPagination.endItemIndex}
-            onPageChange={slotsPagination.setPage}
-            onPageSizeChange={slotsPagination.setPageSize}
-          />
-        </div>
-
-        <div className="selected-member-card">
-          <h2>라커 배정</h2>
-          <div className={styles["members-filter-grid"]}>
-            <label>
-              라커 슬롯
-              <select
-                value={lockerAssignForm.lockerSlotId}
-                disabled={!isLiveLockerRoleSupported}
-                onChange={(event) => setLockerAssignForm((prev) => ({ ...prev, lockerSlotId: event.target.value }))}
-              >
-                <option value="">선택</option>
-                {availableSlots.map((slot) => (
-                  <option key={slot.lockerSlotId} value={slot.lockerSlotId}>
-                    {slot.lockerCode} ({slot.lockerZone ?? "-"})
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              회원
-              <select
-                value={lockerAssignForm.memberId}
-                disabled={!isLiveLockerRoleSupported}
-                onChange={(event) => setLockerAssignForm((prev) => ({ ...prev, memberId: event.target.value }))}
-              >
-                <option value="">선택</option>
-                {members.map((member) => (
-                  <option key={member.memberId} value={member.memberId}>
-                    #{member.memberId} {member.memberName} ({member.phone})
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              시작일
-              <input
-                type="date"
-                value={lockerAssignForm.startDate}
-                disabled={!isLiveLockerRoleSupported}
-                onChange={(event) => setLockerAssignForm((prev) => ({ ...prev, startDate: event.target.value }))}
-              />
-            </label>
-
-            <label>
-              종료일
-              <input
-                type="date"
-                value={lockerAssignForm.endDate}
-                disabled={!isLiveLockerRoleSupported}
-                onChange={(event) => setLockerAssignForm((prev) => ({ ...prev, endDate: event.target.value }))}
-              />
-            </label>
-          </div>
-
-          <label className="stack-sm mt-md">
-            메모
-            <input
-              value={lockerAssignForm.memo}
+        <div className="members-filter-grid" style={{ marginBottom: '24px' }}>
+          <label className="stack-sm">
+            <span className="text-xs text-muted" style={{ fontWeight: 600 }}>Filter Status</span>
+            <select
+              className="input"
+              value={lockerFilters.lockerStatus}
               disabled={!isLiveLockerRoleSupported}
-              onChange={(event) => setLockerAssignForm((prev) => ({ ...prev, memo: event.target.value }))}
-              placeholder="예: 1개월 계약"
+              onChange={(event) =>
+                setLockerFilters((prev) => ({ ...prev, lockerStatus: event.target.value as typeof prev.lockerStatus }))
+              }
+            >
+              <option value="">All Statuses</option>
+              <option value="AVAILABLE">Available</option>
+              <option value="ASSIGNED">Assigned</option>
+              <option value="MAINTENANCE">Maintenance</option>
+            </select>
+          </label>
+          <label className="stack-sm">
+            <span className="text-xs text-muted" style={{ fontWeight: 600 }}>Zone Lookup</span>
+            <input
+              className="input"
+              value={lockerFilters.lockerZone}
+              disabled={!isLiveLockerRoleSupported}
+              onChange={(event) => setLockerFilters((prev) => ({ ...prev, lockerZone: event.target.value }))}
+              placeholder="e.g. Zone A"
             />
           </label>
+        </div>
 
-          <div className={`${styles["toolbar-actions"]} mt-md`}>
-            <button
-              type="button"
-              className="primary-button"
-              disabled={lockerAssignSubmitting || !isLiveLockerRoleSupported}
-              onClick={() => void runLockerAssign()}
-            >
-              {lockerAssignSubmitting ? "배정 중..." : "라커 배정"}
-            </button>
-            <span>
-              {!isLiveLockerRoleSupported ? "현재 역할에서는 live 라커 배정이 비활성화됩니다." : membersLoading ? "회원 목록 로딩 중..." : `배정 가능한 슬롯 ${availableSlots.length}건`}
-            </span>
+        {(lockerPanelMessage || lockerPanelError || lockerQueryError) && (
+          <div className="mb-md">
+            {lockerPanelMessage && <div className="pill ok full-span" style={{ justifyContent: 'center' }}>{lockerPanelMessage}</div>}
+            {(lockerPanelError || lockerQueryError) && <div className="pill danger full-span" style={{ justifyContent: 'center' }}>{lockerPanelError ?? lockerQueryError}</div>}
           </div>
-          {membersQueryError ? <p className="error-text">{membersQueryError}</p> : null}
+        )}
+
+        <div className="table-shell">
+          <table className="members-table">
+            <thead>
+              <tr>
+                <th>Locker</th>
+                <th>Grade</th>
+                <th>Status</th>
+                <th style={{ textAlign: 'right' }}>Note</th>
+              </tr>
+            </thead>
+            <tbody>
+              {slotsPagination.pagedItems.map((slot: any) => {
+                const status = statusMap[slot.lockerStatus] || { label: slot.lockerStatus, class: 'pill muted' };
+                return (
+                  <tr key={slot.lockerSlotId}>
+                    <td>
+                      <div className="stack-sm">
+                        <span className="text-sm" style={{ fontWeight: 600 }}>{slot.lockerCode}</span>
+                        <span className="text-xs text-muted">Zone: {slot.lockerZone ?? "N/A"}</span>
+                      </div>
+                    </td>
+                    <td><span className="text-xs">{slot.lockerGrade ?? "-"}</span></td>
+                    <td><span className={status.class}>{status.label}</span></td>
+                    <td style={{ textAlign: 'right' }}><span className="text-xs text-muted">{slot.memo ?? "-"}</span></td>
+                  </tr>
+                );
+              })}
+              {slotsPagination.pagedItems.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="empty-cell" style={{ padding: '32px' }}>
+                    {lockerSlotsLoading ? "Inventory loading..." : "No units found matching criteria."}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="mt-md">
+          <PaginationControls {...slotsPagination} pageSizeOptions={[10, 20]} onPageChange={slotsPagination.setPage} onPageSizeChange={slotsPagination.setPageSize} />
         </div>
       </article>
 
-      <aside className={`selected-member-card ${styles["panel-stack"]}`}>
-        <section>
-          <h2>배정 목록</h2>
+      {/* ASSIGNMENTS PANEL */}
+      <article className="stack-lg">
+        
+        <section className="panel-card">
+          <header className="mb-md">
+             <h2 className="brand-title" style={{ fontSize: '1.25rem' }}>Active Assignments</h2>
+             <p className="text-muted text-xs">Overview of currently occupied units and contracts.</p>
+          </header>
+
           <div className="table-shell">
             <table className="members-table">
               <thead>
                 <tr>
-                  <th>배정ID</th>
-                  <th>라커</th>
-                  <th>회원</th>
-                  <th>상태</th>
-                  <th>시작일</th>
-                  <th>종료일</th>
-                  <th>액션</th>
+                  <th>Unit / Member</th>
+                  <th>Period</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {assignmentsPagination.pagedItems.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className={styles["empty-cell"]}>
-                      {!isLiveLockerRoleSupported
-                        ? "현재 역할에서는 live 라커 배정 목록을 조회할 수 없습니다."
-                        : lockerAssignmentsLoading
-                          ? <SkeletonLoader type="rectangular" height={40} />
-                          : <EmptyState message="라커 배정 이력이 없습니다." />}
-                    </td>
-                  </tr>
-                ) : (
-                  assignmentsPagination.pagedItems.map((assignment: any) => (
+                {assignmentsPagination.pagedItems.map((assignment: any) => {
+                   const status = statusMap[assignment.assignmentStatus] || { label: assignment.assignmentStatus, class: 'pill muted' };
+                   const isActive = assignment.assignmentStatus === "ACTIVE";
+                   return (
                     <tr key={assignment.lockerAssignmentId}>
-                      <td>{assignment.lockerAssignmentId}</td>
-                      <td>{assignment.lockerCode}</td>
                       <td>
-                        #{assignment.memberId} {assignment.memberName}
+                        <div className="stack-sm">
+                          <span className="text-sm" style={{ fontWeight: 600 }}>{assignment.lockerCode}</span>
+                          <span className="text-xs text-muted">{assignment.memberName} (#{assignment.memberId})</span>
+                        </div>
                       </td>
-                      <td>{assignment.assignmentStatus}</td>
-                      <td>{assignment.startDate}</td>
-                      <td>{assignment.endDate}</td>
                       <td>
-                        {assignment.assignmentStatus === "ACTIVE" ? (
-                          <button
-                            type="button"
-                            className="secondary-button"
-                            disabled={lockerReturnSubmittingId === assignment.lockerAssignmentId || !isLiveLockerRoleSupported}
-                            onClick={() => void runLockerReturn(assignment.lockerAssignmentId)}
-                          >
-                            {lockerReturnSubmittingId === assignment.lockerAssignmentId ? "반납 중..." : "반납"}
-                          </button>
+                        <div className="stack-sm">
+                          <span className="text-xs" style={{ fontWeight: 600 }}>{assignment.startDate}</span>
+                          <span className="text-xs text-muted">to {assignment.endDate}</span>
+                        </div>
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        {isActive ? (
+                           <button
+                             type="button"
+                             className="secondary-button"
+                             style={{ padding: '6px 10px', fontSize: '11px', color: 'var(--status-danger)' }}
+                             disabled={lockerReturnSubmittingId === assignment.lockerAssignmentId || !isLiveLockerRoleSupported}
+                             onClick={() => void runLockerReturn(assignment.lockerAssignmentId)}
+                           >
+                             {lockerReturnSubmittingId === assignment.lockerAssignmentId ? "Voiding..." : "VOID"}
+                           </button>
                         ) : (
-                          "-"
+                          <span className={status.class}>{status.label}</span>
                         )}
                       </td>
                     </tr>
-                  ))
+                   );
+                })}
+                {assignmentsPagination.pagedItems.length === 0 && (
+                  <tr>
+                    <td colSpan={3} className="empty-cell" style={{ padding: '32px' }}>
+                      {lockerAssignmentsLoading ? "Fetching assignments..." : "No active contracts."}
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>
           </div>
-
-          <PaginationControls
-            page={assignmentsPagination.page}
-            totalPages={assignmentsPagination.totalPages}
-            pageSize={assignmentsPagination.pageSize}
-            pageSizeOptions={[10, 20]}
-            totalItems={assignmentsPagination.totalItems}
-            startItemIndex={assignmentsPagination.startItemIndex}
-            endItemIndex={assignmentsPagination.endItemIndex}
-            onPageChange={assignmentsPagination.setPage}
-            onPageSizeChange={assignmentsPagination.setPageSize}
-          />
+          <div className="mt-md">
+            <PaginationControls {...assignmentsPagination} pageSizeOptions={[10, 20]} onPageChange={assignmentsPagination.setPage} onPageSizeChange={assignmentsPagination.setPageSize} />
+          </div>
         </section>
-      </aside>
+
+        {!isLiveLockerRoleSupported && (
+          <div className="panel-card" style={{ background: 'var(--status-warn-bg)', border: '0' }}>
+            <span className="text-xs" style={{ color: 'var(--status-warn)', fontWeight: 700 }}>RESTRICTED ACCESS</span>
+            <p className="text-xs" style={{ margin: '4px 0 0' }}>Your current role does not have authorization for locker modifications.</p>
+          </div>
+        )}
+      </article>
+
+      {/* ASSIGNMENT MODAL */}
+      <Modal
+        isOpen={isAssignModalOpen}
+        onClose={() => setIsAssignModalOpen(false)}
+        title="Register Locker Assignment"
+        footer={
+          <>
+            <button className="secondary-button" onClick={() => setIsAssignModalOpen(false)}>Cancel</button>
+            <button 
+              className="primary-button" 
+              onClick={() => void runLockerAssign()}
+              disabled={lockerAssignSubmitting || !lockerAssignForm.lockerSlotId || !lockerAssignForm.memberId}
+            >
+              {lockerAssignSubmitting ? "Processing..." : "Confirm Assignment"}
+            </button>
+          </>
+        }
+      >
+        <div className="stack-md">
+          <SelectedMemberContextBadge />
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <label className="stack-sm">
+              <span className="text-sm">Target Unit</span>
+              <select
+                className="input"
+                name="lockerSlotId"
+                value={lockerAssignForm.lockerSlotId}
+                onChange={(event) => setLockerAssignForm(prev => ({ ...prev, lockerSlotId: event.target.value }))}
+              >
+                <option value="">-- Select Available --</option>
+                {availableSlots.map(slot => (
+                  <option key={slot.lockerSlotId} value={slot.lockerSlotId}>{slot.lockerCode} ({slot.lockerZone})</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="stack-sm">
+              <span className="text-sm">Contract Holder</span>
+              <select
+                className="input"
+                name="memberId"
+                value={lockerAssignForm.memberId}
+                onChange={(event) => setLockerAssignForm(prev => ({ ...prev, memberId: event.target.value }))}
+              >
+                <option value="">-- Choose Member --</option>
+                {members.map(m => (
+                  <option key={m.memberId} value={m.memberId}>{m.memberName} (#{m.memberId})</option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <label className="stack-sm">
+              <span className="text-sm">Start Effective</span>
+              <input
+                className="input"
+                type="date"
+                value={lockerAssignForm.startDate}
+                onChange={(event) => setLockerAssignForm(prev => ({ ...prev, startDate: event.target.value }))}
+              />
+            </label>
+            <label className="stack-sm">
+              <span className="text-sm">End Expiration</span>
+              <input
+                className="input"
+                type="date"
+                value={lockerAssignForm.endDate}
+                onChange={(event) => setLockerAssignForm(prev => ({ ...prev, endDate: event.target.value }))}
+              />
+            </label>
+          </div>
+
+          <label className="stack-sm">
+            <span className="text-sm">Operational Memo</span>
+            <textarea
+              className="input"
+              style={{ minHeight: '80px', resize: 'vertical' }}
+              value={lockerAssignForm.memo}
+              onChange={(event) => setLockerAssignForm(prev => ({ ...prev, memo: event.target.value }))}
+              placeholder="Operational details for this assignment..."
+            />
+          </label>
+        </div>
+      </Modal>
+
     </section>
   );
 }

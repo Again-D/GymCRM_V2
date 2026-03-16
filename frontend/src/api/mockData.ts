@@ -4,20 +4,23 @@ import type {
   MemberSummary,
   PurchasedMembership,
   ReservationRow,
-  ReservationScheduleSummary
+  ReservationScheduleSummary,
 } from "../pages/members/modules/types";
 import type {
   AccessEventRow,
   AccessPresenceRow,
-  AccessPresenceSummary
+  AccessPresenceSummary,
 } from "../pages/access/modules/types";
 import type {
   LockerAssignment,
-  LockerSlot
+  LockerSlot,
 } from "../pages/lockers/modules/types";
 import type { ProductRecord } from "../pages/products/modules/types";
 import type { CrmHistoryRow, CrmSendStatus } from "../pages/crm/modules/types";
-import type { SettlementPaymentMethod, SettlementReport } from "../pages/settlements/modules/types";
+import type {
+  SettlementPaymentMethod,
+  SettlementReport,
+} from "../pages/settlements/modules/types";
 import type { ReservationTargetSummary } from "../pages/reservations/modules/useReservationTargetsQuery";
 import { isMembershipReservableOn } from "../pages/reservations/modules/reservableMemberships";
 
@@ -31,7 +34,7 @@ const initialMembers: MemberSummary[] = [
     joinDate: "2026-01-04",
     membershipOperationalStatus: "홀딩중",
     membershipExpiryDate: "2026-06-30",
-    remainingPtCount: 8
+    remainingPtCount: 8,
   },
   {
     memberId: 102,
@@ -42,7 +45,7 @@ const initialMembers: MemberSummary[] = [
     joinDate: "2025-11-14",
     membershipOperationalStatus: "정상",
     membershipExpiryDate: "2026-07-20",
-    remainingPtCount: 12
+    remainingPtCount: 12,
   },
   {
     memberId: 103,
@@ -53,13 +56,13 @@ const initialMembers: MemberSummary[] = [
     joinDate: "2025-08-11",
     membershipOperationalStatus: "없음",
     membershipExpiryDate: null,
-    remainingPtCount: null
-  }
+    remainingPtCount: null,
+  },
 ];
 
 const trainerAssignedMemberIds = new Map<number, number[]>([
   [41, [101]],
-  [42, [102]]
+  [42, [102]],
 ]);
 
 const initialMemberDetails = new Map<number, MemberDetail>([
@@ -77,8 +80,8 @@ const initialMemberDetails = new Map<number, MemberDetail>([
       joinDate: "2026-01-04",
       consentSms: true,
       consentMarketing: false,
-      memo: "홀딩중 회원 example"
-    }
+      memo: "홀딩중 회원 example",
+    },
   ],
   [
     102,
@@ -94,8 +97,8 @@ const initialMemberDetails = new Map<number, MemberDetail>([
       joinDate: "2025-11-14",
       consentSms: true,
       consentMarketing: true,
-      memo: "정상 회원 example"
-    }
+      memo: "정상 회원 example",
+    },
   ],
   [
     103,
@@ -111,9 +114,9 @@ const initialMemberDetails = new Map<number, MemberDetail>([
       joinDate: "2025-08-11",
       consentSms: false,
       consentMarketing: false,
-      memo: null
-    }
-  ]
+      memo: null,
+    },
+  ],
 ]);
 
 const initialMemberMemberships = new Map<number, PurchasedMembership[]>([
@@ -129,7 +132,7 @@ const initialMemberMemberships = new Map<number, PurchasedMembership[]>([
         startDate: "2026-03-01",
         endDate: "2026-06-30",
         remainingCount: 8,
-        activeHoldStatus: null
+        activeHoldStatus: null,
       },
       {
         membershipId: 9002,
@@ -140,7 +143,7 @@ const initialMemberMemberships = new Map<number, PurchasedMembership[]>([
         startDate: "2026-02-15",
         endDate: "2026-05-15",
         remainingCount: null,
-        activeHoldStatus: "ACTIVE"
+        activeHoldStatus: "ACTIVE",
       },
       {
         membershipId: 9003,
@@ -151,9 +154,9 @@ const initialMemberMemberships = new Map<number, PurchasedMembership[]>([
         startDate: "2025-12-01",
         endDate: "2026-01-15",
         remainingCount: 3,
-        activeHoldStatus: null
-      }
-    ]
+        activeHoldStatus: null,
+      },
+    ],
   ],
   [
     102,
@@ -167,7 +170,7 @@ const initialMemberMemberships = new Map<number, PurchasedMembership[]>([
         startDate: "2026-02-01",
         endDate: "2026-07-20",
         remainingCount: 12,
-        activeHoldStatus: null
+        activeHoldStatus: null,
       },
       {
         membershipId: 9012,
@@ -178,11 +181,11 @@ const initialMemberMemberships = new Map<number, PurchasedMembership[]>([
         startDate: "2026-02-20",
         endDate: "2026-04-30",
         remainingCount: 0,
-        activeHoldStatus: null
-      }
-    ]
+        activeHoldStatus: null,
+      },
+    ],
   ],
-  [103, []]
+  [103, []],
 ]);
 
 const initialReservationSchedules: ReservationScheduleSummary[] = [
@@ -194,7 +197,7 @@ const initialReservationSchedules: ReservationScheduleSummary[] = [
     startAt: "2026-03-12T09:00:00+09:00",
     endAt: "2026-03-12T09:50:00+09:00",
     capacity: 1,
-    currentCount: 1
+    currentCount: 1,
   },
   {
     scheduleId: 7002,
@@ -204,7 +207,7 @@ const initialReservationSchedules: ReservationScheduleSummary[] = [
     startAt: "2026-03-12T15:00:00+09:00",
     endAt: "2026-03-12T15:50:00+09:00",
     capacity: 1,
-    currentCount: 0
+    currentCount: 0,
   },
   {
     scheduleId: 7101,
@@ -214,8 +217,8 @@ const initialReservationSchedules: ReservationScheduleSummary[] = [
     startAt: "2026-03-12T19:00:00+09:00",
     endAt: "2026-03-12T19:50:00+09:00",
     capacity: 12,
-    currentCount: 7
-  }
+    currentCount: 7,
+  },
 ];
 
 const initialReservationsByMemberId = new Map<number, ReservationRow[]>([
@@ -231,9 +234,9 @@ const initialReservationsByMemberId = new Map<number, ReservationRow[]>([
         cancelledAt: null,
         completedAt: null,
         noShowAt: null,
-        checkedInAt: null
-      }
-    ]
+        checkedInAt: null,
+      },
+    ],
   ],
   [
     102,
@@ -247,10 +250,10 @@ const initialReservationsByMemberId = new Map<number, ReservationRow[]>([
         cancelledAt: null,
         completedAt: "2026-03-10T19:55:00+09:00",
         noShowAt: null,
-        checkedInAt: "2026-03-10T18:58:00+09:00"
-      }
-    ]
-  ]
+        checkedInAt: "2026-03-10T18:58:00+09:00",
+      },
+    ],
+  ],
 ]);
 
 const initialOpenAccessSessions: AccessPresenceRow[] = [
@@ -261,8 +264,8 @@ const initialOpenAccessSessions: AccessPresenceRow[] = [
     phone: "010-1234-5678",
     membershipId: 9001,
     reservationId: 5001,
-    entryAt: "2026-03-12T09:03:00+09:00"
-  }
+    entryAt: "2026-03-12T09:03:00+09:00",
+  },
 ];
 
 const initialAccessEvents: AccessEventRow[] = [
@@ -273,7 +276,7 @@ const initialAccessEvents: AccessEventRow[] = [
     reservationId: 5001,
     eventType: "ENTRY_GRANTED",
     denyReason: null,
-    processedAt: "2026-03-12T09:03:00+09:00"
+    processedAt: "2026-03-12T09:03:00+09:00",
   },
   {
     accessEventId: 8102,
@@ -282,8 +285,8 @@ const initialAccessEvents: AccessEventRow[] = [
     reservationId: null,
     eventType: "ENTRY_DENIED",
     denyReason: "예약 가능 회원권 없음",
-    processedAt: "2026-03-12T08:12:00+09:00"
-  }
+    processedAt: "2026-03-12T08:12:00+09:00",
+  },
 ];
 
 const initialLockerSlots: LockerSlot[] = [
@@ -296,7 +299,7 @@ const initialLockerSlots: LockerSlot[] = [
     lockerStatus: "ASSIGNED",
     memo: null,
     createdAt: "2026-01-01T09:00:00Z",
-    updatedAt: "2026-03-12T09:00:00Z"
+    updatedAt: "2026-03-12T09:00:00Z",
   },
   {
     lockerSlotId: 4002,
@@ -307,7 +310,7 @@ const initialLockerSlots: LockerSlot[] = [
     lockerStatus: "AVAILABLE",
     memo: null,
     createdAt: "2026-01-01T09:00:00Z",
-    updatedAt: "2026-03-12T09:00:00Z"
+    updatedAt: "2026-03-12T09:00:00Z",
   },
   {
     lockerSlotId: 4003,
@@ -318,8 +321,8 @@ const initialLockerSlots: LockerSlot[] = [
     lockerStatus: "MAINTENANCE",
     memo: "도어 점검 중",
     createdAt: "2026-01-01T09:00:00Z",
-    updatedAt: "2026-03-12T09:00:00Z"
-  }
+    updatedAt: "2026-03-12T09:00:00Z",
+  },
 ];
 
 const initialLockerAssignments: LockerAssignment[] = [
@@ -339,8 +342,8 @@ const initialLockerAssignments: LockerAssignment[] = [
     returnReason: null,
     memo: "한 달 계약",
     createdAt: "2026-03-01T10:00:00Z",
-    updatedAt: "2026-03-01T10:00:00Z"
-  }
+    updatedAt: "2026-03-01T10:00:00Z",
+  },
 ];
 
 const initialProducts: ProductRecord[] = [
@@ -358,7 +361,7 @@ const initialProducts: ProductRecord[] = [
     maxHoldCount: 1,
     allowTransfer: false,
     productStatus: "ACTIVE",
-    description: "기본 헬스 이용권"
+    description: "기본 헬스 이용권",
   },
   {
     productId: 2,
@@ -374,7 +377,7 @@ const initialProducts: ProductRecord[] = [
     maxHoldCount: null,
     allowTransfer: false,
     productStatus: "ACTIVE",
-    description: "퍼스널 트레이닝 10회"
+    description: "퍼스널 트레이닝 10회",
   },
   {
     productId: 3,
@@ -390,8 +393,8 @@ const initialProducts: ProductRecord[] = [
     maxHoldCount: null,
     allowTransfer: false,
     productStatus: "INACTIVE",
-    description: "그룹 수업 12회"
-  }
+    description: "그룹 수업 12회",
+  },
 ];
 
 const initialCrmHistoryRows: CrmHistoryRow[] = [
@@ -409,7 +412,7 @@ const initialCrmHistoryRows: CrmHistoryRow[] = [
     failedAt: null,
     lastErrorMessage: null,
     traceId: "crm-trace-12001",
-    createdAt: "2026-03-13T09:00:00+09:00"
+    createdAt: "2026-03-13T09:00:00+09:00",
   },
   {
     crmMessageEventId: 12002,
@@ -425,7 +428,7 @@ const initialCrmHistoryRows: CrmHistoryRow[] = [
     failedAt: null,
     lastErrorMessage: null,
     traceId: "crm-trace-12002",
-    createdAt: "2026-03-12T10:55:00+09:00"
+    createdAt: "2026-03-12T10:55:00+09:00",
   },
   {
     crmMessageEventId: 12003,
@@ -441,8 +444,8 @@ const initialCrmHistoryRows: CrmHistoryRow[] = [
     failedAt: null,
     lastErrorMessage: "통신사 응답 지연",
     traceId: "crm-trace-12003",
-    createdAt: "2026-03-12T12:00:00+09:00"
-  }
+    createdAt: "2026-03-12T12:00:00+09:00",
+  },
 ];
 
 type SettlementTransaction = {
@@ -455,26 +458,72 @@ type SettlementTransaction = {
 };
 
 const initialSettlementTransactions: SettlementTransaction[] = [
-  { transactionId: 21001, transactionDate: "2026-03-01", productId: 1, paymentMethod: "CARD", grossSales: 180000, refundAmount: 0 },
-  { transactionId: 21002, transactionDate: "2026-03-03", productId: 2, paymentMethod: "CARD", grossSales: 550000, refundAmount: 0 },
-  { transactionId: 21003, transactionDate: "2026-03-05", productId: 2, paymentMethod: "TRANSFER", grossSales: 550000, refundAmount: 110000 },
-  { transactionId: 21004, transactionDate: "2026-03-08", productId: 1, paymentMethod: "CASH", grossSales: 180000, refundAmount: 0 },
-  { transactionId: 21005, transactionDate: "2026-03-11", productId: 3, paymentMethod: "ETC", grossSales: 220000, refundAmount: 220000 },
-  { transactionId: 21006, transactionDate: "2026-03-12", productId: 2, paymentMethod: "CARD", grossSales: 550000, refundAmount: 0 }
+  {
+    transactionId: 21001,
+    transactionDate: "2026-03-01",
+    productId: 1,
+    paymentMethod: "CARD",
+    grossSales: 180000,
+    refundAmount: 0,
+  },
+  {
+    transactionId: 21002,
+    transactionDate: "2026-03-03",
+    productId: 2,
+    paymentMethod: "CARD",
+    grossSales: 550000,
+    refundAmount: 0,
+  },
+  {
+    transactionId: 21003,
+    transactionDate: "2026-03-05",
+    productId: 2,
+    paymentMethod: "TRANSFER",
+    grossSales: 550000,
+    refundAmount: 110000,
+  },
+  {
+    transactionId: 21004,
+    transactionDate: "2026-03-08",
+    productId: 1,
+    paymentMethod: "CASH",
+    grossSales: 180000,
+    refundAmount: 0,
+  },
+  {
+    transactionId: 21005,
+    transactionDate: "2026-03-11",
+    productId: 3,
+    paymentMethod: "ETC",
+    grossSales: 220000,
+    refundAmount: 220000,
+  },
+  {
+    transactionId: 21006,
+    transactionDate: "2026-03-12",
+    productId: 2,
+    paymentMethod: "CARD",
+    grossSales: 550000,
+    refundAmount: 0,
+  },
 ];
 
 let mockMembers = cloneMembers(initialMembers);
 let mockMemberDetails = cloneMemberDetails(initialMemberDetails);
 let mockMemberMemberships = cloneMembershipMap(initialMemberMemberships);
 let mockReservationSchedules = cloneSchedules(initialReservationSchedules);
-let mockReservationsByMemberId = cloneReservationsMap(initialReservationsByMemberId);
+let mockReservationsByMemberId = cloneReservationsMap(
+  initialReservationsByMemberId,
+);
 let mockOpenAccessSessions = cloneAccessSessions(initialOpenAccessSessions);
 let mockAccessEvents = cloneAccessEvents(initialAccessEvents);
 let mockLockerSlots = cloneLockerSlots(initialLockerSlots);
 let mockLockerAssignments = cloneLockerAssignments(initialLockerAssignments);
 let mockProducts = cloneProducts(initialProducts);
 let mockCrmHistoryRows = cloneCrmHistoryRows(initialCrmHistoryRows);
-let mockSettlementTransactions = initialSettlementTransactions.map((transaction) => ({ ...transaction }));
+let mockSettlementTransactions = initialSettlementTransactions.map(
+  (transaction) => ({ ...transaction }),
+);
 let mockDataVersion = 0;
 let membershipIdSeed = 99000;
 let reservationIdSeed = 5002;
@@ -489,15 +538,20 @@ function cloneMembers(source: MemberSummary[]) {
 }
 
 function cloneMemberDetails(source: Map<number, MemberDetail>) {
-  return new Map(Array.from(source.entries(), ([memberId, detail]) => [memberId, { ...detail }]));
+  return new Map(
+    Array.from(source.entries(), ([memberId, detail]) => [
+      memberId,
+      { ...detail },
+    ]),
+  );
 }
 
 function cloneMembershipMap(source: Map<number, PurchasedMembership[]>) {
   return new Map(
     Array.from(source.entries(), ([memberId, memberships]) => [
       memberId,
-      memberships.map((membership) => ({ ...membership }))
-    ])
+      memberships.map((membership) => ({ ...membership })),
+    ]),
   );
 }
 
@@ -509,8 +563,8 @@ function cloneReservationsMap(source: Map<number, ReservationRow[]>) {
   return new Map(
     Array.from(source.entries(), ([memberId, reservations]) => [
       memberId,
-      reservations.map((reservation) => ({ ...reservation }))
-    ])
+      reservations.map((reservation) => ({ ...reservation })),
+    ]),
   );
 }
 
@@ -548,7 +602,7 @@ function envelope<T>(data: T): ApiEnvelope<T> {
     data,
     message: "mock ok",
     timestamp: "2026-03-12T00:00:00Z",
-    traceId: "mock-trace"
+    traceId: "mock-trace",
   };
 }
 
@@ -557,22 +611,30 @@ function todayText() {
 }
 
 function getVisibleMemberships(memberId: number) {
-  return (mockMemberMemberships.get(memberId) ?? []).filter((membership) => membership.membershipStatus !== "REFUNDED");
+  return (mockMemberMemberships.get(memberId) ?? []).filter(
+    (membership) => membership.membershipStatus !== "REFUNDED",
+  );
 }
 
-function deriveMembershipOperationalStatus(memberships: PurchasedMembership[]): MemberSummary["membershipOperationalStatus"] {
-  if (memberships.some((membership) => membership.membershipStatus === "HOLDING")) {
+function deriveMembershipOperationalStatus(
+  memberships: PurchasedMembership[],
+): MemberSummary["membershipOperationalStatus"] {
+  if (
+    memberships.some((membership) => membership.membershipStatus === "HOLDING")
+  ) {
     return "홀딩중";
   }
 
-  const activeMemberships = memberships.filter((membership) => membership.membershipStatus === "ACTIVE");
+  const activeMemberships = memberships.filter(
+    (membership) => membership.membershipStatus === "ACTIVE",
+  );
   if (activeMemberships.length === 0) {
     return "없음";
   }
 
   const today = todayText();
   const futureOrCurrentMemberships = activeMemberships.filter(
-    (membership) => !membership.endDate || membership.endDate >= today
+    (membership) => !membership.endDate || membership.endDate >= today,
   );
   if (futureOrCurrentMemberships.length === 0) {
     return "만료";
@@ -595,7 +657,9 @@ function addDays(dateText: string, days: number) {
 }
 
 function deriveMembershipExpiryDate(memberships: PurchasedMembership[]) {
-  const datedMemberships = memberships.filter((membership) => membership.endDate);
+  const datedMemberships = memberships.filter(
+    (membership) => membership.endDate,
+  );
   if (datedMemberships.length === 0) {
     return null;
   }
@@ -616,7 +680,7 @@ function deriveRemainingPtCount(memberships: PurchasedMembership[]) {
       (membership) =>
         membership.membershipStatus === "ACTIVE" &&
         membership.productTypeSnapshot === "COUNT" &&
-        membership.productNameSnapshot.includes("PT")
+        membership.productNameSnapshot.includes("PT"),
     )
     .reduce((sum, membership) => sum + (membership.remainingCount ?? 0), 0);
   return total > 0 ? total : null;
@@ -627,9 +691,10 @@ function deriveMembers() {
     const visibleMemberships = getVisibleMemberships(member.memberId);
     return {
       ...member,
-      membershipOperationalStatus: deriveMembershipOperationalStatus(visibleMemberships),
+      membershipOperationalStatus:
+        deriveMembershipOperationalStatus(visibleMemberships),
       membershipExpiryDate: deriveMembershipExpiryDate(visibleMemberships),
-      remainingPtCount: deriveRemainingPtCount(visibleMemberships)
+      remainingPtCount: deriveRemainingPtCount(visibleMemberships),
     };
   });
 }
@@ -641,14 +706,16 @@ function deriveReservationTargets() {
     .map((member) => {
       const visibleMemberships = getVisibleMemberships(member.memberId);
       const reservableMemberships = visibleMemberships.filter((membership) =>
-        isMembershipReservableOn(membership, businessDateText)
+        isMembershipReservableOn(membership, businessDateText),
       );
       if (reservableMemberships.length === 0) {
         return null;
       }
 
-      const confirmedReservationCount = (mockReservationsByMemberId.get(member.memberId) ?? []).filter(
-        (reservation) => reservation.reservationStatus === "CONFIRMED"
+      const confirmedReservationCount = (
+        mockReservationsByMemberId.get(member.memberId) ?? []
+      ).filter(
+        (reservation) => reservation.reservationStatus === "CONFIRMED",
       ).length;
 
       return {
@@ -658,7 +725,7 @@ function deriveReservationTargets() {
         phone: member.phone,
         reservableMembershipCount: reservableMemberships.length,
         membershipExpiryDate: deriveMembershipExpiryDate(reservableMemberships),
-        confirmedReservationCount
+        confirmedReservationCount,
       } satisfies ReservationTargetSummary;
     })
     .filter((target): target is ReservationTargetSummary => target !== null);
@@ -666,14 +733,21 @@ function deriveReservationTargets() {
 
 function deriveAccessPresenceSummary(): AccessPresenceSummary {
   const today = todayText();
-  const todaysEvents = mockAccessEvents.filter((event) => event.processedAt.slice(0, 10) === today);
+  const todaysEvents = mockAccessEvents.filter(
+    (event) => event.processedAt.slice(0, 10) === today,
+  );
 
   return {
     openSessionCount: mockOpenAccessSessions.length,
-    todayEntryGrantedCount: todaysEvents.filter((event) => event.eventType === "ENTRY_GRANTED").length,
-    todayExitCount: todaysEvents.filter((event) => event.eventType === "EXIT").length,
-    todayEntryDeniedCount: todaysEvents.filter((event) => event.eventType === "ENTRY_DENIED").length,
-    openSessions: mockOpenAccessSessions.map((session) => ({ ...session }))
+    todayEntryGrantedCount: todaysEvents.filter(
+      (event) => event.eventType === "ENTRY_GRANTED",
+    ).length,
+    todayExitCount: todaysEvents.filter((event) => event.eventType === "EXIT")
+      .length,
+    todayEntryDeniedCount: todaysEvents.filter(
+      (event) => event.eventType === "ENTRY_DENIED",
+    ).length,
+    openSessions: mockOpenAccessSessions.map((session) => ({ ...session })),
   };
 }
 
@@ -683,7 +757,8 @@ function filterLockerSlots(url: URL) {
 
   return mockLockerSlots.filter((slot) => {
     const matchesStatus = !lockerStatus || slot.lockerStatus === lockerStatus;
-    const matchesZone = !lockerZone || (slot.lockerZone ?? "").includes(lockerZone);
+    const matchesZone =
+      !lockerZone || (slot.lockerZone ?? "").includes(lockerZone);
     return matchesStatus && matchesZone;
   });
 }
@@ -710,8 +785,14 @@ function filterProducts(url: URL) {
 }
 
 function filterCrmHistory(url: URL) {
-  const sendStatus = url.searchParams.get("sendStatus")?.trim() as CrmSendStatus | "" | null;
-  const parsedLimit = Number.parseInt(url.searchParams.get("limit") ?? "100", 10);
+  const sendStatus = url.searchParams.get("sendStatus")?.trim() as
+    | CrmSendStatus
+    | ""
+    | null;
+  const parsedLimit = Number.parseInt(
+    url.searchParams.get("limit") ?? "100",
+    10,
+  );
   const limit = Number.isFinite(parsedLimit) ? parsedLimit : 100;
 
   return mockCrmHistoryRows
@@ -723,7 +804,8 @@ function filterCrmHistory(url: URL) {
 function filterSettlementReport(url: URL): SettlementReport {
   const startDate = url.searchParams.get("startDate")?.trim() ?? todayText();
   const endDate = url.searchParams.get("endDate")?.trim() ?? todayText();
-  const paymentMethod = (url.searchParams.get("paymentMethod")?.trim() ?? "") as SettlementPaymentMethod;
+  const paymentMethod = (url.searchParams.get("paymentMethod")?.trim() ??
+    "") as SettlementPaymentMethod;
   const productKeyword = url.searchParams.get("productKeyword")?.trim() ?? "";
 
   const groupedRows = new Map<
@@ -739,14 +821,20 @@ function filterSettlementReport(url: URL): SettlementReport {
   >();
 
   for (const transaction of mockSettlementTransactions) {
-    if (transaction.transactionDate < startDate || transaction.transactionDate > endDate) {
+    if (
+      transaction.transactionDate < startDate ||
+      transaction.transactionDate > endDate
+    ) {
       continue;
     }
     if (paymentMethod && transaction.paymentMethod !== paymentMethod) {
       continue;
     }
-    const product = mockProducts.find((item) => item.productId === transaction.productId);
-    const productName = product?.productName ?? `상품 #${transaction.productId}`;
+    const product = mockProducts.find(
+      (item) => item.productId === transaction.productId,
+    );
+    const productName =
+      product?.productName ?? `상품 #${transaction.productId}`;
     if (productKeyword && !productName.includes(productKeyword)) {
       continue;
     }
@@ -758,7 +846,7 @@ function filterSettlementReport(url: URL): SettlementReport {
       grossSales: 0,
       refundAmount: 0,
       netSales: 0,
-      transactionCount: 0
+      transactionCount: 0,
     };
     current.grossSales += transaction.grossSales;
     current.refundAmount += transaction.refundAmount;
@@ -782,19 +870,21 @@ function filterSettlementReport(url: URL): SettlementReport {
     totalGrossSales: rows.reduce((sum, row) => sum + row.grossSales, 0),
     totalRefundAmount: rows.reduce((sum, row) => sum + row.refundAmount, 0),
     totalNetSales: rows.reduce((sum, row) => sum + row.netSales, 0),
-    rows
+    rows,
   };
 }
 
 function filterMembers(url: URL) {
   const name = url.searchParams.get("name")?.trim() ?? "";
   const phone = url.searchParams.get("phone")?.trim() ?? "";
-  const status = url.searchParams.get("membershipOperationalStatus")?.trim() ?? "";
+  const status =
+    url.searchParams.get("membershipOperationalStatus")?.trim() ?? "";
 
   return deriveMembers().filter((member) => {
     const matchesName = !name || member.memberName.includes(name);
     const matchesPhone = !phone || member.phone.includes(phone);
-    const matchesStatus = !status || member.membershipOperationalStatus === status;
+    const matchesStatus =
+      !status || member.membershipOperationalStatus === status;
     return matchesName && matchesPhone && matchesStatus;
   });
 }
@@ -812,14 +902,18 @@ export function resetMockData() {
   mockMemberDetails = cloneMemberDetails(initialMemberDetails);
   mockMemberMemberships = cloneMembershipMap(initialMemberMemberships);
   mockReservationSchedules = cloneSchedules(initialReservationSchedules);
-  mockReservationsByMemberId = cloneReservationsMap(initialReservationsByMemberId);
+  mockReservationsByMemberId = cloneReservationsMap(
+    initialReservationsByMemberId,
+  );
   mockOpenAccessSessions = cloneAccessSessions(initialOpenAccessSessions);
   mockAccessEvents = cloneAccessEvents(initialAccessEvents);
   mockLockerSlots = cloneLockerSlots(initialLockerSlots);
   mockLockerAssignments = cloneLockerAssignments(initialLockerAssignments);
   mockProducts = cloneProducts(initialProducts);
   mockCrmHistoryRows = cloneCrmHistoryRows(initialCrmHistoryRows);
-  mockSettlementTransactions = cloneSettlementTransactions(initialSettlementTransactions);
+  mockSettlementTransactions = cloneSettlementTransactions(
+    initialSettlementTransactions,
+  );
   mockDataVersion = 0;
   membershipIdSeed = 99000;
   reservationIdSeed = 5002;
@@ -848,11 +942,14 @@ export function createMockMembership(input: {
     startDate: input.startDate,
     endDate: input.endDate,
     remainingCount: input.remainingCount,
-    activeHoldStatus: null
+    activeHoldStatus: null,
   };
 
   const existingMemberships = mockMemberMemberships.get(input.memberId) ?? [];
-  mockMemberMemberships.set(input.memberId, [membership, ...existingMemberships]);
+  mockMemberMemberships.set(input.memberId, [
+    membership,
+    ...existingMemberships,
+  ]);
   bumpMockDataVersion();
   return { ...membership };
 }
@@ -860,7 +957,7 @@ export function createMockMembership(input: {
 export function patchMockMembership(
   memberId: number,
   membershipId: number,
-  updater: (membership: PurchasedMembership) => PurchasedMembership
+  updater: (membership: PurchasedMembership) => PurchasedMembership,
 ) {
   const existingMemberships = mockMemberMemberships.get(memberId) ?? [];
   let nextMembership: PurchasedMembership | null = null;
@@ -879,7 +976,12 @@ export function patchMockMembership(
   return nextMembership;
 }
 
-export function createMockReservation(input: { memberId: number; membershipId: number; scheduleId: number; memo?: string | null }) {
+export function createMockReservation(input: {
+  memberId: number;
+  membershipId: number;
+  scheduleId: number;
+  memo?: string | null;
+}) {
   const reservations = mockReservationsByMemberId.get(input.memberId) ?? [];
   reservationIdSeed += 1;
   const reservation: ReservationRow = {
@@ -891,9 +993,12 @@ export function createMockReservation(input: { memberId: number; membershipId: n
     cancelledAt: null,
     completedAt: null,
     noShowAt: null,
-    checkedInAt: null
+    checkedInAt: null,
   };
-  mockReservationsByMemberId.set(input.memberId, [reservation, ...reservations]);
+  mockReservationsByMemberId.set(input.memberId, [
+    reservation,
+    ...reservations,
+  ]);
   bumpMockDataVersion();
   return { ...reservation };
 }
@@ -901,7 +1006,7 @@ export function createMockReservation(input: { memberId: number; membershipId: n
 export function patchMockReservation(
   memberId: number,
   reservationId: number,
-  updater: (reservation: ReservationRow) => ReservationRow
+  updater: (reservation: ReservationRow) => ReservationRow,
 ) {
   const reservations = mockReservationsByMemberId.get(memberId) ?? [];
   let nextReservation: ReservationRow | null = null;
@@ -923,17 +1028,20 @@ export function createMockAccessEntry(memberId: number) {
     return { ok: false as const, message: "회원을 찾을 수 없습니다." };
   }
 
-  const existingSession = mockOpenAccessSessions.find((session) => session.memberId === memberId);
+  const existingSession = mockOpenAccessSessions.find(
+    (session) => session.memberId === memberId,
+  );
   if (existingSession) {
     return { ok: false as const, message: "이미 입장중인 회원입니다." };
   }
 
-  const reservableMembership = getVisibleMemberships(memberId).find((membership) =>
-    isMembershipReservableOn(membership, todayText())
+  const reservableMembership = getVisibleMemberships(memberId).find(
+    (membership) => isMembershipReservableOn(membership, todayText()),
   );
   const activeReservation =
-    (mockReservationsByMemberId.get(memberId) ?? []).find((reservation) => reservation.reservationStatus === "CONFIRMED") ??
-    null;
+    (mockReservationsByMemberId.get(memberId) ?? []).find(
+      (reservation) => reservation.reservationStatus === "CONFIRMED",
+    ) ?? null;
 
   accessEventIdSeed += 1;
 
@@ -946,11 +1054,14 @@ export function createMockAccessEntry(memberId: number) {
         reservationId: activeReservation?.reservationId ?? null,
         eventType: "ENTRY_DENIED",
         denyReason: "예약 가능 회원권 없음",
-        processedAt: new Date().toISOString()
+        processedAt: new Date().toISOString(),
       },
-      ...mockAccessEvents
+      ...mockAccessEvents,
     ];
-    return { ok: false as const, message: "예약 가능 회원권이 없어 입장 처리할 수 없습니다." };
+    return {
+      ok: false as const,
+      message: "예약 가능 회원권이 없어 입장 처리할 수 없습니다.",
+    };
   }
 
   accessSessionIdSeed += 1;
@@ -961,7 +1072,7 @@ export function createMockAccessEntry(memberId: number) {
     phone: member.phone,
     membershipId: reservableMembership.membershipId,
     reservationId: activeReservation?.reservationId ?? null,
-    entryAt: new Date().toISOString()
+    entryAt: new Date().toISOString(),
   };
   mockOpenAccessSessions = [nextSession, ...mockOpenAccessSessions];
   mockAccessEvents = [
@@ -972,22 +1083,29 @@ export function createMockAccessEntry(memberId: number) {
       reservationId: activeReservation?.reservationId ?? null,
       eventType: "ENTRY_GRANTED",
       denyReason: null,
-      processedAt: new Date().toISOString()
+      processedAt: new Date().toISOString(),
     },
-    ...mockAccessEvents
+    ...mockAccessEvents,
   ];
 
-  return { ok: true as const, message: `회원 #${memberId} 입장을 처리했습니다.` };
+  return {
+    ok: true as const,
+    message: `회원 #${memberId} 입장을 처리했습니다.`,
+  };
 }
 
 export function createMockAccessExit(memberId: number) {
-  const session = mockOpenAccessSessions.find((item) => item.memberId === memberId);
+  const session = mockOpenAccessSessions.find(
+    (item) => item.memberId === memberId,
+  );
   if (!session) {
     return { ok: false as const, message: "현재 입장중인 세션이 없습니다." };
   }
 
   accessEventIdSeed += 1;
-  mockOpenAccessSessions = mockOpenAccessSessions.filter((item) => item.memberId !== memberId);
+  mockOpenAccessSessions = mockOpenAccessSessions.filter(
+    (item) => item.memberId !== memberId,
+  );
   mockAccessEvents = [
     {
       accessEventId: accessEventIdSeed,
@@ -996,12 +1114,15 @@ export function createMockAccessExit(memberId: number) {
       reservationId: session.reservationId,
       eventType: "EXIT",
       denyReason: null,
-      processedAt: new Date().toISOString()
+      processedAt: new Date().toISOString(),
     },
-    ...mockAccessEvents
+    ...mockAccessEvents,
   ];
 
-  return { ok: true as const, message: `회원 #${memberId} 퇴장을 처리했습니다.` };
+  return {
+    ok: true as const,
+    message: `회원 #${memberId} 퇴장을 처리했습니다.`,
+  };
 }
 
 export function createMockLockerAssignment(input: {
@@ -1011,7 +1132,9 @@ export function createMockLockerAssignment(input: {
   endDate: string;
   memo: string | null;
 }) {
-  const slot = mockLockerSlots.find((item) => item.lockerSlotId === input.lockerSlotId);
+  const slot = mockLockerSlots.find(
+    (item) => item.lockerSlotId === input.lockerSlotId,
+  );
   if (!slot) {
     return { ok: false as const, message: "라커 슬롯을 찾을 수 없습니다." };
   }
@@ -1041,23 +1164,31 @@ export function createMockLockerAssignment(input: {
     returnReason: null,
     memo: input.memo,
     createdAt: now,
-    updatedAt: now
+    updatedAt: now,
   };
 
   mockLockerAssignments = [nextAssignment, ...mockLockerAssignments];
   mockLockerSlots = mockLockerSlots.map((currentSlot) =>
     currentSlot.lockerSlotId === slot.lockerSlotId
       ? { ...currentSlot, lockerStatus: "ASSIGNED", updatedAt: now }
-      : currentSlot
+      : currentSlot,
   );
 
-  return { ok: true as const, message: `라커 ${slot.lockerCode}를 회원 #${input.memberId}에 배정했습니다.` };
+  return {
+    ok: true as const,
+    message: `라커 ${slot.lockerCode}를 회원 #${input.memberId}에 배정했습니다.`,
+  };
 }
 
 export function returnMockLockerAssignment(lockerAssignmentId: number) {
-  const assignment = mockLockerAssignments.find((item) => item.lockerAssignmentId === lockerAssignmentId);
+  const assignment = mockLockerAssignments.find(
+    (item) => item.lockerAssignmentId === lockerAssignmentId,
+  );
   if (!assignment || assignment.assignmentStatus !== "ACTIVE") {
-    return { ok: false as const, message: "활성 라커 배정을 찾을 수 없습니다." };
+    return {
+      ok: false as const,
+      message: "활성 라커 배정을 찾을 수 없습니다.",
+    };
   }
 
   const now = new Date().toISOString();
@@ -1067,25 +1198,30 @@ export function returnMockLockerAssignment(lockerAssignmentId: number) {
           ...currentAssignment,
           assignmentStatus: "RETURNED",
           returnedAt: now,
-          updatedAt: now
+          updatedAt: now,
         }
-      : currentAssignment
+      : currentAssignment,
   );
   mockLockerSlots = mockLockerSlots.map((slot) =>
     slot.lockerSlotId === assignment.lockerSlotId
       ? { ...slot, lockerStatus: "AVAILABLE", updatedAt: now }
-      : slot
+      : slot,
   );
 
-  return { ok: true as const, message: `라커 ${assignment.lockerCode} 반납을 처리했습니다.` };
+  return {
+    ok: true as const,
+    message: `라커 ${assignment.lockerCode} 반납을 처리했습니다.`,
+  };
 }
 
-export function createMockProduct(input: Omit<ProductRecord, "productId" | "centerId">) {
+export function createMockProduct(
+  input: Omit<ProductRecord, "productId" | "centerId">,
+) {
   productIdSeed += 1;
   const nextProduct: ProductRecord = {
     productId: productIdSeed,
     centerId: 1,
-    ...input
+    ...input,
   };
   mockProducts = [nextProduct, ...mockProducts];
   bumpMockDataVersion();
@@ -1094,7 +1230,7 @@ export function createMockProduct(input: Omit<ProductRecord, "productId" | "cent
 
 export function updateMockProduct(
   productId: number,
-  updater: (product: ProductRecord) => ProductRecord
+  updater: (product: ProductRecord) => ProductRecord,
 ) {
   let nextProduct: ProductRecord | null = null;
   mockProducts = mockProducts.map((product) => {
@@ -1114,7 +1250,7 @@ export function updateMockProduct(
 export function toggleMockProductStatus(productId: number) {
   return updateMockProduct(productId, (product) => ({
     ...product,
-    productStatus: product.productStatus === "ACTIVE" ? "INACTIVE" : "ACTIVE"
+    productStatus: product.productStatus === "ACTIVE" ? "INACTIVE" : "ACTIVE",
   }));
 }
 
@@ -1136,7 +1272,7 @@ export function triggerMockCrmExpiryReminder(daysAhead: number) {
     failedAt: null,
     lastErrorMessage: null,
     traceId: `crm-trace-${crmMessageEventIdSeed}`,
-    createdAt: now
+    createdAt: now,
   };
 
   mockCrmHistoryRows = [nextRow, ...mockCrmHistoryRows];
@@ -1145,7 +1281,7 @@ export function triggerMockCrmExpiryReminder(daysAhead: number) {
   return {
     ok: true as const,
     message: `${daysAhead}일 기준 만료임박 메시지 ${1}건을 큐에 적재했습니다.`,
-    createdCount: 1
+    createdCount: 1,
   };
 }
 
@@ -1163,7 +1299,7 @@ export function processMockCrmQueue() {
         lastAttemptedAt: now,
         sentAt: now,
         nextAttemptAt: null,
-        lastErrorMessage: null
+        lastErrorMessage: null,
       };
     }
 
@@ -1176,7 +1312,7 @@ export function processMockCrmQueue() {
         lastAttemptedAt: now,
         sentAt: now,
         nextAttemptAt: null,
-        lastErrorMessage: null
+        lastErrorMessage: null,
       };
     }
 
@@ -1188,7 +1324,7 @@ export function processMockCrmQueue() {
   return {
     ok: true as const,
     message: `CRM 큐 ${processedCount}건을 처리했습니다.`,
-    processedCount
+    processedCount,
   };
 }
 
@@ -1203,10 +1339,18 @@ export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
     const segments = url.pathname.split("/").filter(Boolean);
     const memberId = Number(segments[3]);
     if (segments[4] === "memberships") {
-      return envelope((mockMemberMemberships.get(memberId) ?? []).map((membership) => ({ ...membership })));
+      return envelope(
+        (mockMemberMemberships.get(memberId) ?? []).map((membership) => ({
+          ...membership,
+        })),
+      );
     }
     if (segments[4] === "reservations") {
-      return envelope((mockReservationsByMemberId.get(memberId) ?? []).map((reservation) => ({ ...reservation })));
+      return envelope(
+        (mockReservationsByMemberId.get(memberId) ?? []).map((reservation) => ({
+          ...reservation,
+        })),
+      );
     }
     const detail = mockMemberDetails.get(memberId);
     return detail ? envelope({ ...detail }) : null;
@@ -1220,13 +1364,15 @@ export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
           (target) =>
             target.memberName.includes(keyword) ||
             target.phone.includes(keyword) ||
-            target.memberCode.includes(keyword)
+            target.memberCode.includes(keyword),
         );
     return envelope(targets);
   }
 
   if (url.pathname === "/api/v1/reservations/schedules") {
-    return envelope(mockReservationSchedules.map((schedule) => ({ ...schedule })));
+    return envelope(
+      mockReservationSchedules.map((schedule) => ({ ...schedule })),
+    );
   }
 
   if (url.pathname === "/api/v1/access/presence") {
@@ -1239,8 +1385,12 @@ export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
     const filteredEvents =
       memberId == null
         ? mockAccessEvents
-        : mockAccessEvents.filter((event) => event.memberId === Number(memberId));
-    return envelope(filteredEvents.slice(0, limit).map((event) => ({ ...event })));
+        : mockAccessEvents.filter(
+            (event) => event.memberId === Number(memberId),
+          );
+    return envelope(
+      filteredEvents.slice(0, limit).map((event) => ({ ...event })),
+    );
   }
 
   if (url.pathname === "/api/v1/lockers/slots") {
@@ -1248,7 +1398,9 @@ export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
   }
 
   if (url.pathname === "/api/v1/lockers/assignments") {
-    return envelope(filterLockerAssignments(url).map((assignment) => ({ ...assignment })));
+    return envelope(
+      filterLockerAssignments(url).map((assignment) => ({ ...assignment })),
+    );
   }
 
   if (url.pathname === "/api/v1/products") {
@@ -1257,7 +1409,7 @@ export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
 
   if (url.pathname === "/api/v1/crm/messages") {
     return envelope({
-      rows: filterCrmHistory(url)
+      rows: filterCrmHistory(url),
     });
   }
 

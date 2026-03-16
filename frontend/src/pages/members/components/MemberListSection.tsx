@@ -17,6 +17,14 @@ function operationalStatusClass(status: "정상" | "홀딩중" | "만료임박" 
   return "pill muted";
 }
 
+const statusMap: Record<string, string> = {
+  "정상": "NORMAL",
+  "홀딩중": "HOLDING",
+  "만료임박": "EXPIRING",
+  "만료": "EXPIRED",
+  "없음": "NONE"
+};
+
 export function MemberListSection() {
   const navigate = useNavigate();
   const { dateFilter, applyPreset, setDateFrom, setDateTo, reset } = useMembershipDateFilter();
@@ -53,12 +61,12 @@ export function MemberListSection() {
   return (
     <section className="members-page-grid">
       <article className="panel-card">
-        <div className="panel-card-header">
+        <header className="panel-card-header mb-md">
           <div>
-            <h1>회원 관리 프로토타입</h1>
-            <p>page-first 구조에서 members 목록, 필터, selectedMember ownership을 먼저 검증합니다.</p>
+            <h1 className="brand-title" style={{ fontSize: '1.5rem' }}>Member Directory</h1>
+            <p className="text-muted text-sm">Manage member records and operational statuses across the facility.</p>
           </div>
-        </div>
+        </header>
 
         <form
           className="members-filter-grid"
@@ -68,22 +76,22 @@ export function MemberListSection() {
           }}
         >
           <label>
-            이름 검색
-            <input value={name} onChange={(event) => setName(event.target.value)} />
+            <span className="text-sm" style={{ fontWeight: 600 }}>Member Name</span>
+            <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Search name..." />
           </label>
           <label>
-            연락처 검색
-            <input value={phone} onChange={(event) => setPhone(event.target.value)} />
+            <span className="text-sm" style={{ fontWeight: 600 }}>Contact Number</span>
+            <input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="010-..." />
           </label>
           <label>
-            회원권 상태
+            <span className="text-sm" style={{ fontWeight: 600 }}>Membership Status</span>
             <select value={membershipOperationalStatus} onChange={(event) => setMembershipOperationalStatus(event.target.value)}>
-              <option value="">전체</option>
-              <option value="정상">정상</option>
-              <option value="홀딩중">홀딩중</option>
-              <option value="만료임박">만료임박</option>
-              <option value="만료">만료</option>
-              <option value="없음">없음</option>
+              <option value="">ALL STATUSES</option>
+              <option value="정상">NORMAL</option>
+              <option value="홀딩중">HOLDING</option>
+              <option value="만료임박">EXPIRING</option>
+              <option value="만료">EXPIRED</option>
+              <option value="없음">NO MEMBERSHIP</option>
             </select>
           </label>
           <MembershipPeriodFilter
@@ -92,9 +100,9 @@ export function MemberListSection() {
             onDateFromChange={setDateFrom}
             onDateToChange={setDateTo}
           />
-          <div className="toolbar-actions">
-            <button type="submit" className="primary-button" disabled={membersLoading}>
-              {membersLoading ? "조회 중..." : "조회"}
+          <div className="toolbar-actions full-span mt-sm">
+            <button type="submit" className="primary-button" disabled={membersLoading} style={{ minWidth: '100px' }}>
+              {membersLoading ? "Loading..." : "Filter Results"}
             </button>
             <button
               type="button"
@@ -113,60 +121,62 @@ export function MemberListSection() {
                 });
               }}
             >
-              초기화
+              Reset Filters
             </button>
           </div>
         </form>
 
-        {membersQueryError ? <p className="error-text">{membersQueryError}</p> : null}
+        {membersQueryError ? <div className="pill danger mt-md">{membersQueryError}</div> : null}
 
-        <div className="table-shell">
+        <div className="table-shell mt-lg">
           <table className="members-table">
             <thead>
               <tr>
                 <th>ID</th>
-                <th>이름</th>
-                <th>연락처</th>
-                <th>회원 상태</th>
-                <th>회원권 상태</th>
-                <th>만료일</th>
-                <th>남은 PT</th>
-                <th>가입일</th>
-                <th>액션</th>
+                <th>Name</th>
+                <th>Contact</th>
+                <th>Status</th>
+                <th>Operation</th>
+                <th>Expiry</th>
+                <th>PT Rem.</th>
+                <th>Joined</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {pagination.pagedItems.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="empty-cell">
-                    조회된 회원이 없습니다.
+                  <td colSpan={9} className="empty-cell" style={{ padding: '40px' }}>
+                    No members found matching the criteria.
                   </td>
                 </tr>
               ) : (
                 pagination.pagedItems.map((member) => (
                   <tr key={member.memberId} className={member.memberId === selectedMemberId ? "is-selected-row" : undefined}>
-                    <td>{member.memberId}</td>
+                    <td style={{ fontWeight: 600 }}>{member.memberId}</td>
                     <td>{member.memberName}</td>
-                    <td>{member.phone}</td>
+                    <td className="text-muted">{member.phone}</td>
                     <td>
                       <span className={member.memberStatus === "ACTIVE" ? "pill ok" : "pill muted"}>{member.memberStatus}</span>
                     </td>
                     <td>
-                      <span className={operationalStatusClass(member.membershipOperationalStatus)}>{member.membershipOperationalStatus}</span>
+                      <span className={operationalStatusClass(member.membershipOperationalStatus)}>
+                        {statusMap[member.membershipOperationalStatus] || member.membershipOperationalStatus}
+                      </span>
                     </td>
                     <td>{formatDate(member.membershipExpiryDate)}</td>
-                    <td>{member.remainingPtCount != null && member.remainingPtCount > 0 ? member.remainingPtCount : "-"}</td>
-                    <td>{formatDate(member.joinDate)}</td>
+                    <td style={{ fontWeight: 600 }}>{member.remainingPtCount != null && member.remainingPtCount > 0 ? member.remainingPtCount : "-"}</td>
+                    <td className="text-muted">{formatDate(member.joinDate)}</td>
                     <td>
-                      <div className="row-actions">
-                        <button type="button" className="secondary-button" onClick={() => void selectMember(member.memberId)}>
-                          선택
+                      <div className="row-actions" style={{ justifyContent: 'flex-end' }}>
+                        <button type="button" className="secondary-button" style={{ padding: '6px 10px', fontSize: '13px' }} onClick={() => void selectMember(member.memberId)}>
+                          Select
                         </button>
-                        <button type="button" className="secondary-button" onClick={() => void goToMemberContext("/memberships", member.memberId)}>
-                          회원권 업무
+                        <button type="button" className="secondary-button" style={{ padding: '6px 10px', fontSize: '13px' }} onClick={() => void goToMemberContext("/memberships", member.memberId)}>
+                          Memberships
                         </button>
-                        <button type="button" className="secondary-button" onClick={() => void goToMemberContext("/reservations", member.memberId)}>
-                          예약 관리
+                        <button type="button" className="secondary-button" style={{ padding: '6px 10px', fontSize: '13px' }} onClick={() => void goToMemberContext("/reservations", member.memberId)}>
+                          Reservations
                         </button>
                       </div>
                     </td>
@@ -177,17 +187,19 @@ export function MemberListSection() {
           </table>
         </div>
 
-        <PaginationControls
-          page={pagination.page}
-          totalPages={pagination.totalPages}
-          pageSize={pagination.pageSize}
-          pageSizeOptions={[20, 50, 100]}
-          totalItems={pagination.totalItems}
-          startItemIndex={pagination.startItemIndex}
-          endItemIndex={pagination.endItemIndex}
-          onPageChange={pagination.setPage}
-          onPageSizeChange={pagination.setPageSize}
-        />
+        <div className="mt-lg">
+          <PaginationControls
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            pageSize={pagination.pageSize}
+            pageSizeOptions={[20, 50, 100]}
+            totalItems={pagination.totalItems}
+            startItemIndex={pagination.startItemIndex}
+            endItemIndex={pagination.endItemIndex}
+            onPageChange={pagination.setPage}
+            onPageSizeChange={pagination.setPageSize}
+          />
+        </div>
       </article>
     </section>
   );

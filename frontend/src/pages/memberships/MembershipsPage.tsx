@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { MemberContextFallback } from "../member-context/MemberContextFallback";
 import { useSelectedMemberMembershipsQuery } from "../member-context/modules/useSelectedMemberMembershipsQuery";
@@ -8,6 +8,7 @@ import type { MembershipPaymentRecord, PurchasedMembership } from "../members/mo
 import { createDefaultProductFilters } from "../products/modules/types";
 import { useProductsQuery } from "../products/modules/useProductsQuery";
 import { useMembershipPrototypeState } from "./modules/useMembershipPrototypeState";
+import { Modal } from "../../shared/ui/Modal";
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("ko-KR", {
@@ -19,7 +20,7 @@ function formatCurrency(amount: number) {
 
 function buildStatusText(membership: PurchasedMembership) {
   if (membership.membershipStatus === "HOLDING") {
-    return membership.activeHoldStatus === "ACTIVE" ? "HOLDING · ACTIVE_HOLD" : "HOLDING";
+    return membership.activeHoldStatus === "ACTIVE" ? "HOLDING (ON)" : "HOLDING";
   }
   return membership.membershipStatus;
 }
@@ -42,12 +43,14 @@ export default function MembershipsPage() {
     previewMembershipRefund,
     refundMembership
   } = useSelectedMemberMembershipsQuery();
+  
   const { products, productsLoading, productsQueryError, loadProducts, resetProductsQuery } = useProductsQuery({
     getDefaultFilters: () => ({
       ...createDefaultProductFilters(),
       status: "ACTIVE"
     })
   });
+
   const {
     purchaseForm,
     setPurchaseForm,
@@ -76,6 +79,9 @@ export default function MembershipsPage() {
     refundMembership
   });
 
+  const [activeModal, setActiveModal] = useState<'purchase' | 'hold' | 'resume' | 'refund' | null>(null);
+  const [targetMembership, setTargetMembership] = useState<PurchasedMembership | null>(null);
+
   useEffect(() => {
     if (selectedMemberId == null) {
       resetSelectedMemberMembershipsQuery();
@@ -97,352 +103,518 @@ export default function MembershipsPage() {
   if (!selectedMember) {
     return (
       <MemberContextFallback
-        title="회원권 업무 프로토타입"
-        description="회원권 업무는 선택된 회원 기준으로 동작합니다. 이 화면에서 바로 회원을 선택해 다음 prototype slice를 이어갈 수 있습니다."
-        submitLabel="이 회원으로 시작"
+        title="Membership Operations"
+        description="Membership management is performed on a per-member basis. Please select a member to proceed with purchase, hold, or refund actions."
+        submitLabel="Select Member to Start"
       />
     );
   }
 
+  const handleCloseModal = () => {
+    setActiveModal(null);
+    setTargetMembership(null);
+    clearPanelFeedback();
+  };
+
+  const currentDraft = targetMembership ? getMembershipActionDraft(targetMembership.membershipId) : null;
+
   return (
-    <section className="members-prototype-layout">
+    <section className="members-page-grid">
       <article className="panel-card">
-        <div className="panel-card-header">
+        <header className="panel-card-header mb-md">
           <div>
-            <h1>회원권 업무 프로토타입</h1>
-            <p>선택 회원 회원권 query 위에 purchase / hold / resume / refund action surface를 얹어서 새 구조에서 업무 흐름을 설명합니다.</p>
+            <h1 className="brand-title" style={{ fontSize: '1.5rem' }}>Membership Operations</h1>
+            <p className="text-muted text-sm">Review and manage membership subscriptions and payment histories.</p>
           </div>
-        </div>
+          <button 
+            type="button" 
+            className="primary-button"
+            onClick={() => setActiveModal('purchase')}
+          >
+            New Registration
+          </button>
+        </header>
 
         <SelectedMemberContextBadge />
 
-        <div className="placeholder-card">
-          <h2>회원권 구매</h2>
-          <form
-            className="members-filter-grid"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void handlePurchaseSubmit();
-            }}
-          >
-            <label>
-              상품 선택
-              <select
-                value={purchaseForm.productId}
-                onChange={(event) => {
-                  clearPanelFeedback();
-                  setPurchaseForm((prev) => ({ ...prev, productId: event.target.value }));
-                }}
-              >
-                <option value="">선택하세요</option>
-                {products.map((product) => (
-                  <option key={product.productId} value={product.productId}>
-                    {product.productName} · {product.productType} · {formatCurrency(product.priceAmount)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              시작일
-              <input
-                type="date"
-                value={purchaseForm.startDate}
-                onChange={(event) => {
-                  clearPanelFeedback();
-                  setPurchaseForm((prev) => ({ ...prev, startDate: event.target.value }));
-                }}
-              />
-            </label>
-            <label>
-              결제수단
-              <select
-                value={purchaseForm.paymentMethod}
-                onChange={(event) =>
-                  setPurchaseForm((prev) => ({
-                    ...prev,
-                    paymentMethod: event.target.value as typeof prev.paymentMethod
-                  }))
-                }
-              >
-                <option value="CASH">현금</option>
-                <option value="CARD">카드</option>
-                <option value="TRANSFER">이체</option>
-                <option value="ETC">기타</option>
-              </select>
-            </label>
-            <label>
-              결제금액
-              <input
-                value={purchaseForm.paidAmount}
-                onChange={(event) => setPurchaseForm((prev) => ({ ...prev, paidAmount: event.target.value }))}
-                placeholder="비우면 상품가"
-              />
-            </label>
-            <label>
-              회원권 메모
-              <input
-                value={purchaseForm.membershipMemo}
-                onChange={(event) => setPurchaseForm((prev) => ({ ...prev, membershipMemo: event.target.value }))}
-              />
-            </label>
-            <label>
-              결제 메모
-              <input
-                value={purchaseForm.paymentMemo}
-                onChange={(event) => setPurchaseForm((prev) => ({ ...prev, paymentMemo: event.target.value }))}
-              />
-            </label>
-            <div className="placeholder-card">
-              <strong>구매 미리보기</strong>
-              {!purchasePreview ? (
-                <p>상품을 선택하면 미리보기를 표시합니다.</p>
-              ) : (
-                <ul>
-                  <li>유형: {purchasePreview.product.productType}</li>
-                  <li>시작일: {purchasePreview.startDate}</li>
-                  <li>만료일: {purchasePreview.endDate ?? "-"}</li>
-                  <li>잔여횟수: {purchasePreview.remainingCount ?? "-"}</li>
-                  <li>청구금액: {formatCurrency(purchasePreview.chargeAmount)}</li>
-                </ul>
-              )}
-            </div>
-            <div className="toolbar-actions">
-              <button type="submit" className="primary-button" disabled={!purchaseForm.productId}>
-                회원권 구매
-              </button>
-            </div>
-          </form>
-        </div>
+        <div className="mt-lg">
+          <section className="placeholder-stack">
+            <header className="mb-md">
+              <h2 className="text-sm" style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Active Subscriptions
+              </h2>
+            </header>
 
-        {membershipPanelMessage ? <p>{membershipPanelMessage}</p> : null}
-        {membershipPanelError ? <p className="error-text">{membershipPanelError}</p> : null}
-        {selectedMemberMembershipsError ? <p className="error-text">{selectedMemberMembershipsError}</p> : null}
-        {productsQueryError ? <p className="error-text">{productsQueryError}</p> : null}
-        {productsLoading ? <p>상품 목록을 동기화하는 중...</p> : null}
-
-        <div className="placeholder-stack">
-          <div className="placeholder-card">
-            <h2>선택 회원 회원권 목록</h2>
             {selectedMemberMembershipsLoading ? (
-              <p>회원권 목록을 불러오는 중...</p>
+              <div className="pill muted">Syncing membership data...</div>
             ) : selectedMemberMemberships.length === 0 ? (
-              <p>선택 회원의 회원권이 없습니다.</p>
+              <div className="panel-card" style={{ textAlign: 'center', padding: '40px', background: 'var(--bg-base)' }}>
+                <p className="text-muted">No active or past memberships found for this member.</p>
+              </div>
             ) : (
               <div className="table-shell">
                 <table className="members-table">
                   <thead>
                     <tr>
                       <th>ID</th>
-                      <th>상품</th>
-                      <th>상태</th>
-                      <th>시작일</th>
-                      <th>만료일</th>
-                      <th>잔여횟수</th>
-                      <th>액션</th>
+                      <th>Product</th>
+                      <th>Status</th>
+                      <th>Validity</th>
+                      <th>Usage</th>
+                      <th style={{ textAlign: 'right' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {selectedMemberMemberships.map((membership) => {
-                      const draft = getMembershipActionDraft(membership.membershipId);
-                      const holdPreview = buildHoldPreview(membership);
-                      const resumePreview = buildResumePreview(membership);
-                      const refundPreview = membershipRefundPreviewById[membership.membershipId];
-                      const holdPreviewText =
-                        "error" in holdPreview
-                          ? holdPreview.error
-                          : `홀딩 ${holdPreview.plannedHoldDays}일 / 예상 만료일 ${holdPreview.recalculatedEndDate ?? "-"}`;
-                      const resumePreviewText =
-                        "error" in resumePreview || !("actualHoldDays" in resumePreview)
-                          ? resumePreview.error
-                          : `예상 홀딩일수 ${resumePreview.actualHoldDays}일 / 해제 후 만료일 ${resumePreview.recalculatedEndDate ?? "-"}`;
-
-                      return (
-                        <tr key={membership.membershipId}>
-                          <td>{membership.membershipId}</td>
-                          <td>{membership.productNameSnapshot}</td>
-                          <td>{buildStatusText(membership)}</td>
-                          <td>{membership.startDate}</td>
-                          <td>{membership.endDate ?? "-"}</td>
-                          <td>{membership.remainingCount ?? "-"}</td>
-                          <td>
-                            <div className="placeholder-stack">
-                              {membership.membershipStatus === "ACTIVE" ? (
-                                <div className="placeholder-card">
-                                  <strong>홀딩</strong>
-                                  <label>
-                                    시작일
-                                    <input
-                                      type="date"
-                                      value={draft.holdStartDate}
-                                      onChange={(event) =>
-                                        updateMembershipActionDraft(membership.membershipId, (prev) => ({
-                                          ...prev,
-                                          holdStartDate: event.target.value
-                                        }))
-                                      }
-                                    />
-                                  </label>
-                                  <label>
-                                    종료일
-                                    <input
-                                      type="date"
-                                      value={draft.holdEndDate}
-                                      onChange={(event) =>
-                                        updateMembershipActionDraft(membership.membershipId, (prev) => ({
-                                          ...prev,
-                                          holdEndDate: event.target.value,
-                                          resumeDate: event.target.value || prev.resumeDate
-                                        }))
-                                      }
-                                    />
-                                  </label>
-                                  <label>
-                                    사유
-                                    <input
-                                      value={draft.holdReason}
-                                      onChange={(event) =>
-                                        updateMembershipActionDraft(membership.membershipId, (prev) => ({
-                                          ...prev,
-                                          holdReason: event.target.value
-                                        }))
-                                      }
-                                    />
-                                  </label>
-                                  <p>{holdPreviewText}</p>
-                                  <button
-                                    type="button"
-                                    className="secondary-button"
-                                    onClick={() => void handleHoldSubmit(membership)}
-                                  >
-                                    홀딩
-                                  </button>
-                                </div>
-                              ) : null}
-
-                              {membership.membershipStatus === "HOLDING" && membership.activeHoldStatus === "ACTIVE" ? (
-                                <div className="placeholder-card">
-                                  <strong>홀딩 해제</strong>
-                                  <label>
-                                    해제일
-                                    <input
-                                      type="date"
-                                      value={draft.resumeDate}
-                                      onChange={(event) =>
-                                        updateMembershipActionDraft(membership.membershipId, (prev) => ({
-                                          ...prev,
-                                          resumeDate: event.target.value
-                                        }))
-                                      }
-                                    />
-                                  </label>
-                                  <p>{resumePreviewText}</p>
-                                  <button
-                                    type="button"
-                                    className="secondary-button"
-                                    onClick={() => void handleResumeSubmit(membership)}
-                                  >
-                                    홀딩 해제
-                                  </button>
-                                </div>
-                              ) : null}
-
-                              {membership.membershipStatus === "ACTIVE" ? (
-                                <div className="placeholder-card">
-                                  <strong>환불</strong>
-                                  <label>
-                                    환불 기준일
-                                    <input
-                                      type="date"
-                                      value={draft.refundDate}
-                                      onChange={(event) =>
-                                        updateMembershipActionDraft(membership.membershipId, (prev) => ({
-                                          ...prev,
-                                          refundDate: event.target.value
-                                        }))
-                                      }
-                                    />
-                                  </label>
-                                  <label>
-                                    환불 수단
-                                    <select
-                                      value={draft.refundPaymentMethod}
-                                      onChange={(event) =>
-                                        updateMembershipActionDraft(membership.membershipId, (prev) => ({
-                                          ...prev,
-                                          refundPaymentMethod: event.target.value as typeof prev.refundPaymentMethod
-                                        }))
-                                      }
-                                    >
-                                      <option value="CASH">현금</option>
-                                      <option value="CARD">카드</option>
-                                      <option value="TRANSFER">이체</option>
-                                      <option value="ETC">기타</option>
-                                    </select>
-                                  </label>
-                                  <label>
-                                    환불 메모
-                                    <input
-                                      value={draft.refundMemo}
-                                      onChange={(event) =>
-                                        updateMembershipActionDraft(membership.membershipId, (prev) => ({
-                                          ...prev,
-                                          refundMemo: event.target.value
-                                        }))
-                                      }
-                                    />
-                                  </label>
-                                  <div className="row-actions">
-                                    <button
-                                      type="button"
-                                      className="secondary-button"
-                                      onClick={() => void handleRefundPreview(membership)}
-                                    >
-                                      환불 미리보기
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="secondary-button"
-                                      onClick={() => void handleRefundSubmit(membership)}
-                                    >
-                                      환불 확정
-                                    </button>
-                                  </div>
-                                  {refundPreview ? (
-                                    <p>
-                                      원금 {formatCurrency(refundPreview.originalAmount)} / 사용분{" "}
-                                      {formatCurrency(refundPreview.usedAmount)} / 환불액{" "}
-                                      {formatCurrency(refundPreview.refundAmount)}
-                                    </p>
-                                  ) : null}
-                                </div>
-                              ) : null}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {selectedMemberMemberships.map((membership) => (
+                      <tr key={membership.membershipId}>
+                        <td style={{ fontWeight: 600 }}>{membership.membershipId}</td>
+                        <td>
+                          <div className="stack-sm">
+                            <span>{membership.productNameSnapshot}</span>
+                            <span className="text-xs text-muted">{membership.productTypeSnapshot}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <span className={
+                            membership.membershipStatus === 'ACTIVE' ? 'pill ok' : 
+                            membership.membershipStatus === 'HOLDING' ? 'pill hold' : 'pill muted'
+                          }>
+                            {buildStatusText(membership)}
+                          </span>
+                        </td>
+                        <td className="text-sm">
+                          {membership.startDate} ~ <br/>
+                          <span className="text-muted">{membership.endDate ?? "PERPETUAL"}</span>
+                        </td>
+                        <td>
+                          {membership.remainingCount != null ? (
+                            <strong className="text-sm">{membership.remainingCount} Left</strong>
+                          ) : (
+                            <span className="text-muted">-</span>
+                          )}
+                        </td>
+                        <td>
+                          <div className="row-actions" style={{ justifyContent: 'flex-end' }}>
+                            {membership.membershipStatus === 'ACTIVE' && (
+                              <>
+                                <button 
+                                  type="button" 
+                                  className="secondary-button" 
+                                  style={{ padding: '6px 10px', fontSize: '12px' }}
+                                  onClick={() => {
+                                    setTargetMembership(membership);
+                                    setActiveModal('hold');
+                                  }}
+                                >
+                                  Hold
+                                </button>
+                                <button 
+                                  type="button" 
+                                  className="secondary-button" 
+                                  style={{ padding: '6px 10px', fontSize: '12px', color: 'var(--status-danger)' }}
+                                  onClick={() => {
+                                    setTargetMembership(membership);
+                                    setActiveModal('refund');
+                                  }}
+                                >
+                                  Refund
+                                </button>
+                              </>
+                            )}
+                            {membership.membershipStatus === 'HOLDING' && membership.activeHoldStatus === 'ACTIVE' && (
+                              <button 
+                                type="button" 
+                                className="primary-button" 
+                                style={{ padding: '6px 10px', fontSize: '12px' }}
+                                onClick={() => {
+                                  setTargetMembership(membership);
+                                  setActiveModal('resume');
+                                }}
+                              >
+                                Resume
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
             )}
-          </div>
+          </section>
 
-          <div className="placeholder-card">
-            <h2>이번 세션 결제 이력</h2>
-            {payments.length === 0 ? (
-              <p>아직 prototype session에서 생성된 결제 이력이 없습니다.</p>
-            ) : (
-              <ul>
-                {payments.map((payment) => (
-                  <li key={payment.paymentId}>
-                    #{payment.paymentId} · 회원권 {payment.membershipId} · {paymentLabel(payment)} ·{" "}
-                    {formatCurrency(payment.amount)}
-                  </li>
+          <section className="mt-lg">
+            <header className="mb-md">
+              <h2 className="text-sm" style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Payment History (Session Only)
+              </h2>
+            </header>
+            <div className="panel-card" style={{ background: 'var(--bg-base)', borderStyle: 'dashed' }}>
+              {payments.length === 0 ? (
+                <p className="text-muted text-sm">No payment records generated in this session.</p>
+              ) : (
+                <div className="stack-sm">
+                  {payments.map((payment) => (
+                    <div key={payment.paymentId} className="nav-item" style={{ background: 'var(--bg-surface)', borderRadius: '12px', padding: '12px' }}>
+                      <div style={{ flex: 1 }}>
+                        <div className="row-actions" style={{ justifyContent: 'space-between', marginBottom: '4px' }}>
+                          <span className="text-xs text-muted">ID: #{payment.paymentId}</span>
+                          <span className="pill ok" style={{ fontSize: '10px' }}>{payment.paymentStatus}</span>
+                        </div>
+                        <div className="text-sm" style={{ fontWeight: 600 }}>{paymentLabel(payment)}</div>
+                        <div className="text-xs text-muted mt-xs">Rel. Membership: #{payment.membershipId}</div>
+                      </div>
+                      <div style={{ textAlign: 'right', fontWeight: 700 }}>
+                        {formatCurrency(payment.amount)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+
+        {membershipPanelMessage && <div className="pill ok full-span mt-md">{membershipPanelMessage}</div>}
+        {membershipPanelError && <div className="pill danger full-span mt-md">{membershipPanelError}</div>}
+        {selectedMemberMembershipsError && <div className="pill danger full-span mt-md">{selectedMemberMembershipsError}</div>}
+
+        {/* MODALS */}
+        
+        <Modal 
+          isOpen={activeModal === 'purchase'} 
+          onClose={handleCloseModal} 
+          title="New Membership Registration"
+          size="md"
+          footer={
+            <>
+              <button type="button" className="secondary-button" onClick={handleCloseModal}>Cancel</button>
+              <button 
+                type="button" 
+                className="primary-button" 
+                disabled={!purchaseForm.productId}
+                onClick={async () => {
+                  const res = await handlePurchaseSubmit();
+                  if (res) handleCloseModal();
+                }}
+              >
+                Confirm Purchase
+              </button>
+            </>
+          }
+        >
+          <div className="stack-md">
+            <label className="stack-sm">
+              <span className="text-sm">Select Product</span>
+              <select
+                className="input"
+                value={purchaseForm.productId}
+                onChange={(event) => {
+                  clearPanelFeedback();
+                  setPurchaseForm((prev) => ({ ...prev, productId: event.target.value }));
+                }}
+              >
+                <option value="">-- Choose a product --</option>
+                {products.map((product) => (
+                  <option key={product.productId} value={product.productId}>
+                    {product.productName} ({product.productType}) · {formatCurrency(product.priceAmount)}
+                  </option>
                 ))}
-              </ul>
+              </select>
+            </label>
+            <div className="row-actions" style={{ gap: '16px' }}>
+              <label className="stack-sm" style={{ flex: 1 }}>
+                <span className="text-sm">Effective Date</span>
+                <input
+                  type="date"
+                  className="input"
+                  value={purchaseForm.startDate}
+                  onChange={(event) => {
+                    clearPanelFeedback();
+                    setPurchaseForm((prev) => ({ ...prev, startDate: event.target.value }));
+                  }}
+                />
+              </label>
+              <label className="stack-sm" style={{ flex: 1 }}>
+                <span className="text-sm">Payment Method</span>
+                <select
+                  className="input"
+                  value={purchaseForm.paymentMethod}
+                  onChange={(event) =>
+                    setPurchaseForm((prev) => ({
+                      ...prev,
+                      paymentMethod: event.target.value as typeof prev.paymentMethod
+                    }))
+                  }
+                >
+                  <option value="CASH">Cash</option>
+                  <option value="CARD">Card</option>
+                  <option value="TRANSFER">Bank Transfer</option>
+                  <option value="ETC">Other</option>
+                </select>
+              </label>
+            </div>
+            
+            <label className="stack-sm">
+              <span className="text-sm">Settlement Amount</span>
+              <input
+                className="input"
+                value={purchaseForm.paidAmount}
+                onChange={(event) => setPurchaseForm((prev) => ({ ...prev, paidAmount: event.target.value }))}
+                placeholder="Leave blank for original price"
+              />
+            </label>
+
+            {purchasePreview && (
+              <div className="panel-card" style={{ background: 'var(--bg-base)', padding: '16px' }}>
+                <strong className="text-xs text-muted" style={{ textTransform: 'uppercase' }}>Purchase Preview</strong>
+                <div className="mt-sm stack-sm">
+                   <div className="row-actions" style={{ justifyContent: 'space-between' }}>
+                     <span className="text-sm">Duration</span>
+                     <span className="text-sm" style={{ fontWeight: 600 }}>{purchasePreview.startDate} ~ {purchasePreview.endDate ?? "-"}</span>
+                   </div>
+                   <div className="row-actions" style={{ justifyContent: 'space-between' }}>
+                     <span className="text-sm">Charge Amount</span>
+                     <span className="text-sm" style={{ fontWeight: 700 }}>{formatCurrency(purchasePreview.chargeAmount)}</span>
+                   </div>
+                </div>
+              </div>
             )}
           </div>
-        </div>
+        </Modal>
+
+        <Modal
+          isOpen={activeModal === 'hold' && targetMembership != null}
+          onClose={handleCloseModal}
+          title={`Hold Membership #${targetMembership?.membershipId}`}
+          footer={
+            <>
+              <button type="button" className="secondary-button" onClick={handleCloseModal}>Cancel</button>
+              <button 
+                type="button" 
+                className="primary-button"
+                onClick={async () => {
+                  if (targetMembership) {
+                    await handleHoldSubmit(targetMembership);
+                    handleCloseModal();
+                  }
+                }}
+              >
+                Process Hold
+              </button>
+            </>
+          }
+        >
+          {targetMembership && currentDraft && (
+            <div className="stack-md">
+              <div className="row-actions" style={{ gap: '16px' }}>
+                <label className="stack-sm" style={{ flex: 1 }}>
+                  <span className="text-sm">Start Date</span>
+                  <input
+                    type="date"
+                    className="input"
+                    value={currentDraft.holdStartDate}
+                    onChange={(event) =>
+                      updateMembershipActionDraft(targetMembership.membershipId, (prev) => ({
+                        ...prev,
+                        holdStartDate: event.target.value
+                      }))
+                    }
+                  />
+                </label>
+                <label className="stack-sm" style={{ flex: 1 }}>
+                  <span className="text-sm">End Date</span>
+                  <input
+                    type="date"
+                    className="input"
+                    value={currentDraft.holdEndDate}
+                    onChange={(event) =>
+                      updateMembershipActionDraft(targetMembership.membershipId, (prev) => ({
+                        ...prev,
+                        holdEndDate: event.target.value
+                      }))
+                    }
+                  />
+                </label>
+              </div>
+              <label className="stack-sm">
+                <span className="text-sm">Reason</span>
+                <input
+                  className="input"
+                  placeholder="e.g. Vacation, Injury"
+                  value={currentDraft.holdReason}
+                  onChange={(event) =>
+                    updateMembershipActionDraft(targetMembership.membershipId, (prev) => ({
+                      ...prev,
+                      holdReason: event.target.value
+                    }))
+                  }
+                />
+              </label>
+              <div className="pill info mt-sm" style={{ display: 'block' }}>
+                {(() => {
+                  const preview = buildHoldPreview(targetMembership);
+                  return 'error' in preview ? preview.error : `Impact: ${preview.plannedHoldDays} days added. Recalculated expiry: ${preview.recalculatedEndDate ?? "-"}`;
+                })()}
+              </div>
+            </div>
+          )}
+        </Modal>
+
+        <Modal
+           isOpen={activeModal === 'resume' && targetMembership != null}
+           onClose={handleCloseModal}
+           title="Release Membership Hold"
+           footer={
+             <>
+               <button type="button" className="secondary-button" onClick={handleCloseModal}>Cancel</button>
+               <button 
+                type="button" 
+                className="primary-button"
+                onClick={async () => {
+                  if (targetMembership) {
+                    await handleResumeSubmit(targetMembership);
+                    handleCloseModal();
+                  }
+                }}
+               >
+                 Resume Now
+               </button>
+             </>
+           }
+        >
+          {targetMembership && currentDraft && (
+             <div className="stack-md">
+                <label className="stack-sm">
+                  <span className="text-sm">Resume Date</span>
+                  <input
+                    type="date"
+                    className="input"
+                    value={currentDraft.resumeDate}
+                    onChange={(event) =>
+                      updateMembershipActionDraft(targetMembership.membershipId, (prev) => ({
+                        ...prev,
+                        resumeDate: event.target.value
+                      }))
+                    }
+                  />
+                </label>
+                <div className="pill info mt-sm" style={{ display: 'block' }}>
+                  {(() => {
+                    const preview = buildResumePreview(targetMembership);
+                    return 'error' in preview ? preview.error : `Resume calculated. New expiry: ${preview.recalculatedEndDate ?? "-"}`;
+                  })()}
+                </div>
+             </div>
+          )}
+        </Modal>
+
+        <Modal
+          isOpen={activeModal === 'refund' && targetMembership != null}
+          onClose={handleCloseModal}
+          title="Process Membership Refund"
+          size="md"
+          footer={
+            <>
+              <button type="button" className="secondary-button" onClick={handleCloseModal}>Cancel</button>
+              <button 
+                type="button" 
+                className="primary-button"
+                style={{ background: 'var(--status-danger)', borderColor: 'var(--status-danger)' }}
+                onClick={async () => {
+                  if (targetMembership) {
+                    await handleRefundSubmit(targetMembership);
+                    handleCloseModal();
+                  }
+                }}
+              >
+                Confirm Refund
+              </button>
+            </>
+          }
+        >
+          {targetMembership && currentDraft && (
+            <div className="stack-md">
+               <div className="row-actions" style={{ gap: '16px' }}>
+                <label className="stack-sm" style={{ flex: 1 }}>
+                  <span className="text-sm">Base Refund Date</span>
+                  <input
+                    type="date"
+                    className="input"
+                    value={currentDraft.refundDate}
+                    onChange={(event) =>
+                      updateMembershipActionDraft(targetMembership.membershipId, (prev) => ({
+                        ...prev,
+                        refundDate: event.target.value
+                      }))
+                    }
+                  />
+                </label>
+                <label className="stack-sm" style={{ flex: 1 }}>
+                  <span className="text-sm">Refund Method</span>
+                  <select
+                    className="input"
+                    value={currentDraft.refundPaymentMethod}
+                    onChange={(event) =>
+                      updateMembershipActionDraft(targetMembership.membershipId, (prev) => ({
+                        ...prev,
+                        refundPaymentMethod: event.target.value as any
+                      }))
+                    }
+                  >
+                    <option value="CASH">Cash</option>
+                    <option value="CARD">Card</option>
+                    <option value="TRANSFER">Transfer</option>
+                  </select>
+                </label>
+              </div>
+              <label className="stack-sm">
+                <span className="text-sm">Notes</span>
+                <input
+                  className="input"
+                  value={currentDraft.refundMemo}
+                  onChange={(event) =>
+                    updateMembershipActionDraft(targetMembership.membershipId, (prev) => ({
+                      ...prev,
+                      refundMemo: event.target.value
+                    }))
+                  }
+                />
+              </label>
+
+              <button 
+                type="button" 
+                className="secondary-button"
+                style={{ alignSelf: 'flex-start' }}
+                onClick={() => void handleRefundPreview(targetMembership)}
+              >
+                Calculate Refund Amount
+              </button>
+
+              {membershipRefundPreviewById[targetMembership.membershipId] && (
+                <div className="panel-card" style={{ background: 'var(--bg-base)', padding: '16px' }}>
+                  <div className="stack-sm">
+                    <div className="row-actions" style={{ justifyContent: 'space-between' }}>
+                      <span className="text-sm">Original Amount</span>
+                      <span>{formatCurrency(membershipRefundPreviewById[targetMembership.membershipId].originalAmount)}</span>
+                    </div>
+                    <div className="row-actions" style={{ justifyContent: 'space-between' }}>
+                      <span className="text-sm">Used Amount</span>
+                      <span>- {formatCurrency(membershipRefundPreviewById[targetMembership.membershipId].usedAmount)}</span>
+                    </div>
+                    <div className="row-actions" style={{ justifyContent: 'space-between', borderTop: '1px solid var(--border-minimal)', paddingTop: '8px', marginTop: '4px' }}>
+                      <span className="text-sm" style={{ fontWeight: 600 }}>Refund Total</span>
+                      <span className="text-sm" style={{ fontWeight: 700, color: 'var(--status-danger)' }}>
+                        {formatCurrency(membershipRefundPreviewById[targetMembership.membershipId].refundAmount)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </Modal>
       </article>
     </section>
   );

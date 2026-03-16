@@ -42,9 +42,8 @@ describe("ProductsPage", () => {
       </AuthStateProvider>
     );
 
-    expect(await screen.findByRole("heading", { name: "상품 관리 프로토타입" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "데스크 계정은 읽기 전용" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "신규 등록" })).toBeNull();
+    expect(await screen.findByRole("heading", { name: "Product & Service Inventory" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Create New Item" })).toBeNull();
   });
 
   it("shows trainer unsupported note in live mode", async () => {
@@ -65,9 +64,9 @@ describe("ProductsPage", () => {
       </AuthStateProvider>
     );
 
-    expect(await screen.findByRole("heading", { name: "상품 관리 프로토타입" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "이 역할은 live 상품 관리 미지원" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "신규 등록" })).toBeNull();
+    expect(await screen.findByRole("heading", { name: "Product & Service Inventory" })).toBeTruthy();
+    expect(screen.getByText("Access Restricted.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Create New Item" })).toBeNull();
   });
 
   it("does not trigger live product requests from unsupported-role controls", async () => {
@@ -99,10 +98,10 @@ describe("ProductsPage", () => {
       </AuthStateProvider>
     );
 
-    expect(await screen.findByRole("heading", { name: "이 역할은 live 상품 관리 미지원" })).toBeTruthy();
+    expect(await screen.findByText("Access Restricted.")).toBeTruthy();
 
-    const submitButton = screen.getByRole("button", { name: "조회" });
-    const resetButton = screen.getByRole("button", { name: "초기화" });
+    const submitButton = screen.getByRole("button", { name: "Apply" });
+    const resetButton = screen.getByRole("button", { name: "Clear Filters" });
 
     expect(submitButton).toHaveProperty("disabled", true);
     expect(resetButton).toHaveProperty("disabled", true);

@@ -45,8 +45,8 @@ describe("LockersPage", () => {
       </AuthStateProvider>
     );
 
-    expect(await screen.findByRole("heading", { name: "라커 관리 프로토타입" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "이 역할은 live 라커 관리 미지원" })).toBeTruthy();
-    expect(screen.getByText("현재 역할에서는 live 라커 슬롯을 조회할 수 없습니다.")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Locker Inventory" })).toBeTruthy();
+    expect(screen.getByText("RESTRICTED ACCESS")).toBeTruthy();
+    expect(screen.getByText(/Inventory loading...|No units found matching criteria./)).toBeTruthy();
   });
 });

@@ -12,7 +12,6 @@ import MembershipsPage from "./pages/memberships/MembershipsPage";
 import ProductsPage from "./pages/products/ProductsPage";
 import ReservationsPage from "./pages/reservations/ReservationsPage";
 import SettlementsPage from "./pages/settlements/SettlementsPage";
-import ShellPlaceholderPage from "./pages/ShellPlaceholderPage";
 import MemberList from "./pages/members/MemberList";
 import { SelectedMemberProvider } from "./pages/members/modules/SelectedMemberContext";
 
@@ -72,11 +71,11 @@ export default function App() {
 
 function BootstrappingScreen() {
   return (
-    <section className="centered-screen">
-      <div>
-        <h1>부트스트래핑 중</h1>
-        <p>재구축 프로토타입이 인증 상태를 확인하는 동안 잠시 대기합니다.</p>
+    <main className="centered-screen" style={{ background: 'var(--bg-base)' }}>
+      <div className="panel-card" style={{ padding: '48px', textAlign: 'center' }}>
+        <h1 className="brand-title" style={{ fontSize: '1.25rem', marginBottom: '8px' }}>System Initializing</h1>
+        <p className="text-muted text-sm" style={{ margin: 0 }}>Establishing secure session and operation parameters...</p>
       </div>
-    </section>
+    </main>
   );
 }

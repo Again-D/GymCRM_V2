@@ -8,18 +8,23 @@ import { createDefaultCrmFilters } from "./modules/types";
 import { useCrmHistoryQuery } from "./modules/useCrmHistoryQuery";
 import { useCrmPrototypeState } from "./modules/useCrmPrototypeState";
 
-import styles from "./CrmPage.module.css";
-
 function formatDateTime(value: string | null) {
   if (!value) {
     return "-";
   }
 
-  return new Date(value).toLocaleString("ko-KR", {
+  return new Date(value).toLocaleString("en-US", {
     dateStyle: "short",
     timeStyle: "short"
   });
 }
+
+const statusMap: Record<string, { label: string; class: string }> = {
+  "SENT": { label: "SENT", class: "pill ok" },
+  "PENDING": { label: "PENDING", class: "pill info" },
+  "RETRY_WAIT": { label: "RETRYING", class: "pill warn" },
+  "DEAD": { label: "FAILED", class: "pill danger" }
+};
 
 export default function CrmPage() {
   const { authUser, isMockMode } = useAuthState();
@@ -36,7 +41,9 @@ export default function CrmPage() {
     triggerCrmExpiryReminder,
     processCrmQueue
   } = useCrmPrototypeState();
+  
   const { crmHistoryRows, crmHistoryLoading, crmHistoryError, loadCrmHistory, resetCrmHistoryQuery } = useCrmHistoryQuery();
+  
   const isLiveCrmRoleSupported =
     isMockMode || authUser?.role === "ROLE_CENTER_ADMIN" || authUser?.role === "ROLE_DESK";
 
@@ -52,102 +59,116 @@ export default function CrmPage() {
       return;
     }
     void loadCrmHistory(crmFilters);
-    return () => {
-      resetCrmHistoryQuery();
-    };
   }, [clearCrmFeedback, crmFilters, isLiveCrmRoleSupported, loadCrmHistory, resetCrmHistoryQuery]);
 
   async function reloadHistory(filters = crmFilters) {
-    if (!isLiveCrmRoleSupported) {
-      return;
-    }
+    if (!isLiveCrmRoleSupported) return;
     await loadCrmHistory(filters);
   }
 
   async function runTrigger() {
     const ok = await triggerCrmExpiryReminder();
-    if (ok) {
-      await reloadHistory();
-    }
+    if (ok) await reloadHistory();
   }
 
   async function runProcess() {
     const ok = await processCrmQueue();
-    if (ok) {
-      await reloadHistory();
-    }
+    if (ok) await reloadHistory();
   }
 
   return (
-    <section className={styles["members-prototype-layout"]}>
+    <div className="stack-lg">
+      
+      {/* OPERATIONS CONSOLE */}
       <article className="panel-card">
-        <div className="panel-card-header">
+        <header className="panel-card-header mb-md">
           <div>
-            <h1>CRM 메시지 프로토타입</h1>
-            <p>queue/history query ownership과 trigger/process invalidation을 새 구조에서 검증합니다.</p>
+            <h1 className="brand-title" style={{ fontSize: '1.25rem' }}>Communication Ops</h1>
+            <p className="text-muted text-xs">Automated messaging queues and transmission logs.</p>
           </div>
-        </div>
+          <div className="row-actions">
+            <button
+               type="button"
+               className="secondary-button"
+               disabled={!isLiveCrmRoleSupported}
+               onClick={() => {
+                 clearCrmFeedback();
+                 const nextFilters = createDefaultCrmFilters();
+                 setCrmFilters(nextFilters);
+                 void reloadHistory(nextFilters);
+               }}
+             >
+               Sync Logs
+             </button>
+          </div>
+        </header>
 
-        {!isLiveCrmRoleSupported ? (
-          <div className="selected-member-card mb-md">
-            <div className="selected-member-card-header">
-              <div>
-                <h2>이 역할은 live CRM 미지원</h2>
-                <p>현재 live backend는 CRM trigger/process/history API를 관리자 또는 데스크 계정에만 열어두고 있습니다.</p>
-              </div>
+        <div className="members-page-grid" style={{ gridTemplateColumns: 'minmax(0, 1fr) 1.5fr', gap: '24px' }}>
+          
+          {/* TRIGGER CONTROL */}
+          <div className="panel-card" style={{ background: 'var(--bg-base)', border: '0' }}>
+            <span className="text-xs" style={{ fontWeight: 700, color: 'var(--text-muted)' }}>QUEUE AUTOMATION</span>
+            <div className="stack-md mt-sm">
+               <label className="stack-sm">
+                 <span className="text-sm">Days Ahead (Expiry)</span>
+                 <input
+                   className="input"
+                   type="number"
+                   min={0}
+                   max={30}
+                   value={crmTriggerDaysAhead}
+                   disabled={!isLiveCrmRoleSupported}
+                   onChange={(event) => setCrmTriggerDaysAhead(event.target.value)}
+                 />
+               </label>
+               <div className="row-actions">
+                  <button
+                    type="button"
+                    className="primary-button"
+                    style={{ flex: 1 }}
+                    onClick={() => void runTrigger()}
+                    disabled={crmTriggerSubmitting || !isLiveCrmRoleSupported}
+                  >
+                    {crmTriggerSubmitting ? "Queueing..." : "Scan & Load Queue"}
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    style={{ flex: 1 }}
+                    onClick={() => void runProcess()}
+                    disabled={crmProcessSubmitting || !isLiveCrmRoleSupported}
+                  >
+                    {crmProcessSubmitting ? "Sending..." : "Process Queue"}
+                  </button>
+               </div>
             </div>
           </div>
-        ) : null}
 
-        <div className={`${styles["placeholder-card"]} mb-md`}>
-          <h2>메시지 트리거 / 큐 처리</h2>
-          <div className={styles["members-filter-grid"]}>
-            <label>
-              만료임박 기준 (daysAhead)
-              <input
-                type="number"
-                min={0}
-                max={30}
-                value={crmTriggerDaysAhead}
-                disabled={!isLiveCrmRoleSupported}
-                onChange={(event) => setCrmTriggerDaysAhead(event.target.value)}
-              />
-            </label>
-            <div className={styles["toolbar-actions"]}>
-              <button
-                type="button"
-                className="primary-button"
-                onClick={() => void runTrigger()}
-                disabled={crmTriggerSubmitting || !isLiveCrmRoleSupported}
-              >
-                {crmTriggerSubmitting ? "적재 중..." : "만료임박 트리거"}
-              </button>
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={() => void runProcess()}
-                disabled={crmProcessSubmitting || !isLiveCrmRoleSupported}
-              >
-                {crmProcessSubmitting ? "처리 중..." : "큐 처리"}
-              </button>
-            </div>
+          {/* STATUS MONITOR */}
+          <div className="panel-card" style={{ background: 'var(--bg-base)', border: '0' }}>
+             <span className="text-xs" style={{ fontWeight: 700, color: 'var(--text-muted)' }}>OPERATIONAL FEEDBACK</span>
+             <div className="stack-sm mt-sm">
+                {!isLiveCrmRoleSupported && (
+                  <div className="pill danger full-span" style={{ background: 'transparent', border: '1px dashed' }}>Role Restricted: Live API Disabled</div>
+                )}
+                {crmPanelMessage && <div className="pill ok full-span" style={{ justifyContent: 'center' }}>{crmPanelMessage}</div>}
+                {crmPanelError && <div className="pill danger full-span" style={{ justifyContent: 'center' }}>{crmPanelError}</div>}
+                {!crmPanelMessage && !crmPanelError && (
+                  <p className="text-muted text-sm" style={{ fontStyle: 'italic' }}>System idle. Awaiting tactical commands.</p>
+                )}
+             </div>
           </div>
-          {crmPanelMessage ? <p>{crmPanelMessage}</p> : null}
-          {crmPanelError ? <p className="error-text">{crmPanelError}</p> : null}
         </div>
+      </article>
 
-        <div className={styles["placeholder-card"]}>
-          <h2>발송 이력 조회</h2>
-          <form
-            className={styles["members-filter-grid"]}
-            onSubmit={(event) => {
-              event.preventDefault();
-              void reloadHistory();
-            }}
-          >
-            <label>
-              상태
+      {/* HISTORY TABLE */}
+      <article className="panel-card">
+        <header className="panel-card-header mb-md">
+          <h2 className="brand-title" style={{ fontSize: '1rem' }}>Audit Logs & Transmission History</h2>
+           <div className="row-actions">
               <select
+                className="input"
+                style={{ padding: '6px 10px', fontSize: '12px', width: 'auto' }}
                 value={crmFilters.sendStatus}
                 disabled={!isLiveCrmRoleSupported}
                 onChange={(event) =>
@@ -157,113 +178,66 @@ export default function CrmPage() {
                   }))
                 }
               >
-                <option value="">전체</option>
-                <option value="PENDING">PENDING</option>
-                <option value="RETRY_WAIT">RETRY_WAIT</option>
-                <option value="SENT">SENT</option>
-                <option value="DEAD">DEAD</option>
+                <option value="">All Statuses</option>
+                <option value="PENDING">Pending</option>
+                <option value="RETRY_WAIT">Retrying</option>
+                <option value="SENT">Sent</option>
+                <option value="DEAD">Failed</option>
               </select>
-            </label>
-            <label>
-              limit
-              <input
-                type="number"
-                min={1}
-                max={500}
-                value={crmFilters.limit}
-                disabled={!isLiveCrmRoleSupported}
-                onChange={(event) =>
-                  setCrmFilters((prev) => ({
-                    ...prev,
-                    limit: event.target.value
-                  }))
-                }
-              />
-            </label>
-            <div className={styles["toolbar-actions"]}>
-              <button type="submit" className="primary-button" disabled={crmHistoryLoading || !isLiveCrmRoleSupported}>
-                {crmHistoryLoading ? "조회 중..." : "조회"}
-              </button>
-              <button
-                type="button"
-                className="secondary-button"
-                disabled={!isLiveCrmRoleSupported}
-                onClick={() => {
-                  if (!isLiveCrmRoleSupported) {
-                    return;
-                  }
-                  clearCrmFeedback();
-                  const nextFilters = createDefaultCrmFilters();
-                  setCrmFilters(nextFilters);
-                  void reloadHistory(nextFilters);
-                }}
-              >
-                초기화
-              </button>
-            </div>
-          </form>
+           </div>
+        </header>
 
-          {crmHistoryError ? <p className="error-text">{crmHistoryError}</p> : null}
-
-          <div className={`${styles["table-shell"]} mt-sm`}>
-            <table className="members-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>회원ID</th>
-                  <th>회원권ID</th>
-                  <th>이벤트</th>
-                  <th>상태</th>
-                  <th>시도횟수</th>
-                  <th>마지막시도</th>
-                  <th>다음시도</th>
-                  <th>에러</th>
-                  <th>생성일</th>
-                </tr>
-              </thead>
-              <tbody>
-                {historyPagination.pagedItems.length === 0 ? (
-                  <tr>
-                    <td colSpan={10} className={styles["empty-cell"]}>
-                      {!isLiveCrmRoleSupported
-                        ? "현재 역할에서는 live CRM 이력을 조회할 수 없습니다."
-                        : crmHistoryLoading
-                          ? "조회 중..."
-                          : "메시지 이력이 없습니다."}
+        <div className="table-shell">
+          <table className="members-table">
+            <thead>
+              <tr>
+                <th>Identity</th>
+                <th>Event Type</th>
+                <th>Status</th>
+                <th>Attempts</th>
+                <th style={{ textAlign: 'right' }}>Logged At</th>
+              </tr>
+            </thead>
+            <tbody>
+              {historyPagination.pagedItems.map((row) => {
+                const status = statusMap[row.sendStatus] || { label: row.sendStatus, class: 'pill muted' };
+                return (
+                  <tr key={row.crmMessageEventId}>
+                    <td>
+                      <div className="stack-sm">
+                        <span className="text-sm" style={{ fontWeight: 600 }}>Member ID: #{row.memberId}</span>
+                        <span className="text-xs text-muted">Log: #{row.crmMessageEventId}</span>
+                      </div>
+                    </td>
+                    <td><span className="text-xs" style={{ fontWeight: 700 }}>{row.eventType}</span></td>
+                    <td><span className={status.class}>{status.label}</span></td>
+                    <td>
+                      <div className="stack-sm">
+                        <span className="text-xs">{row.attemptCount} / 3</span>
+                        {row.lastErrorMessage && <span className="text-xs text-danger" style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.lastErrorMessage}</span>}
+                      </div>
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <span className="text-xs text-muted">{formatDateTime(row.createdAt)}</span>
                     </td>
                   </tr>
-                ) : (
-                  historyPagination.pagedItems.map((row) => (
-                    <tr key={row.crmMessageEventId}>
-                      <td>{row.crmMessageEventId}</td>
-                      <td>{row.memberId}</td>
-                      <td>{row.membershipId ?? "-"}</td>
-                      <td>{row.eventType}</td>
-                      <td>{row.sendStatus}</td>
-                      <td>{row.attemptCount}</td>
-                      <td>{formatDateTime(row.lastAttemptedAt)}</td>
-                      <td>{formatDateTime(row.nextAttemptAt)}</td>
-                      <td>{row.lastErrorMessage ?? "-"}</td>
-                      <td>{formatDate(row.createdAt.slice(0, 10))}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-          <PaginationControls
-            page={historyPagination.page}
-            totalPages={historyPagination.totalPages}
-            pageSize={historyPagination.pageSize}
-            pageSizeOptions={[10, 20, 50]}
-            totalItems={historyPagination.totalItems}
-            startItemIndex={historyPagination.startItemIndex}
-            endItemIndex={historyPagination.endItemIndex}
-            onPageChange={historyPagination.setPage}
-            onPageSizeChange={historyPagination.setPageSize}
-          />
+                );
+              })}
+              {historyPagination.pagedItems.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="empty-cell" style={{ padding: '48px' }}>
+                    {crmHistoryLoading ? "Decoding logs..." : "No transmission data found."}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div className="mt-md">
+          <PaginationControls {...historyPagination} pageSizeOptions={[10, 20]} onPageChange={historyPagination.setPage} onPageSizeChange={historyPagination.setPageSize} />
         </div>
       </article>
-    </section>
+
+    </div>
   );
 }

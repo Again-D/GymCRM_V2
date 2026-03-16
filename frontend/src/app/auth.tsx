@@ -16,6 +16,7 @@ export type PrototypeAuthUser = {
   userId: number;
   username: string;
   role: string;
+  email?: string;
 };
 
 export type AuthState = {
@@ -59,19 +60,22 @@ let memoryPreset: RuntimeAuthPreset | null = null;
 const prototypeAdminUser: PrototypeAuthUser = {
   userId: 1,
   username: "prototype-admin",
-  role: "ROLE_CENTER_ADMIN"
+  role: "ROLE_CENTER_ADMIN",
+  email: "admin@gymcrm.ops"
 };
 
 const jwtAdminUser: PrototypeAuthUser = {
   userId: 11,
   username: "jwt-admin",
-  role: "ROLE_CENTER_ADMIN"
+  role: "ROLE_CENTER_ADMIN",
+  email: "ops-lead@gymcrm.ops"
 };
 
 const jwtTrainerUser: PrototypeAuthUser = {
   userId: 41,
   username: "jwt-trainer-a",
-  role: "ROLE_TRAINER"
+  role: "ROLE_TRAINER",
+  email: "trainer-alpha@gymcrm.ops"
 };
 
 const defaultAuthState: AuthState = {

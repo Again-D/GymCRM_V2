@@ -6,8 +6,6 @@ import { usePagination } from "../../shared/hooks/usePagination";
 import { PaginationControls } from "../../shared/ui/PaginationControls";
 import { todayLocalDate } from "../../shared/date";
 import { useSelectedMemberMembershipsQuery } from "../member-context/modules/useSelectedMemberMembershipsQuery";
-import { EmptyState } from "../../shared/ui/EmptyState";
-import { SkeletonLoader } from "../../shared/ui/SkeletonLoader";
 import { SelectedMemberContextBadge } from "../members/components/SelectedMemberContextBadge";
 import { useSelectedMemberStore } from "../members/modules/SelectedMemberContext";
 import type { ReservationRow } from "../members/modules/types";
@@ -15,6 +13,7 @@ import { isMembershipReservableOn } from "./modules/reservableMemberships";
 import { useReservationSchedulesQuery } from "./modules/useReservationSchedulesQuery";
 import { useReservationTargetsQuery } from "./modules/useReservationTargetsQuery";
 import { useSelectedMemberReservationsState } from "./modules/useSelectedMemberReservationsState";
+import { Modal } from "../../shared/ui/Modal";
 
 import styles from "./ReservationsPage.module.css";
 
@@ -33,6 +32,13 @@ function formatDateTime(value: string | null) {
     timeStyle: "short"
   });
 }
+
+const statusMap: Record<string, { label: string; class: string }> = {
+  "CONFIRMED": { label: "CONFIRMED", class: "pill ok" },
+  "ATTENDED": { label: "ATTENDED", class: "pill info" },
+  "CANCELLED": { label: "CANCELLED", class: "pill muted" },
+  "NO_SHOW": { label: "NO-SHOW", class: "pill danger" }
+};
 
 export default function ReservationsPage() {
   const { selectedMember, selectedMemberId, selectMember, selectedMemberLoading } = useSelectedMemberStore();
@@ -71,6 +77,7 @@ export default function ReservationsPage() {
     cancelReservation,
     noShowReservation
   } = useSelectedMemberReservationsState();
+
   const [reservationCreateForm, setReservationCreateForm] = useState<ReservationCreateForm>({
     membershipId: "",
     scheduleId: "",
@@ -78,6 +85,7 @@ export default function ReservationsPage() {
   });
   const [reservationPanelMessage, setReservationPanelMessage] = useState<string | null>(null);
   const [reservationPanelError, setReservationPanelError] = useState<string | null>(null);
+  const [isNewModalOpen, setIsNewModalOpen] = useState(false);
 
   const targetsPagination = usePagination(reservationTargets, {
     initialPageSize: 10,
@@ -87,18 +95,10 @@ export default function ReservationsPage() {
     initialPageSize: 10,
     resetDeps: [selectedMemberId, selectedMemberReservations.length]
   });
-  const schedulesPagination = usePagination(reservationSchedules, {
-    initialPageSize: 5,
-    resetDeps: [reservationSchedules.length]
-  });
 
   const businessDateText = todayLocalDate();
   const reservableMemberships = selectedMemberMemberships.filter((membership) =>
     isMembershipReservableOn(membership, businessDateText)
-  );
-  const selectedTarget = useMemo(
-    () => reservationTargets.find((target) => target.memberId === selectedMember?.memberId) ?? null,
-    [reservationTargets, selectedMember]
   );
 
   useEffect(() => {
@@ -116,11 +116,7 @@ export default function ReservationsPage() {
     if (selectedMemberId == null) {
       resetSelectedMemberMembershipsQuery();
       resetSelectedMemberReservationsState();
-      setReservationCreateForm({
-        membershipId: "",
-        scheduleId: "",
-        memo: ""
-      });
+      setReservationCreateForm({ membershipId: "", scheduleId: "", memo: "" });
       setReservationPanelMessage(null);
       setReservationPanelError(null);
       return;
@@ -128,11 +124,7 @@ export default function ReservationsPage() {
 
     void loadSelectedMemberMemberships(selectedMemberId);
     void loadSelectedMemberReservations(selectedMemberId);
-    setReservationCreateForm({
-      membershipId: "",
-      scheduleId: "",
-      memo: ""
-    });
+    setReservationCreateForm({ membershipId: "", scheduleId: "", memo: "" });
     setReservationPanelMessage(null);
     setReservationPanelError(null);
   }, [
@@ -148,16 +140,11 @@ export default function ReservationsPage() {
     setReservationPanelError(null);
   }, []);
 
-  function scheduleForReservation(reservation: ReservationRow) {
-    return reservationSchedules.find((schedule) => schedule.scheduleId === reservation.scheduleId) ?? null;
-  }
-
-  const handleReservationCreateSubmit = useCallback(async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleReservationCreateSubmit = async () => {
     clearPanelFeedback();
 
     if (!selectedMemberId) {
-      setReservationPanelError("회원을 먼저 선택해야 합니다.");
+      setReservationPanelError("Member not selected.");
       return;
     }
 
@@ -167,7 +154,7 @@ export default function ReservationsPage() {
     const schedule = reservationSchedules.find((item) => item.scheduleId === scheduleId);
 
     if (!membership || !schedule) {
-      setReservationPanelError("예약에 필요한 회원권과 스케줄을 모두 선택해야 합니다.");
+      setReservationPanelError("Missing membership or schedule selection.");
       return;
     }
 
@@ -183,32 +170,17 @@ export default function ReservationsPage() {
         loadSelectedMemberMemberships(selectedMemberId),
         loadReservationTargets(debouncedReservationTargetsKeyword)
       ]);
-      setReservationCreateForm({
-        membershipId: "",
-        scheduleId: "",
-        memo: ""
-      });
-      setReservationPanelMessage(`예약 #${reservation.reservationId}를 생성했습니다.`);
+      setReservationCreateForm({ membershipId: "", scheduleId: "", memo: "" });
+      setReservationPanelMessage(`Success: Reservation #${reservation.reservationId} created.`);
+      setIsNewModalOpen(false);
     } catch (error) {
-      setReservationPanelError(error instanceof Error ? error.message : "예약 생성에 실패했습니다.");
+      setReservationPanelError(error instanceof Error ? error.message : "Failed to create reservation.");
     }
-  }, [
-    clearPanelFeedback,
-    createReservation,
-    debouncedReservationTargetsKeyword,
-    loadReservationSchedules,
-    loadReservationTargets,
-    loadSelectedMemberMemberships,
-    loadSelectedMemberReservations,
-    reservableMemberships,
-    reservationCreateForm,
-    reservationSchedules,
-    selectedMemberId
-  ]);
+  };
 
   const mutateReservation = useCallback(async (
     reservationId: number,
-    actionName: string,
+    actionLabel: string,
     mutate: () => Promise<void>,
     canMutate: boolean,
     errorMessage: string
@@ -218,10 +190,8 @@ export default function ReservationsPage() {
       setReservationPanelError(errorMessage);
       return;
     }
-    if (!selectedMemberId) {
-      setReservationPanelError("회원을 먼저 선택해야 합니다.");
-      return;
-    }
+    if (!selectedMemberId) return;
+
     try {
       await mutate();
       await Promise.all([
@@ -229,9 +199,9 @@ export default function ReservationsPage() {
         loadSelectedMemberMemberships(selectedMemberId),
         loadReservationTargets(debouncedReservationTargetsKeyword)
       ]);
-      setReservationPanelMessage(actionName);
+      setReservationPanelMessage(`Success: ${actionLabel}`);
     } catch (error) {
-      setReservationPanelError(error instanceof Error ? error.message : `${actionName}에 실패했습니다.`);
+      setReservationPanelError(error instanceof Error ? error.message : `${actionLabel} failed.`);
     }
   }, [
     clearPanelFeedback,
@@ -243,78 +213,69 @@ export default function ReservationsPage() {
   ]);
 
   return (
-    <section className={styles["members-prototype-layout"]}>
-      <article className="panel-card">
-        <div className="panel-card-header">
+    <section className="members-page-grid" style={{ gridTemplateColumns: '1fr 1.2fr', gap: '24px', alignItems: 'start' }}>
+      
+      {/* DIRECTORY PANEL */}
+      <article className="panel-card" style={{ height: 'fit-content' }}>
+        <header className="panel-card-header mb-md">
           <div>
-            <h1>예약 관리 프로토타입</h1>
-            <p>예약 대상 선택, 선택 회원 handoff, 예약 생성과 상태 조정 surface를 새 구조에서 다시 설명합니다.</p>
+            <h1 className="brand-title" style={{ fontSize: '1.25rem' }}>Reservation Directory</h1>
+            <p className="text-muted text-xs">Search for members to manage their bookings.</p>
           </div>
-        </div>
+        </header>
 
         <form
-          className={styles["context-fallback-toolbar"]}
+          className="context-fallback-toolbar"
+          style={{ marginBottom: '24px' }}
           onSubmit={(event) => {
             event.preventDefault();
             void loadReservationTargets(reservationTargetsKeyword);
           }}
         >
-          <label>
-            예약 대상 검색
+          <label className="stack-sm">
+            <span className="text-xs text-muted" style={{ fontWeight: 600 }}>Member Lookup</span>
             <input
+              className="input"
               value={reservationTargetsKeyword}
               onChange={(event) => setReservationTargetsKeyword(event.target.value)}
-              placeholder="예: 김민수, 010-1234, 회원코드"
+              placeholder="Name or Phone..."
             />
           </label>
-          <div className={styles["toolbar-actions"]}>
-            <button type="submit" className="primary-button" disabled={reservationTargetsLoading}>
-              {reservationTargetsLoading ? "조회 중..." : "조회"}
-            </button>
-          </div>
         </form>
 
-        {reservationTargetsError ? <p className="error-text">{reservationTargetsError}</p> : null}
-
-        <div className={styles["table-shell"]}>
+        <div className="table-shell">
           <table className="members-table">
             <thead>
               <tr>
-                <th>ID</th>
-                <th>회원코드</th>
-                <th>회원명</th>
-                <th>연락처</th>
-                <th>예약 가능 회원권</th>
-                <th>확정 예약</th>
-                <th>대표 만료일</th>
-                <th>액션</th>
+                <th>Member</th>
+                <th style={{ textAlign: 'center' }}>Active</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {targetsPagination.pagedItems.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className={styles["empty-cell"] ?? "empty-cell"}>
-                    예약 대상 회원이 없습니다.
-                  </td>
-                </tr>
+                <tr><td colSpan={3} className="empty-cell" style={{ padding: '32px' }}>No records found.</td></tr>
               ) : (
                 targetsPagination.pagedItems.map((target) => (
                   <tr key={target.memberId} className={selectedMember?.memberId === target.memberId ? "is-selected-row" : undefined}>
-                    <td>{target.memberId}</td>
-                    <td>{target.memberCode}</td>
-                    <td>{target.memberName}</td>
-                    <td>{target.phone}</td>
-                    <td>{target.reservableMembershipCount}</td>
-                    <td>{target.confirmedReservationCount}</td>
-                    <td>{formatDate(target.membershipExpiryDate)}</td>
                     <td>
+                      <div className="stack-sm">
+                        <span style={{ fontWeight: 600 }}>{target.memberName}</span>
+                        <span className="text-xs text-muted">{target.phone}</span>
+                      </div>
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <span className="pill info" style={{ fontSize: '11px' }}>{target.confirmedReservationCount} Slots</span>
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
                       <button
                         type="button"
-                        className="secondary-button"
+                        className={selectedMember?.memberId === target.memberId ? "primary-button" : "secondary-button"}
+                        style={{ padding: '6px 10px', fontSize: '12px' }}
                         disabled={selectedMemberLoading}
                         onClick={() => void selectMember(target.memberId)}
                       >
-                        {selectedMember?.memberId === target.memberId ? "선택됨" : "이 회원 선택"}
+                        {selectedMember?.memberId === target.memberId ? "Active" : "Focus"}
                       </button>
                     </td>
                   </tr>
@@ -324,292 +285,197 @@ export default function ReservationsPage() {
           </table>
         </div>
 
-        <PaginationControls
-          page={targetsPagination.page}
-          totalPages={targetsPagination.totalPages}
-          pageSize={targetsPagination.pageSize}
-          pageSizeOptions={[10, 20]}
-          totalItems={targetsPagination.totalItems}
-          startItemIndex={targetsPagination.startItemIndex}
-          endItemIndex={targetsPagination.endItemIndex}
-          onPageChange={targetsPagination.setPage}
-          onPageSizeChange={targetsPagination.setPageSize}
-        />
+        <div className="mt-md">
+          <PaginationControls
+            page={targetsPagination.page}
+            totalPages={targetsPagination.totalPages}
+            pageSize={targetsPagination.pageSize}
+            pageSizeOptions={[10, 20]}
+            totalItems={targetsPagination.totalItems}
+            startItemIndex={targetsPagination.startItemIndex}
+            endItemIndex={targetsPagination.endItemIndex}
+            onPageChange={targetsPagination.setPage}
+            onPageSizeChange={targetsPagination.setPageSize}
+          />
+        </div>
       </article>
 
-      <article className="selected-member-card">
-        <div className="selected-member-card-header">
+      {/* WORKBENCH PANEL */}
+      <article className="panel-card">
+        <header className="panel-card-header mb-md">
           <div>
-            <h2>선택 회원 예약 컨텍스트</h2>
-            <p>선택 회원 handoff, 예약 가능 회원권 규칙, 예약 액션 surface를 하나의 page composition 안에 두는 방향을 확인합니다.</p>
+            <h2 className="brand-title" style={{ fontSize: '1.25rem' }}>Operational Workbench</h2>
+            <p className="text-muted text-xs">Actions and histories for the focused member.</p>
           </div>
-        </div>
+          {selectedMember && (
+            <button 
+              type="button" 
+              className="primary-button"
+              onClick={() => setIsNewModalOpen(true)}
+            >
+              New Booking
+            </button>
+          )}
+        </header>
 
-        <SelectedMemberContextBadge />
-        {selectedMemberMembershipsError ? <p className="error-text">{selectedMemberMembershipsError}</p> : null}
-        {selectedMemberReservationsError ? <p className="error-text">{selectedMemberReservationsError}</p> : null}
-        {reservationSchedulesError ? <p className="error-text">{reservationSchedulesError}</p> : null}
-        {reservationPanelMessage ? <p>{reservationPanelMessage}</p> : null}
-        {reservationPanelError ? <p className="error-text">{reservationPanelError}</p> : null}
-
-        <div className={styles["placeholder-stack"]}>
-          <div className={styles["placeholder-card"]}>
-            <h3>선택 회원 요약</h3>
-            {selectedMember == null ? (
-              <p>회원을 선택하면 예약 상세 surface가 열립니다.</p>
-            ) : (
-              <dl className={styles["selected-member-grid"]}>
-                <div>
-                  <dt>회원 ID</dt>
-                  <dd>{selectedMember.memberId}</dd>
-                </div>
-                <div>
-                  <dt>회원명</dt>
-                  <dd>{selectedMember.memberName}</dd>
-                </div>
-                <div>
-                  <dt>연락처</dt>
-                  <dd>{selectedMember.phone}</dd>
-                </div>
-                <div>
-                  <dt>대표 만료일</dt>
-                  <dd>{selectedTarget?.membershipExpiryDate ? formatDate(selectedTarget.membershipExpiryDate) : "-"}</dd>
-                </div>
-                <div>
-                  <dt>예약 가능 회원권</dt>
-                  <dd>{reservableMemberships.length}</dd>
-                </div>
-                <div>
-                  <dt>예약 수</dt>
-                  <dd>{selectedMemberReservations.length}</dd>
-                </div>
-              </dl>
-            )}
+        {!selectedMember ? (
+          <div className="panel-card" style={{ background: 'var(--bg-base)', borderStyle: 'dashed', textAlign: 'center', padding: '64px' }}>
+            <p className="text-muted">Select a member from the directory to start operations.</p>
           </div>
+        ) : (
+          <div className="stack-lg">
+            <SelectedMemberContextBadge />
 
-          <div className={styles["placeholder-card"]}>
-            <h3>예약 생성</h3>
-            <form className={styles["members-filter-grid"]} onSubmit={handleReservationCreateSubmit}>
-              <label>
-                사용할 회원권
+            <section>
+              <h3 className="text-xs text-muted mb-sm" style={{ fontWeight: 700, textTransform: 'uppercase' }}>Current Reservations</h3>
+              <div className="table-shell">
+                <table className="members-table">
+                  <thead>
+                    <tr>
+                      <th>Time</th>
+                      <th>Status</th>
+                      <th style={{ textAlign: 'right' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reservationsPagination.pagedItems.length === 0 ? (
+                      <tr><td colSpan={3} className="empty-cell" style={{ padding: '32px' }}>No bookings on record.</td></tr>
+                    ) : (
+                      reservationsPagination.pagedItems.map((reservation) => {
+                        const statusInfo = statusMap[reservation.reservationStatus] || { label: reservation.reservationStatus, class: 'pill muted' };
+                        const canMutate = reservation.reservationStatus === "CONFIRMED";
+                        const canCheckIn = canMutate && !reservation.checkedInAt;
+
+                        return (
+                          <tr key={reservation.reservationId}>
+                            <td>
+                              <div className="stack-sm">
+                                <span className="text-sm" style={{ fontWeight: 600 }}>{formatDateTime(reservation.reservedAt)}</span>
+                                <span className="text-xs text-muted">ID: #{reservation.reservationId}</span>
+                              </div>
+                            </td>
+                            <td>
+                              <span className={statusInfo.class}>{statusInfo.label}</span>
+                            </td>
+                            <td>
+                              <div className="row-actions" style={{ justifyContent: 'flex-end', gap: '4px' }}>
+                                <button 
+                                  type="button" 
+                                  className="secondary-button" 
+                                  style={{ padding: '6px 8px', fontSize: '11px' }}
+                                  disabled={!canCheckIn}
+                                  onClick={() => mutateReservation(reservation.reservationId, "Checked-in", () => checkInReservation(selectedMemberId!, reservation.reservationId).then(()=>undefined), canCheckIn, "Already checked in or invalid status.")}
+                                >
+                                  CheckIn
+                                </button>
+                                <button 
+                                  type="button" 
+                                  className="secondary-button" 
+                                  style={{ padding: '6px 8px', fontSize: '11px' }}
+                                  disabled={!canMutate}
+                                  onClick={() => mutateReservation(reservation.reservationId, "Marked Complete", () => completeReservation(selectedMemberId!, reservation.reservationId).then(()=>undefined), canMutate, "Only confirmed bookings can be completed.")}
+                                >
+                                  Done
+                                </button>
+                                <button 
+                                  type="button" 
+                                  className="secondary-button" 
+                                  style={{ padding: '6px 8px', fontSize: '11px', color: 'var(--status-danger)' }}
+                                  disabled={!canMutate}
+                                  onClick={() => mutateReservation(reservation.reservationId, "Cancelled", () => cancelReservation(selectedMemberId!, reservation.reservationId).then(()=>undefined), canMutate, "Only confirmed bookings can be cancelled.")}
+                                >
+                                  Void
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        )}
+
+        {(reservationPanelMessage || reservationPanelError) && (
+          <div className="mt-md">
+            {reservationPanelMessage && <div className="pill ok full-span" style={{ justifyContent: 'center' }}>{reservationPanelMessage}</div>}
+            {reservationPanelError && <div className="pill danger full-span" style={{ justifyContent: 'center' }}>{reservationPanelError}</div>}
+          </div>
+        )}
+
+        <Modal
+          isOpen={isNewModalOpen}
+          onClose={() => setIsNewModalOpen(false)}
+          title="Create New Booking"
+          footer={
+            <>
+              <button type="button" className="secondary-button" onClick={() => setIsNewModalOpen(false)}>Cancel</button>
+              <button 
+                type="button" 
+                className="primary-button"
+                disabled={!reservationCreateForm.membershipId || !reservationCreateForm.scheduleId}
+                onClick={handleReservationCreateSubmit}
+              >
+                Confirm Booking
+              </button>
+            </>
+          }
+        >
+          <div className="stack-md">
+            <label className="stack-sm">
+                <span className="text-sm">Target Membership</span>
                 <select
+                  className="input"
                   value={reservationCreateForm.membershipId}
                   onChange={(event) =>
                     setReservationCreateForm((prev) => ({ ...prev, membershipId: event.target.value }))
                   }
                 >
-                  <option value="">선택하세요</option>
+                  <option value="">-- Select Valid Subscription --</option>
                   {reservableMemberships.map((membership) => (
                     <option key={membership.membershipId} value={membership.membershipId}>
                       #{membership.membershipId} · {membership.productNameSnapshot}
                     </option>
                   ))}
                 </select>
+                {reservableMemberships.length === 0 && (
+                  <span className="text-xs text-danger">No valid memberships available for this member.</span>
+                )}
               </label>
-              <label>
-                예약 스케줄
+              
+              <label className="stack-sm">
+                <span className="text-sm">Available Slots</span>
                 <select
+                  className="input"
                   value={reservationCreateForm.scheduleId}
                   onChange={(event) =>
                     setReservationCreateForm((prev) => ({ ...prev, scheduleId: event.target.value }))
                   }
                 >
-                  <option value="">선택하세요</option>
+                  <option value="">-- Choose Schedule --</option>
                   {reservationSchedules.map((schedule) => (
                     <option key={schedule.scheduleId} value={schedule.scheduleId}>
-                      #{schedule.scheduleId} · [{schedule.scheduleType}] {schedule.slotTitle} · {schedule.trainerName}
+                      {schedule.slotTitle} ({schedule.trainerName}) · {formatDate(schedule.startAt)}
                     </option>
                   ))}
                 </select>
               </label>
-              <label className={styles["full-span"]}>
-                메모
-                <input
+
+              <label className="stack-sm">
+                <span className="text-sm">Internal Note</span>
+                <textarea
+                  className="input"
+                  style={{ minHeight: '80px', resize: 'vertical' }}
+                  placeholder="Operational notes..."
                   value={reservationCreateForm.memo}
                   onChange={(event) => setReservationCreateForm((prev) => ({ ...prev, memo: event.target.value }))}
                 />
               </label>
-              <div className={`${styles["toolbar-actions"]} ${styles["full-span"]}`}>
-                <button type="submit" className="primary-button" disabled={!selectedMember || selectedMemberReservationsLoading}>
-                  예약 생성
-                </button>
-              </div>
-            </form>
-            {selectedMemberMembershipsLoading ? <p>회원권 목록을 불러오는 중...</p> : null}
-            {!selectedMemberMembershipsLoading && selectedMember && reservableMemberships.length === 0 ? (
-              <p>예약 가능한 회원권이 없습니다.</p>
-            ) : null}
           </div>
-
-          <div className={styles["placeholder-card"]}>
-            <h3>선택 회원 예약 목록</h3>
-            {selectedMemberReservationsLoading ? (
-              <SkeletonLoader type="rectangular" height={100} />
-            ) : reservationsPagination.pagedItems.length === 0 ? (
-              <EmptyState message="선택 회원의 예약 이력이 없습니다." />
-            ) : (
-              <>
-                <div className={styles["table-shell"]}>
-                  <table className="members-table">
-                    <thead>
-                      <tr>
-                        <th>ID</th>
-                        <th>스케줄</th>
-                        <th>회원권</th>
-                        <th>상태</th>
-                        <th>예약시각</th>
-                        <th>액션</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {reservationsPagination.pagedItems.map((reservation) => {
-                        const schedule = scheduleForReservation(reservation);
-                        const canMutate = reservation.reservationStatus === "CONFIRMED";
-                        const canCheckIn = canMutate && !reservation.checkedInAt;
-                        const canNoShow =
-                          canMutate &&
-                          !reservation.checkedInAt &&
-                          schedule != null &&
-                          Date.parse(schedule.endAt) <= Date.now();
-
-                        return (
-                          <tr key={reservation.reservationId}>
-                            <td>{reservation.reservationId}</td>
-                            <td>{reservation.scheduleId}</td>
-                            <td>{reservation.membershipId}</td>
-                            <td>{reservation.reservationStatus}</td>
-                            <td>{formatDateTime(reservation.reservedAt)}</td>
-                            <td>
-                              <div className={styles["row-actions"]}>
-                                <button
-                                  type="button"
-                                  className="secondary-button"
-                                  disabled={!canCheckIn}
-                                  onClick={() =>
-                                    mutateReservation(
-                                      reservation.reservationId,
-                                      `예약 #${reservation.reservationId} 체크인 처리`,
-                                      () =>
-                                        selectedMemberId == null
-                                          ? Promise.reject(new Error("회원을 먼저 선택해야 합니다."))
-                                          : checkInReservation(selectedMemberId, reservation.reservationId).then(() => undefined),
-                                      canCheckIn,
-                                      "체크인 가능한 예약이 아닙니다."
-                                    )
-                                  }
-                                >
-                                  체크인
-                                </button>
-                                <button
-                                  type="button"
-                                  className="secondary-button"
-                                  disabled={!canMutate}
-                                  onClick={() =>
-                                    mutateReservation(
-                                      reservation.reservationId,
-                                      `예약 #${reservation.reservationId} 완료 처리`,
-                                      () =>
-                                        selectedMemberId == null
-                                          ? Promise.reject(new Error("회원을 먼저 선택해야 합니다."))
-                                          : completeReservation(selectedMemberId, reservation.reservationId).then(() => undefined),
-                                      canMutate,
-                                      "확정 예약만 완료 처리할 수 있습니다."
-                                    )
-                                  }
-                                >
-                                  완료
-                                </button>
-                                <button
-                                  type="button"
-                                  className="secondary-button"
-                                  disabled={!canMutate}
-                                  onClick={() =>
-                                    mutateReservation(
-                                      reservation.reservationId,
-                                      `예약 #${reservation.reservationId} 취소 처리`,
-                                      () =>
-                                        selectedMemberId == null
-                                          ? Promise.reject(new Error("회원을 먼저 선택해야 합니다."))
-                                          : cancelReservation(selectedMemberId, reservation.reservationId).then(() => undefined),
-                                      canMutate,
-                                      "확정 예약만 취소할 수 있습니다."
-                                    )
-                                  }
-                                >
-                                  취소
-                                </button>
-                                <button
-                                  type="button"
-                                  className="secondary-button"
-                                  disabled={!canNoShow}
-                                  onClick={() =>
-                                    mutateReservation(
-                                      reservation.reservationId,
-                                      `예약 #${reservation.reservationId} 노쇼 처리`,
-                                      () =>
-                                        selectedMemberId == null
-                                          ? Promise.reject(new Error("회원을 먼저 선택해야 합니다."))
-                                          : noShowReservation(selectedMemberId, reservation.reservationId).then(() => undefined),
-                                      canNoShow,
-                                      "종료된 미체크인 확정 예약만 노쇼 처리할 수 있습니다."
-                                    )
-                                  }
-                                >
-                                  노쇼
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-                <PaginationControls
-                  page={reservationsPagination.page}
-                  totalPages={reservationsPagination.totalPages}
-                  pageSize={reservationsPagination.pageSize}
-                  pageSizeOptions={[10, 20]}
-                  totalItems={reservationsPagination.totalItems}
-                  startItemIndex={reservationsPagination.startItemIndex}
-                  endItemIndex={reservationsPagination.endItemIndex}
-                  onPageChange={reservationsPagination.setPage}
-                  onPageSizeChange={reservationsPagination.setPageSize}
-                />
-              </>
-            )}
-          </div>
-
-          <div className={styles["placeholder-card"]}>
-            <h3>예약 스케줄 목록</h3>
-            {reservationSchedulesLoading ? (
-              <p>예약 스케줄을 불러오는 중...</p>
-            ) : schedulesPagination.pagedItems.length === 0 ? (
-              <p>표시할 예약 스케줄이 없습니다.</p>
-            ) : (
-              <>
-                <ul>
-                  {schedulesPagination.pagedItems.map((schedule) => (
-                    <li key={schedule.scheduleId}>
-                      #{schedule.scheduleId} · {schedule.slotTitle} · {schedule.trainerName} · {formatDate(schedule.startAt)}
-                    </li>
-                  ))}
-                </ul>
-                <PaginationControls
-                  page={schedulesPagination.page}
-                  totalPages={schedulesPagination.totalPages}
-                  pageSize={schedulesPagination.pageSize}
-                  pageSizeOptions={[5, 10]}
-                  totalItems={schedulesPagination.totalItems}
-                  startItemIndex={schedulesPagination.startItemIndex}
-                  endItemIndex={schedulesPagination.endItemIndex}
-                  onPageChange={schedulesPagination.setPage}
-                  onPageSizeChange={schedulesPagination.setPageSize}
-                />
-              </>
-            )}
-          </div>
-        </div>
+        </Modal>
       </article>
     </section>
   );
