@@ -18,14 +18,16 @@ export default function Login() {
     <main className={styles["login-page"]}>
       <div className={styles["login-card"]}>
         <header className={styles["brand-section"]}>
+          <span className="ops-eyebrow">Field Ops Access</span>
           <h1 className={styles["brand-title"]}>GymCRM</h1>
-          <p className={styles["brand-subtitle"]}>Field Operations Console v2</p>
+          <p className={styles["brand-subtitle"]}>Fast, high-clarity workspace for desk and floor operations.</p>
         </header>
 
         <section>
           {isMockMode ? (
             <div className={styles["mock-presets"]}>
               <h2 className={styles["mock-title"]}>Developer Presets</h2>
+              <p className={styles["mode-description"]}>Use runtime profiles to rehearse shell, role, and workspace flows without hitting the live auth gate.</p>
               <div className={styles["mock-grid"]}>
                 <button 
                   type="button" 
@@ -53,6 +55,7 @@ export default function Login() {
           ) : (
             <>
               <h2 className={styles["login-title"]}>Login to System</h2>
+              <p className={styles["mode-description"]}>Authenticate with your assigned operator account to enter the live operations console.</p>
               <form className={styles["form-group"]} onSubmit={handleSubmit}>
                 <label className={styles.field}>
                   <span className={styles["field-label"]}>Operator ID</span>
@@ -88,13 +91,13 @@ export default function Login() {
           )}
 
           {authStatusMessage && (
-            <div className="pill ok full-span mt-md" style={{ justifyContent: 'center' }}>
+            <div className={`${styles["feedback-pill"]} pill ok full-span mt-md`}>
               {authStatusMessage}
             </div>
           )}
           
           {authError && (
-            <div className="pill danger full-span mt-md" style={{ justifyContent: 'center' }}>
+            <div className={`${styles["feedback-pill"]} pill danger full-span mt-md`}>
               {authError}
             </div>
           )}

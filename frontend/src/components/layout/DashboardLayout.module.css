@@ -1,6 +1,6 @@
 .app-shell {
   display: grid;
-  grid-template-columns: 280px 1fr;
+  grid-template-columns: var(--shell-sidebar-width) 1fr;
   min-height: 100vh;
   background: var(--bg-base);
 }
@@ -14,6 +14,7 @@
   height: 100vh;
   position: sticky;
   top: 0;
+  box-shadow: inset -1px 0 0 var(--border-minimal);
 }
 
 .app-shell__brand {
@@ -23,6 +24,16 @@
   color: var(--text-main);
   letter-spacing: -0.02em;
   border-bottom: 1px solid var(--border-minimal);
+  display: grid;
+  gap: 4px;
+}
+
+.brand-kicker {
+  color: var(--status-info);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .auth-panel {
@@ -34,6 +45,22 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.auth-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.auth-actions > button {
+  flex: 1;
+  padding: 6px 8px;
+  font-size: 11px;
+}
+
+.signout-button {
+  width: 100%;
+  padding: 8px;
 }
 
 .auth-header {
@@ -68,6 +95,17 @@
   flex-direction: column;
   gap: 4px;
   overflow-y: auto;
+}
+
+.sidebar-footer {
+  margin: 0 16px 16px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px dashed var(--border-minimal);
+  background: var(--bg-surface-muted);
+  color: var(--text-muted);
+  display: grid;
+  gap: 4px;
 }
 
 .app-nav__link {
@@ -108,5 +146,21 @@
     position: relative;
     border-right: 0;
     border-bottom: 1px solid var(--border-minimal);
+  }
+
+  .app-shell__main {
+    padding: 24px 20px 32px;
+  }
+}
+
+@media (max-width: 720px) {
+  .app-shell__brand {
+    padding: 24px 20px;
+  }
+
+  .auth-panel,
+  .app-nav {
+    margin: 12px;
+    padding-inline: 12px;
   }
 }

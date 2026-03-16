@@ -65,54 +65,57 @@ export default function SettlementsPage() {
   }, [clearSettlementFeedback, loadSettlementReport, settlementFilters]);
 
   return (
-    <div className="stack-lg">
-      
-      {/* HEADER & SUMMARY KPIS */}
-      <article className="panel-card">
-        <header className="panel-card-header mb-md">
-          <div>
-            <h1 className="brand-title" style={{ fontSize: '1.25rem' }}>Settlement Intelligence</h1>
-            <p className="text-muted text-xs">Consolidated financial reporting and transaction auditing.</p>
+    <section className="ops-shell">
+      <div className="ops-hero">
+        <div className="ops-hero__copy">
+          <span className="ops-eyebrow">Financial Console</span>
+          <h1 className="ops-title">Settlement Intelligence</h1>
+          <p className="ops-subtitle">Inspect revenue, refunds, and transaction mix with a reporting surface tuned for desk-level operational review.</p>
+          <div className="ops-meta">
+            <span className="ops-meta__pill">Financial rollup</span>
+            <span className="ops-meta__pill">Filter-driven analysis</span>
+            <span className="ops-meta__pill">Transaction aggregation</span>
           </div>
-          <div className="row-actions">
-             <button
-                type="button"
-                className="secondary-button"
-                style={{ fontSize: '12px' }}
-                onClick={() => {
-                  resetSettlementWorkspace();
-                  const nextFilters = createDefaultSettlementFilters();
-                  void loadSettlementReport(nextFilters);
-                }}
-              >
-                Reset Filters
-              </button>
-          </div>
-        </header>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
-          {[
-            { label: 'GROSS SALES', value: formatCurrency(settlementReport?.totalGrossSales ?? 0), color: 'var(--text-main)' },
-            { label: 'TOTAL REFUND', value: formatCurrency(settlementReport?.totalRefundAmount ?? 0), color: 'var(--status-danger)' },
-            { label: 'NET REVENUE', value: formatCurrency(settlementReport?.totalNetSales ?? 0), color: 'var(--status-ok)' },
-            { label: 'TRANS. COUNT', value: settlementReport?.rows.length ?? 0, color: 'var(--status-info)' }
-          ].map(kpi => (
-            <div key={kpi.label} className="panel-card" style={{ padding: '20px', background: 'var(--bg-base)', border: '0' }}>
-              <span className="text-xs" style={{ fontWeight: 700, color: 'var(--text-muted)' }}>{kpi.label}</span>
-              <div className="text-2xl brand-title mt-xs" style={{ color: kpi.color }}>{kpi.value}</div>
-            </div>
-          ))}
         </div>
-      </article>
+        <button
+          type="button"
+          className="secondary-button ops-action-button"
+          onClick={() => {
+            resetSettlementWorkspace();
+            const nextFilters = createDefaultSettlementFilters();
+            void loadSettlementReport(nextFilters);
+          }}
+        >
+          Reset Filters
+        </button>
+      </div>
+
+      <div className="ops-kpi-grid">
+        {[
+          { label: "Gross Sales", value: formatCurrency(settlementReport?.totalGrossSales ?? 0), hint: "Before refunds and offsets" },
+          { label: "Total Refund", value: formatCurrency(settlementReport?.totalRefundAmount ?? 0), hint: "Refunded amount within the selected range" },
+          { label: "Net Revenue", value: formatCurrency(settlementReport?.totalNetSales ?? 0), hint: "Gross sales less refunds" },
+          { label: "Trans. Count", value: String(settlementReport?.rows.length ?? 0), hint: "Aggregated transaction rows loaded into the report" }
+        ].map((kpi) => (
+          <div key={kpi.label} className="ops-kpi-card">
+            <span className="ops-kpi-card__label">{kpi.label}</span>
+            <span className="ops-kpi-card__value">{kpi.value}</span>
+            <span className="ops-kpi-card__hint">{kpi.hint}</span>
+          </div>
+        ))}
+      </div>
 
       {/* FILTER & DATA CONSOLE */}
-      <section className="members-page-grid" style={{ gridTemplateColumns: '320px 1fr', gap: '24px', alignItems: 'start' }}>
+      <section className="ops-surface-grid ops-surface-grid--narrow-sidebar">
         
         {/* PARAMS PANEL */}
         <article className="panel-card">
-          <header className="mb-md">
-            <h2 className="brand-title" style={{ fontSize: '1rem' }}>Report Parameters</h2>
-          </header>
+          <div className="ops-section__header">
+            <div>
+              <h2 className="ops-section__title">Report Parameters</h2>
+              <p className="ops-section__subtitle">Adjust date range, payment method, and product keyword filters.</p>
+            </div>
+          </div>
           
           <form
             className="stack-md"
@@ -122,7 +125,7 @@ export default function SettlementsPage() {
             }}
           >
             <label className="stack-sm">
-              <span className="text-xs text-muted" style={{ fontWeight: 600 }}>Period Start</span>
+              <span className="text-xs text-muted brand-title">Period Start</span>
               <input
                 className="input"
                 type="date"
@@ -131,7 +134,7 @@ export default function SettlementsPage() {
               />
             </label>
             <label className="stack-sm">
-              <span className="text-xs text-muted" style={{ fontWeight: 600 }}>Period End</span>
+              <span className="text-xs text-muted brand-title">Period End</span>
               <input
                 className="input"
                 type="date"
@@ -140,7 +143,7 @@ export default function SettlementsPage() {
               />
             </label>
             <label className="stack-sm">
-              <span className="text-xs text-muted" style={{ fontWeight: 600 }}>Payment Method</span>
+              <span className="text-xs text-muted brand-title">Payment Method</span>
               <select
                 className="input"
                 value={settlementFilters.paymentMethod}
@@ -159,7 +162,7 @@ export default function SettlementsPage() {
               </select>
             </label>
             <label className="stack-sm">
-              <span className="text-xs text-muted" style={{ fontWeight: 600 }}>Search Product</span>
+              <span className="text-xs text-muted brand-title">Search Product</span>
               <input
                 className="input"
                 value={settlementFilters.productKeyword}
@@ -174,18 +177,21 @@ export default function SettlementsPage() {
           </form>
 
           {(settlementPanelMessage || settlementPanelError) && (
-            <div className="mt-md">
-              {settlementPanelMessage && <div className="pill ok full-span" style={{ justifyContent: 'center' }}>{settlementPanelMessage}</div>}
-              {settlementPanelError && <div className="pill danger full-span" style={{ justifyContent: 'center' }}>{settlementPanelError}</div>}
+            <div className="ops-feedback-stack mt-md">
+              {settlementPanelMessage && <div className="pill ok full-span">{settlementPanelMessage}</div>}
+              {settlementPanelError && <div className="pill danger full-span">{settlementPanelError}</div>}
             </div>
           )}
         </article>
 
         {/* DATA TABLE PANEL */}
         <article className="panel-card">
-          <header className="mb-md">
-            <h2 className="brand-title" style={{ fontSize: '1rem' }}>Transaction Aggregation</h2>
-          </header>
+          <div className="ops-section__header">
+            <div>
+              <h2 className="ops-section__title">Transaction Aggregation</h2>
+              <p className="ops-section__subtitle">Compare gross and net figures by product and payment method.</p>
+            </div>
+          </div>
 
           <div className="table-shell">
             <table className="members-table">
@@ -202,25 +208,25 @@ export default function SettlementsPage() {
                   <tr key={`${row.productName}-${row.paymentMethod}`}>
                     <td>
                       <div className="stack-sm">
-                        <span className="text-sm" style={{ fontWeight: 600 }}>{row.productName}</span>
+                        <span className="text-sm brand-title">{row.productName}</span>
                         <span className="text-xs text-muted">{row.transactionCount} transactions</span>
                       </div>
                     </td>
                     <td><span className="pill muted">{row.paymentMethod}</span></td>
-                    <td style={{ textAlign: 'right' }}>
+                    <td className="ops-right">
                       <div className="stack-sm">
                         <span className="text-sm">{formatCurrency(row.grossSales)}</span>
                         {row.refundAmount > 0 && <span className="text-xs text-danger">-{formatCurrency(row.refundAmount)} refund</span>}
                       </div>
                     </td>
-                    <td style={{ textAlign: 'right' }}>
+                    <td className="ops-right">
                       <span className="text-sm brand-title" style={{ color: 'var(--status-ok)' }}>{formatCurrency(row.netSales)}</span>
                     </td>
                   </tr>
                 ))}
                 {rowsPagination.pagedItems.length === 0 && (
                    <tr>
-                    <td colSpan={4} className="empty-cell" style={{ padding: '48px' }}>
+                    <td colSpan={4} className="empty-cell">
                       {settlementReportLoading ? "Processing financial data..." : "No records found for current range."}
                     </td>
                   </tr>
@@ -233,6 +239,6 @@ export default function SettlementsPage() {
           </div>
         </article>
       </section>
-    </div>
+    </section>
   );
 }

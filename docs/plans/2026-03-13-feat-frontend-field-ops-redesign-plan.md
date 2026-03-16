@@ -1,7 +1,7 @@
 ---
 title: "feat: Frontend field ops redesign"
 type: feat
-status: active
+status: completed
 date: 2026-03-13
 origin: docs/brainstorms/2026-03-13-frontend-field-ops-redesign-brainstorm.md
 ---
@@ -404,26 +404,26 @@ success criteria:
 
 ### Functional Requirements
 
-- [ ] redesign은 [브레인스토밍 문서](/Users/abc/projects/GymCRM_V2/docs/brainstorms/2026-03-13-frontend-field-ops-redesign-brainstorm.md)의 key decisions를 그대로 반영한다.
-- [ ] `DashboardLayout`, `Login`, `Members`, `Memberships`, `Reservations`가 representative surfaces로 먼저 완성된다.
-- [ ] 주요 입력/처리 액션은 모달 중심으로 제공된다.
-- [ ] 2차에서 나머지 전체 화면이 같은 visual contract로 확장된다.
-- [ ] shell/sidebar/login-first/member handoff 기존 구조는 유지된다.
+- [x] redesign은 [브레인스토밍 문서](/Users/abc/projects/GymCRM_V2/docs/brainstorms/2026-03-13-frontend-field-ops-redesign-brainstorm.md)의 key decisions를 그대로 반영한다.
+- [x] `DashboardLayout`, `Login`, `Members`, `Memberships`, `Reservations`가 representative surfaces로 먼저 완성된다.
+- [x] 주요 입력/처리 액션은 모달 중심으로 제공된다.
+- [x] 2차에서 나머지 전체 화면이 같은 visual contract로 확장된다.
+- [x] shell/sidebar/login-first/member handoff 기존 구조는 유지된다.
 
 ### Non-Functional Requirements
 
-- [ ] light/dark 모두에서 first-paint theme contract가 유지된다.
-- [ ] focus visibility, keyboard navigation, `aria-modal`, scroll lock, ESC close가 modal 전반에서 동작한다.
-- [ ] desktop 우선 구조를 유지하면서 tablet에서도 핵심 업무 흐름이 사용 가능하다.
-- [ ] UI 밀도와 상태 가독성이 현재 대비 개선된다.
+- [x] light/dark 모두에서 first-paint theme contract가 유지된다.
+- [x] focus visibility, keyboard navigation, `aria-modal`, scroll lock, ESC close가 modal 전반에서 동작한다.
+- [x] desktop 우선 구조를 유지하면서 tablet에서도 핵심 업무 흐름이 사용 가능하다.
+- [x] UI 밀도와 상태 가독성이 현재 대비 개선된다.
 
 ### Quality Gates
 
-- [ ] affected frontend tests pass
-- [ ] theme-related tests or smoke checks pass
-- [ ] representative pages browser validation complete
-- [ ] phase 2 확장 후 full affected-page smoke validation complete
-- [ ] relevant docs updated
+- [x] affected frontend tests pass
+- [x] theme-related tests or smoke checks pass
+- [x] representative pages browser validation complete
+- [x] phase 2 확장 후 full affected-page smoke validation complete
+- [x] relevant docs updated
 
 ## Success Metrics
 

@@ -90,25 +90,59 @@ export default function ProductsPage() {
   }
 
   return (
-    <div className="stack-lg">
-      
-      {/* PRODUCT DIRECTORY */}
-      <article className="panel-card">
-        <header className="panel-card-header mb-md">
-          <div>
-            <h1 className="brand-title" style={{ fontSize: '1.25rem' }}>Product & Service Inventory</h1>
-            <p className="text-muted text-xs">Manage active memberships, session packs, and retail offerings.</p>
+    <section className="ops-shell">
+      <div className="ops-hero">
+        <div className="ops-hero__copy">
+          <span className="ops-eyebrow">Catalog Surface</span>
+          <h1 className="ops-title">Product & Service Inventory</h1>
+          <p className="ops-subtitle">Manage memberships, session packs, and retail items with a cleaner field-ops catalog workflow.</p>
+          <div className="ops-meta">
+            <span className="ops-meta__pill">Catalog filters</span>
+            <span className="ops-meta__pill">Status controls</span>
+            <span className="ops-meta__pill">Modal edit surface</span>
           </div>
-          {canMutateProducts && (
-            <button type="button" className="primary-button" onClick={startCreateProduct}>
-              Create New Item
-            </button>
-          )}
-        </header>
+        </div>
+        {canMutateProducts && (
+          <button type="button" className="primary-button" onClick={startCreateProduct}>
+            Create New Item
+          </button>
+        )}
+      </div>
+
+      <div className="ops-kpi-grid">
+        <div className="ops-kpi-card">
+          <span className="ops-kpi-card__label">Catalog Rows</span>
+          <span className="ops-kpi-card__value">{products.length}</span>
+          <span className="ops-kpi-card__hint">Products currently loaded into the working set</span>
+        </div>
+        <div className="ops-kpi-card">
+          <span className="ops-kpi-card__label">Active</span>
+          <span className="ops-kpi-card__value">{products.filter((product) => product.productStatus === "ACTIVE").length}</span>
+          <span className="ops-kpi-card__hint">Items available for selling or assignment</span>
+        </div>
+        <div className="ops-kpi-card">
+          <span className="ops-kpi-card__label">Editing Mode</span>
+          <span className="ops-kpi-card__value">{productFormOpen ? (productFormMode === "create" ? "NEW" : "EDIT") : "-"}</span>
+          <span className="ops-kpi-card__hint">{selectedProduct ? selectedProduct.productName : "No active modal session"}</span>
+        </div>
+        <div className="ops-kpi-card">
+          <span className="ops-kpi-card__label">Live Access</span>
+          <span className="ops-kpi-card__value">{canReadLiveProducts ? "ON" : "LOCKED"}</span>
+          <span className="ops-kpi-card__hint">Role-aware catalog visibility and mutation gate</span>
+        </div>
+      </div>
+
+      <article className="panel-card">
+        <div className="ops-section__header">
+          <div>
+            <h2 className="ops-section__title">Catalog Directory</h2>
+            <p className="ops-section__subtitle">Filter service types, audit prices, and open the modal editor from a single inventory list.</p>
+          </div>
+        </div>
 
         <div className="members-filter-grid" style={{ marginBottom: '24px' }}>
           <label className="stack-sm">
-            <span className="text-xs text-muted" style={{ fontWeight: 600 }}>Category Range</span>
+            <span className="text-xs text-muted brand-title">Category Range</span>
             <select
               className="input"
               value={productFilters.category}
@@ -127,7 +161,7 @@ export default function ProductsPage() {
             </select>
           </label>
           <label className="stack-sm">
-            <span className="text-xs text-muted" style={{ fontWeight: 600 }}>Availability State</span>
+            <span className="text-xs text-muted brand-title">Availability State</span>
             <select
               className="input"
               value={productFilters.status}
@@ -163,10 +197,17 @@ export default function ProductsPage() {
           </div>
         </div>
 
+        {!canReadLiveProducts && (
+          <div className="field-ops-note field-ops-note--restricted mb-md">
+            <span className="field-ops-note__label">Restricted live mode</span>
+            <div className="mt-xs text-sm">This role can stay inside the shell, but the live product catalog stays unavailable.</div>
+          </div>
+        )}
+
         {(productPanelMessage || productPanelError || productsQueryError) && (
-          <div className="mb-md">
-            {productPanelMessage && <div className="pill ok full-span" style={{ justifyContent: 'center' }}>{productPanelMessage}</div>}
-            {(productPanelError || productsQueryError) && <div className="pill danger full-span" style={{ justifyContent: 'center' }}>{productPanelError ?? productsQueryError}</div>}
+          <div className="ops-feedback-stack mb-md">
+            {productPanelMessage && <div className="pill ok full-span">{productPanelMessage}</div>}
+            {(productPanelError || productsQueryError) && <div className="pill danger full-span">{productPanelError ?? productsQueryError}</div>}
           </div>
         )}
 
@@ -186,7 +227,7 @@ export default function ProductsPage() {
                 <tr key={product.productId} className={product.productId === selectedProductId ? "is-selected-row" : ""}>
                   <td>
                     <div className="stack-sm">
-                      <span className="text-sm" style={{ fontWeight: 600 }}>{product.productName}</span>
+                      <span className="text-sm brand-title">{product.productName}</span>
                       <span className="text-xs text-muted">ID: #{product.productId} · {productTypeSummary(product)}</span>
                     </div>
                   </td>
@@ -197,9 +238,9 @@ export default function ProductsPage() {
                       {product.productStatus}
                     </span>
                   </td>
-                  <td style={{ textAlign: 'right' }}>
+                  <td className="ops-right">
                     {canMutateProducts && (
-                      <button type="button" className="secondary-button" style={{ padding: '6px 10px', fontSize: '11px' }} onClick={() => openProductEditor(product)}>
+                      <button type="button" className="secondary-button ops-action-button" onClick={() => openProductEditor(product)}>
                         MANAGE
                       </button>
                     )}
@@ -208,7 +249,7 @@ export default function ProductsPage() {
               ))}
               {productsPagination.pagedItems.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="empty-cell" style={{ padding: '48px' }}>
+                  <td colSpan={5} className="empty-cell">
                     {!canReadLiveProducts ? "Access Restricted." : "No product inventory records available."}
                   </td>
                 </tr>
@@ -257,7 +298,7 @@ export default function ProductsPage() {
 
           {productFormError && <div className="pill danger full-span">{productFormError}</div>}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <div className="ops-field-grid-2">
             <label className="stack-sm">
               <span className="text-sm">Product Title</span>
               <input
@@ -288,7 +329,7 @@ export default function ProductsPage() {
             </label>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <div className="ops-field-grid-2">
             <label className="stack-sm">
               <span className="text-sm">Service Model</span>
               <select
@@ -316,7 +357,7 @@ export default function ProductsPage() {
             </label>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <div className="ops-field-grid-2">
             <label className="stack-sm">
               <span className="text-sm">Active Period (Days)</span>
               <input
@@ -337,10 +378,10 @@ export default function ProductsPage() {
             </label>
           </div>
 
-          <div style={{ padding: '16px', borderRadius: '12px', background: 'var(--bg-base)', border: '1px solid var(--border-minimal)' }}>
-             <span className="text-xs" style={{ fontWeight: 700, color: 'var(--text-muted)' }}>OPERATIONAL POLICIES</span>
-             <div className="row-actions mt-sm" style={{ gap: '24px' }}>
-                <label className="row-actions" style={{ cursor: 'pointer' }}>
+          <div className="ops-policy-block">
+             <span className="ops-kpi-card__label">Operational Policies</span>
+             <div className="ops-policy-row mt-sm">
+                <label className="row-actions">
                   <input
                     type="checkbox"
                     checked={productForm.allowHold}
@@ -348,7 +389,7 @@ export default function ProductsPage() {
                   />
                   <span className="text-sm">Enable Hold</span>
                 </label>
-                <label className="row-actions" style={{ cursor: 'pointer' }}>
+                <label className="row-actions">
                   <input
                     type="checkbox"
                     checked={productForm.allowTransfer}
@@ -358,14 +399,14 @@ export default function ProductsPage() {
                 </label>
              </div>
              {productForm.allowHold && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }} className="mt-sm">
+                <div className="ops-field-grid-2 mt-sm">
                   <label className="stack-sm">
                     <span className="text-xs">Max Days</span>
-                    <input className="input" style={{ padding: '8px' }} value={productForm.maxHoldDays} onChange={(e) => setProductForm(p => ({ ...p, maxHoldDays: e.target.value }))} />
+                    <input className="input" value={productForm.maxHoldDays} onChange={(e) => setProductForm(p => ({ ...p, maxHoldDays: e.target.value }))} />
                   </label>
                   <label className="stack-sm">
                     <span className="text-xs">Max Occurrences</span>
-                    <input className="input" style={{ padding: '8px' }} value={productForm.maxHoldCount} onChange={(e) => setProductForm(p => ({ ...p, maxHoldCount: e.target.value }))} />
+                    <input className="input" value={productForm.maxHoldCount} onChange={(e) => setProductForm(p => ({ ...p, maxHoldCount: e.target.value }))} />
                   </label>
                 </div>
              )}
@@ -383,6 +424,6 @@ export default function ProductsPage() {
         </div>
       </Modal>
 
-    </div>
+    </section>
   );
 }

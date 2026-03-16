@@ -59,14 +59,33 @@ export function MemberListSection() {
   }
 
   return (
-    <section className="members-page-grid">
+    <section className="ops-shell">
       <article className="panel-card">
-        <header className="panel-card-header mb-md">
-          <div>
-            <h1 className="brand-title" style={{ fontSize: '1.5rem' }}>Member Directory</h1>
-            <p className="text-muted text-sm">Manage member records and operational statuses across the facility.</p>
+        <div className="ops-hero">
+          <div className="ops-hero__copy">
+            <span className="ops-eyebrow">Operations Directory</span>
+            <h1 className="ops-title">Member Directory</h1>
+            <p className="ops-subtitle">Scan member health, filter by operational status, and pin a person into the rest of the console with minimal navigation friction.</p>
+            <div className="ops-meta">
+              <span className="ops-meta__pill">Directory-first</span>
+              <span className="ops-meta__pill">Cross-workspace handoff</span>
+              <span className="ops-meta__pill">Desk + floor ready</span>
+            </div>
           </div>
-        </header>
+        </div>
+
+        <div className="ops-stat-strip">
+          <div className="ops-stat-card">
+            <span className="ops-stat-card__label">Current Result Set</span>
+            <span className="ops-stat-card__value">{members.length}</span>
+            <span className="ops-stat-card__hint">Loaded member rows after current filters</span>
+          </div>
+          <div className="ops-stat-card">
+            <span className="ops-stat-card__label">Focused Context</span>
+            <span className="ops-stat-card__value">{selectedMemberId ?? "-"}</span>
+            <span className="ops-stat-card__hint">{selectedMemberId ? "Pinned for downstream operations" : "No member currently pinned"}</span>
+          </div>
+        </div>
 
         <form
           className="members-filter-grid"
@@ -76,15 +95,15 @@ export function MemberListSection() {
           }}
         >
           <label>
-            <span className="text-sm" style={{ fontWeight: 600 }}>Member Name</span>
+            <span className="text-sm">Member Name</span>
             <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Search name..." />
           </label>
           <label>
-            <span className="text-sm" style={{ fontWeight: 600 }}>Contact Number</span>
+            <span className="text-sm">Contact Number</span>
             <input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="010-..." />
           </label>
           <label>
-            <span className="text-sm" style={{ fontWeight: 600 }}>Membership Status</span>
+            <span className="text-sm">Membership Status</span>
             <select value={membershipOperationalStatus} onChange={(event) => setMembershipOperationalStatus(event.target.value)}>
               <option value="">ALL STATUSES</option>
               <option value="정상">NORMAL</option>
@@ -101,7 +120,7 @@ export function MemberListSection() {
             onDateToChange={setDateTo}
           />
           <div className="toolbar-actions full-span mt-sm">
-            <button type="submit" className="primary-button" disabled={membersLoading} style={{ minWidth: '100px' }}>
+            <button type="submit" className="primary-button" disabled={membersLoading}>
               {membersLoading ? "Loading..." : "Filter Results"}
             </button>
             <button
@@ -128,7 +147,14 @@ export function MemberListSection() {
 
         {membersQueryError ? <div className="pill danger mt-md">{membersQueryError}</div> : null}
 
-        <div className="table-shell mt-lg">
+        <section className="ops-section mt-lg">
+          <div className="ops-section__header">
+            <div>
+              <h2 className="ops-section__title">Live Member Surface</h2>
+              <p className="ops-section__subtitle">Pick a member or jump directly into downstream membership and reservation work.</p>
+            </div>
+          </div>
+        <div className="table-shell">
           <table className="members-table">
             <thead>
               <tr>
@@ -146,14 +172,14 @@ export function MemberListSection() {
             <tbody>
               {pagination.pagedItems.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="empty-cell" style={{ padding: '40px' }}>
+                  <td colSpan={9} className="empty-cell">
                     No members found matching the criteria.
                   </td>
                 </tr>
               ) : (
                 pagination.pagedItems.map((member) => (
                   <tr key={member.memberId} className={member.memberId === selectedMemberId ? "is-selected-row" : undefined}>
-                    <td style={{ fontWeight: 600 }}>{member.memberId}</td>
+                    <td><strong>{member.memberId}</strong></td>
                     <td>{member.memberName}</td>
                     <td className="text-muted">{member.phone}</td>
                     <td>
@@ -165,17 +191,17 @@ export function MemberListSection() {
                       </span>
                     </td>
                     <td>{formatDate(member.membershipExpiryDate)}</td>
-                    <td style={{ fontWeight: 600 }}>{member.remainingPtCount != null && member.remainingPtCount > 0 ? member.remainingPtCount : "-"}</td>
+                    <td><strong>{member.remainingPtCount != null && member.remainingPtCount > 0 ? member.remainingPtCount : "-"}</strong></td>
                     <td className="text-muted">{formatDate(member.joinDate)}</td>
                     <td>
-                      <div className="row-actions" style={{ justifyContent: 'flex-end' }}>
-                        <button type="button" className="secondary-button" style={{ padding: '6px 10px', fontSize: '13px' }} onClick={() => void selectMember(member.memberId)}>
+                      <div className="ops-table-actions">
+                        <button type="button" className="secondary-button ops-action-button" onClick={() => void selectMember(member.memberId)}>
                           Select
                         </button>
-                        <button type="button" className="secondary-button" style={{ padding: '6px 10px', fontSize: '13px' }} onClick={() => void goToMemberContext("/memberships", member.memberId)}>
+                        <button type="button" className="secondary-button ops-action-button" onClick={() => void goToMemberContext("/memberships", member.memberId)}>
                           Memberships
                         </button>
-                        <button type="button" className="secondary-button" style={{ padding: '6px 10px', fontSize: '13px' }} onClick={() => void goToMemberContext("/reservations", member.memberId)}>
+                        <button type="button" className="secondary-button ops-action-button" onClick={() => void goToMemberContext("/reservations", member.memberId)}>
                           Reservations
                         </button>
                       </div>
@@ -186,6 +212,7 @@ export function MemberListSection() {
             </tbody>
           </table>
         </div>
+        </section>
 
         <div className="mt-lg">
           <PaginationControls

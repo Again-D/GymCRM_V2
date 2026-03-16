@@ -4,38 +4,57 @@ export function SelectedMemberSummaryCard() {
   const { selectedMember, selectedMemberError, selectedMemberLoading, clearSelectedMember } = useSelectedMemberStore();
 
   return (
-    <aside className="selected-member-card">
-      <div className="selected-member-card-header">
-        <h2>선택된 회원 컨텍스트</h2>
+    <aside className="panel-card ops-shell">
+      <div className="ops-section__header">
+        <div>
+          <h2 className="ops-section__title">Focused Member Context</h2>
+          <p className="ops-section__subtitle">The currently pinned member follows you into membership and reservation workspaces.</p>
+        </div>
         {selectedMember ? (
           <button type="button" className="secondary-button" onClick={clearSelectedMember}>
-            선택 해제
+            Clear Focus
           </button>
         ) : null}
       </div>
-      {selectedMemberLoading ? <p>회원 정보를 불러오는 중...</p> : null}
+      {selectedMemberLoading ? <p className="text-muted">Loading selected member…</p> : null}
       {selectedMemberError ? <p className="error-text">{selectedMemberError}</p> : null}
       {selectedMember ? (
-        <dl className="selected-member-grid">
+        <>
+          <div className="ops-stat-strip">
+            <div className="ops-stat-card">
+              <span className="ops-stat-card__label">Member ID</span>
+              <span className="ops-stat-card__value">#{selectedMember.memberId}</span>
+              <span className="ops-stat-card__hint">{selectedMember.memberName}</span>
+            </div>
+            <div className="ops-stat-card">
+              <span className="ops-stat-card__label">Status</span>
+              <span className="ops-stat-card__value">{selectedMember.memberStatus}</span>
+              <span className="ops-stat-card__hint">{selectedMember.phone}</span>
+            </div>
+          </div>
+          <dl className="selected-member-grid">
           <div>
-            <dt>회원</dt>
+            <dt>Member</dt>
             <dd>#{selectedMember.memberId} {selectedMember.memberName}</dd>
           </div>
           <div>
-            <dt>연락처</dt>
+            <dt>Contact</dt>
             <dd>{selectedMember.phone}</dd>
           </div>
           <div>
-            <dt>상태</dt>
+            <dt>Status</dt>
             <dd>{selectedMember.memberStatus}</dd>
           </div>
           <div>
-            <dt>가입일</dt>
+            <dt>Joined</dt>
             <dd>{selectedMember.joinDate ?? "-"}</dd>
           </div>
-        </dl>
+          </dl>
+        </>
       ) : (
-        <p>members 도메인 support module/store가 선택된 회원 컨텍스트를 소유합니다. 아직 회원이 선택되지 않았습니다.</p>
+        <div className="ops-empty">
+          No member is focused yet. Pick a member from the directory to unlock downstream operations.
+        </div>
       )}
     </aside>
   );

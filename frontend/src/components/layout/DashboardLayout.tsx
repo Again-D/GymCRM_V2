@@ -21,7 +21,8 @@ export default function DashboardLayout({ routes }: { routes: ShellRoute[] }) {
     <div className={styles["app-shell"]}>
       <aside className={styles["app-shell__sidebar"]}>
         <div className={styles["app-shell__brand"]}>
-          GymCRM Ops
+          <span className={styles["brand-kicker"]}>Field Ops</span>
+          <span>GymCRM Ops</span>
         </div>
         
         <div className={styles["auth-panel"]}>
@@ -41,27 +42,24 @@ export default function DashboardLayout({ routes }: { routes: ShellRoute[] }) {
 
           <div className="stack-sm">
             {isMockMode ? (
-              <div className="row-actions" style={{ gap: '4px' }}>
+              <div className={styles["auth-actions"]}>
                 <button 
                   type="button" 
-                  className="secondary-button" 
-                  style={{ padding: '6px 8px', fontSize: '11px', flex: 1 }}
+                  className="secondary-button"
                   onClick={() => setRuntimeAuthPreset("prototype-admin")}
                 >
                   Proto
                 </button>
                 <button 
                   type="button" 
-                  className="secondary-button" 
-                  style={{ padding: '6px 8px', fontSize: '11px', flex: 1 }}
+                  className="secondary-button"
                   onClick={() => setRuntimeAuthPreset("jwt-admin")}
                 >
                   Admin
                 </button>
                 <button 
                   type="button" 
-                  className="secondary-button" 
-                  style={{ padding: '6px 8px', fontSize: '11px', flex: 1 }}
+                  className="secondary-button"
                   onClick={clearRuntimeSession}
                 >
                   Clear
@@ -70,8 +68,7 @@ export default function DashboardLayout({ routes }: { routes: ShellRoute[] }) {
             ) : (
               <button 
                 type="button" 
-                className="secondary-button" 
-                style={{ width: '100%', padding: '8px' }}
+                className={`secondary-button ${styles["signout-button"]}`}
                 onClick={() => void logout()}
               >
                 Sign Out
@@ -98,6 +95,11 @@ export default function DashboardLayout({ routes }: { routes: ShellRoute[] }) {
             </NavLink>
           ))}
         </nav>
+
+        <div className={styles["sidebar-footer"]}>
+          <span className="text-xs">Representative shell surface</span>
+          <span className="text-xs">Mode: {securityMode === "prototype" ? "Prototype rehearsal" : "JWT session"}</span>
+        </div>
       </aside>
 
       <main className={styles["app-shell__main"]}>

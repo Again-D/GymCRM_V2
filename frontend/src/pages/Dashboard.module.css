@@ -1,1 +1,164 @@
-/* Currently, the dashboard doesn't have explicit dashboard-only selectors in index.css beyond the global layout. We will initialize an empty module for future polish. */
+.dashboard {
+  display: grid;
+  gap: 24px;
+}
+
+.heroCard {
+  display: grid;
+  gap: 20px;
+}
+
+.heroHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.heroCopy {
+  display: grid;
+  gap: 8px;
+}
+
+.themeControl {
+  display: grid;
+  gap: 10px;
+  min-width: 240px;
+}
+
+.themeLabel {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.themeGroup {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 14px;
+  border: 1px solid var(--border-minimal);
+  background: var(--bg-surface);
+}
+
+.themeButton {
+  border: 0;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+.metricsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.metricCard {
+  display: grid;
+  gap: 8px;
+  border-radius: 18px;
+  border: 1px solid var(--border-minimal);
+  background: var(--bg-surface);
+  padding: 16px 18px;
+}
+
+.metricLabel {
+  color: var(--text-muted);
+  font-size: 0.73rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.metricValue {
+  color: var(--text-main);
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.metricHint {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.moduleGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  gap: 16px;
+}
+
+.moduleCard {
+  display: grid;
+  gap: 16px;
+  text-decoration: none;
+}
+
+.moduleHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.moduleTitle {
+  margin: 0;
+  color: var(--text-main);
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.moduleDescription {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.moduleMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.modulePill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--border-minimal);
+  background: var(--bg-surface-muted);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 6px 10px;
+}
+
+.moduleArrow {
+  color: var(--status-info);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.footerCard {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  background: var(--bg-surface-muted);
+  border-style: dashed;
+}
+
+@media (max-width: 960px) {
+  .heroHeader,
+  .footerCard {
+    display: grid;
+  }
+
+  .themeControl {
+    min-width: 0;
+  }
+}

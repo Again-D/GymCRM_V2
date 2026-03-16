@@ -213,16 +213,48 @@ export default function ReservationsPage() {
   ]);
 
   return (
-    <section className="members-page-grid" style={{ gridTemplateColumns: '1fr 1.2fr', gap: '24px', alignItems: 'start' }}>
+    <section className="ops-shell">
+      <div className="ops-hero">
+        <div className="ops-hero__copy">
+          <span className="ops-eyebrow">Booking Surface</span>
+          <h1 className="ops-title">Reservation Operations</h1>
+          <p className="ops-subtitle">Select a member, inspect active bookings, and issue new reservations without leaving the operational workbench.</p>
+          <div className="ops-meta">
+            <span className="ops-meta__pill">Directory + workbench</span>
+            <span className="ops-meta__pill">Membership aware</span>
+            <span className="ops-meta__pill">Fast state actions</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="ops-stat-strip">
+        <div className="ops-stat-card">
+          <span className="ops-stat-card__label">Reservation Targets</span>
+          <span className="ops-stat-card__value">{reservationTargets.length}</span>
+          <span className="ops-stat-card__hint">Members currently available in the reservation directory</span>
+        </div>
+        <div className="ops-stat-card">
+          <span className="ops-stat-card__label">Focused Member</span>
+          <span className="ops-stat-card__value">{selectedMember ? `#${selectedMember.memberId}` : "-"}</span>
+          <span className="ops-stat-card__hint">{selectedMember?.memberName ?? "No member selected yet"}</span>
+        </div>
+        <div className="ops-stat-card">
+          <span className="ops-stat-card__label">Current Bookings</span>
+          <span className="ops-stat-card__value">{selectedMemberReservations.length}</span>
+          <span className="ops-stat-card__hint">Rows loaded in the active workbench</span>
+        </div>
+      </div>
+
+    <section className="ops-split-grid">
       
       {/* DIRECTORY PANEL */}
-      <article className="panel-card" style={{ height: 'fit-content' }}>
-        <header className="panel-card-header mb-md">
+      <article className="panel-card">
+        <div className="ops-section__header">
           <div>
-            <h1 className="brand-title" style={{ fontSize: '1.25rem' }}>Reservation Directory</h1>
-            <p className="text-muted text-xs">Search for members to manage their bookings.</p>
+            <h2 className="ops-section__title">Reservation Directory</h2>
+            <p className="ops-section__subtitle">Find a member and pin them into the booking workbench.</p>
           </div>
-        </header>
+        </div>
 
         <form
           className="context-fallback-toolbar"
@@ -319,15 +351,20 @@ export default function ReservationsPage() {
         </header>
 
         {!selectedMember ? (
-          <div className="panel-card" style={{ background: 'var(--bg-base)', borderStyle: 'dashed', textAlign: 'center', padding: '64px' }}>
-            <p className="text-muted">Select a member from the directory to start operations.</p>
+          <div className="ops-empty">
+            Select a member from the directory to start reservation operations.
           </div>
         ) : (
           <div className="stack-lg">
             <SelectedMemberContextBadge />
 
             <section>
-              <h3 className="text-xs text-muted mb-sm" style={{ fontWeight: 700, textTransform: 'uppercase' }}>Current Reservations</h3>
+              <div className="ops-section__header">
+                <div>
+                  <h3 className="ops-section__title">Current Reservations</h3>
+                  <p className="ops-section__subtitle">Confirmed, attended, cancelled, and no-show history for the focused member.</p>
+                </div>
+              </div>
               <div className="table-shell">
                 <table className="members-table">
                   <thead>
@@ -358,11 +395,10 @@ export default function ReservationsPage() {
                               <span className={statusInfo.class}>{statusInfo.label}</span>
                             </td>
                             <td>
-                              <div className="row-actions" style={{ justifyContent: 'flex-end', gap: '4px' }}>
+                              <div className="ops-table-actions">
                                 <button 
                                   type="button" 
-                                  className="secondary-button" 
-                                  style={{ padding: '6px 8px', fontSize: '11px' }}
+                                  className="secondary-button ops-action-button"
                                   disabled={!canCheckIn}
                                   onClick={() => mutateReservation(reservation.reservationId, "Checked-in", () => checkInReservation(selectedMemberId!, reservation.reservationId).then(()=>undefined), canCheckIn, "Already checked in or invalid status.")}
                                 >
@@ -370,8 +406,7 @@ export default function ReservationsPage() {
                                 </button>
                                 <button 
                                   type="button" 
-                                  className="secondary-button" 
-                                  style={{ padding: '6px 8px', fontSize: '11px' }}
+                                  className="secondary-button ops-action-button"
                                   disabled={!canMutate}
                                   onClick={() => mutateReservation(reservation.reservationId, "Marked Complete", () => completeReservation(selectedMemberId!, reservation.reservationId).then(()=>undefined), canMutate, "Only confirmed bookings can be completed.")}
                                 >
@@ -379,8 +414,8 @@ export default function ReservationsPage() {
                                 </button>
                                 <button 
                                   type="button" 
-                                  className="secondary-button" 
-                                  style={{ padding: '6px 8px', fontSize: '11px', color: 'var(--status-danger)' }}
+                                  className="secondary-button ops-action-button"
+                                  style={{ color: 'var(--status-danger)' }}
                                   disabled={!canMutate}
                                   onClick={() => mutateReservation(reservation.reservationId, "Cancelled", () => cancelReservation(selectedMemberId!, reservation.reservationId).then(()=>undefined), canMutate, "Only confirmed bookings can be cancelled.")}
                                 >
@@ -477,6 +512,7 @@ export default function ReservationsPage() {
           </div>
         </Modal>
       </article>
+    </section>
     </section>
   );
 }

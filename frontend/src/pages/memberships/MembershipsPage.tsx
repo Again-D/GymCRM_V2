@@ -119,12 +119,18 @@ export default function MembershipsPage() {
   const currentDraft = targetMembership ? getMembershipActionDraft(targetMembership.membershipId) : null;
 
   return (
-    <section className="members-page-grid">
+    <section className="ops-shell">
       <article className="panel-card">
-        <header className="panel-card-header mb-md">
-          <div>
-            <h1 className="brand-title" style={{ fontSize: '1.5rem' }}>Membership Operations</h1>
-            <p className="text-muted text-sm">Review and manage membership subscriptions and payment histories.</p>
+        <div className="ops-hero">
+          <div className="ops-hero__copy">
+            <span className="ops-eyebrow">Lifecycle Console</span>
+            <h1 className="ops-title">Membership Operations</h1>
+            <p className="ops-subtitle">Purchase, hold, resume, and refund memberships from one operational surface without losing the selected-member context.</p>
+            <div className="ops-meta">
+              <span className="ops-meta__pill">Purchase-first</span>
+              <span className="ops-meta__pill">Modal actions</span>
+              <span className="ops-meta__pill">Payment-aware</span>
+            </div>
           </div>
           <button 
             type="button" 
@@ -133,24 +139,41 @@ export default function MembershipsPage() {
           >
             New Registration
           </button>
-        </header>
+        </div>
+
+        <div className="ops-stat-strip">
+          <div className="ops-stat-card">
+            <span className="ops-stat-card__label">Focused Member</span>
+            <span className="ops-stat-card__value">#{selectedMember.memberId}</span>
+            <span className="ops-stat-card__hint">{selectedMember.memberName}</span>
+          </div>
+          <div className="ops-stat-card">
+            <span className="ops-stat-card__label">Membership Rows</span>
+            <span className="ops-stat-card__value">{selectedMemberMemberships.length}</span>
+            <span className="ops-stat-card__hint">Loaded subscriptions for current member</span>
+          </div>
+          <div className="ops-stat-card">
+            <span className="ops-stat-card__label">Session Payments</span>
+            <span className="ops-stat-card__value">{payments.length}</span>
+            <span className="ops-stat-card__hint">New payment records produced in this session</span>
+          </div>
+        </div>
 
         <SelectedMemberContextBadge />
 
-        <div className="mt-lg">
-          <section className="placeholder-stack">
-            <header className="mb-md">
-              <h2 className="text-sm" style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Active Subscriptions
-              </h2>
-            </header>
+        <div className="mt-lg ops-shell">
+          <section className="ops-section">
+            <div className="ops-section__header">
+              <div>
+                <h2 className="ops-section__title">Active Subscriptions</h2>
+                <p className="ops-section__subtitle">Operational state and next actions for the currently focused member.</p>
+              </div>
+            </div>
 
             {selectedMemberMembershipsLoading ? (
               <div className="pill muted">Syncing membership data...</div>
             ) : selectedMemberMemberships.length === 0 ? (
-              <div className="panel-card" style={{ textAlign: 'center', padding: '40px', background: 'var(--bg-base)' }}>
-                <p className="text-muted">No active or past memberships found for this member.</p>
-              </div>
+              <div className="ops-empty">No active or past memberships found for this member.</div>
             ) : (
               <div className="table-shell">
                 <table className="members-table">
@@ -167,7 +190,7 @@ export default function MembershipsPage() {
                   <tbody>
                     {selectedMemberMemberships.map((membership) => (
                       <tr key={membership.membershipId}>
-                        <td style={{ fontWeight: 600 }}>{membership.membershipId}</td>
+                        <td><strong>{membership.membershipId}</strong></td>
                         <td>
                           <div className="stack-sm">
                             <span>{membership.productNameSnapshot}</span>
@@ -194,13 +217,12 @@ export default function MembershipsPage() {
                           )}
                         </td>
                         <td>
-                          <div className="row-actions" style={{ justifyContent: 'flex-end' }}>
+                          <div className="ops-table-actions">
                             {membership.membershipStatus === 'ACTIVE' && (
                               <>
                                 <button 
                                   type="button" 
-                                  className="secondary-button" 
-                                  style={{ padding: '6px 10px', fontSize: '12px' }}
+                                  className="secondary-button ops-action-button"
                                   onClick={() => {
                                     setTargetMembership(membership);
                                     setActiveModal('hold');
@@ -210,8 +232,8 @@ export default function MembershipsPage() {
                                 </button>
                                 <button 
                                   type="button" 
-                                  className="secondary-button" 
-                                  style={{ padding: '6px 10px', fontSize: '12px', color: 'var(--status-danger)' }}
+                                  className="secondary-button ops-action-button"
+                                  style={{ color: 'var(--status-danger)' }}
                                   onClick={() => {
                                     setTargetMembership(membership);
                                     setActiveModal('refund');
@@ -224,8 +246,7 @@ export default function MembershipsPage() {
                             {membership.membershipStatus === 'HOLDING' && membership.activeHoldStatus === 'ACTIVE' && (
                               <button 
                                 type="button" 
-                                className="primary-button" 
-                                style={{ padding: '6px 10px', fontSize: '12px' }}
+                                className="primary-button ops-action-button"
                                 onClick={() => {
                                   setTargetMembership(membership);
                                   setActiveModal('resume');
@@ -244,19 +265,20 @@ export default function MembershipsPage() {
             )}
           </section>
 
-          <section className="mt-lg">
-            <header className="mb-md">
-              <h2 className="text-sm" style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Payment History (Session Only)
-              </h2>
-            </header>
-            <div className="panel-card" style={{ background: 'var(--bg-base)', borderStyle: 'dashed' }}>
+          <section className="ops-section">
+            <div className="ops-section__header">
+              <div>
+                <h2 className="ops-section__title">Payment History (Session Only)</h2>
+                <p className="ops-section__subtitle">Immediate accounting feedback for the actions you just executed.</p>
+              </div>
+            </div>
+            <div className="ops-block ops-block--soft">
               {payments.length === 0 ? (
                 <p className="text-muted text-sm">No payment records generated in this session.</p>
               ) : (
                 <div className="stack-sm">
                   {payments.map((payment) => (
-                    <div key={payment.paymentId} className="nav-item" style={{ background: 'var(--bg-surface)', borderRadius: '12px', padding: '12px' }}>
+                    <div key={payment.paymentId} className="ops-block">
                       <div style={{ flex: 1 }}>
                         <div className="row-actions" style={{ justifyContent: 'space-between', marginBottom: '4px' }}>
                           <span className="text-xs text-muted">ID: #{payment.paymentId}</span>

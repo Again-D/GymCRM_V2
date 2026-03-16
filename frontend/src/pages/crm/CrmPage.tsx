@@ -51,6 +51,9 @@ export default function CrmPage() {
     initialPageSize: 10,
     resetDeps: [crmHistoryRows.length, crmFilters.sendStatus, crmFilters.limit]
   });
+  const pendingCount = crmHistoryRows.filter((row) => row.sendStatus === "PENDING" || row.sendStatus === "RETRY_WAIT").length;
+  const failedCount = crmHistoryRows.filter((row) => row.sendStatus === "DEAD").length;
+  const sentCount = crmHistoryRows.filter((row) => row.sendStatus === "SENT").length;
 
   useEffect(() => {
     if (!isLiveCrmRoleSupported) {
@@ -77,37 +80,60 @@ export default function CrmPage() {
   }
 
   return (
-    <div className="stack-lg">
-      
-      {/* OPERATIONS CONSOLE */}
-      <article className="panel-card">
-        <header className="panel-card-header mb-md">
-          <div>
-            <h1 className="brand-title" style={{ fontSize: '1.25rem' }}>Communication Ops</h1>
-            <p className="text-muted text-xs">Automated messaging queues and transmission logs.</p>
+    <section className="ops-shell">
+      <div className="ops-hero">
+        <div className="ops-hero__copy">
+          <span className="ops-eyebrow">Messaging Queue</span>
+          <h1 className="ops-title">Communication Ops</h1>
+          <p className="ops-subtitle">Trigger reminder batches, process outbound messages, and audit delivery state from a single control surface.</p>
+          <div className="ops-meta">
+            <span className="ops-meta__pill">Queue automation</span>
+            <span className="ops-meta__pill">Transmission audit</span>
+            <span className="ops-meta__pill">Role-aware live gating</span>
           </div>
-          <div className="row-actions">
-            <button
-               type="button"
-               className="secondary-button"
-               disabled={!isLiveCrmRoleSupported}
-               onClick={() => {
-                 clearCrmFeedback();
-                 const nextFilters = createDefaultCrmFilters();
-                 setCrmFilters(nextFilters);
-                 void reloadHistory(nextFilters);
-               }}
-             >
-               Sync Logs
-             </button>
-          </div>
-        </header>
+        </div>
+        <button
+          type="button"
+          className="secondary-button ops-action-button"
+          disabled={!isLiveCrmRoleSupported}
+          onClick={() => {
+            clearCrmFeedback();
+            const nextFilters = createDefaultCrmFilters();
+            setCrmFilters(nextFilters);
+            void reloadHistory(nextFilters);
+          }}
+        >
+          Sync Logs
+        </button>
+      </div>
 
-        <div className="members-page-grid" style={{ gridTemplateColumns: 'minmax(0, 1fr) 1.5fr', gap: '24px' }}>
-          
-          {/* TRIGGER CONTROL */}
-          <div className="panel-card" style={{ background: 'var(--bg-base)', border: '0' }}>
-            <span className="text-xs" style={{ fontWeight: 700, color: 'var(--text-muted)' }}>QUEUE AUTOMATION</span>
+      <div className="ops-kpi-grid">
+        <div className="ops-kpi-card">
+          <span className="ops-kpi-card__label">Total Events</span>
+          <span className="ops-kpi-card__value">{crmHistoryRows.length}</span>
+          <span className="ops-kpi-card__hint">Visible CRM transmissions in the current log view</span>
+        </div>
+        <div className="ops-kpi-card">
+          <span className="ops-kpi-card__label">Pending Queue</span>
+          <span className="ops-kpi-card__value">{pendingCount}</span>
+          <span className="ops-kpi-card__hint">Messages still waiting for processing or retry</span>
+        </div>
+        <div className="ops-kpi-card">
+          <span className="ops-kpi-card__label">Delivered</span>
+          <span className="ops-kpi-card__value">{sentCount}</span>
+          <span className="ops-kpi-card__hint">Successfully sent rows in the current set</span>
+        </div>
+        <div className="ops-kpi-card">
+          <span className="ops-kpi-card__label">Failed</span>
+          <span className="ops-kpi-card__value">{failedCount}</span>
+          <span className="ops-kpi-card__hint">Rows that still require manual attention</span>
+        </div>
+      </div>
+
+      <article className="panel-card">
+        <div className="ops-surface-grid">
+          <div className="ops-block">
+            <span className="ops-kpi-card__label">Queue Automation</span>
             <div className="stack-md mt-sm">
                <label className="stack-sm">
                  <span className="text-sm">Days Ahead (Expiry)</span>
@@ -125,7 +151,6 @@ export default function CrmPage() {
                   <button
                     type="button"
                     className="primary-button"
-                    style={{ flex: 1 }}
                     onClick={() => void runTrigger()}
                     disabled={crmTriggerSubmitting || !isLiveCrmRoleSupported}
                   >
@@ -134,7 +159,6 @@ export default function CrmPage() {
                   <button
                     type="button"
                     className="secondary-button"
-                    style={{ flex: 1 }}
                     onClick={() => void runProcess()}
                     disabled={crmProcessSubmitting || !isLiveCrmRoleSupported}
                   >
@@ -145,16 +169,20 @@ export default function CrmPage() {
           </div>
 
           {/* STATUS MONITOR */}
-          <div className="panel-card" style={{ background: 'var(--bg-base)', border: '0' }}>
-             <span className="text-xs" style={{ fontWeight: 700, color: 'var(--text-muted)' }}>OPERATIONAL FEEDBACK</span>
-             <div className="stack-sm mt-sm">
+          <div className="ops-block">
+             <span className="ops-kpi-card__label">Operational Feedback</span>
+             <div className="ops-feedback-stack mt-sm">
                 {!isLiveCrmRoleSupported && (
-                  <div className="pill danger full-span" style={{ background: 'transparent', border: '1px dashed' }}>Role Restricted: Live API Disabled</div>
+                  <div className="field-ops-note field-ops-note--restricted">
+                    <span className="field-ops-note__label">Restricted live mode</span>
+                    <div className="text-sm brand-title mt-xs">Role Restricted: Live API Disabled</div>
+                    <div className="mt-xs text-sm">This role can review the workspace but cannot run live CRM queue actions.</div>
+                  </div>
                 )}
-                {crmPanelMessage && <div className="pill ok full-span" style={{ justifyContent: 'center' }}>{crmPanelMessage}</div>}
-                {crmPanelError && <div className="pill danger full-span" style={{ justifyContent: 'center' }}>{crmPanelError}</div>}
+                {crmPanelMessage && <div className="pill ok full-span">{crmPanelMessage}</div>}
+                {crmPanelError && <div className="pill danger full-span">{crmPanelError}</div>}
                 {!crmPanelMessage && !crmPanelError && (
-                  <p className="text-muted text-sm" style={{ fontStyle: 'italic' }}>System idle. Awaiting tactical commands.</p>
+                  <p className="text-muted text-sm">System idle. Awaiting tactical commands.</p>
                 )}
              </div>
           </div>
@@ -163,12 +191,14 @@ export default function CrmPage() {
 
       {/* HISTORY TABLE */}
       <article className="panel-card">
-        <header className="panel-card-header mb-md">
-          <h2 className="brand-title" style={{ fontSize: '1rem' }}>Audit Logs & Transmission History</h2>
-           <div className="row-actions">
+        <div className="ops-section__header">
+          <div>
+            <h2 className="ops-section__title">Audit Logs & Transmission History</h2>
+            <p className="ops-section__subtitle">Review outbound event state, retries, and recent failures.</p>
+          </div>
+          <div className="row-actions">
               <select
                 className="input"
-                style={{ padding: '6px 10px', fontSize: '12px', width: 'auto' }}
                 value={crmFilters.sendStatus}
                 disabled={!isLiveCrmRoleSupported}
                 onChange={(event) =>
@@ -185,7 +215,7 @@ export default function CrmPage() {
                 <option value="DEAD">Failed</option>
               </select>
            </div>
-        </header>
+        </div>
 
         <div className="table-shell">
           <table className="members-table">
@@ -205,19 +235,19 @@ export default function CrmPage() {
                   <tr key={row.crmMessageEventId}>
                     <td>
                       <div className="stack-sm">
-                        <span className="text-sm" style={{ fontWeight: 600 }}>Member ID: #{row.memberId}</span>
+                        <span className="text-sm brand-title">Member ID: #{row.memberId}</span>
                         <span className="text-xs text-muted">Log: #{row.crmMessageEventId}</span>
                       </div>
                     </td>
-                    <td><span className="text-xs" style={{ fontWeight: 700 }}>{row.eventType}</span></td>
+                    <td><span className="text-xs brand-title">{row.eventType}</span></td>
                     <td><span className={status.class}>{status.label}</span></td>
                     <td>
                       <div className="stack-sm">
                         <span className="text-xs">{row.attemptCount} / 3</span>
-                        {row.lastErrorMessage && <span className="text-xs text-danger" style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.lastErrorMessage}</span>}
+                        {row.lastErrorMessage && <span className="text-xs text-danger">{row.lastErrorMessage}</span>}
                       </div>
                     </td>
-                    <td style={{ textAlign: 'right' }}>
+                    <td className="ops-right">
                       <span className="text-xs text-muted">{formatDateTime(row.createdAt)}</span>
                     </td>
                   </tr>
@@ -225,7 +255,7 @@ export default function CrmPage() {
               })}
               {historyPagination.pagedItems.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="empty-cell" style={{ padding: '48px' }}>
+                  <td colSpan={5} className="empty-cell">
                     {crmHistoryLoading ? "Decoding logs..." : "No transmission data found."}
                   </td>
                 </tr>
@@ -238,6 +268,6 @@ export default function CrmPage() {
         </div>
       </article>
 
-    </div>
+    </section>
   );
 }

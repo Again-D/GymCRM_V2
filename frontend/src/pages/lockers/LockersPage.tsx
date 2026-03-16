@@ -114,28 +114,63 @@ export default function LockersPage() {
   }
 
   return (
-    <section className="members-page-grid" style={{ gridTemplateColumns: 'minmax(0, 1.2fr) 1fr', gap: '24px', alignItems: 'start' }}>
-      
-      {/* INVENTORY PANEL */}
-      <article className="panel-card">
-        <header className="panel-card-header mb-md">
-          <div>
-            <h1 className="brand-title" style={{ fontSize: '1.25rem' }}>Locker Inventory</h1>
-            <p className="text-muted text-xs">Manage physical storage slots and availability.</p>
+    <section className="ops-shell">
+      <div className="ops-hero">
+        <div className="ops-hero__copy">
+          <span className="ops-eyebrow">Storage Surface</span>
+          <h1 className="ops-title">Locker Inventory</h1>
+          <p className="ops-subtitle">Track locker stock, inspect active assignments, and issue new allocations without leaving the workspace.</p>
+          <div className="ops-meta">
+            <span className="ops-meta__pill">Locker stock</span>
+            <span className="ops-meta__pill">Assignment overview</span>
+            <span className="ops-meta__pill">Member-linked modal flow</span>
           </div>
-          <button 
-            type="button" 
-            className="primary-button" 
-            onClick={() => setIsAssignModalOpen(true)}
-            disabled={!isLiveLockerRoleSupported}
-          >
-            New Assignment
-          </button>
-        </header>
+        </div>
+        <button 
+          type="button" 
+          className="primary-button" 
+          onClick={() => setIsAssignModalOpen(true)}
+          disabled={!isLiveLockerRoleSupported}
+        >
+          New Assignment
+        </button>
+      </div>
+
+      <div className="ops-kpi-grid">
+        <div className="ops-kpi-card">
+          <span className="ops-kpi-card__label">Slots Loaded</span>
+          <span className="ops-kpi-card__value">{lockerSlots.length}</span>
+          <span className="ops-kpi-card__hint">Locker inventory currently inside the working set</span>
+        </div>
+        <div className="ops-kpi-card">
+          <span className="ops-kpi-card__label">Available</span>
+          <span className="ops-kpi-card__value">{availableSlots.length}</span>
+          <span className="ops-kpi-card__hint">Units ready for immediate assignment</span>
+        </div>
+        <div className="ops-kpi-card">
+          <span className="ops-kpi-card__label">Assignments</span>
+          <span className="ops-kpi-card__value">{lockerAssignments.length}</span>
+          <span className="ops-kpi-card__hint">Active and returned assignment rows</span>
+        </div>
+        <div className="ops-kpi-card">
+          <span className="ops-kpi-card__label">Focused Member</span>
+          <span className="ops-kpi-card__value">{selectedMemberId ? `#${selectedMemberId}` : "-"}</span>
+          <span className="ops-kpi-card__hint">{selectedMember?.memberName ?? "No member selected yet"}</span>
+        </div>
+      </div>
+      
+      <section className="ops-surface-grid">
+      <article className="panel-card">
+        <div className="ops-section__header">
+          <div>
+            <h2 className="ops-section__title">Inventory Directory</h2>
+            <p className="ops-section__subtitle">Filter available units, audit storage zones, and prepare assignment actions.</p>
+          </div>
+        </div>
 
         <div className="members-filter-grid" style={{ marginBottom: '24px' }}>
           <label className="stack-sm">
-            <span className="text-xs text-muted" style={{ fontWeight: 600 }}>Filter Status</span>
+            <span className="text-xs text-muted brand-title">Filter Status</span>
             <select
               className="input"
               value={lockerFilters.lockerStatus}
@@ -151,7 +186,7 @@ export default function LockersPage() {
             </select>
           </label>
           <label className="stack-sm">
-            <span className="text-xs text-muted" style={{ fontWeight: 600 }}>Zone Lookup</span>
+            <span className="text-xs text-muted brand-title">Zone Lookup</span>
             <input
               className="input"
               value={lockerFilters.lockerZone}
@@ -162,10 +197,17 @@ export default function LockersPage() {
           </label>
         </div>
 
+        {!isLiveLockerRoleSupported && (
+          <div className="field-ops-note field-ops-note--restricted mb-md">
+            <span className="field-ops-note__label">Restricted live mode</span>
+            <div className="mt-xs text-sm">Locker assignment and modification actions are disabled for this role.</div>
+          </div>
+        )}
+
         {(lockerPanelMessage || lockerPanelError || lockerQueryError) && (
-          <div className="mb-md">
-            {lockerPanelMessage && <div className="pill ok full-span" style={{ justifyContent: 'center' }}>{lockerPanelMessage}</div>}
-            {(lockerPanelError || lockerQueryError) && <div className="pill danger full-span" style={{ justifyContent: 'center' }}>{lockerPanelError ?? lockerQueryError}</div>}
+          <div className="ops-feedback-stack mb-md">
+            {lockerPanelMessage && <div className="pill ok full-span">{lockerPanelMessage}</div>}
+            {(lockerPanelError || lockerQueryError) && <div className="pill danger full-span">{lockerPanelError ?? lockerQueryError}</div>}
           </div>
         )}
 
@@ -186,19 +228,19 @@ export default function LockersPage() {
                   <tr key={slot.lockerSlotId}>
                     <td>
                       <div className="stack-sm">
-                        <span className="text-sm" style={{ fontWeight: 600 }}>{slot.lockerCode}</span>
+                        <span className="text-sm brand-title">{slot.lockerCode}</span>
                         <span className="text-xs text-muted">Zone: {slot.lockerZone ?? "N/A"}</span>
                       </div>
                     </td>
                     <td><span className="text-xs">{slot.lockerGrade ?? "-"}</span></td>
                     <td><span className={status.class}>{status.label}</span></td>
-                    <td style={{ textAlign: 'right' }}><span className="text-xs text-muted">{slot.memo ?? "-"}</span></td>
+                    <td className="ops-right"><span className="text-xs text-muted">{slot.memo ?? "-"}</span></td>
                   </tr>
                 );
               })}
               {slotsPagination.pagedItems.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="empty-cell" style={{ padding: '32px' }}>
+                  <td colSpan={4} className="empty-cell">
                     {lockerSlotsLoading ? "Inventory loading..." : "No units found matching criteria."}
                   </td>
                 </tr>
@@ -216,10 +258,12 @@ export default function LockersPage() {
       <article className="stack-lg">
         
         <section className="panel-card">
-          <header className="mb-md">
-             <h2 className="brand-title" style={{ fontSize: '1.25rem' }}>Active Assignments</h2>
-             <p className="text-muted text-xs">Overview of currently occupied units and contracts.</p>
-          </header>
+          <div className="ops-section__header">
+            <div>
+              <h2 className="ops-section__title">Active Assignments</h2>
+              <p className="ops-section__subtitle">Overview of occupied units, date ranges, and return actions.</p>
+            </div>
+          </div>
 
           <div className="table-shell">
             <table className="members-table">
@@ -238,22 +282,22 @@ export default function LockersPage() {
                     <tr key={assignment.lockerAssignmentId}>
                       <td>
                         <div className="stack-sm">
-                          <span className="text-sm" style={{ fontWeight: 600 }}>{assignment.lockerCode}</span>
+                          <span className="text-sm brand-title">{assignment.lockerCode}</span>
                           <span className="text-xs text-muted">{assignment.memberName} (#{assignment.memberId})</span>
                         </div>
                       </td>
                       <td>
                         <div className="stack-sm">
-                          <span className="text-xs" style={{ fontWeight: 600 }}>{assignment.startDate}</span>
+                          <span className="text-xs brand-title">{assignment.startDate}</span>
                           <span className="text-xs text-muted">to {assignment.endDate}</span>
                         </div>
                       </td>
-                      <td style={{ textAlign: 'right' }}>
+                      <td className="ops-right">
                         {isActive ? (
                            <button
                              type="button"
-                             className="secondary-button"
-                             style={{ padding: '6px 10px', fontSize: '11px', color: 'var(--status-danger)' }}
+                             className="secondary-button ops-action-button"
+                             style={{ color: 'var(--status-danger)' }}
                              disabled={lockerReturnSubmittingId === assignment.lockerAssignmentId || !isLiveLockerRoleSupported}
                              onClick={() => void runLockerReturn(assignment.lockerAssignmentId)}
                            >
@@ -268,7 +312,7 @@ export default function LockersPage() {
                 })}
                 {assignmentsPagination.pagedItems.length === 0 && (
                   <tr>
-                    <td colSpan={3} className="empty-cell" style={{ padding: '32px' }}>
+                    <td colSpan={3} className="empty-cell">
                       {lockerAssignmentsLoading ? "Fetching assignments..." : "No active contracts."}
                     </td>
                   </tr>
@@ -282,9 +326,10 @@ export default function LockersPage() {
         </section>
 
         {!isLiveLockerRoleSupported && (
-          <div className="panel-card" style={{ background: 'var(--status-warn-bg)', border: '0' }}>
-            <span className="text-xs" style={{ color: 'var(--status-warn)', fontWeight: 700 }}>RESTRICTED ACCESS</span>
-            <p className="text-xs" style={{ margin: '4px 0 0' }}>Your current role does not have authorization for locker modifications.</p>
+          <div className="field-ops-note field-ops-note--restricted">
+            <span className="field-ops-note__label">Restricted access</span>
+            <p className="text-sm brand-title mt-xs">RESTRICTED ACCESS</p>
+            <p className="text-sm mt-xs">Your current role does not have authorization for locker modifications.</p>
           </div>
         )}
       </article>
@@ -310,7 +355,7 @@ export default function LockersPage() {
         <div className="stack-md">
           <SelectedMemberContextBadge />
           
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <div className="ops-field-grid-2">
             <label className="stack-sm">
               <span className="text-sm">Target Unit</span>
               <select
@@ -342,7 +387,7 @@ export default function LockersPage() {
             </label>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <div className="ops-field-grid-2">
             <label className="stack-sm">
               <span className="text-sm">Start Effective</span>
               <input
@@ -376,6 +421,7 @@ export default function LockersPage() {
         </div>
       </Modal>
 
+      </section>
     </section>
   );
 }
