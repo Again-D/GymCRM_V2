@@ -38,10 +38,10 @@ describe("AccessPage", () => {
       </AuthStateProvider>
     );
 
-    expect(await screen.findByRole("heading", { name: "Entry Monitoring" })).toBeTruthy();
-    expect(screen.getByText("Active Sessions")).toBeTruthy();
-    expect(screen.getByText("Access Pulse")).toBeTruthy();
-    expect(screen.getByText("No Member Selected")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "출입 모니터링" })).toBeTruthy();
+    expect(screen.getByText("현재 입장 회원")).toBeTruthy();
+    expect(screen.getByText("출입 이력")).toBeTruthy();
+    expect(screen.getAllByText("선택된 회원 없음").length).toBeGreaterThan(0);
   });
 
   it("shows trainer unsupported note in live mode", async () => {
@@ -64,10 +64,10 @@ describe("AccessPage", () => {
       </AuthStateProvider>
     );
 
-    expect(await screen.findByRole("heading", { name: "Entry Monitoring" })).toBeTruthy();
-    expect(screen.getByText("ROLE RESTRICTED: LIVE API DISABLED")).toBeTruthy();
-    expect(screen.getByText("Access Control Restricted for this Role.")).toBeTruthy();
-    expect(screen.getByText("No active visitors.")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "출입 모니터링" })).toBeTruthy();
+    expect(screen.getByText("현재 권한에서는 실시간 출입 API를 사용할 수 없습니다.")).toBeTruthy();
+    expect(screen.getByText("현재 권한에서는 출입 제어를 사용할 수 없습니다.")).toBeTruthy();
+    expect(screen.getByText("현재 입장 중인 회원이 없습니다.")).toBeTruthy();
   });
 
   it("clears previously loaded member search results when live access becomes unsupported", async () => {
@@ -169,7 +169,7 @@ describe("AccessPage", () => {
       </AuthStateProvider>
     );
 
-    expect(await screen.findByText("ROLE RESTRICTED: LIVE API DISABLED")).toBeTruthy();
+    expect(await screen.findByText("현재 권한에서는 실시간 출입 API를 사용할 수 없습니다.")).toBeTruthy();
     await waitFor(() => {
       expect(screen.queryByText("김민수")).toBeNull();
     });
@@ -240,10 +240,10 @@ describe("AccessPage", () => {
       </AuthStateProvider>
     );
 
-    expect(screen.getByRole("heading", { name: "Entry Monitoring" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "출입 모니터링" })).toBeTruthy();
     await vi.runAllTimersAsync();
 
-    const searchInput = screen.getByPlaceholderText("Scan Member ID or Search Name...");
+    const searchInput = screen.getByPlaceholderText("회원 ID 스캔 또는 이름 검색");
     fireEvent.change(searchInput, { target: { value: "김" } });
     fireEvent.change(searchInput, { target: { value: "김민" } });
 

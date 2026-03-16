@@ -7,9 +7,9 @@ import { useSettlementReportQuery } from "./modules/useSettlementReportQuery";
 import { createDefaultSettlementFilters } from "./modules/types";
 
 function formatCurrency(amount: number) {
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat("ko-KR", {
     style: "currency",
-    currency: "USD",
+    currency: "KRW",
     maximumFractionDigits: 0
   }).format(amount);
 }
@@ -68,13 +68,13 @@ export default function SettlementsPage() {
     <section className="ops-shell">
       <div className="ops-hero">
         <div className="ops-hero__copy">
-          <span className="ops-eyebrow">Financial Console</span>
-          <h1 className="ops-title">Settlement Intelligence</h1>
-          <p className="ops-subtitle">Inspect revenue, refunds, and transaction mix with a reporting surface tuned for desk-level operational review.</p>
+          <span className="ops-eyebrow">정산 콘솔</span>
+          <h1 className="ops-title">정산 리포트</h1>
+          <p className="ops-subtitle">매출, 환불, 결제 수단별 집계를 빠르게 확인할 수 있는 정산 작업 화면입니다.</p>
           <div className="ops-meta">
-            <span className="ops-meta__pill">Financial rollup</span>
-            <span className="ops-meta__pill">Filter-driven analysis</span>
-            <span className="ops-meta__pill">Transaction aggregation</span>
+            <span className="ops-meta__pill">매출 집계</span>
+            <span className="ops-meta__pill">필터 기반 분석</span>
+            <span className="ops-meta__pill">거래 요약</span>
           </div>
         </div>
         <button
@@ -86,16 +86,16 @@ export default function SettlementsPage() {
             void loadSettlementReport(nextFilters);
           }}
         >
-          Reset Filters
+          필터 초기화
         </button>
       </div>
 
       <div className="ops-kpi-grid">
         {[
-          { label: "Gross Sales", value: formatCurrency(settlementReport?.totalGrossSales ?? 0), hint: "Before refunds and offsets" },
-          { label: "Total Refund", value: formatCurrency(settlementReport?.totalRefundAmount ?? 0), hint: "Refunded amount within the selected range" },
-          { label: "Net Revenue", value: formatCurrency(settlementReport?.totalNetSales ?? 0), hint: "Gross sales less refunds" },
-          { label: "Trans. Count", value: String(settlementReport?.rows.length ?? 0), hint: "Aggregated transaction rows loaded into the report" }
+          { label: "총 매출", value: formatCurrency(settlementReport?.totalGrossSales ?? 0), hint: "환불 차감 전 기준 매출" },
+          { label: "총 환불", value: formatCurrency(settlementReport?.totalRefundAmount ?? 0), hint: "조회 구간 내 환불 금액" },
+          { label: "순매출", value: formatCurrency(settlementReport?.totalNetSales ?? 0), hint: "환불을 제외한 순수 매출" },
+          { label: "거래 건수", value: String(settlementReport?.rows.length ?? 0), hint: "리포트에 집계된 거래 행 수" }
         ].map((kpi) => (
           <div key={kpi.label} className="ops-kpi-card">
             <span className="ops-kpi-card__label">{kpi.label}</span>
@@ -112,8 +112,8 @@ export default function SettlementsPage() {
         <article className="panel-card">
           <div className="ops-section__header">
             <div>
-              <h2 className="ops-section__title">Report Parameters</h2>
-              <p className="ops-section__subtitle">Adjust date range, payment method, and product keyword filters.</p>
+              <h2 className="ops-section__title">리포트 조건</h2>
+              <p className="ops-section__subtitle">조회 기간, 결제 수단, 상품 키워드를 조정해 결과를 확인합니다.</p>
             </div>
           </div>
           
@@ -125,7 +125,7 @@ export default function SettlementsPage() {
             }}
           >
             <label className="stack-sm">
-              <span className="text-xs text-muted brand-title">Period Start</span>
+              <span className="text-xs text-muted brand-title">시작일</span>
               <input
                 className="input"
                 type="date"
@@ -134,7 +134,7 @@ export default function SettlementsPage() {
               />
             </label>
             <label className="stack-sm">
-              <span className="text-xs text-muted brand-title">Period End</span>
+              <span className="text-xs text-muted brand-title">종료일</span>
               <input
                 className="input"
                 type="date"
@@ -143,7 +143,7 @@ export default function SettlementsPage() {
               />
             </label>
             <label className="stack-sm">
-              <span className="text-xs text-muted brand-title">Payment Method</span>
+              <span className="text-xs text-muted brand-title">결제 수단</span>
               <select
                 className="input"
                 value={settlementFilters.paymentMethod}
@@ -154,25 +154,25 @@ export default function SettlementsPage() {
                   }))
                 }
               >
-                <option value="">All Methods</option>
-                <option value="CASH">Cash</option>
-                <option value="CARD">Card</option>
-                <option value="TRANSFER">Transfer</option>
-                <option value="ETC">Other</option>
+                <option value="">전체 결제 수단</option>
+                <option value="CASH">현금</option>
+                <option value="CARD">카드</option>
+                <option value="TRANSFER">계좌이체</option>
+                <option value="ETC">기타</option>
               </select>
             </label>
             <label className="stack-sm">
-              <span className="text-xs text-muted brand-title">Search Product</span>
+              <span className="text-xs text-muted brand-title">상품 검색</span>
               <input
                 className="input"
                 value={settlementFilters.productKeyword}
                 onChange={(event) => setSettlementFilters((prev) => ({ ...prev, productKeyword: event.target.value }))}
-                placeholder="Item name keyword..."
+                placeholder="상품명 키워드"
               />
             </label>
 
             <button type="submit" className="primary-button full-span mt-sm" disabled={settlementReportLoading}>
-              {settlementReportLoading ? "Calculating..." : "Generate Analysis"}
+              {settlementReportLoading ? "집계 중..." : "리포트 조회"}
             </button>
           </form>
 
@@ -188,8 +188,8 @@ export default function SettlementsPage() {
         <article className="panel-card">
           <div className="ops-section__header">
             <div>
-              <h2 className="ops-section__title">Transaction Aggregation</h2>
-              <p className="ops-section__subtitle">Compare gross and net figures by product and payment method.</p>
+              <h2 className="ops-section__title">거래 집계 결과</h2>
+              <p className="ops-section__subtitle">상품과 결제 수단별로 총매출과 순매출을 비교합니다.</p>
             </div>
           </div>
 
@@ -197,10 +197,10 @@ export default function SettlementsPage() {
             <table className="members-table">
               <thead>
                 <tr>
-                  <th>Product / Category</th>
-                  <th>Method</th>
-                  <th style={{ textAlign: 'right' }}>Revenue (Gross)</th>
-                  <th style={{ textAlign: 'right' }}>Net Revenue</th>
+                  <th>상품 / 분류</th>
+                  <th>결제 수단</th>
+                  <th style={{ textAlign: 'right' }}>총매출</th>
+                  <th style={{ textAlign: 'right' }}>순매출</th>
                 </tr>
               </thead>
               <tbody>
@@ -209,14 +209,14 @@ export default function SettlementsPage() {
                     <td>
                       <div className="stack-sm">
                         <span className="text-sm brand-title">{row.productName}</span>
-                        <span className="text-xs text-muted">{row.transactionCount} transactions</span>
+                        <span className="text-xs text-muted">{row.transactionCount}건 거래</span>
                       </div>
                     </td>
                     <td><span className="pill muted">{row.paymentMethod}</span></td>
                     <td className="ops-right">
                       <div className="stack-sm">
                         <span className="text-sm">{formatCurrency(row.grossSales)}</span>
-                        {row.refundAmount > 0 && <span className="text-xs text-danger">-{formatCurrency(row.refundAmount)} refund</span>}
+                        {row.refundAmount > 0 && <span className="text-xs text-danger">-{formatCurrency(row.refundAmount)} 환불</span>}
                       </div>
                     </td>
                     <td className="ops-right">
@@ -227,7 +227,7 @@ export default function SettlementsPage() {
                 {rowsPagination.pagedItems.length === 0 && (
                    <tr>
                     <td colSpan={4} className="empty-cell">
-                      {settlementReportLoading ? "Processing financial data..." : "No records found for current range."}
+                      {settlementReportLoading ? "정산 데이터를 집계하는 중..." : "현재 조건에 해당하는 거래가 없습니다."}
                     </td>
                   </tr>
                 )}

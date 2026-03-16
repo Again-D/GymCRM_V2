@@ -42,7 +42,7 @@ describe("prototype shell routing", () => {
       securityMode: "prototype"
     });
 
-    expect(await screen.findByRole("heading", { name: "Operational Dashboard" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "운영 대시보드" })).toBeTruthy();
   });
 
   it("redirects protected shell routes to login in jwt unauthenticated mode", async () => {
@@ -74,6 +74,6 @@ describe("prototype shell routing", () => {
       authUser: { userId: 1, username: "test", role: "ADMIN" }
     });
 
-    expect(await screen.findByRole("heading", { name: "Operational Dashboard" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "운영 대시보드" })).toBeTruthy();
   });
 });

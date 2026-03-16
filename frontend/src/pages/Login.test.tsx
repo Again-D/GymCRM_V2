@@ -28,7 +28,7 @@ describe("Login", () => {
       </AuthStateProvider>
     );
 
-    expect(screen.getByLabelText("Operator ID")).toHaveProperty("value", "");
-    expect(screen.getByLabelText("Password")).toHaveProperty("value", "");
+    expect(screen.getByLabelText("로그인 ID")).toHaveProperty("value", "");
+    expect(screen.getByLabelText("비밀번호")).toHaveProperty("value", "");
   });
 });

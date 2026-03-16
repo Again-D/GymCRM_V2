@@ -45,8 +45,8 @@ describe("LockersPage", () => {
       </AuthStateProvider>
     );
 
-    expect(await screen.findByRole("heading", { name: "Locker Inventory" })).toBeTruthy();
-    expect(screen.getByText("RESTRICTED ACCESS")).toBeTruthy();
-    expect(screen.getByText(/Inventory loading...|No units found matching criteria./)).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "라커 관리" })).toBeTruthy();
+    expect(screen.getByText("현재 권한에서는 라커 작업을 수정할 수 없습니다.")).toBeTruthy();
+    expect(screen.getByText(/라커 목록 불러오는 중...|조건에 맞는 라커가 없습니다./)).toBeTruthy();
   });
 });

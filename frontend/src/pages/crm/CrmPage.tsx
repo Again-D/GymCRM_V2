@@ -13,17 +13,17 @@ function formatDateTime(value: string | null) {
     return "-";
   }
 
-  return new Date(value).toLocaleString("en-US", {
+  return new Date(value).toLocaleString("ko-KR", {
     dateStyle: "short",
     timeStyle: "short"
   });
 }
 
 const statusMap: Record<string, { label: string; class: string }> = {
-  "SENT": { label: "SENT", class: "pill ok" },
-  "PENDING": { label: "PENDING", class: "pill info" },
-  "RETRY_WAIT": { label: "RETRYING", class: "pill warn" },
-  "DEAD": { label: "FAILED", class: "pill danger" }
+  "SENT": { label: "발송 완료", class: "pill ok" },
+  "PENDING": { label: "대기 중", class: "pill info" },
+  "RETRY_WAIT": { label: "재시도 예정", class: "pill warn" },
+  "DEAD": { label: "실패", class: "pill danger" }
 };
 
 export default function CrmPage() {
@@ -83,13 +83,13 @@ export default function CrmPage() {
     <section className="ops-shell">
       <div className="ops-hero">
         <div className="ops-hero__copy">
-          <span className="ops-eyebrow">Messaging Queue</span>
-          <h1 className="ops-title">Communication Ops</h1>
-          <p className="ops-subtitle">Trigger reminder batches, process outbound messages, and audit delivery state from a single control surface.</p>
+          <span className="ops-eyebrow">메시지 큐</span>
+          <h1 className="ops-title">CRM 운영</h1>
+          <p className="ops-subtitle">만료 안내 대상자를 적재하고 메시지 발송 상태를 한 화면에서 점검할 수 있습니다.</p>
           <div className="ops-meta">
-            <span className="ops-meta__pill">Queue automation</span>
-            <span className="ops-meta__pill">Transmission audit</span>
-            <span className="ops-meta__pill">Role-aware live gating</span>
+            <span className="ops-meta__pill">큐 자동화</span>
+            <span className="ops-meta__pill">발송 감사</span>
+            <span className="ops-meta__pill">권한 기반 제한</span>
           </div>
         </div>
         <button
@@ -103,40 +103,40 @@ export default function CrmPage() {
             void reloadHistory(nextFilters);
           }}
         >
-          Sync Logs
+          로그 새로고침
         </button>
       </div>
 
       <div className="ops-kpi-grid">
         <div className="ops-kpi-card">
-          <span className="ops-kpi-card__label">Total Events</span>
+          <span className="ops-kpi-card__label">총 이벤트</span>
           <span className="ops-kpi-card__value">{crmHistoryRows.length}</span>
-          <span className="ops-kpi-card__hint">Visible CRM transmissions in the current log view</span>
+          <span className="ops-kpi-card__hint">현재 조회 조건에서 확인되는 CRM 발송 이벤트 수</span>
         </div>
         <div className="ops-kpi-card">
-          <span className="ops-kpi-card__label">Pending Queue</span>
+          <span className="ops-kpi-card__label">대기 큐</span>
           <span className="ops-kpi-card__value">{pendingCount}</span>
-          <span className="ops-kpi-card__hint">Messages still waiting for processing or retry</span>
+          <span className="ops-kpi-card__hint">아직 처리되지 않았거나 재시도 대기 중인 건수</span>
         </div>
         <div className="ops-kpi-card">
-          <span className="ops-kpi-card__label">Delivered</span>
+          <span className="ops-kpi-card__label">발송 완료</span>
           <span className="ops-kpi-card__value">{sentCount}</span>
-          <span className="ops-kpi-card__hint">Successfully sent rows in the current set</span>
+          <span className="ops-kpi-card__hint">현재 조회 결과 중 정상 발송된 건수</span>
         </div>
         <div className="ops-kpi-card">
-          <span className="ops-kpi-card__label">Failed</span>
+          <span className="ops-kpi-card__label">실패</span>
           <span className="ops-kpi-card__value">{failedCount}</span>
-          <span className="ops-kpi-card__hint">Rows that still require manual attention</span>
+          <span className="ops-kpi-card__hint">수동 확인이 필요한 실패 건수</span>
         </div>
       </div>
 
       <article className="panel-card">
         <div className="ops-surface-grid">
           <div className="ops-block">
-            <span className="ops-kpi-card__label">Queue Automation</span>
+            <span className="ops-kpi-card__label">큐 자동화</span>
             <div className="stack-md mt-sm">
                <label className="stack-sm">
-                 <span className="text-sm">Days Ahead (Expiry)</span>
+                 <span className="text-sm">만료 안내 기준일</span>
                  <input
                    className="input"
                    type="number"
@@ -154,7 +154,7 @@ export default function CrmPage() {
                     onClick={() => void runTrigger()}
                     disabled={crmTriggerSubmitting || !isLiveCrmRoleSupported}
                   >
-                    {crmTriggerSubmitting ? "Queueing..." : "Scan & Load Queue"}
+                    {crmTriggerSubmitting ? "적재 중..." : "대상 적재"}
                   </button>
                   <button
                     type="button"
@@ -162,7 +162,7 @@ export default function CrmPage() {
                     onClick={() => void runProcess()}
                     disabled={crmProcessSubmitting || !isLiveCrmRoleSupported}
                   >
-                    {crmProcessSubmitting ? "Sending..." : "Process Queue"}
+                    {crmProcessSubmitting ? "발송 중..." : "큐 실행"}
                   </button>
                </div>
             </div>
@@ -170,19 +170,19 @@ export default function CrmPage() {
 
           {/* STATUS MONITOR */}
           <div className="ops-block">
-             <span className="ops-kpi-card__label">Operational Feedback</span>
+             <span className="ops-kpi-card__label">운영 피드백</span>
              <div className="ops-feedback-stack mt-sm">
                 {!isLiveCrmRoleSupported && (
                   <div className="field-ops-note field-ops-note--restricted">
-                    <span className="field-ops-note__label">Restricted live mode</span>
-                    <div className="text-sm brand-title mt-xs">Role Restricted: Live API Disabled</div>
-                    <div className="mt-xs text-sm">This role can review the workspace but cannot run live CRM queue actions.</div>
+                    <span className="field-ops-note__label">라이브 제한</span>
+                    <div className="text-sm brand-title mt-xs">현재 권한에서는 CRM 발송 작업을 실행할 수 없습니다.</div>
+                    <div className="mt-xs text-sm">화면 조회는 가능하지만 큐 적재와 발송은 비활성화됩니다.</div>
                   </div>
                 )}
                 {crmPanelMessage && <div className="pill ok full-span">{crmPanelMessage}</div>}
                 {crmPanelError && <div className="pill danger full-span">{crmPanelError}</div>}
                 {!crmPanelMessage && !crmPanelError && (
-                  <p className="text-muted text-sm">System idle. Awaiting tactical commands.</p>
+                  <p className="text-muted text-sm">현재 대기 중입니다. 실행할 작업을 선택하세요.</p>
                 )}
              </div>
           </div>
@@ -193,8 +193,8 @@ export default function CrmPage() {
       <article className="panel-card">
         <div className="ops-section__header">
           <div>
-            <h2 className="ops-section__title">Audit Logs & Transmission History</h2>
-            <p className="ops-section__subtitle">Review outbound event state, retries, and recent failures.</p>
+            <h2 className="ops-section__title">발송 로그 및 이력</h2>
+            <p className="ops-section__subtitle">발송 상태, 재시도, 실패 이력을 확인합니다.</p>
           </div>
           <div className="row-actions">
               <select
@@ -208,11 +208,11 @@ export default function CrmPage() {
                   }))
                 }
               >
-                <option value="">All Statuses</option>
-                <option value="PENDING">Pending</option>
-                <option value="RETRY_WAIT">Retrying</option>
-                <option value="SENT">Sent</option>
-                <option value="DEAD">Failed</option>
+                <option value="">전체 상태</option>
+                <option value="PENDING">대기 중</option>
+                <option value="RETRY_WAIT">재시도 예정</option>
+                <option value="SENT">발송 완료</option>
+                <option value="DEAD">실패</option>
               </select>
            </div>
         </div>
@@ -221,11 +221,11 @@ export default function CrmPage() {
           <table className="members-table">
             <thead>
               <tr>
-                <th>Identity</th>
-                <th>Event Type</th>
-                <th>Status</th>
-                <th>Attempts</th>
-                <th style={{ textAlign: 'right' }}>Logged At</th>
+                <th>대상</th>
+                <th>이벤트</th>
+                <th>상태</th>
+                <th>시도 횟수</th>
+                <th style={{ textAlign: 'right' }}>기록 시각</th>
               </tr>
             </thead>
             <tbody>
@@ -235,8 +235,8 @@ export default function CrmPage() {
                   <tr key={row.crmMessageEventId}>
                     <td>
                       <div className="stack-sm">
-                        <span className="text-sm brand-title">Member ID: #{row.memberId}</span>
-                        <span className="text-xs text-muted">Log: #{row.crmMessageEventId}</span>
+                        <span className="text-sm brand-title">회원 #{row.memberId}</span>
+                        <span className="text-xs text-muted">로그 #{row.crmMessageEventId}</span>
                       </div>
                     </td>
                     <td><span className="text-xs brand-title">{row.eventType}</span></td>
@@ -256,7 +256,7 @@ export default function CrmPage() {
               {historyPagination.pagedItems.length === 0 && (
                 <tr>
                   <td colSpan={5} className="empty-cell">
-                    {crmHistoryLoading ? "Decoding logs..." : "No transmission data found."}
+                    {crmHistoryLoading ? "로그 불러오는 중..." : "발송 이력이 없습니다."}
                   </td>
                 </tr>
               )}

@@ -15,59 +15,59 @@ export default function Dashboard() {
       <section className={`panel-card ${styles.heroCard}`}>
         <div className={styles.heroHeader}>
           <div className={styles.heroCopy}>
-            <span className="ops-eyebrow">Operations Overview</span>
-            <h1 className="ops-title">Operational Dashboard</h1>
-            <p className="ops-subtitle">Command center for the current facility shift. Move quickly between member, membership, reservation, and product work with consistent state and theme visibility.</p>
+            <span className="ops-eyebrow">운영 개요</span>
+            <h1 className="ops-title">운영 대시보드</h1>
+            <p className="ops-subtitle">현재 근무 시간대의 운영 상황을 한눈에 파악하고 회원, 회원권, 예약, 상품 업무로 빠르게 이동할 수 있습니다.</p>
             <div className="ops-meta">
-              <span className="ops-meta__pill">Representative surface</span>
-              <span className="ops-meta__pill">Theme control</span>
-              <span className="ops-meta__pill">Quick entry routes</span>
+              <span className="ops-meta__pill">대표 기준 화면</span>
+              <span className="ops-meta__pill">테마 제어</span>
+              <span className="ops-meta__pill">빠른 진입 경로</span>
             </div>
           </div>
           <div className={styles.themeControl}>
-            <span className={styles.themeLabel}>Appearance</span>
+            <span className={styles.themeLabel}>화면 모드</span>
             <div className={styles.themeGroup}>
               <button
                 type="button"
                 className={`${themePreference === "light" ? "primary-button" : "secondary-button"} ${styles.themeButton}`}
                 onClick={() => setThemePreference("light")}
               >
-                Light
+                라이트
               </button>
               <button
                 type="button"
                 className={`${themePreference === "dark" ? "primary-button" : "secondary-button"} ${styles.themeButton}`}
                 onClick={() => setThemePreference("dark")}
               >
-                Dark
+                다크
               </button>
               <button
                 type="button"
                 className={`${themePreference === "system" ? "primary-button" : "secondary-button"} ${styles.themeButton}`}
                 onClick={() => setThemePreference("system")}
               >
-                Auto
+                자동
               </button>
             </div>
-            <span className="text-xs text-muted">Resolved theme: {resolvedTheme.toUpperCase()}</span>
+            <span className="text-xs text-muted">현재 적용 테마: {resolvedTheme === "dark" ? "다크" : "라이트"}</span>
           </div>
         </div>
 
         <div className={styles.metricsGrid}>
           <div className={styles.metricCard}>
-            <span className={styles.metricLabel}>Active Modules</span>
+            <span className={styles.metricLabel}>활성 모듈</span>
             <span className={styles.metricValue}>{dashboardRoutes.length}</span>
-            <span className={styles.metricHint}>Quick-entry work areas available from this dashboard.</span>
+            <span className={styles.metricHint}>대시보드에서 바로 진입할 수 있는 주요 업무 수입니다.</span>
           </div>
           <div className={styles.metricCard}>
-            <span className={styles.metricLabel}>Sidebar Navigation</span>
+            <span className={styles.metricLabel}>사이드바 메뉴</span>
             <span className={styles.metricValue}>{shellRoutes.filter((route) => route.showInSidebar).length}</span>
-            <span className={styles.metricHint}>Persistent routes visible in the shell.</span>
+            <span className={styles.metricHint}>셸에서 항상 접근 가능한 업무 경로입니다.</span>
           </div>
           <div className={styles.metricCard}>
-            <span className={styles.metricLabel}>Console Mode</span>
-            <span className={styles.metricValue}>{resolvedTheme === "dark" ? "Night" : "Day"}</span>
-            <span className={styles.metricHint}>Current visual environment for the operator shift.</span>
+            <span className={styles.metricLabel}>콘솔 모드</span>
+            <span className={styles.metricValue}>{resolvedTheme === "dark" ? "야간" : "주간"}</span>
+            <span className={styles.metricHint}>현재 운영 화면의 시각 환경입니다.</span>
           </div>
         </div>
       </section>
@@ -75,8 +75,8 @@ export default function Dashboard() {
       <section className="ops-section">
         <div className="ops-section__header">
           <div>
-            <h2 className="ops-section__title">Quick Entry Routes</h2>
-            <p className="ops-section__subtitle">Jump straight into the most active operational slices without traversing the full shell manually.</p>
+            <h2 className="ops-section__title">빠른 진입 경로</h2>
+            <p className="ops-section__subtitle">자주 쓰는 업무로 곧바로 이동해 운영 흐름을 끊지 않습니다.</p>
           </div>
         </div>
 
@@ -91,18 +91,18 @@ export default function Dashboard() {
                 <span className="pill info">{route.key.toUpperCase()}</span>
               </div>
               <div className={styles.moduleMeta}>
-                <span className={styles.modulePill}>Protected</span>
-                <span className={styles.modulePill}>Shell route</span>
+                <span className={styles.modulePill}>보호 경로</span>
+                <span className={styles.modulePill}>셸 진입</span>
               </div>
-              <span className={styles.moduleArrow}>Open Module</span>
+              <span className={styles.moduleArrow}>업무 열기</span>
             </Link>
           ))}
         </div>
       </section>
 
       <footer className={`panel-card ${styles.footerCard}`}>
-        <span className="text-xs text-muted">Field Operations Console representative dashboard surface</span>
-        <span className="text-xs text-muted">Current environment resolved to {resolvedTheme.toUpperCase()}</span>
+        <span className="text-xs text-muted">현장 운영 콘솔의 대표 대시보드 화면</span>
+        <span className="text-xs text-muted">현재 적용 환경: {resolvedTheme === "dark" ? "다크" : "라이트"}</span>
       </footer>
     </div>
   );

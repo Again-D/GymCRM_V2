@@ -63,27 +63,27 @@ export function MemberListSection() {
       <article className="panel-card">
         <div className="ops-hero">
           <div className="ops-hero__copy">
-            <span className="ops-eyebrow">Operations Directory</span>
-            <h1 className="ops-title">Member Directory</h1>
-            <p className="ops-subtitle">Scan member health, filter by operational status, and pin a person into the rest of the console with minimal navigation friction.</p>
+            <span className="ops-eyebrow">운영 디렉터리</span>
+            <h1 className="ops-title">회원 디렉터리</h1>
+            <p className="ops-subtitle">회원 상태를 빠르게 확인하고, 선택한 회원을 다른 업무 화면으로 자연스럽게 넘길 수 있습니다.</p>
             <div className="ops-meta">
-              <span className="ops-meta__pill">Directory-first</span>
-              <span className="ops-meta__pill">Cross-workspace handoff</span>
-              <span className="ops-meta__pill">Desk + floor ready</span>
+              <span className="ops-meta__pill">목록 중심</span>
+              <span className="ops-meta__pill">업무 간 컨텍스트 연동</span>
+              <span className="ops-meta__pill">데스크 + 현장 대응</span>
             </div>
           </div>
         </div>
 
         <div className="ops-stat-strip">
           <div className="ops-stat-card">
-            <span className="ops-stat-card__label">Current Result Set</span>
+            <span className="ops-stat-card__label">현재 조회 결과</span>
             <span className="ops-stat-card__value">{members.length}</span>
-            <span className="ops-stat-card__hint">Loaded member rows after current filters</span>
+            <span className="ops-stat-card__hint">현재 필터 기준으로 불러온 회원 수입니다.</span>
           </div>
           <div className="ops-stat-card">
-            <span className="ops-stat-card__label">Focused Context</span>
+            <span className="ops-stat-card__label">선택된 컨텍스트</span>
             <span className="ops-stat-card__value">{selectedMemberId ?? "-"}</span>
-            <span className="ops-stat-card__hint">{selectedMemberId ? "Pinned for downstream operations" : "No member currently pinned"}</span>
+            <span className="ops-stat-card__hint">{selectedMemberId ? "다음 업무 화면으로 이어집니다." : "선택된 회원이 없습니다."}</span>
           </div>
         </div>
 
@@ -95,22 +95,22 @@ export function MemberListSection() {
           }}
         >
           <label>
-            <span className="text-sm">Member Name</span>
-            <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Search name..." />
+            <span className="text-sm">회원명</span>
+            <input value={name} onChange={(event) => setName(event.target.value)} placeholder="이름 검색" />
           </label>
           <label>
-            <span className="text-sm">Contact Number</span>
+            <span className="text-sm">연락처</span>
             <input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="010-..." />
           </label>
           <label>
-            <span className="text-sm">Membership Status</span>
+            <span className="text-sm">회원권 상태</span>
             <select value={membershipOperationalStatus} onChange={(event) => setMembershipOperationalStatus(event.target.value)}>
-              <option value="">ALL STATUSES</option>
-              <option value="정상">NORMAL</option>
-              <option value="홀딩중">HOLDING</option>
-              <option value="만료임박">EXPIRING</option>
-              <option value="만료">EXPIRED</option>
-              <option value="없음">NO MEMBERSHIP</option>
+              <option value="">전체 상태</option>
+              <option value="정상">정상</option>
+              <option value="홀딩중">홀딩중</option>
+              <option value="만료임박">만료임박</option>
+              <option value="만료">만료</option>
+              <option value="없음">회원권 없음</option>
             </select>
           </label>
           <MembershipPeriodFilter
@@ -121,7 +121,7 @@ export function MemberListSection() {
           />
           <div className="toolbar-actions full-span mt-sm">
             <button type="submit" className="primary-button" disabled={membersLoading}>
-              {membersLoading ? "Loading..." : "Filter Results"}
+              {membersLoading ? "불러오는 중..." : "조회"}
             </button>
             <button
               type="button"
@@ -140,7 +140,7 @@ export function MemberListSection() {
                 });
               }}
             >
-              Reset Filters
+              초기화
             </button>
           </div>
         </form>
@@ -150,8 +150,8 @@ export function MemberListSection() {
         <section className="ops-section mt-lg">
           <div className="ops-section__header">
             <div>
-              <h2 className="ops-section__title">Live Member Surface</h2>
-              <p className="ops-section__subtitle">Pick a member or jump directly into downstream membership and reservation work.</p>
+              <h2 className="ops-section__title">회원 작업 화면</h2>
+              <p className="ops-section__subtitle">회원을 선택하거나 바로 회원권/예약 업무로 이동할 수 있습니다.</p>
             </div>
           </div>
         <div className="table-shell">
@@ -173,7 +173,7 @@ export function MemberListSection() {
               {pagination.pagedItems.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="empty-cell">
-                    No members found matching the criteria.
+                    조건에 맞는 회원이 없습니다.
                   </td>
                 </tr>
               ) : (
@@ -196,13 +196,13 @@ export function MemberListSection() {
                     <td>
                       <div className="ops-table-actions">
                         <button type="button" className="secondary-button ops-action-button" onClick={() => void selectMember(member.memberId)}>
-                          Select
+                          선택
                         </button>
                         <button type="button" className="secondary-button ops-action-button" onClick={() => void goToMemberContext("/memberships", member.memberId)}>
-                          Memberships
+                          회원권
                         </button>
                         <button type="button" className="secondary-button ops-action-button" onClick={() => void goToMemberContext("/reservations", member.memberId)}>
-                          Reservations
+                          예약
                         </button>
                       </div>
                     </td>

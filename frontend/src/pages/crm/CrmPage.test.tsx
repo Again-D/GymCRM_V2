@@ -42,9 +42,9 @@ describe("CrmPage", () => {
       </AuthStateProvider>
     );
 
-    expect(await screen.findByRole("heading", { name: "Communication Ops" })).toBeTruthy();
-    expect(screen.getByText("Role Restricted: Live API Disabled")).toBeTruthy();
-    expect(screen.getByText("No transmission data found.")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "CRM 운영" })).toBeTruthy();
+    expect(screen.getByText("현재 권한에서는 CRM 발송 작업을 실행할 수 없습니다.")).toBeTruthy();
+    expect(screen.getByText("발송 이력이 없습니다.")).toBeTruthy();
   });
 
   it("does not trigger live crm requests from unsupported-role controls", async () => {
@@ -76,9 +76,9 @@ describe("CrmPage", () => {
       </AuthStateProvider>
     );
 
-    expect(await screen.findByRole("heading", { name: "Communication Ops" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "CRM 운영" })).toBeTruthy();
 
-    const syncButton = screen.getByRole("button", { name: "Sync Logs" });
+    const syncButton = screen.getByRole("button", { name: "로그 새로고침" });
 
     expect(syncButton).toHaveProperty("disabled", true);
 

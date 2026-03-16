@@ -18,57 +18,57 @@ export default function Login() {
     <main className={styles["login-page"]}>
       <div className={styles["login-card"]}>
         <header className={styles["brand-section"]}>
-          <span className="ops-eyebrow">Field Ops Access</span>
+          <span className="ops-eyebrow">현장 운영 진입</span>
           <h1 className={styles["brand-title"]}>GymCRM</h1>
-          <p className={styles["brand-subtitle"]}>Fast, high-clarity workspace for desk and floor operations.</p>
+          <p className={styles["brand-subtitle"]}>데스크와 현장 업무를 빠르게 처리할 수 있는 고가독성 운영 콘솔입니다.</p>
         </header>
 
         <section>
           {isMockMode ? (
             <div className={styles["mock-presets"]}>
-              <h2 className={styles["mock-title"]}>Developer Presets</h2>
-              <p className={styles["mode-description"]}>Use runtime profiles to rehearse shell, role, and workspace flows without hitting the live auth gate.</p>
+              <h2 className={styles["mock-title"]}>개발용 프리셋</h2>
+              <p className={styles["mode-description"]}>실제 인증 없이 셸, 권한, 업무 화면 흐름을 바로 점검할 수 있습니다.</p>
               <div className={styles["mock-grid"]}>
                 <button 
                   type="button" 
                   className="primary-button" 
                   onClick={() => setRuntimeAuthPreset("prototype-admin")}
                 >
-                  Prototype Admin Mode
+                  프로토타입 관리자 모드
                 </button>
                 <button 
                   type="button" 
                   className="secondary-button" 
                   onClick={() => setRuntimeAuthPreset("jwt-admin")}
                 >
-                  JWT Admin Session
+                  JWT 관리자 세션
                 </button>
                 <button 
                   type="button" 
                   className="secondary-button" 
                   onClick={() => setRuntimeAuthPreset("jwt-trainer")}
                 >
-                  JWT Trainer Session
+                  JWT 트레이너 세션
                 </button>
               </div>
             </div>
           ) : (
             <>
-              <h2 className={styles["login-title"]}>Login to System</h2>
-              <p className={styles["mode-description"]}>Authenticate with your assigned operator account to enter the live operations console.</p>
+              <h2 className={styles["login-title"]}>시스템 로그인</h2>
+              <p className={styles["mode-description"]}>운영자 계정으로 로그인해 실서비스 운영 콘솔에 진입합니다.</p>
               <form className={styles["form-group"]} onSubmit={handleSubmit}>
                 <label className={styles.field}>
-                  <span className={styles["field-label"]}>Operator ID</span>
+                  <span className={styles["field-label"]}>로그인 ID</span>
                   <input 
                     className={styles.input}
                     value={loginId} 
                     onChange={(e) => setLoginId(e.target.value)} 
-                    placeholder="Enter login ID"
+                    placeholder="로그인 ID를 입력하세요"
                     required
                   />
                 </label>
                 <label className={styles.field}>
-                  <span className={styles["field-label"]}>Password</span>
+                  <span className={styles["field-label"]}>비밀번호</span>
                   <input 
                     className={styles.input}
                     type="password" 
@@ -84,7 +84,7 @@ export default function Login() {
                   className="primary-button mt-md" 
                   disabled={loginSubmitting}
                 >
-                  {loginSubmitting ? "Authenticating..." : "Sign In"}
+                  {loginSubmitting ? "인증 중..." : "로그인"}
                 </button>
               </form>
             </>
