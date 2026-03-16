@@ -6,7 +6,7 @@ import { usePagination } from "../../shared/hooks/usePagination";
 import { PaginationControls } from "../../shared/ui/PaginationControls";
 import { todayLocalDate } from "../../shared/date";
 import { useSelectedMemberMembershipsQuery } from "../member-context/modules/useSelectedMemberMembershipsQuery";
-import { SelectedMemberContextBadge } from "../members/components/SelectedMemberContextBadge";
+
 import { useSelectedMemberStore } from "../members/modules/SelectedMemberContext";
 import type { ReservationRow } from "../members/modules/types";
 import { isMembershipReservableOn } from "./modules/reservableMemberships";
@@ -356,7 +356,7 @@ export default function ReservationsPage() {
           </div>
         ) : (
           <div className="stack-lg">
-            <SelectedMemberContextBadge />
+
 
             <section>
               <div className="ops-section__header">

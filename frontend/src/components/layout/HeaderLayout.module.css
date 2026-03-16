@@ -1,0 +1,157 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 40px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-minimal);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.authInfo {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 250px;
+}
+
+.userProfile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.authActions {
+  display: flex;
+  gap: 6px;
+  margin-left: 8px;
+  padding-left: 16px;
+  border-left: 1px solid var(--border-minimal);
+}
+
+.logoutButton,
+.sessionButton {
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid var(--border-minimal);
+  background: var(--bg-base);
+  color: var(--text-main);
+  transition: all 0.2s;
+}
+
+.logoutButton:hover,
+.sessionButton:hover {
+  background: var(--status-danger-bg);
+  color: var(--status-danger);
+  border-color: var(--status-danger);
+}
+
+.sessionButton:hover {
+  background: var(--secondary-hover);
+  color: var(--text-main);
+  border-color: var(--text-muted);
+}
+
+.authLabel {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+.authUser {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
+}
+
+.themeControl {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-left: 24px;
+  border-left: 1px solid var(--border-minimal);
+}
+
+.themeLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.themeGroup {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-base);
+  padding: 3px;
+  border-radius: 10px;
+}
+
+.themeButton {
+  padding: 5px 10px;
+  font-size: 11px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.themeButtonActive {
+  background: var(--bg-surface);
+  color: var(--text-main);
+  box-shadow: var(--shadow-sm);
+}
+
+.systemInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: right;
+  padding-left: 24px;
+  border-left: 1px solid var(--border-minimal);
+}
+
+.systemLabel {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.systemMode {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.authPanel {
+  padding: 8px 16px;
+  border-radius: 12px;
+  background: var(--bg-base);
+  border: 1px solid var(--border-minimal);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}

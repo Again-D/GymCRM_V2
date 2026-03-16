@@ -5,7 +5,7 @@ import { formatDate } from "../../shared/format";
 import { useDebouncedValue } from "../../shared/hooks/useDebouncedValue";
 import { usePagination } from "../../shared/hooks/usePagination";
 import { PaginationControls } from "../../shared/ui/PaginationControls";
-import { SelectedMemberContextBadge } from "../members/components/SelectedMemberContextBadge";
+
 import { useMembersQuery } from "../members/modules/useMembersQuery";
 import { useSelectedMemberStore } from "../members/modules/SelectedMemberContext";
 import type { MemberSummary } from "../members/modules/types";
@@ -181,7 +181,7 @@ export default function AccessPage() {
                 />
              </div>
 
-             <SelectedMemberContextBadge />
+
 
              <div className="ops-focus-card">
                 <div className="ops-focus-card__copy">

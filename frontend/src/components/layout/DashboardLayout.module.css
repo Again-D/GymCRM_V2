@@ -132,8 +132,14 @@
 }
 
 .app-shell__main {
-  padding: 40px;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-shell__content {
+  padding: 40px;
+  flex: 1;
 }
 
 @media (max-width: 960px) {

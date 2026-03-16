@@ -159,14 +159,14 @@ export function MemberListSection() {
             <thead>
               <tr>
                 <th>ID</th>
-                <th>Name</th>
-                <th>Contact</th>
-                <th>Status</th>
-                <th>Operation</th>
-                <th>Expiry</th>
-                <th>PT Rem.</th>
-                <th>Joined</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
+                <th>이름</th>
+                <th>연락처</th>
+                <th>상태</th>
+                <th>운영 상태</th>
+                <th>만료일</th>
+                <th>PT 잔여</th>
+                <th>가입일</th>
+                <th style={{ textAlign: 'right' }}>액션</th>
               </tr>
             </thead>
             <tbody>
@@ -183,7 +183,9 @@ export function MemberListSection() {
                     <td>{member.memberName}</td>
                     <td className="text-muted">{member.phone}</td>
                     <td>
-                      <span className={member.memberStatus === "ACTIVE" ? "pill ok" : "pill muted"}>{member.memberStatus}</span>
+                      <span className={member.memberStatus === "ACTIVE" ? "pill ok" : "pill muted"}>
+                        {member.memberStatus === "ACTIVE" ? "활성" : "비활성"}
+                      </span>
                     </td>
                     <td>
                       <span className={operationalStatusClass(member.membershipOperationalStatus)}>

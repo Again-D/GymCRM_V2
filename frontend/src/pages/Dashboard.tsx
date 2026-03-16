@@ -24,33 +24,6 @@ export default function Dashboard() {
               <span className="ops-meta__pill">빠른 진입 경로</span>
             </div>
           </div>
-          <div className={styles.themeControl}>
-            <span className={styles.themeLabel}>화면 모드</span>
-            <div className={styles.themeGroup}>
-              <button
-                type="button"
-                className={`${themePreference === "light" ? "primary-button" : "secondary-button"} ${styles.themeButton}`}
-                onClick={() => setThemePreference("light")}
-              >
-                라이트
-              </button>
-              <button
-                type="button"
-                className={`${themePreference === "dark" ? "primary-button" : "secondary-button"} ${styles.themeButton}`}
-                onClick={() => setThemePreference("dark")}
-              >
-                다크
-              </button>
-              <button
-                type="button"
-                className={`${themePreference === "system" ? "primary-button" : "secondary-button"} ${styles.themeButton}`}
-                onClick={() => setThemePreference("system")}
-              >
-                자동
-              </button>
-            </div>
-            <span className="text-xs text-muted">현재 적용 테마: {resolvedTheme === "dark" ? "다크" : "라이트"}</span>
-          </div>
         </div>
 
         <div className={styles.metricsGrid}>

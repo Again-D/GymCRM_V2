@@ -22,7 +22,7 @@ export function MembershipPeriodFilter({
 }: MembershipPeriodFilterProps) {
   return (
     <div className="period-filter">
-      <span className="text-sm" style={{ fontWeight: 600 }}>Expiry Period</span>
+      <span className="text-sm" style={{ fontWeight: 600 }}>만료 기간</span>
       <div className="period-preset-row">
         {PRESETS.map((preset) => (
           <button
@@ -38,11 +38,11 @@ export function MembershipPeriodFilter({
       </div>
       <div className="period-date-row">
         <label>
-          <span className="text-xs text-muted">From</span>
+          <span className="text-xs text-muted">시작일</span>
           <input type="date" value={value.dateFrom} onChange={(event) => onDateFromChange(event.target.value)} />
         </label>
         <label>
-          <span className="text-xs text-muted">To</span>
+          <span className="text-xs text-muted">종료일</span>
           <input type="date" value={value.dateTo} onChange={(event) => onDateToChange(event.target.value)} />
         </label>
       </div>

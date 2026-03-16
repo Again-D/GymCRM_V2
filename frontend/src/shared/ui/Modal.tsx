@@ -127,7 +127,7 @@ export function Modal({ isOpen, onClose, title, children, footer, size = "md" }:
             type="button"
             className={styles.closeButton}
             onClick={onClose}
-            aria-label="Close modal"
+            aria-label="모달 닫기"
           >
             &times;
           </button>
