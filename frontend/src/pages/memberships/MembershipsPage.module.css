@@ -1,0 +1,61 @@
+.dangerText {
+  color: var(--status-danger);
+}
+
+.flex1 {
+  flex: 1;
+}
+
+.betweenRow {
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.smallPill {
+  font-size: 10px;
+}
+
+.bold {
+  font-weight: 600;
+}
+
+.paymentAmount {
+  text-align: right;
+  font-weight: 700;
+}
+
+.gap16 {
+  gap: 16px;
+}
+
+.previewBox {
+  background: var(--bg-base);
+  padding: 16px;
+}
+
+.uppercase {
+  text-transform: uppercase;
+}
+
+.bolder {
+  font-weight: 700;
+}
+
+.block {
+  display: block;
+}
+
+.dangerButton {
+  background: var(--status-danger);
+  border-color: var(--status-danger);
+}
+
+.selfStart {
+  align-self: flex-start;
+}
+
+.refundSummary {
+  border-top: 1px solid var(--border-minimal);
+  padding-top: 8px;
+  margin-top: 4px;
+}

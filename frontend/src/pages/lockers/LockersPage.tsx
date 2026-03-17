@@ -10,6 +10,8 @@ import { useLockerPrototypeState } from "./modules/useLockerPrototypeState";
 import { useLockerQueries } from "./modules/useLockerQueries";
 import { Modal } from "../../shared/ui/Modal";
 
+import styles from "./LockersPage.module.css";
+
 const statusMap: Record<string, { label: string; class: string }> = {
   "AVAILABLE": { label: "사용 가능", class: "pill ok" },
   "ASSIGNED": { label: "배정됨", class: "pill info" },
@@ -136,26 +138,28 @@ export default function LockersPage() {
         </button>
       </div>
 
-      <div className="ops-kpi-grid">
-        <div className="ops-kpi-card">
-          <span className="ops-kpi-card__label">조회 슬롯 수</span>
-          <span className="ops-kpi-card__value">{lockerSlots.length}</span>
-          <span className="ops-kpi-card__hint">현재 조회 조건에서 불러온 라커 수</span>
+      <div className="ops-stat-strip">
+        <div className="ops-stat-card">
+          <span className="ops-stat-card__label">전체 라커</span>
+          <span className="ops-stat-card__value">{lockerSlots.length}</span>
+          <span className="ops-stat-card__hint">시스템에 등록된 전체 라커 수</span>
         </div>
-        <div className="ops-kpi-card">
-          <span className="ops-kpi-card__label">사용 가능</span>
-          <span className="ops-kpi-card__value">{availableSlots.length}</span>
-          <span className="ops-kpi-card__hint">바로 배정할 수 있는 라커 수</span>
+        <div className="ops-stat-card">
+          <span className="ops-stat-card__label">사용 가능</span>
+          <span className={`ops-stat-card__value ${styles.ok}`}>{availableSlots.length}</span>
+          <span className="ops-stat-card__hint">즉시 배정 가능한 공여 라커 수</span>
         </div>
-        <div className="ops-kpi-card">
-          <span className="ops-kpi-card__label">배정 건수</span>
-          <span className="ops-kpi-card__value">{lockerAssignments.length}</span>
-          <span className="ops-kpi-card__hint">사용 중이거나 반납된 배정 이력 수</span>
+        <div className="ops-stat-card">
+          <span className="ops-stat-card__label">현재 배정</span>
+          <span className={`ops-stat-card__value ${styles.info}`}>
+            {lockerAssignments.filter(a => a.assignmentStatus === 'ACTIVE').length}
+          </span>
+          <span className="ops-stat-card__hint">실제 사용 중인 활성 배정 건수</span>
         </div>
-        <div className="ops-kpi-card">
-          <span className="ops-kpi-card__label">선택 회원</span>
-          <span className="ops-kpi-card__value">{selectedMemberId ? `#${selectedMemberId}` : "-"}</span>
-          <span className="ops-kpi-card__hint">{selectedMember?.memberName ?? "아직 선택된 회원이 없습니다."}</span>
+        <div className="ops-stat-card">
+          <span className="ops-stat-card__label">시스템 권한</span>
+          <span className="ops-stat-card__value">{isLiveLockerRoleSupported ? "풀 액서스" : "조회 전용"}</span>
+          <span className="ops-stat-card__hint">{isLiveLockerRoleSupported ? "배정 및 반납 처리가 가능합니다." : "작업 권한이 제한된 상태입니다."}</span>
         </div>
       </div>
       
@@ -168,7 +172,7 @@ export default function LockersPage() {
           </div>
         </div>
 
-        <div className="members-filter-grid" style={{ marginBottom: '24px' }}>
+        <div className={`members-filter-grid ${styles.filterHeader}`}>
           <label className="stack-sm">
             <span className="text-xs text-muted brand-title">상태 필터</span>
             <select
@@ -199,8 +203,9 @@ export default function LockersPage() {
 
         {!isLiveLockerRoleSupported && (
           <div className="field-ops-note field-ops-note--restricted mb-md">
-            <span className="field-ops-note__label">라이브 제한</span>
-            <div className="mt-xs text-sm">현재 권한에서는 라커 배정 및 수정 작업을 실행할 수 없습니다.</div>
+            <span className="field-ops-note__label">운영 권한 제한</span>
+            <div className="text-sm brand-title mt-xs">현재 관리자 권한이 없어 라커 배정 및 수정 작업을 실행할 수 없습니다.</div>
+            <div className="mt-xs text-sm">데모 세션 또는 실제 관리자 세션으로의 전환이 필요합니다.</div>
           </div>
         )}
 
@@ -218,7 +223,7 @@ export default function LockersPage() {
                 <th>라커</th>
                 <th>등급</th>
                 <th>상태</th>
-                <th style={{ textAlign: 'right' }}>메모</th>
+                <th className="ops-right">메모</th>
               </tr>
             </thead>
             <tbody>
@@ -271,7 +276,7 @@ export default function LockersPage() {
                 <tr>
                   <th>라커 / 회원</th>
                   <th>사용 기간</th>
-                  <th style={{ textAlign: 'right' }}>액션</th>
+                  <th className="ops-right">액션</th>
                 </tr>
               </thead>
               <tbody>
@@ -296,8 +301,7 @@ export default function LockersPage() {
                         {isActive ? (
                            <button
                              type="button"
-                             className="secondary-button ops-action-button"
-                             style={{ color: 'var(--status-danger)' }}
+                             className={`secondary-button ops-action-button ${styles.danger}`}
                              disabled={lockerReturnSubmittingId === assignment.lockerAssignmentId || !isLiveLockerRoleSupported}
                              onClick={() => void runLockerReturn(assignment.lockerAssignmentId)}
                            >
@@ -327,9 +331,9 @@ export default function LockersPage() {
 
         {!isLiveLockerRoleSupported && (
           <div className="field-ops-note field-ops-note--restricted">
-            <span className="field-ops-note__label">권한 제한</span>
-            <p className="text-sm brand-title mt-xs">현재 권한에서는 라커 작업을 수정할 수 없습니다.</p>
-            <p className="text-sm mt-xs">조회는 가능하지만 신규 배정과 반납 같은 변경 작업은 제한됩니다.</p>
+            <span className="field-ops-note__label">정보 접근 제한</span>
+            <div className="text-sm brand-title mt-xs">배정 및 반납 변경 기능이 잠겨 있습니다.</div>
+            <div className="mt-xs text-sm">운영 로그 조회는 가능하나 실제 데이터 변경은 상위 권한이 필요합니다.</div>
           </div>
         )}
       </article>
@@ -411,8 +415,7 @@ export default function LockersPage() {
           <label className="stack-sm">
             <span className="text-sm">운영 메모</span>
             <textarea
-              className="input"
-              style={{ minHeight: '80px', resize: 'vertical' }}
+              className={`input ${styles.memoArea}`}
               value={lockerAssignForm.memo}
               onChange={(event) => setLockerAssignForm(prev => ({ ...prev, memo: event.target.value }))}
               placeholder="배정 관련 메모를 입력하세요"

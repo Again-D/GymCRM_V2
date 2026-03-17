@@ -5,6 +5,9 @@ import { formatDate } from "../../shared/format";
 import { useDebouncedValue } from "../../shared/hooks/useDebouncedValue";
 import { usePagination } from "../../shared/hooks/usePagination";
 import { PaginationControls } from "../../shared/ui/PaginationControls";
+import { Modal } from "../../shared/ui/Modal";
+
+import styles from "./AccessPage.module.css";
 
 import { useMembersQuery } from "../members/modules/useMembersQuery";
 import { useSelectedMemberStore } from "../members/modules/SelectedMemberContext";
@@ -66,6 +69,8 @@ export default function AccessPage() {
     handleAccessEntry,
     handleAccessExit
   } = useAccessPrototypeState();
+  
+  const [isWorkbenchOpen, setIsWorkbenchOpen] = useState(false);
 
   const isLiveAccessRoleSupported =
     isMockMode || authUser?.role === "ROLE_CENTER_ADMIN" || authUser?.role === "ROLE_DESK";
@@ -137,10 +142,10 @@ export default function AccessPage() {
 
       <div className="ops-kpi-grid">
         {[
-          { label: "현재 입장", value: accessPresence?.openSessionCount ?? 0, hint: "현재 센터 내부에 있는 회원 수" },
-          { label: "오늘 입장", value: accessPresence?.todayEntryGrantedCount ?? 0, hint: "영업일 기준 승인된 입장 수" },
-          { label: "오늘 퇴장", value: accessPresence?.todayExitCount ?? 0, hint: "오늘 기록된 퇴장 수" },
-          { label: "거부 건수", value: accessPresence?.todayEntryDeniedCount ?? 0, hint: "추가 확인이 필요한 거부 건수" }
+          { label: "현재 입장", value: accessPresence?.openSessionCount ?? 0, hint: "현재 센터 내부에 있는 총 회원 수" },
+          { label: "오늘 입장", value: accessPresence?.todayEntryGrantedCount ?? 0, hint: "금일 승인된 입장 총계" },
+          { label: "오늘 퇴장", value: accessPresence?.todayExitCount ?? 0, hint: "금일 기록된 퇴장 총계" },
+          { label: "입장 거부", value: accessPresence?.todayEntryDeniedCount ?? 0, hint: "승인되지 않은 무효한 시도" }
         ].map((kpi) => (
           <div key={kpi.label} className="ops-kpi-card">
             <span className="ops-kpi-card__label">{kpi.label}</span>
@@ -153,21 +158,21 @@ export default function AccessPage() {
       <section className="ops-surface-grid ops-surface-grid--wide-main">
         <article className="stack-lg">
 
-        {/* SEARCH & SELECTION */}
-        <div className="panel-card">
+        {/* MEMBER DIRECTORY */}
+        <section className="panel-card">
           <div className="ops-section__header">
             <div>
-              <h2 className="ops-section__title">출입 제어 패널</h2>
-              <p className="ops-section__subtitle">회원을 검색하고 선택한 뒤 입장 또는 퇴장 처리를 실행합니다.</p>
+              <h2 className="ops-section__title">회원 디렉터리</h2>
+              <p className="ops-section__subtitle">출입 처리를 위한 회원을 검색하고 선택합니다.</p>
             </div>
           </div>
           
           <div className="stack-md">
              {!isLiveAccessRoleSupported && (
                 <div className="field-ops-note field-ops-note--restricted">
-                  <span className="field-ops-note__label">라이브 제한</span>
-                  <div className="text-sm brand-title mt-xs">현재 권한에서는 실시간 출입 API를 사용할 수 없습니다.</div>
-                  <div className="mt-xs text-sm">화면은 볼 수 있지만 실제 출입 처리 액션은 비활성화됩니다.</div>
+                  <span className="field-ops-note__label">운영 권한 제한</span>
+                  <div className="text-sm brand-title mt-xs">현재 관리자 권한이 없어 실시간 출입 제어가 불가능합니다.</div>
+                  <div className="mt-xs text-sm">데모 또는 실제 관리자 세션으로 전환이 필요합니다.</div>
                 </div>
              )}
 
@@ -176,88 +181,67 @@ export default function AccessPage() {
                   className="input"
                   value={accessMemberQuery}
                   onChange={(event) => setAccessMemberQuery(event.target.value)}
-                  placeholder="회원 ID 스캔 또는 이름 검색"
+                  placeholder="회원 이름 또는 전화번호 뒷자리 검색"
                   disabled={!isLiveAccessRoleSupported}
                 />
              </div>
 
-
-
-             <div className="ops-focus-card">
-                <div className="ops-focus-card__copy">
-                  <span className="ops-focus-card__eyebrow">선택 회원 처리</span>
-                  <div className="ops-focus-card__title">
-                    {selectedMember ? selectedMember.memberName : "선택된 회원 없음"}
-                  </div>
-                </div>
-                <div className="ops-table-actions">
-                  <button
-                    type="button"
-                    className="primary-button ops-action-button"
-                    disabled={!selectedMemberId || accessActionSubmitting || !isLiveAccessRoleSupported}
-                    onClick={() => selectedMemberId && void runAccessAction(() => handleAccessEntry(selectedMemberId))}
-                  >
-                    입장 처리
-                  </button>
-                  <button
-                    type="button"
-                    className="secondary-button ops-action-button"
-                    disabled={!selectedMemberId || accessActionSubmitting || !isLiveAccessRoleSupported}
-                    onClick={() => selectedMemberId && void runAccessAction(() => handleAccessExit(selectedMemberId))}
-                  >
-                    퇴장 처리
-                  </button>
-                </div>
-             </div>
-
-             {(accessPanelMessage || accessPanelError) && (
-                <div className="ops-feedback-stack">
-                  {accessPanelMessage && <div className="pill ok full-span">{accessPanelMessage}</div>}
-                  {accessPanelError && <div className="pill danger full-span">{accessPanelError}</div>}
-                </div>
-             )}
-          </div>
-
-          <div className="table-shell mt-lg">
-            <table className="members-table">
-              <thead>
-                <tr>
-                  <th>회원 정보</th>
-                  <th>Status</th>
-                  <th style={{ textAlign: 'right' }}>액션</th>
-                </tr>
-              </thead>
-              <tbody>
-                {memberResultsPagination.pagedItems.map((member: MemberSummary) => (
-                  <tr key={member.memberId} className={member.memberId === selectedMemberId ? "is-selected-row" : undefined}>
-                    <td>
-                      <div className="stack-sm">
-                        <span className="text-sm brand-title">{member.memberName}</span>
-                        <span className="text-xs text-muted">ID: {member.memberId} · {member.phone}</span>
-                      </div>
-                    </td>
-                    <td><span className="pill muted">{member.membershipOperationalStatus}</span></td>
-                    <td className="ops-right">
-                      <button type="button" className="secondary-button ops-action-button" onClick={() => void selectMember(member.memberId)}>
-                        선택
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {memberResultsPagination.pagedItems.length === 0 && (
+             <div className="table-shell mt-lg">
+               <table className="members-table">
+                 <thead>
                    <tr>
-                    <td colSpan={3} className="empty-cell">
-                      {!isLiveAccessRoleSupported ? "현재 권한에서는 출입 제어를 사용할 수 없습니다." : "검색어를 입력해 회원을 조회하세요."}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                     <th>회원 정보</th>
+                     <th>회원권 상태</th>
+                     <th className="ops-right">액션</th>
+                   </tr>
+                 </thead>
+                 <tbody>
+                   {memberResultsPagination.pagedItems.map((member: MemberSummary) => (
+                     <tr key={member.memberId} className={member.memberId === selectedMemberId ? "is-selected-row" : undefined}>
+                       <td>
+                         <div className="stack-sm">
+                           <span className="text-sm brand-title">{member.memberName}</span>
+                           <span className="text-xs text-muted">ID: {member.memberId} · {member.phone}</span>
+                         </div>
+                       </td>
+                       <td>
+                         <span className={
+                           member.membershipOperationalStatus === '정상' ? 'pill ok' : 
+                           member.membershipOperationalStatus === '홀딩중' ? 'pill hold' : 'pill muted'
+                         }>
+                           {member.membershipOperationalStatus}
+                         </span>
+                       </td>
+                       <td className="ops-right">
+                         <button 
+                           type="button" 
+                           className="secondary-button ops-action-button" 
+                           onClick={async () => {
+                             const success = await selectMember(member.memberId);
+                             if (success) setIsWorkbenchOpen(true);
+                           }}
+                         >
+                           {selectedMemberId === member.memberId ? "조회 중" : "작업 선택"}
+                         </button>
+                       </td>
+                     </tr>
+                   ))}
+                   {memberResultsPagination.pagedItems.length === 0 && (
+                      <tr>
+                       <td colSpan={3} className="empty-cell">
+                         {!isLiveAccessRoleSupported ? "제한된 권한 상태입니다." : "조회할 회원을 검색해 주세요."}
+                       </td>
+                     </tr>
+                   )}
+                 </tbody>
+               </table>
+             </div>
+             <div className="mt-md">
+               <PaginationControls {...memberResultsPagination} pageSizeOptions={[10, 20]} onPageChange={memberResultsPagination.setPage} onPageSizeChange={memberResultsPagination.setPageSize} />
+             </div>
           </div>
-          <div className="mt-md">
-            <PaginationControls {...memberResultsPagination} pageSizeOptions={[10, 20]} onPageChange={memberResultsPagination.setPage} onPageSizeChange={memberResultsPagination.setPageSize} />
-          </div>
-        </div>
+        </section>
+
       </article>
 
       {/* SIDEBAR: ACTIVITY PULSE */}
@@ -336,6 +320,84 @@ export default function AccessPage() {
         </section>
 
       </aside>
+
+      <Modal
+        isOpen={isWorkbenchOpen}
+        onClose={() => setIsWorkbenchOpen(false)}
+        title={`출입 워크벤치: ${selectedMember?.memberName ?? "회원"}`}
+        footer={<button type="button" className="secondary-button" onClick={() => setIsWorkbenchOpen(false)}>닫기</button>}
+      >
+        <div className="stack-lg">
+          <section className="ops-focus-card">
+            <div className="ops-focus-card__copy">
+              <span className="ops-focus-card__eyebrow">현재 컨텍스트 처리</span>
+              <div className="ops-focus-card__title">
+                {selectedMember ? `${selectedMember.memberName} (#${selectedMember.memberId})` : "선택된 회원 없음"}
+              </div>
+            </div>
+            <div className="ops-table-actions">
+              <button
+                type="button"
+                className="primary-button ops-action-button"
+                disabled={!selectedMemberId || accessActionSubmitting || !isLiveAccessRoleSupported}
+                onClick={() => selectedMemberId && void runAccessAction(() => handleAccessEntry(selectedMemberId))}
+              >
+                입장 승인
+              </button>
+              <button
+                type="button"
+                className="secondary-button ops-action-button"
+                disabled={!selectedMemberId || accessActionSubmitting || !isLiveAccessRoleSupported}
+                onClick={() => selectedMemberId && void runAccessAction(() => handleAccessExit(selectedMemberId))}
+              >
+                퇴장 기록
+              </button>
+            </div>
+          </section>
+
+          {(accessPanelMessage || accessPanelError) && (
+            <div className="ops-feedback-stack">
+              {accessPanelMessage && <div className="pill ok full-span">{accessPanelMessage}</div>}
+              {accessPanelError && <div className="pill danger full-span">{accessPanelError}</div>}
+            </div>
+          )}
+
+          <section className="ops-section">
+            <div className="ops-section__header">
+              <h3 className="ops-section__title">회원 개별 출입 기록</h3>
+            </div>
+            <div className="table-shell">
+              <table className="members-table">
+                <thead>
+                  <tr>
+                    <th>이벤트 시각</th>
+                    <th className="ops-right">유형</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {accessEventsPagination.pagedItems.map((event) => {
+                    const label = eventLabel[event.eventType] || { label: event.eventType, class: 'pill muted' };
+                    return (
+                      <tr key={event.accessEventId}>
+                        <td className="text-sm">{formatDateTime(event.processedAt)}</td>
+                        <td className="ops-right">
+                          <span className={label.class}>{label.label}</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {accessEventsPagination.pagedItems.length === 0 && (
+                    <tr><td colSpan={2} className="empty-cell">개별 기록이 존재하지 않습니다.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-md">
+              <PaginationControls {...accessEventsPagination} pageSizeOptions={[10]} onPageChange={accessEventsPagination.setPage} onPageSizeChange={accessEventsPagination.setPageSize} />
+            </div>
+          </section>
+        </div>
+      </Modal>
     </section>
     </section>
   );

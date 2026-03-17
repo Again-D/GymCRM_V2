@@ -1,0 +1,8 @@
+.bold {
+  font-weight: 600;
+}
+
+.chip {
+  padding: 6px 12px;
+  font-size: 12px;
+}

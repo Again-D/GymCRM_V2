@@ -224,12 +224,31 @@ textarea.input:focus {
 }
 
 .period-chip,
-.pagination-page {
-  border-radius: 999px;
+.pagination-page,
+.pagination-buttons > button {
+  border-radius: 12px;
   border: 1px solid var(--border-minimal);
   background: var(--bg-surface);
-  padding: 8px 12px;
+  padding: 8px 14px;
   color: var(--text-main);
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+}
+
+.pagination-buttons > button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: var(--bg-base);
+}
+
+.pagination-buttons > button:not(:disabled):hover {
+  background: var(--secondary-hover);
+  border-color: var(--border-strong);
 }
 
 .period-chip.is-active,
@@ -239,13 +258,58 @@ textarea.input:focus {
 }
 
 .period-date-row,
-.toolbar-actions,
-.pagination-actions,
-.pagination-controls {
+.toolbar-actions {
   display: flex;
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.pagination-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  padding: 16px 0;
+  border-top: 1px solid var(--border-minimal);
+  margin-top: 24px;
+}
+
+.pagination-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.pagination-summary strong {
+  color: var(--text-main);
+  background: var(--bg-base);
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.pagination-actions {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.pagination-size {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.pagination-size select {
+  width: auto;
+  padding: 6px 32px 6px 12px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: 10px;
 }
 
 .table-shell {

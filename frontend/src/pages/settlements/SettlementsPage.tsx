@@ -6,6 +6,8 @@ import { useSettlementPrototypeState } from "./modules/useSettlementPrototypeSta
 import { useSettlementReportQuery } from "./modules/useSettlementReportQuery";
 import { createDefaultSettlementFilters } from "./modules/types";
 
+import styles from "./SettlementsPage.module.css";
+
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("ko-KR", {
     style: "currency",
@@ -13,6 +15,13 @@ function formatCurrency(amount: number) {
     maximumFractionDigits: 0
   }).format(amount);
 }
+
+const paymentMethodLabel: Record<string, string> = {
+  "CASH": "현금",
+  "CARD": "카드",
+  "TRANSFER": "계좌이체",
+  "ETC": "기타"
+};
 
 export default function SettlementsPage() {
   const {
@@ -90,19 +99,27 @@ export default function SettlementsPage() {
         </button>
       </div>
 
-      <div className="ops-kpi-grid">
-        {[
-          { label: "총 매출", value: formatCurrency(settlementReport?.totalGrossSales ?? 0), hint: "환불 차감 전 기준 매출" },
-          { label: "총 환불", value: formatCurrency(settlementReport?.totalRefundAmount ?? 0), hint: "조회 구간 내 환불 금액" },
-          { label: "순매출", value: formatCurrency(settlementReport?.totalNetSales ?? 0), hint: "환불을 제외한 순수 매출" },
-          { label: "거래 건수", value: String(settlementReport?.rows.length ?? 0), hint: "리포트에 집계된 거래 행 수" }
-        ].map((kpi) => (
-          <div key={kpi.label} className="ops-kpi-card">
-            <span className="ops-kpi-card__label">{kpi.label}</span>
-            <span className="ops-kpi-card__value">{kpi.value}</span>
-            <span className="ops-kpi-card__hint">{kpi.hint}</span>
-          </div>
-        ))}
+      <div className="ops-stat-strip">
+        <div className="ops-stat-card">
+          <span className="ops-stat-card__label">총 매출</span>
+          <span className="ops-stat-card__value">{formatCurrency(settlementReport?.totalGrossSales ?? 0)}</span>
+          <span className="ops-stat-card__hint">환불 차감 전 기준 총 매출액</span>
+        </div>
+        <div className="ops-stat-card">
+          <span className="ops-stat-card__label">총 환불</span>
+          <span className={`ops-stat-card__value ${styles.negative}`}>{formatCurrency(settlementReport?.totalRefundAmount ?? 0)}</span>
+          <span className="ops-stat-card__hint">조회 기간 내 발생한 환불 합계</span>
+        </div>
+        <div className="ops-stat-card">
+          <span className="ops-stat-card__label">순 매출액</span>
+          <span className={`ops-stat-card__value ${styles.positive}`}>{formatCurrency(settlementReport?.totalNetSales ?? 0)}</span>
+          <span className="ops-stat-card__hint">매출에서 환불이 차감된 실매출</span>
+        </div>
+        <div className="ops-stat-card">
+          <span className="ops-stat-card__label">총 거래 건수</span>
+          <span className="ops-stat-card__value">{settlementReport?.rows.reduce((acc, r) => acc + r.transactionCount, 0) ?? 0}</span>
+          <span className="ops-stat-card__hint">집계된 전체 상품 거래 횟수</span>
+        </div>
       </div>
 
       {/* FILTER & DATA CONSOLE */}
@@ -199,8 +216,8 @@ export default function SettlementsPage() {
                 <tr>
                   <th>상품 / 분류</th>
                   <th>결제 수단</th>
-                  <th style={{ textAlign: 'right' }}>총매출</th>
-                  <th style={{ textAlign: 'right' }}>순매출</th>
+                  <th className="ops-right">총매출</th>
+                  <th className="ops-right">순매출</th>
                 </tr>
               </thead>
               <tbody>
@@ -212,7 +229,7 @@ export default function SettlementsPage() {
                         <span className="text-xs text-muted">{row.transactionCount}건 거래</span>
                       </div>
                     </td>
-                    <td><span className="pill muted">{row.paymentMethod}</span></td>
+                    <td><span className="pill muted">{paymentMethodLabel[row.paymentMethod] || row.paymentMethod}</span></td>
                     <td className="ops-right">
                       <div className="stack-sm">
                         <span className="text-sm">{formatCurrency(row.grossSales)}</span>
@@ -220,7 +237,7 @@ export default function SettlementsPage() {
                       </div>
                     </td>
                     <td className="ops-right">
-                      <span className="text-sm brand-title" style={{ color: 'var(--status-ok)' }}>{formatCurrency(row.netSales)}</span>
+                      <span className={`text-sm brand-title ${styles.positive}`}>{formatCurrency(row.netSales)}</span>
                     </td>
                   </tr>
                 ))}

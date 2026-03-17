@@ -10,6 +10,8 @@ import { useProductsQuery } from "../products/modules/useProductsQuery";
 import { useMembershipPrototypeState } from "./modules/useMembershipPrototypeState";
 import { Modal } from "../../shared/ui/Modal";
 
+import styles from "./MembershipsPage.module.css";
+
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("ko-KR", {
     style: "currency",
@@ -187,7 +189,7 @@ export default function MembershipsPage() {
                       <th>상태</th>
                       <th>유효 기간</th>
                       <th>이용 횟수</th>
-                      <th style={{ textAlign: 'right' }}>액션</th>
+                      <th className="ops-right">액션</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -235,8 +237,7 @@ export default function MembershipsPage() {
                                 </button>
                                 <button 
                                   type="button" 
-                                  className="secondary-button ops-action-button"
-                                  style={{ color: 'var(--status-danger)' }}
+                                  className={`secondary-button ops-action-button ${styles.dangerText}`}
                                   onClick={() => {
                                     setTargetMembership(membership);
                                     setActiveModal('refund');
@@ -282,15 +283,15 @@ export default function MembershipsPage() {
                 <div className="stack-sm">
                   {payments.map((payment) => (
                     <div key={payment.paymentId} className="ops-block">
-                      <div style={{ flex: 1 }}>
-                        <div className="row-actions" style={{ justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <div className={styles.flex1}>
+                        <div className={`row-actions ${styles.betweenRow}`}>
                           <span className="text-xs text-muted">ID: #{payment.paymentId}</span>
-                          <span className="pill ok" style={{ fontSize: '10px' }}>{payment.paymentStatus}</span>
+                          <span className={`pill ok ${styles.smallPill}`}>{payment.paymentStatus}</span>
                         </div>
-                        <div className="text-sm" style={{ fontWeight: 600 }}>{paymentLabel(payment)}</div>
+                        <div className={`text-sm ${styles.bold}`}>{paymentLabel(payment)}</div>
                         <div className="text-xs text-muted mt-xs">연결 회원권: #{payment.membershipId}</div>
                       </div>
-                      <div style={{ textAlign: 'right', fontWeight: 700 }}>
+                      <div className={styles.paymentAmount}>
                         {formatCurrency(payment.amount)}
                       </div>
                     </div>
@@ -348,8 +349,8 @@ export default function MembershipsPage() {
                 ))}
               </select>
             </label>
-            <div className="row-actions" style={{ gap: '16px' }}>
-              <label className="stack-sm" style={{ flex: 1 }}>
+            <div className={`row-actions ${styles.gap16}`}>
+              <label className={`stack-sm ${styles.flex1}`}>
                 <span className="text-sm">시작일</span>
                 <input
                   type="date"
@@ -361,7 +362,7 @@ export default function MembershipsPage() {
                   }}
                 />
               </label>
-              <label className="stack-sm" style={{ flex: 1 }}>
+              <label className={`stack-sm ${styles.flex1}`}>
                 <span className="text-sm">결제 수단</span>
                 <select
                   className="input"
@@ -392,16 +393,16 @@ export default function MembershipsPage() {
             </label>
 
             {purchasePreview && (
-              <div className="panel-card" style={{ background: 'var(--bg-base)', padding: '16px' }}>
-                <strong className="text-xs text-muted" style={{ textTransform: 'uppercase' }}>구매 미리보기</strong>
+              <div className={`panel-card ${styles.previewBox}`}>
+                <strong className={`text-xs text-muted ${styles.uppercase}`}>구매 미리보기</strong>
                 <div className="mt-sm stack-sm">
-                   <div className="row-actions" style={{ justifyContent: 'space-between' }}>
+                   <div className={`row-actions ${styles.betweenRow}`}>
                      <span className="text-sm">기간</span>
-                     <span className="text-sm" style={{ fontWeight: 600 }}>{purchasePreview.startDate} ~ {purchasePreview.endDate ?? "-"}</span>
+                     <span className={`text-sm ${styles.bold}`}>{purchasePreview.startDate} ~ {purchasePreview.endDate ?? "-"}</span>
                    </div>
-                   <div className="row-actions" style={{ justifyContent: 'space-between' }}>
+                   <div className={`row-actions ${styles.betweenRow}`}>
                      <span className="text-sm">청구 금액</span>
-                     <span className="text-sm" style={{ fontWeight: 700 }}>{formatCurrency(purchasePreview.chargeAmount)}</span>
+                     <span className={`text-sm ${styles.bolder}`}>{formatCurrency(purchasePreview.chargeAmount)}</span>
                    </div>
                 </div>
               </div>
@@ -432,9 +433,9 @@ export default function MembershipsPage() {
           }
         >
           {targetMembership && currentDraft && (
-            <div className="stack-md">
-              <div className="row-actions" style={{ gap: '16px' }}>
-                <label className="stack-sm" style={{ flex: 1 }}>
+            <div className={`stack-md ${styles.gap16}`}>
+              <div className="row-actions">
+                <label className={`stack-sm ${styles.flex1}`}>
                   <span className="text-sm">Start Date</span>
                   <input
                     type="date"
@@ -448,7 +449,7 @@ export default function MembershipsPage() {
                     }
                   />
                 </label>
-                <label className="stack-sm" style={{ flex: 1 }}>
+                <label className={`stack-sm ${styles.flex1}`}>
                   <span className="text-sm">End Date</span>
                   <input
                     type="date"
@@ -477,7 +478,7 @@ export default function MembershipsPage() {
                   }
                 />
               </label>
-              <div className="pill info mt-sm" style={{ display: 'block' }}>
+              <div className={`pill info mt-sm ${styles.block}`}>
                 {(() => {
                   const preview = buildHoldPreview(targetMembership);
                   return 'error' in preview ? preview.error : `영향: ${preview.plannedHoldDays}일 추가. 재계산된 만료일: ${preview.recalculatedEndDate ?? "-"}`;  
@@ -525,7 +526,7 @@ export default function MembershipsPage() {
                     }
                   />
                 </label>
-                <div className="pill info mt-sm" style={{ display: 'block' }}>
+                <div className={`pill info mt-sm ${styles.block}`}>
                   {(() => {
                     const preview = buildResumePreview(targetMembership);
                     return 'error' in preview ? preview.error : `재개 계산 완료. 새 만료일: ${preview.recalculatedEndDate ?? "-"}`;  
@@ -545,8 +546,7 @@ export default function MembershipsPage() {
               <button type="button" className="secondary-button" onClick={handleCloseModal}>취소</button>
               <button 
                 type="button" 
-                className="primary-button"
-                style={{ background: 'var(--status-danger)', borderColor: 'var(--status-danger)' }}
+                className={`primary-button ${styles.dangerButton}`}
                 onClick={async () => {
                   if (targetMembership) {
                     await handleRefundSubmit(targetMembership);
@@ -561,8 +561,8 @@ export default function MembershipsPage() {
         >
           {targetMembership && currentDraft && (
             <div className="stack-md">
-               <div className="row-actions" style={{ gap: '16px' }}>
-                <label className="stack-sm" style={{ flex: 1 }}>
+               <div className={`row-actions ${styles.gap16}`}>
+                <label className={`stack-sm ${styles.flex1}`}>
                   <span className="text-sm">환불 기준일</span>
                   <input
                     type="date"
@@ -576,7 +576,7 @@ export default function MembershipsPage() {
                     }
                   />
                 </label>
-                <label className="stack-sm" style={{ flex: 1 }}>
+                <label className={`stack-sm ${styles.flex1}`}>
                   <span className="text-sm">환불 수단</span>
                   <select
                     className="input"
@@ -610,27 +610,26 @@ export default function MembershipsPage() {
 
               <button 
                 type="button" 
-                className="secondary-button"
-                style={{ alignSelf: 'flex-start' }}
+                className={`secondary-button ${styles.selfStart}`}
                 onClick={() => void handleRefundPreview(targetMembership)}
               >
                 환불 금액 계산
               </button>
 
               {membershipRefundPreviewById[targetMembership.membershipId] && (
-                <div className="panel-card" style={{ background: 'var(--bg-base)', padding: '16px' }}>
+                <div className={`panel-card ${styles.previewBox}`}>
                   <div className="stack-sm">
-                    <div className="row-actions" style={{ justifyContent: 'space-between' }}>
+                    <div className={`row-actions ${styles.betweenRow}`}>
                       <span className="text-sm">원래 금액</span>
                       <span>{formatCurrency(membershipRefundPreviewById[targetMembership.membershipId].originalAmount)}</span>
                     </div>
-                    <div className="row-actions" style={{ justifyContent: 'space-between' }}>
+                    <div className={`row-actions ${styles.betweenRow}`}>
                       <span className="text-sm">사용 금액</span>
                       <span>- {formatCurrency(membershipRefundPreviewById[targetMembership.membershipId].usedAmount)}</span>
                     </div>
-                    <div className="row-actions" style={{ justifyContent: 'space-between', borderTop: '1px solid var(--border-minimal)', paddingTop: '8px', marginTop: '4px' }}>
-                      <span className="text-sm" style={{ fontWeight: 600 }}>환불 합계</span>
-                      <span className="text-sm" style={{ fontWeight: 700, color: 'var(--status-danger)' }}>
+                    <div className={`row-actions ${styles.betweenRow} ${styles.refundSummary}`}>
+                      <span className={`text-sm ${styles.bold}`}>환불 합계</span>
+                      <span className={`text-sm ${styles.bolder} ${styles.dangerText}`}>
                         {formatCurrency(membershipRefundPreviewById[targetMembership.membershipId].refundAmount)}
                       </span>
                     </div>

@@ -1,64 +1,30 @@
-.members-prototype-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1.7fr) minmax(280px, 0.9fr);
-  gap: 20px;
+.memoArea {
+  min-height: 100px;
+  resize: vertical;
 }
 
-.members-filter-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  margin: 20px 0;
+.filterHeader {
+  margin-bottom: 24px;
 }
 
-.members-filter-grid label {
-  display: grid;
-  gap: 8px;
+.filterActions {
+  align-items: flex-end;
+  margin-left: auto;
 }
 
-.members-filter-grid input,
-.members-filter-grid select {
-  border: 1px solid rgba(22, 33, 38, 0.15);
-  border-radius: 12px;
-  padding: 10px 12px;
-  background: #fff;
+.toolbarActions {
+  justify-content: flex-end;
+  margin-bottom: 8px;
 }
 
-.checkbox-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 8px;
+.statusButton {
+  font-size: 11px;
 }
 
-.checkbox-row input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
+.statusDanger {
+  color: var(--status-danger);
 }
 
-.toolbar-actions {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.full-span {
-  grid-column: 1 / -1;
-}
-
-.table-shell {
-  overflow-x: auto;
-}
-
-.empty-cell {
-  text-align: center;
-  color: #6d8088;
-}
-
-@media (max-width: 960px) {
-  .members-prototype-layout,
-  .members-filter-grid {
-    grid-template-columns: 1fr;
-  }
+.statusOk {
+  color: var(--status-ok);
 }

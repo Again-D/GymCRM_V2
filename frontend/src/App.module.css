@@ -1,0 +1,17 @@
+.bootstrappingScreen {
+  background: var(--bg-base);
+}
+
+.loadingCard {
+  padding: 48px;
+  text-align: center;
+}
+
+.loadingTitle {
+  font-size: 1.25rem;
+  margin-bottom: 8px;
+}
+
+.loadingText {
+  margin: 0;
+}

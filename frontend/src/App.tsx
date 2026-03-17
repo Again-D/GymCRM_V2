@@ -1,5 +1,7 @@
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 
+import styles from "./App.module.css";
+
 import { useAuthState } from "./app/auth";
 import { getShellRouteByPath, shellRoutes } from "./app/routes";
 import DashboardLayout from "./components/layout/DashboardLayout";
@@ -71,10 +73,10 @@ export default function App() {
 
 function BootstrappingScreen() {
   return (
-    <main className="centered-screen" style={{ background: 'var(--bg-base)' }}>
-      <div className="panel-card" style={{ padding: '48px', textAlign: 'center' }}>
-        <h1 className="brand-title" style={{ fontSize: '1.25rem', marginBottom: '8px' }}>System Initializing</h1>
-        <p className="text-muted text-sm" style={{ margin: 0 }}>Establishing secure session and operation parameters...</p>
+    <main className={`centered-screen ${styles.bootstrappingScreen}`}>
+      <div className={`panel-card ${styles.loadingCard}`}>
+        <h1 className={`brand-title ${styles.loadingTitle}`}>System Initializing</h1>
+        <p className={`text-muted text-sm ${styles.loadingText}`}>Establishing secure session and operation parameters...</p>
       </div>
     </main>
   );

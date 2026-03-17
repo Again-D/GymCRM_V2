@@ -1,5 +1,7 @@
 import type { MembershipDateFilterState, MembershipPeriodPreset } from "../modules/useMembershipDateFilter";
 
+import styles from "../MemberList.module.css";
+
 type MembershipPeriodFilterProps = {
   value: MembershipDateFilterState;
   onPresetChange: (preset: MembershipPeriodPreset) => void;
@@ -22,14 +24,13 @@ export function MembershipPeriodFilter({
 }: MembershipPeriodFilterProps) {
   return (
     <div className="period-filter">
-      <span className="text-sm" style={{ fontWeight: 600 }}>만료 기간</span>
+      <span className={`text-sm ${styles.bold}`}>만료 기간</span>
       <div className="period-preset-row">
         {PRESETS.map((preset) => (
           <button
             key={preset.value}
             type="button"
-            className={value.presetRange === preset.value ? "period-chip is-active" : "period-chip"}
-            style={{ padding: '6px 12px', fontSize: '12px' }}
+            className={value.presetRange === preset.value ? `period-chip is-active ${styles.chip}` : `period-chip ${styles.chip}`}
             onClick={() => onPresetChange(preset.value)}
           >
             {preset.label}

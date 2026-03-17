@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+
+import styles from "../MemberList.module.css";
 import { useNavigate } from "react-router-dom";
 
 import { formatDate } from "../../../shared/format";
@@ -166,7 +168,7 @@ export function MemberListSection() {
                 <th>만료일</th>
                 <th>PT 잔여</th>
                 <th>가입일</th>
-                <th style={{ textAlign: 'right' }}>액션</th>
+                <th className="ops-right">액션</th>
               </tr>
             </thead>
             <tbody>

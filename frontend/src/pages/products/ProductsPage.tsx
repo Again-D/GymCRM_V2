@@ -8,6 +8,8 @@ import { useProductPrototypeState } from "./modules/useProductPrototypeState";
 import { createDefaultProductFilters, type ProductRecord } from "./modules/types";
 import { Modal } from "../../shared/ui/Modal";
 
+import styles from "./ProductsPage.module.css";
+
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("ko-KR", {
     style: "currency",
@@ -109,26 +111,30 @@ export default function ProductsPage() {
         )}
       </div>
 
-      <div className="ops-kpi-grid">
-        <div className="ops-kpi-card">
-          <span className="ops-kpi-card__label">조회 상품 수</span>
-          <span className="ops-kpi-card__value">{products.length}</span>
-          <span className="ops-kpi-card__hint">현재 조건으로 불러온 상품 수입니다.</span>
+      <div className="ops-stat-strip">
+        <div className="ops-stat-card">
+          <span className="ops-stat-card__label">전체 상품</span>
+          <span className="ops-stat-card__value">{products.length}</span>
+          <span className="ops-stat-card__hint">현재 카탈로그에 등록된 총 상품 수</span>
         </div>
-        <div className="ops-kpi-card">
-          <span className="ops-kpi-card__label">활성 상품</span>
-          <span className="ops-kpi-card__value">{products.filter((product) => product.productStatus === "ACTIVE").length}</span>
-          <span className="ops-kpi-card__hint">판매 또는 배정 가능한 활성 상품 수입니다.</span>
+        <div className="ops-stat-card">
+          <span className="ops-stat-card__label">운영 중인 상품</span>
+          <span className="ops-stat-card__value">{products.filter((p) => p.productStatus === "ACTIVE").length}</span>
+          <span className="ops-stat-card__hint">현재 판매 및 배정이 가능한 활성 상태</span>
         </div>
-        <div className="ops-kpi-card">
-          <span className="ops-kpi-card__label">편집 모드</span>
-          <span className="ops-kpi-card__value">{productFormOpen ? (productFormMode === "create" ? "등록" : "수정") : "-"}</span>
-          <span className="ops-kpi-card__hint">{selectedProduct ? selectedProduct.productName : "현재 열린 모달이 없습니다."}</span>
+        <div className="ops-stat-card">
+          <span className="ops-stat-card__label">평균 판매가</span>
+          <span className="ops-stat-card__value">
+            {products.length > 0 
+              ? formatCurrency(Math.floor(products.reduce((acc, p) => acc + p.priceAmount, 0) / products.length))
+              : "0"}
+          </span>
+          <span className="ops-stat-card__hint">조회된 상품들의 베이스 가격 평균</span>
         </div>
-        <div className="ops-kpi-card">
-          <span className="ops-kpi-card__label">라이브 접근</span>
-          <span className="ops-kpi-card__value">{canReadLiveProducts ? "가능" : "잠김"}</span>
-          <span className="ops-kpi-card__hint">권한에 따라 조회 및 수정 가능 여부가 달라집니다.</span>
+        <div className="ops-stat-card">
+          <span className="ops-stat-card__label">시스템 권한</span>
+          <span className="ops-stat-card__value">{canMutateProducts ? "풀 액서스" : "조회 전용"}</span>
+          <span className="ops-stat-card__hint">{canMutateProducts ? "상품 정보를 수정할 수 있습니다." : "읽기 권한만 부여된 상태입니다."}</span>
         </div>
       </div>
 
@@ -140,7 +146,7 @@ export default function ProductsPage() {
           </div>
         </div>
 
-        <div className="members-filter-grid" style={{ marginBottom: '24px' }}>
+        <div className={`members-filter-grid ${styles.filterHeader}`}>
           <label className="stack-sm">
             <span className="text-xs text-muted brand-title">상품 분류</span>
             <select
@@ -177,7 +183,7 @@ export default function ProductsPage() {
               <option value="INACTIVE">비활성</option>
             </select>
           </label>
-          <div className="row-actions" style={{ alignItems: 'flex-end', marginLeft: 'auto' }}>
+          <div className={`row-actions ${styles.filterActions}`}>
              <button
                 type="button"
                 className="secondary-button"
@@ -199,8 +205,9 @@ export default function ProductsPage() {
 
         {!canReadLiveProducts && (
           <div className="field-ops-note field-ops-note--restricted mb-md">
-            <span className="field-ops-note__label">라이브 제한</span>
-            <div className="mt-xs text-sm">현재 권한에서는 실시간 상품 카탈로그를 조회하거나 수정할 수 없습니다.</div>
+            <span className="field-ops-note__label">운영 권한 제한</span>
+            <div className="text-sm brand-title mt-xs">현재 관리자 권한이 없어 실시간 상품 정보에 접근할 수 없습니다.</div>
+            <div className="mt-xs text-sm">시스템 설정에서 적절한 운영 역할을 부여받아야 합니다.</div>
           </div>
         )}
 
@@ -217,9 +224,9 @@ export default function ProductsPage() {
               <tr>
                 <th>상품 정보</th>
                 <th>분류</th>
-                <th>가격</th>
-                <th>상태</th>
-                <th style={{ textAlign: 'right' }}>액션</th>
+                <th className="ops-right">가격</th>
+                <th className="ops-right">상태</th>
+                <th className="ops-right">액션</th>
               </tr>
             </thead>
             <tbody>
@@ -235,7 +242,7 @@ export default function ProductsPage() {
                   <td><span className="brand-title text-sm">{formatCurrency(product.priceAmount)}</span></td>
                   <td>
                     <span className={product.productStatus === "ACTIVE" ? "pill ok" : "pill muted"}>
-                      {product.productStatus}
+                      {product.productStatus === "ACTIVE" ? "활성" : "비활성"}
                     </span>
                   </td>
                   <td className="ops-right">
@@ -283,11 +290,10 @@ export default function ProductsPage() {
       >
         <div className="stack-md">
           {productFormMode === "edit" && selectedProduct && (
-             <div className="row-actions" style={{ justifyContent: 'flex-end', marginBottom: '8px' }}>
+             <div className={`row-actions ${styles.toolbarActions}`}>
                 <button
                   type="button"
-                  className="secondary-button"
-                  style={{ fontSize: '11px', color: selectedProduct.productStatus === "ACTIVE" ? 'var(--status-danger)' : 'var(--status-ok)' }}
+                   className={`secondary-button ${styles.statusButton} ${selectedProduct.productStatus === "ACTIVE" ? styles.statusDanger : styles.statusOk}`}
                   disabled={productFormSubmitting || !canMutateProducts}
                   onClick={() => void runStatusToggle()}
                 >
@@ -415,8 +421,7 @@ export default function ProductsPage() {
           <label className="stack-sm">
             <span className="text-sm">내부 설명</span>
             <textarea
-              className="input"
-              style={{ minHeight: '80px', resize: 'vertical' }}
+                className={`input ${styles.memoArea}`}
               value={productForm.description}
               onChange={(event) => setProductForm((prev) => ({ ...prev, description: event.target.value }))}
             />

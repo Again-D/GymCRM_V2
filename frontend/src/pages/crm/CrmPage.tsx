@@ -8,6 +8,8 @@ import { createDefaultCrmFilters } from "./modules/types";
 import { useCrmHistoryQuery } from "./modules/useCrmHistoryQuery";
 import { useCrmPrototypeState } from "./modules/useCrmPrototypeState";
 
+import styles from "./CrmPage.module.css";
+
 function formatDateTime(value: string | null) {
   if (!value) {
     return "-";
@@ -107,36 +109,36 @@ export default function CrmPage() {
         </button>
       </div>
 
-      <div className="ops-kpi-grid">
-        <div className="ops-kpi-card">
-          <span className="ops-kpi-card__label">총 이벤트</span>
-          <span className="ops-kpi-card__value">{crmHistoryRows.length}</span>
-          <span className="ops-kpi-card__hint">현재 조회 조건에서 확인되는 CRM 발송 이벤트 수</span>
+      <div className="ops-stat-strip">
+        <div className="ops-stat-card">
+          <span className="ops-stat-card__label">전체 로그</span>
+          <span className="ops-stat-card__value">{crmHistoryRows.length}</span>
+          <span className="ops-stat-card__hint">조회 조건 내의 전체 발송 이력</span>
         </div>
-        <div className="ops-kpi-card">
-          <span className="ops-kpi-card__label">대기 큐</span>
-          <span className="ops-kpi-card__value">{pendingCount}</span>
-          <span className="ops-kpi-card__hint">아직 처리되지 않았거나 재시도 대기 중인 건수</span>
+        <div className="ops-stat-card">
+          <span className="ops-stat-card__label">대기 중인 큐</span>
+          <span className={`ops-stat-card__value ${styles.info}`}>{pendingCount}</span>
+          <span className="ops-stat-card__hint">발송 대기 및 재시도 예정 건수</span>
         </div>
-        <div className="ops-kpi-card">
-          <span className="ops-kpi-card__label">발송 완료</span>
-          <span className="ops-kpi-card__value">{sentCount}</span>
-          <span className="ops-kpi-card__hint">현재 조회 결과 중 정상 발송된 건수</span>
+        <div className="ops-stat-card">
+          <span className="ops-stat-card__label">발송 성공</span>
+          <span className={`ops-stat-card__value ${styles.ok}`}>{sentCount}</span>
+          <span className="ops-stat-card__hint">최종 발송 완료 처리된 이벤트</span>
         </div>
-        <div className="ops-kpi-card">
-          <span className="ops-kpi-card__label">실패</span>
-          <span className="ops-kpi-card__value">{failedCount}</span>
-          <span className="ops-kpi-card__hint">수동 확인이 필요한 실패 건수</span>
+        <div className="ops-stat-card">
+          <span className="ops-stat-card__label">최종 실패</span>
+          <span className={`ops-stat-card__value ${styles.danger}`}>{failedCount}</span>
+          <span className="ops-stat-card__hint">수동 확인이 필요한 DEAD 상태 건수</span>
         </div>
       </div>
 
       <article className="panel-card">
         <div className="ops-surface-grid">
           <div className="ops-block">
-            <span className="ops-kpi-card__label">큐 자동화</span>
+            <span className="ops-focus-card__eyebrow">큐 자동화 제어</span>
             <div className="stack-md mt-sm">
                <label className="stack-sm">
-                 <span className="text-sm">만료 안내 기준일</span>
+                 <span className="text-xs brand-title">만료 안내 기준 (D-Day)</span>
                  <input
                    className="input"
                    type="number"
@@ -145,24 +147,26 @@ export default function CrmPage() {
                    value={crmTriggerDaysAhead}
                    disabled={!isLiveCrmRoleSupported}
                    onChange={(event) => setCrmTriggerDaysAhead(event.target.value)}
+                   placeholder="일수 입력"
                  />
+                 <span className="text-xs text-muted">입력한 일수만큼 만료가 남은 회원을 추출합니다.</span>
                </label>
-               <div className="row-actions">
+               <div className="ops-table-actions mt-sm">
                   <button
                     type="button"
-                    className="primary-button"
+                    className="primary-button ops-action-button"
                     onClick={() => void runTrigger()}
                     disabled={crmTriggerSubmitting || !isLiveCrmRoleSupported}
                   >
-                    {crmTriggerSubmitting ? "적재 중..." : "대상 적재"}
+                    {crmTriggerSubmitting ? "적재 중..." : "안내 대상 적재"}
                   </button>
                   <button
                     type="button"
-                    className="secondary-button"
+                    className="secondary-button ops-action-button"
                     onClick={() => void runProcess()}
                     disabled={crmProcessSubmitting || !isLiveCrmRoleSupported}
                   >
-                    {crmProcessSubmitting ? "발송 중..." : "큐 실행"}
+                    {crmProcessSubmitting ? "발송 중..." : "메시지 큐 실행"}
                   </button>
                </div>
             </div>
@@ -170,19 +174,21 @@ export default function CrmPage() {
 
           {/* STATUS MONITOR */}
           <div className="ops-block">
-             <span className="ops-kpi-card__label">운영 피드백</span>
-             <div className="ops-feedback-stack mt-sm">
+             <span className="ops-focus-card__eyebrow">운영 피드백 및 상태</span>
+             <div className="ops-feedback-stack mt-md">
                 {!isLiveCrmRoleSupported && (
                   <div className="field-ops-note field-ops-note--restricted">
-                    <span className="field-ops-note__label">라이브 제한</span>
-                    <div className="text-sm brand-title mt-xs">현재 권한에서는 CRM 발송 작업을 실행할 수 없습니다.</div>
-                    <div className="mt-xs text-sm">화면 조회는 가능하지만 큐 적재와 발송은 비활성화됩니다.</div>
+                    <span className="field-ops-note__label">운영 권한 제한</span>
+                    <div className="text-sm brand-title mt-xs">현재 관리자 권한이 없어 CRM 발송 작업을 실행할 수 없습니다.</div>
+                    <div className="mt-xs text-sm">시스템 설정에서 적절한 운영 역할을 부여받아야 합니다.</div>
                   </div>
                 )}
-                {crmPanelMessage && <div className="pill ok full-span">{crmPanelMessage}</div>}
-                {crmPanelError && <div className="pill danger full-span">{crmPanelError}</div>}
+                {crmPanelMessage && <div className={`pill ok full-span ${styles.feedbackPill}`}>{crmPanelMessage}</div>}
+                {crmPanelError && <div className={`pill danger full-span ${styles.feedbackPill}`}>{crmPanelError}</div>}
                 {!crmPanelMessage && !crmPanelError && (
-                  <p className="text-muted text-sm">현재 대기 중입니다. 실행할 작업을 선택하세요.</p>
+                  <div className={`ops-empty ${styles.emptyFeed}`}>
+                    <p className="text-muted text-sm">실행 대기 중입니다.<br/>좌측 패널에서 작업을 선택해 주세요.</p>
+                  </div>
                 )}
              </div>
           </div>
@@ -225,7 +231,7 @@ export default function CrmPage() {
                 <th>이벤트</th>
                 <th>상태</th>
                 <th>시도 횟수</th>
-                <th style={{ textAlign: 'right' }}>기록 시각</th>
+                <th className="ops-right">기록 시각</th>
               </tr>
             </thead>
             <tbody>
@@ -243,8 +249,8 @@ export default function CrmPage() {
                     <td><span className={status.class}>{status.label}</span></td>
                     <td>
                       <div className="stack-sm">
-                        <span className="text-xs">{row.attemptCount} / 3</span>
-                        {row.lastErrorMessage && <span className="text-xs text-danger">{row.lastErrorMessage}</span>}
+                        <span className="text-xs brand-title">{row.attemptCount} / 3 시도</span>
+                        {row.lastErrorMessage && <span className={`text-xs text-danger ${styles.errorMsg}`}>{row.lastErrorMessage}</span>}
                       </div>
                     </td>
                     <td className="ops-right">
