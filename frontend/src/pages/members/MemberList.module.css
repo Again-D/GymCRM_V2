@@ -6,3 +6,38 @@
   padding: 6px 12px;
   font-size: 12px;
 }
+
+.selectedContextRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 20px;
+  padding: 16px 18px;
+  border: 1px solid var(--border-minimal);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-panel) 88%, transparent);
+}
+
+.selectedContextActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.selectedContextHint {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+@media (max-width: 960px) {
+  .selectedContextRow {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .selectedContextActions {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

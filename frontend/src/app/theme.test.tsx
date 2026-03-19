@@ -7,6 +7,23 @@ import {
   useThemeStore
 } from "./theme";
 
+function installLocalStorage() {
+  const storage = new Map<string, string>();
+
+  vi.stubGlobal("localStorage", {
+    getItem: vi.fn((key: string) => storage.get(key) ?? null),
+    setItem: vi.fn((key: string, value: string) => {
+      storage.set(key, value);
+    }),
+    removeItem: vi.fn((key: string) => {
+      storage.delete(key);
+    }),
+    clear: vi.fn(() => {
+      storage.clear();
+    })
+  });
+}
+
 function ThemeProbe() {
   const { themePreference, resolvedTheme, setThemePreference } = useThemeStore();
 
@@ -38,6 +55,7 @@ function installMatchMedia(matches: boolean) {
 
 describe("theme lifecycle", () => {
   beforeEach(() => {
+    installLocalStorage();
     localStorage.clear();
     document.documentElement.removeAttribute("data-theme");
   });

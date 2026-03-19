@@ -1,7 +1,7 @@
 ---
 title: "feat: Members selected member summary modal"
 type: feat
-status: active
+status: completed
 date: 2026-03-19
 origin: docs/brainstorms/2026-03-13-frontend-field-ops-redesign-brainstorm.md
 ---
@@ -202,24 +202,24 @@ origin: docs/brainstorms/2026-03-13-frontend-field-ops-redesign-brainstorm.md
 
 ### Functional Requirements
 
-- [ ] members 화면은 더 이상 상시 우측 summary 패널에 의존하지 않는다.
-- [ ] `선택` 액션은 성공 시 selected member summary modal을 연다.
-- [ ] `회원권`, `예약` 빠른 이동 흐름은 유지된다.
-- [ ] selected member가 없는 상태에서도 members 목록 사용성은 유지된다.
-- [ ] current selected member context는 작은 persistent 표시로 확인 가능하다.
+- [x] members 화면은 더 이상 상시 우측 summary 패널에 의존하지 않는다.
+- [x] `선택` 액션은 성공 시 selected member summary modal을 연다.
+- [x] `회원권`, `예약` 빠른 이동 흐름은 유지된다.
+- [x] selected member가 없는 상태에서도 members 목록 사용성은 유지된다.
+- [x] current selected member context는 작은 persistent 표시로 확인 가능하다.
 
 ### Non-Functional Requirements
 
-- [ ] modal은 기존 shared modal accessibility contract를 그대로 따른다.
-- [ ] members list의 가로 스캔성이 현재보다 개선된다.
-- [ ] tablet 폭에서 목록 + modal 조합이 사용 가능하다.
+- [x] modal은 기존 shared modal accessibility contract를 그대로 따른다.
+- [x] members list의 가로 스캔성이 현재보다 개선된다.
+- [x] tablet 폭에서 목록 + modal 조합이 사용 가능하다.
 
 ### Quality Gates
 
-- [ ] affected frontend tests pass
-- [ ] new members modal tests added
-- [ ] browser smoke on members modal flow passes
-- [ ] memberships/reservations handoff regression이 없다
+- [x] affected frontend tests pass
+- [x] new members modal tests added
+- [x] browser smoke on members modal flow passes
+- [x] memberships/reservations handoff regression이 없다
 
 ## Success Metrics
 

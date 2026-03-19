@@ -25,17 +25,36 @@ function isThemePreference(value: string | null): value is ThemePreference {
   return value === "light" || value === "dark" || value === "system";
 }
 
-function readStoredThemePreference() {
+function getBrowserStorage() {
   if (typeof window === "undefined") {
+    return null;
+  }
+
+  const storage = window.localStorage;
+  if (
+    !storage ||
+    typeof storage.getItem !== "function" ||
+    typeof storage.setItem !== "function" ||
+    typeof storage.removeItem !== "function"
+  ) {
+    return null;
+  }
+
+  return storage;
+}
+
+function readStoredThemePreference() {
+  const storage = getBrowserStorage();
+  if (!storage) {
     return "system" as const;
   }
 
-  const primaryValue = window.localStorage.getItem(STORAGE_KEY);
+  const primaryValue = storage.getItem(STORAGE_KEY);
   if (isThemePreference(primaryValue)) {
     return primaryValue;
   }
 
-  const legacyValue = window.localStorage.getItem(LEGACY_STORAGE_KEY);
+  const legacyValue = storage.getItem(LEGACY_STORAGE_KEY);
   if (isThemePreference(legacyValue)) {
     return legacyValue;
   }
@@ -80,12 +99,14 @@ export function ThemeProvider({ children }: PropsWithChildren) {
   );
 
   useEffect(() => {
-    if (typeof window === "undefined") {
+    const storage = getBrowserStorage();
+    if (!storage) {
+      applyResolvedTheme(resolvedTheme);
       return;
     }
 
-    window.localStorage.setItem(STORAGE_KEY, themePreference);
-    window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+    storage.setItem(STORAGE_KEY, themePreference);
+    storage.removeItem(LEGACY_STORAGE_KEY);
     applyResolvedTheme(resolvedTheme);
   }, [resolvedTheme, themePreference]);
 

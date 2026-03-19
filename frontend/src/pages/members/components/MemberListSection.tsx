@@ -5,8 +5,11 @@ import { useNavigate } from "react-router-dom";
 
 import { formatDate } from "../../../shared/format";
 import { usePagination } from "../../../shared/hooks/usePagination";
+import { Modal } from "../../../shared/ui/Modal";
 import { PaginationControls } from "../../../shared/ui/PaginationControls";
 import { MembershipPeriodFilter } from "./MembershipPeriodFilter";
+import { SelectedMemberContextBadge } from "./SelectedMemberContextBadge";
+import { SelectedMemberSummaryCard } from "./SelectedMemberSummaryCard";
 import { useMembershipDateFilter } from "../modules/useMembershipDateFilter";
 import { useMembersQuery } from "../modules/useMembersQuery";
 import { useSelectedMemberStore } from "../modules/SelectedMemberContext";
@@ -25,7 +28,8 @@ export function MemberListSection() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [membershipOperationalStatus, setMembershipOperationalStatus] = useState("");
-  const { selectedMemberId, selectMember } = useSelectedMemberStore();
+  const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
+  const { selectedMemberId, selectedMember, selectedMemberLoading, clearSelectedMember, selectMember } = useSelectedMemberStore();
   const { members, membersLoading, membersQueryError, loadMembers } = useMembersQuery({
     getDefaultFilters: () => ({
       name,
@@ -45,11 +49,30 @@ export function MemberListSection() {
     void loadMembers();
   }, [loadMembers]);
 
+  useEffect(() => {
+    if (!selectedMemberId && !selectedMemberLoading) {
+      setIsSummaryModalOpen(false);
+    }
+  }, [selectedMemberId, selectedMemberLoading]);
+
+  async function openSelectedMemberSummary(memberId: number) {
+    const loaded = await selectMember(memberId);
+    setIsSummaryModalOpen(loaded);
+  }
+
   async function goToMemberContext(path: "/memberships" | "/reservations", memberId: number) {
     const loaded = await selectMember(memberId);
     if (loaded) {
       navigate(path);
     }
+  }
+
+  function goToSelectedMemberContext(path: "/memberships" | "/reservations") {
+    if (!selectedMemberId) {
+      return;
+    }
+    setIsSummaryModalOpen(false);
+    navigate(path);
   }
 
   return (
@@ -78,6 +101,23 @@ export function MemberListSection() {
             <span className="ops-stat-card__label">선택된 컨텍스트</span>
             <span className="ops-stat-card__value">{selectedMemberId ?? "-"}</span>
             <span className="ops-stat-card__hint">{selectedMemberId ? "다음 업무 화면으로 이어집니다." : "선택된 회원이 없습니다."}</span>
+          </div>
+        </div>
+
+        <div className={styles.selectedContextRow}>
+          <SelectedMemberContextBadge />
+          <div className={styles.selectedContextActions}>
+            <span className={styles.selectedContextHint}>
+              {selectedMemberId ? "선택된 회원 정보를 모달에서 확인할 수 있습니다." : "회원을 선택하면 상세 정보 모달이 열립니다."}
+            </span>
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={!selectedMemberId}
+              onClick={() => setIsSummaryModalOpen(true)}
+            >
+              선택 정보 보기
+            </button>
           </div>
         </div>
 
@@ -191,7 +231,7 @@ export function MemberListSection() {
                     <td className="text-muted">{formatDate(member.joinDate)}</td>
                     <td>
                       <div className="ops-table-actions">
-                        <button type="button" className="secondary-button ops-action-button" onClick={() => void selectMember(member.memberId)}>
+                        <button type="button" className="secondary-button ops-action-button" onClick={() => void openSelectedMemberSummary(member.memberId)}>
                           선택
                         </button>
                         <button type="button" className="secondary-button ops-action-button" onClick={() => void goToMemberContext("/memberships", member.memberId)}>
@@ -224,6 +264,42 @@ export function MemberListSection() {
           />
         </div>
       </article>
+
+      <Modal
+        isOpen={isSummaryModalOpen}
+        onClose={() => setIsSummaryModalOpen(false)}
+        title={selectedMember ? `${selectedMember.memberName} 회원 정보` : "선택 회원 정보"}
+        size="lg"
+        footer={(
+          <>
+            <button type="button" className="secondary-button" onClick={() => setIsSummaryModalOpen(false)}>
+              닫기
+            </button>
+            {selectedMemberId ? (
+              <>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => {
+                    clearSelectedMember();
+                    setIsSummaryModalOpen(false);
+                  }}
+                >
+                  선택 해제
+                </button>
+                <button type="button" className="secondary-button" onClick={() => goToSelectedMemberContext("/memberships")}>
+                  회원권
+                </button>
+                <button type="button" className="primary-button" onClick={() => goToSelectedMemberContext("/reservations")}>
+                  예약
+                </button>
+              </>
+            ) : null}
+          </>
+        )}
+      >
+        <SelectedMemberSummaryCard surface="plain" />
+      </Modal>
     </section>
   );
 }

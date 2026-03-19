@@ -1,25 +1,20 @@
+import type { ReactNode } from "react";
+
 import { useSelectedMemberStore } from "../modules/SelectedMemberContext";
 
 import styles from "./SelectedMemberSummaryCard.module.css";
 
-export function SelectedMemberSummaryCard() {
-  const { selectedMember, selectedMemberError, selectedMemberLoading, clearSelectedMember } = useSelectedMemberStore();
+interface SelectedMemberSummaryCardProps {
+  surface?: "panel" | "plain";
+  action?: ReactNode;
+}
+
+export function SelectedMemberSummaryCard({ surface = "panel", action }: SelectedMemberSummaryCardProps) {
+  const { selectedMember, selectedMemberError, selectedMemberLoading } = useSelectedMemberStore();
 
   const memberStatusLabel = selectedMember?.memberStatus === "ACTIVE" ? "활성" : "비활성";
-
-  return (
-    <aside className="panel-card">
-      <div className="ops-section__header">
-        <div>
-          <h2 className="ops-section__title">선택된 회원 정보</h2>
-          <p className="ops-section__subtitle">선택된 회원 정보는 회원권 및 예약 관리 화면에서도 계속 유지됩니다.</p>
-        </div>
-        {selectedMember ? (
-          <button type="button" className="secondary-button" onClick={clearSelectedMember}>
-            선택 해제
-          </button>
-        ) : null}
-      </div>
+  const summaryContent = (
+    <>
       {selectedMemberLoading ? <p className="text-muted">회원 정보를 불러오는 중...</p> : null}
       {selectedMemberError ? <p className="error-text">{selectedMemberError}</p> : null}
       {selectedMember ? (
@@ -60,6 +55,23 @@ export function SelectedMemberSummaryCard() {
           선택된 회원이 없습니다. 명단에서 회원을 선택하여 업무를 시작하세요.
         </div>
       )}
+    </>
+  );
+
+  if (surface === "plain") {
+    return summaryContent;
+  }
+
+  return (
+    <aside className="panel-card">
+      <div className="ops-section__header">
+        <div>
+          <h2 className="ops-section__title">선택된 회원 정보</h2>
+          <p className="ops-section__subtitle">선택된 회원 정보는 회원권 및 예약 관리 화면에서도 계속 유지됩니다.</p>
+        </div>
+        {action}
+      </div>
+      {summaryContent}
     </aside>
   );
 }
