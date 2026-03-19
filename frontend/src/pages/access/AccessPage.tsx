@@ -259,7 +259,7 @@ export default function AccessPage() {
             <table className="members-table">
               <thead>
                 <tr>
-                  <th>Member</th>
+                  <th>회원</th>
                   <th className="ops-right">입장 시각</th>
                 </tr>
               </thead>

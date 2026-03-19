@@ -416,7 +416,7 @@ export default function ReservationsPage() {
                                 disabled={!canCheckIn}
                                 onClick={() => mutateReservation(reservation.reservationId, "체크인 처리", () => checkInReservation(selectedMemberId!, reservation.reservationId).then(()=>undefined), canCheckIn, "이미 체크인되었거나 유효하지 않은 상태입니다.")}
                               >
-                                CheckIn
+                                체크인
                               </button>
                               <button 
                                 type="button" 
@@ -424,7 +424,7 @@ export default function ReservationsPage() {
                                 disabled={!canMutate}
                                 onClick={() => mutateReservation(reservation.reservationId, "완료 처리", () => completeReservation(selectedMemberId!, reservation.reservationId).then(()=>undefined), canMutate, "확정된 예약만 완료 처리할 수 있습니다.")}
                               >
-                                Done
+                                완료
                               </button>
                               <button
                                 type="button"
@@ -432,7 +432,7 @@ export default function ReservationsPage() {
                                 disabled={!canMutate}
                                 onClick={() => mutateReservation(reservation.reservationId, "예약 취소", () => cancelReservation(selectedMemberId!, reservation.reservationId).then(()=>undefined), canMutate, "확정된 예약만 취소할 수 있습니다.")}
                               >
-                                Void
+                                취소
                               </button>
                             </div>
                           </td>
