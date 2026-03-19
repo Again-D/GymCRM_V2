@@ -1,12 +1,14 @@
 import { useSelectedMemberStore } from "../modules/SelectedMemberContext";
 
+import styles from "./SelectedMemberSummaryCard.module.css";
+
 export function SelectedMemberSummaryCard() {
   const { selectedMember, selectedMemberError, selectedMemberLoading, clearSelectedMember } = useSelectedMemberStore();
 
-  const statusLabel = selectedMember?.memberStatus === "ACTIVE" ? "활성" : "비활성";
+  const memberStatusLabel = selectedMember?.memberStatus === "ACTIVE" ? "활성" : "비활성";
 
   return (
-    <aside className="panel-card ops-shell">
+    <aside className="panel-card">
       <div className="ops-section__header">
         <div>
           <h2 className="ops-section__title">선택된 회원 정보</h2>
@@ -30,27 +32,27 @@ export function SelectedMemberSummaryCard() {
             </div>
             <div className="ops-stat-card">
               <span className="ops-stat-card__label">상세 상태</span>
-              <span className="ops-stat-card__value">{statusLabel}</span>
+              <span className="ops-stat-card__value">{memberStatusLabel}</span>
               <span className="ops-stat-card__hint">{selectedMember.phone}</span>
             </div>
           </div>
-          <dl className="selected-member-grid">
-          <div>
-            <dt>회원명</dt>
-            <dd>#{selectedMember.memberId} {selectedMember.memberName}</dd>
-          </div>
-          <div>
-            <dt>연락처</dt>
-            <dd>{selectedMember.phone}</dd>
-          </div>
-          <div>
-            <dt>회원권 상태</dt>
-            <dd>{statusLabel}</dd>
-          </div>
-          <div>
-            <dt>가입일</dt>
-            <dd>{selectedMember.joinDate ?? "-"}</dd>
-          </div>
+          <dl className={styles.detailGrid}>
+            <div className={styles.detailItem}>
+              <dt className={styles.detailTerm}>회원명</dt>
+              <dd className={styles.detailValue}>#{selectedMember.memberId} {selectedMember.memberName}</dd>
+            </div>
+            <div className={styles.detailItem}>
+              <dt className={styles.detailTerm}>연락처</dt>
+              <dd className={styles.detailValue}>{selectedMember.phone}</dd>
+            </div>
+            <div className={styles.detailItem}>
+              <dt className={styles.detailTerm}>회원 상태</dt>
+              <dd className={styles.detailValue}>{memberStatusLabel}</dd>
+            </div>
+            <div className={styles.detailItem}>
+              <dt className={styles.detailTerm}>가입일</dt>
+              <dd className={styles.detailValue}>{selectedMember.joinDate ?? "-"}</dd>
+            </div>
           </dl>
         </>
       ) : (

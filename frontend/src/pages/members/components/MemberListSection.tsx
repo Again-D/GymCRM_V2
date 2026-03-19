@@ -19,14 +19,6 @@ function operationalStatusClass(status: "정상" | "홀딩중" | "만료임박" 
   return "pill muted";
 }
 
-const statusMap: Record<string, string> = {
-  "정상": "NORMAL",
-  "홀딩중": "HOLDING",
-  "만료임박": "EXPIRING",
-  "만료": "EXPIRED",
-  "없음": "NONE"
-};
-
 export function MemberListSection() {
   const navigate = useNavigate();
   const { dateFilter, applyPreset, setDateFrom, setDateTo, reset } = useMembershipDateFilter();
@@ -51,7 +43,7 @@ export function MemberListSection() {
 
   useEffect(() => {
     void loadMembers();
-  }, []);
+  }, [loadMembers]);
 
   async function goToMemberContext(path: "/memberships" | "/reservations", memberId: number) {
     const loaded = await selectMember(memberId);
@@ -191,7 +183,7 @@ export function MemberListSection() {
                     </td>
                     <td>
                       <span className={operationalStatusClass(member.membershipOperationalStatus)}>
-                        {statusMap[member.membershipOperationalStatus] || member.membershipOperationalStatus}
+                        {member.membershipOperationalStatus}
                       </span>
                     </td>
                     <td>{formatDate(member.membershipExpiryDate)}</td>
