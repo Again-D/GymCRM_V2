@@ -43,7 +43,7 @@ describe("CrmPage", () => {
     );
 
     expect(await screen.findByRole("heading", { name: "CRM 운영" })).toBeTruthy();
-    expect(screen.getByText("현재 권한에서는 CRM 발송 작업을 실행할 수 없습니다.")).toBeTruthy();
+    expect(screen.getByText("현재 관리자 권한이 없어 CRM 발송 작업을 실행할 수 없습니다.")).toBeTruthy();
     expect(screen.getByText("발송 이력이 없습니다.")).toBeTruthy();
   });
 

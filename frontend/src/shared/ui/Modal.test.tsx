@@ -46,8 +46,7 @@ describe("Modal", () => {
     trigger.focus();
     fireEvent.click(trigger);
 
-    const closeButton = screen.getByRole("button", { name: "Close modal" });
-    const cancelButton = screen.getByRole("button", { name: "Cancel" });
+    const closeButton = screen.getByRole("button", { name: "모달 닫기" });
     const confirmButton = screen.getByRole("button", { name: "Confirm" });
 
     expect(document.activeElement).toBe(closeButton);

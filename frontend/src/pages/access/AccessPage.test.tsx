@@ -41,7 +41,7 @@ describe("AccessPage", () => {
     expect(await screen.findByRole("heading", { name: "출입 모니터링" })).toBeTruthy();
     expect(screen.getByText("현재 입장 회원")).toBeTruthy();
     expect(screen.getByText("출입 이력")).toBeTruthy();
-    expect(screen.getAllByText("선택된 회원 없음").length).toBeGreaterThan(0);
+    expect(screen.getByText("회원 디렉터리")).toBeTruthy();
   });
 
   it("shows trainer unsupported note in live mode", async () => {
@@ -65,8 +65,8 @@ describe("AccessPage", () => {
     );
 
     expect(await screen.findByRole("heading", { name: "출입 모니터링" })).toBeTruthy();
-    expect(screen.getByText("현재 권한에서는 실시간 출입 API를 사용할 수 없습니다.")).toBeTruthy();
-    expect(screen.getByText("현재 권한에서는 출입 제어를 사용할 수 없습니다.")).toBeTruthy();
+    expect(screen.getByText("현재 관리자 권한이 없어 실시간 출입 제어가 불가능합니다.")).toBeTruthy();
+    expect(screen.getByText("데모 또는 실제 관리자 세션으로 전환이 필요합니다.")).toBeTruthy();
     expect(screen.getByText("현재 입장 중인 회원이 없습니다.")).toBeTruthy();
   });
 
@@ -169,7 +169,7 @@ describe("AccessPage", () => {
       </AuthStateProvider>
     );
 
-    expect(await screen.findByText("현재 권한에서는 실시간 출입 API를 사용할 수 없습니다.")).toBeTruthy();
+    expect(await screen.findByText("현재 관리자 권한이 없어 실시간 출입 제어가 불가능합니다.")).toBeTruthy();
     await waitFor(() => {
       expect(screen.queryByText("김민수")).toBeNull();
     });
@@ -243,7 +243,7 @@ describe("AccessPage", () => {
     expect(screen.getByRole("heading", { name: "출입 모니터링" })).toBeTruthy();
     await vi.runAllTimersAsync();
 
-    const searchInput = screen.getByPlaceholderText("회원 ID 스캔 또는 이름 검색");
+    const searchInput = screen.getByPlaceholderText("회원 이름 또는 전화번호 뒷자리 검색");
     fireEvent.change(searchInput, { target: { value: "김" } });
     fireEvent.change(searchInput, { target: { value: "김민" } });
 
