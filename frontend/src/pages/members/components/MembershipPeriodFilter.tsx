@@ -10,10 +10,10 @@ type MembershipPeriodFilterProps = {
 };
 
 const PRESETS: Array<{ value: Exclude<MembershipPeriodPreset, "">; label: string }> = [
-  { value: "1w", label: "1W" },
-  { value: "1m", label: "1M" },
-  { value: "3m", label: "3M" },
-  { value: "6m", label: "6M" }
+  { value: "1w", label: "1주" },
+  { value: "1m", label: "1개월" },
+  { value: "3m", label: "3개월" },
+  { value: "6m", label: "6개월" }
 ];
 
 export function MembershipPeriodFilter({

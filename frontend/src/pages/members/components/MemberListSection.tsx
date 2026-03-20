@@ -28,6 +28,7 @@ export function MemberListSection() {
   const { dateFilter, applyPreset, setDateFrom, setDateTo, reset } = useMembershipDateFilter();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [memberStatus, setMemberStatus] = useState("");
   const [membershipOperationalStatus, setMembershipOperationalStatus] = useState("");
   const { selectedMemberId, selectedMember, selectedMemberLoading, clearSelectedMember, selectMember } = useSelectedMemberStore();
   const {
@@ -178,6 +179,14 @@ export function MemberListSection() {
           <label>
             <span className="text-sm">연락처</span>
             <input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="010-..." />
+          </label>
+          <label>
+            <span className="text-sm">회원상태</span>
+            <select value={memberStatus} onChange={(event) => {setMemberStatus(event.target.value)}}>
+              <option value="">전체 상태</option>
+              <option value="ACTIVE">활성</option>
+              <option value="INACTIVE">비활성</option>
+            </select>
           </label>
           <label>
             <span className="text-sm">회원권 상태</span>
