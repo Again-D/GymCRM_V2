@@ -179,8 +179,7 @@ textarea:focus-visible {
 }
 
 .members-filter-grid label,
-.period-date-row label,
-.pagination-size {
+.period-date-row label {
   display: grid;
   gap: 8px;
 }
@@ -326,6 +325,41 @@ textarea.input:focus {
 .field-ops-note--restricted {
   background: var(--status-warn-bg);
   border-color: transparent;
+}
+
+@media (max-width: 1024px) {
+  .pagination-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .pagination-summary,
+  .pagination-actions {
+    width: 100%;
+  }
+
+  .pagination-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .pagination-size {
+    justify-content: space-between;
+  }
+
+  .pagination-size select {
+    min-width: 160px;
+  }
+
+  .pagination-buttons {
+    justify-content: space-between;
+  }
+
+  .pagination-page-list {
+    justify-content: center;
+  }
 }
 
 .field-ops-note__label {
