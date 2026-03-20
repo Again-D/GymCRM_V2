@@ -259,7 +259,8 @@ textarea.input:focus {
 .period-date-row,
 .toolbar-actions {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
+  align-items: center;
   gap: 12px;
   flex-wrap: wrap;
 }
