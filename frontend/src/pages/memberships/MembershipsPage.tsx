@@ -11,6 +11,7 @@ import { useMembershipPrototypeState } from "./modules/useMembershipPrototypeSta
 import { Modal } from "../../shared/ui/Modal";
 
 import styles from "./MembershipsPage.module.css";
+import { Link } from "react-router-dom";
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("ko-KR", {
@@ -35,7 +36,7 @@ function paymentLabel(payment: MembershipPaymentRecord) {
 }
 
 export default function MembershipsPage() {
-  const { selectedMember, selectedMemberId } = useSelectedMemberStore();
+  const { selectedMember, selectedMemberId,clearSelectedMember } = useSelectedMemberStore();
   const {
     selectedMemberMemberships,
     selectedMemberMembershipsLoading,
@@ -46,7 +47,7 @@ export default function MembershipsPage() {
     holdMembership,
     resumeMembership,
     previewMembershipRefund,
-    refundMembership
+    refundMembership,
   } = useSelectedMemberMembershipsQuery();
   
   const { products, productsLoading, productsQueryError, loadProducts, resetProductsQuery } = useProductsQuery({
@@ -137,13 +138,24 @@ export default function MembershipsPage() {
               <span className="ops-meta__pill">결제 연동</span>
             </div>
           </div>
-          <button 
+          <div>
+            <button 
             type="button" 
             className="primary-button"
-            onClick={() => setActiveModal('purchase')}
+            onClick={() => {
+              clearSelectedMember();
+            }}
           >
-            신규 등록
-          </button>
+            다른 회원 선택
+            </button>
+            <button 
+              type="button" 
+              className="primary-button"
+              onClick={() => setActiveModal('purchase')}
+            >
+              신규 등록
+            </button>
+          </div>
         </div>
 
         <div className="ops-stat-strip">

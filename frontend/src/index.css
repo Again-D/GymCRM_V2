@@ -265,8 +265,8 @@ textarea.input:focus {
 }
 
 .pagination-controls {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  justify-content: center;
   align-items: center;
   gap: 24px;
   padding: 16px 0;
@@ -277,6 +277,7 @@ textarea.input:focus {
 .pagination-summary {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
   color: var(--text-muted);
   font-size: 0.875rem;
