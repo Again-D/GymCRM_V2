@@ -25,6 +25,26 @@ export type MemberDetail = {
   memo: string | null;
 };
 
+export type MembersModalState =
+  | { kind: "none" }
+  | { kind: "detail"; memberId: number }
+  | { kind: "create" }
+  | { kind: "edit"; memberId: number }
+  | { kind: "deactivate"; memberId: number };
+
+export type MemberFormState = {
+  memberName: string;
+  phone: string;
+  email: string;
+  gender: "MALE" | "FEMALE" | "OTHER" | "";
+  birthDate: string;
+  memberStatus: "ACTIVE" | "INACTIVE";
+  joinDate: string;
+  consentSms: boolean;
+  consentMarketing: boolean;
+  memo: string;
+};
+
 export type PurchasedMembership = {
   membershipId: number;
   memberId: number;
@@ -78,3 +98,35 @@ export type MemberQueryFilters = {
   dateFrom: string;
   dateTo: string;
 };
+
+export function createEmptyMemberForm(): MemberFormState {
+  return {
+    memberName: "",
+    phone: "",
+    email: "",
+    gender: "",
+    birthDate: "",
+    memberStatus: "ACTIVE",
+    joinDate: "",
+    consentSms: false,
+    consentMarketing: false,
+    memo: "",
+  };
+}
+
+export function createMemberFormFromDetail(
+  detail: MemberDetail,
+): MemberFormState {
+  return {
+    memberName: detail.memberName,
+    phone: detail.phone,
+    email: detail.email ?? "",
+    gender: detail.gender ?? "",
+    birthDate: detail.birthDate ?? "",
+    memberStatus: detail.memberStatus,
+    joinDate: detail.joinDate ?? "",
+    consentSms: detail.consentSms,
+    consentMarketing: detail.consentMarketing,
+    memo: detail.memo ?? "",
+  };
+}

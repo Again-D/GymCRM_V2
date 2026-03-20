@@ -30,6 +30,40 @@
   font-size: 0.875rem;
 }
 
+.modalFormGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.modalField {
+  display: grid;
+  gap: 6px;
+}
+
+.modalFieldFull {
+  grid-column: 1 / -1;
+}
+
+.modalCheckboxRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+
+.modalCheckbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-main);
+  font-size: 0.875rem;
+}
+
+.dangerAction {
+  color: var(--danger-strong);
+}
+
 @media (max-width: 960px) {
   .selectedContextRow {
     align-items: start;
@@ -39,5 +73,9 @@
   .selectedContextActions {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .modalFormGrid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

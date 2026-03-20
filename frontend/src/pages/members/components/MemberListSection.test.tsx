@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { AuthStateProvider } from "../../../app/auth";
 import { MemberListSection } from "./MemberListSection";
 
 const navigateMock = vi.fn();
@@ -84,6 +85,26 @@ vi.mock("../modules/useMembersQuery", () => ({
 }));
 
 describe("MemberListSection", () => {
+  function renderWithAuth(
+    authUser: { userId: number; username: string; role: string } = {
+      userId: 11,
+      username: "jwt-admin",
+      role: "ROLE_CENTER_ADMIN"
+    }
+  ) {
+    return render(
+      <AuthStateProvider
+        value={{
+          securityMode: "jwt",
+          authBootstrapping: false,
+          authUser
+        }}
+      >
+        <MemberListSection />
+      </AuthStateProvider>
+    );
+  }
+
   beforeEach(() => {
     navigateMock.mockReset();
     clearSelectedMemberMock.mockClear();
@@ -98,7 +119,7 @@ describe("MemberListSection", () => {
   });
 
   it("renders membership operational status in Korean", () => {
-    render(<MemberListSection />);
+    renderWithAuth();
 
     expect(screen.getAllByText("홀딩중").length).toBeGreaterThan(0);
     expect(screen.queryByText("HOLDING")).toBeNull();
@@ -108,18 +129,28 @@ describe("MemberListSection", () => {
     const firstLoadMembers = vi.fn();
     currentLoadMembers = firstLoadMembers;
 
-    const { rerender } = render(<MemberListSection />);
+    const { rerender } = renderWithAuth();
 
     expect(firstLoadMembers).toHaveBeenCalledTimes(1);
 
     const secondLoadMembers = vi.fn();
     currentLoadMembers = secondLoadMembers;
-    rerender(<MemberListSection />);
+    rerender(
+      <AuthStateProvider
+        value={{
+          securityMode: "jwt",
+          authBootstrapping: false,
+          authUser: { userId: 11, username: "jwt-admin", role: "ROLE_CENTER_ADMIN" }
+        }}
+      >
+        <MemberListSection />
+      </AuthStateProvider>
+    );
 
     expect(secondLoadMembers).toHaveBeenCalledTimes(1);
   });
 
-  it("opens the selected member modal after a successful select", async () => {
+  it("opens the selected member modal after a successful row click", async () => {
     selectMemberMock = vi.fn(async () => {
       currentSelectedMemberId = 101;
       currentSelectedMember = {
@@ -139,25 +170,61 @@ describe("MemberListSection", () => {
       return true;
     });
 
-    const { rerender } = render(<MemberListSection />);
+    renderWithAuth();
 
-    fireEvent.click(screen.getAllByRole("button", { name: "선택" })[0]);
+    fireEvent.click(screen.getByText("김민수"));
     await waitFor(() => expect(selectMemberMock).toHaveBeenCalledWith(101));
-
-    rerender(<MemberListSection />);
 
     expect(screen.getByRole("dialog", { name: "김민수 회원 정보" })).toBeTruthy();
     expect(screen.getByText("회원 상태")).toBeTruthy();
   });
 
-  it("does not open the selected member modal when selectMember fails", async () => {
-    selectMemberMock = vi.fn(async () => false);
+  it("keeps nested membership action from opening the detail modal", async () => {
+    selectMemberMock = vi.fn(async () => {
+      currentSelectedMemberId = 101;
+      currentSelectedMember = {
+        memberId: 101,
+        centerId: 1,
+        memberName: "김민수",
+        phone: "010-1234-5678",
+        email: null,
+        gender: null,
+        birthDate: null,
+        memberStatus: "ACTIVE",
+        joinDate: "2026-01-04",
+        consentSms: true,
+        consentMarketing: false,
+        memo: null
+      };
+      return true;
+    });
 
-    render(<MemberListSection />);
+    renderWithAuth();
 
-    fireEvent.click(screen.getAllByRole("button", { name: "선택" })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "회원권" }));
     await waitFor(() => expect(selectMemberMock).toHaveBeenCalledWith(101));
 
+    expect(navigateMock).toHaveBeenCalledWith("/memberships");
     expect(screen.queryByRole("dialog", { name: "선택 회원 정보" })).toBeNull();
+  });
+
+  it("shows member create entry for admin and hides it for trainer", () => {
+    const { rerender } = renderWithAuth();
+
+    expect(screen.getByRole("button", { name: "회원 등록" })).toBeTruthy();
+
+    rerender(
+      <AuthStateProvider
+        value={{
+          securityMode: "jwt",
+          authBootstrapping: false,
+          authUser: { userId: 41, username: "jwt-trainer", role: "ROLE_TRAINER" }
+        }}
+      >
+        <MemberListSection />
+      </AuthStateProvider>
+    );
+
+    expect(screen.queryByRole("button", { name: "회원 등록" })).toBeNull();
   });
 });

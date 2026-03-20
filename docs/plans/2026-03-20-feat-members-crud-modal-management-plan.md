@@ -264,6 +264,13 @@ mutation 성공 후 sync 순서는 아래처럼 고정한다.
   - UI를 admin prototype에서만 먼저 열지
   - live mode는 read-only로 유지할지 결정
 
+Phase 0 note, 2026-03-20:
+
+- backend [`MemberController.java`](/Users/abc/projects/GymCRM_V2/backend/src/main/java/com/gymcrm/member/MemberController.java) 에서 `POST /api/v1/members`, `PATCH /api/v1/members/{memberId}` 가 확인됐다.
+- 별도 status endpoint는 없고, 비활성화는 `PATCH /api/v1/members/{memberId}` 에 `memberStatus: "INACTIVE"` 를 보내는 방식으로 처리해야 한다.
+- live 권한은 `PROTOTYPE_OR_CENTER_ADMIN_OR_DESK` 기준이고, trainer는 read-only 로 유지해야 한다.
+- frontend mock/prototype layer에는 member mutation helper가 없어서, Phase 1 에서 mock parity를 먼저 추가해야 한다.
+
 #### Phase 1: Domain Mutation Foundation
 
 - members 도메인에 create/update/deactivate 인터페이스 추가
@@ -345,26 +352,26 @@ mutation 성공 후 sync 순서는 아래처럼 고정한다.
 
 ### Functional Requirements
 
-- [ ] 회원관리 탭 상단에서 신규 회원 등록 모달을 열 수 있다.
-- [ ] 회원 목록 행 클릭으로 상세 모달을 열 수 있다.
-- [ ] 행 버튼은 `회원권`, `예약`만 유지된다.
-- [ ] 상세 모달에서 `수정`, `비활성화`, `회원권`, `예약` 액션을 제공한다.
-- [ ] 비활성화된 회원은 목록에 계속 남고 `비활성` 상태로 구분된다.
+- [x] 회원관리 탭 상단에서 신규 회원 등록 모달을 열 수 있다.
+- [x] 회원 목록 행 클릭으로 상세 모달을 열 수 있다.
+- [x] 행 버튼은 `회원권`, `예약`만 유지된다.
+- [x] 상세 모달에서 `수정`, `비활성화`, `회원권`, `예약` 액션을 제공한다.
+- [x] 비활성화된 회원은 목록에 계속 남고 `비활성` 상태로 구분된다.
 
 ### Non-Functional Requirements
 
-- [ ] modal은 기존 shared modal accessibility contract를 따른다.
-- [ ] members 목록 스캔성이 현재보다 나빠지지 않는다.
-- [ ] selected member context와 memberships/reservations handoff가 회귀하지 않는다.
+- [x] modal은 기존 shared modal accessibility contract를 따른다.
+- [x] members 목록 스캔성이 현재보다 나빠지지 않는다.
+- [x] selected member context와 memberships/reservations handoff가 회귀하지 않는다.
 
 ### Quality Gates
 
-- [ ] members CRUD mutation tests added
-- [ ] list/detail/sync regression tests added
-- [ ] browser smoke on members CRUD modal flow passes
-- [ ] role-gated read-only behavior validated
-- [ ] row click vs nested action button propagation regression test added
-- [ ] inactive member rendering and filter compatibility verified
+- [x] members CRUD mutation tests added
+- [x] list/detail/sync regression tests added
+- [x] browser smoke on members CRUD modal flow passes
+- [x] role-gated read-only behavior validated
+- [x] row click vs nested action button propagation regression test added
+- [x] inactive member rendering and filter compatibility verified
 
 ## Dependencies & Risks
 
