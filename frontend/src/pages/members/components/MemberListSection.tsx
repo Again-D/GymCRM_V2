@@ -212,7 +212,7 @@ export function MemberListSection() {
                 </tr>
               ) : (
                 pagination.pagedItems.map((member) => (
-                  <tr key={member.memberId} className={member.memberId === selectedMemberId ? "is-selected-row" : undefined}>
+                  <tr key={member.memberId} className={member.memberId === selectedMemberId ? "is-selected-row" : undefined} onClick={() => void openSelectedMemberSummary(member.memberId)}>
                     <td><strong>{member.memberId}</strong></td>
                     <td>{member.memberName}</td>
                     <td className="text-muted">{member.phone}</td>
