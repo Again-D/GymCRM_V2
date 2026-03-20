@@ -6,6 +6,11 @@ backend/.gradle/
 backend/build/
 .gradle-local/
 *.log
+backend/bin/
+backend/.classpath
+backend/.factorypath
+backend/.project
+backend/.settings
 
 # Node / Vite
 frontend/node_modules/
