@@ -199,7 +199,7 @@ public class AuthController {
 
     public record UpdateUserRoleRequest(
             @jakarta.validation.constraints.Pattern(
-                    regexp = "^(?i)(ROLE_CENTER_ADMIN|ROLE_MANAGER|ROLE_TRAINER|ROLE_DESK)$",
+                    regexp = "^(?i)(ROLE_SUPER_ADMIN|ROLE_CENTER_ADMIN|ROLE_MANAGER|ROLE_TRAINER|ROLE_DESK)$",
                     message = "roleCode is invalid"
             )
             String roleCode

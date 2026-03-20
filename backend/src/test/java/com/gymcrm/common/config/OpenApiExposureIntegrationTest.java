@@ -63,7 +63,8 @@ class OpenApiExposureIntegrationTest {
 
             JsonNode auditLogs = root.path("paths").path("/api/v1/audit-logs").path("get");
             org.junit.jupiter.api.Assertions.assertTrue(auditLogs.path("security").isArray());
-            org.junit.jupiter.api.Assertions.assertEquals("hasAnyRole('CENTER_ADMIN','MANAGER')", auditLogs.path("x-role-policy").asText().replace("@securityModeSettings.isPrototypeMode() or ", ""));
+            org.junit.jupiter.api.Assertions.assertEquals("hasAnyRole('SUPER_ADMIN','CENTER_ADMIN','MANAGER')", auditLogs.path("x-role-policy").asText().replace("@securityModeSettings.isPrototypeMode() or ", ""));
+            org.junit.jupiter.api.Assertions.assertTrue(auditLogs.path("x-role-matrix").toString().contains("ROLE_SUPER_ADMIN"));
             org.junit.jupiter.api.Assertions.assertTrue(auditLogs.path("x-role-matrix").toString().contains("ROLE_CENTER_ADMIN"));
             org.junit.jupiter.api.Assertions.assertTrue(auditLogs.path("responses").has("401"));
             org.junit.jupiter.api.Assertions.assertTrue(auditLogs.path("responses").has("403"));

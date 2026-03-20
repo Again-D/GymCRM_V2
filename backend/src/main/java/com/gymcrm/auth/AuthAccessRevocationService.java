@@ -12,6 +12,7 @@ import java.time.ZoneOffset;
 
 @Service
 public class AuthAccessRevocationService {
+    private static final String ROLE_SUPER_ADMIN = "ROLE_SUPER_ADMIN";
     private static final String ROLE_CENTER_ADMIN = "ROLE_CENTER_ADMIN";
     private static final String ROLE_MANAGER = "ROLE_MANAGER";
     private static final String ROLE_TRAINER = "ROLE_TRAINER";
@@ -128,6 +129,12 @@ public class AuthAccessRevocationService {
     }
 
     private AuthUser requireScopedUser(Long centerId, Long targetUserId) {
+        AuthUser actor = authUserRepository.findActiveById(currentUserProvider.currentUserId())
+                .orElseThrow(() -> new ApiException(ErrorCode.AUTHENTICATION_FAILED, "활성 사용자 정보를 찾을 수 없습니다."));
+        if (ROLE_SUPER_ADMIN.equals(actor.roleCode())) {
+            return authUserRepository.findById(targetUserId)
+                    .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + targetUserId));
+        }
         return authUserRepository.findActiveByCenterAndUserId(centerId, targetUserId)
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + targetUserId));
     }
@@ -137,7 +144,8 @@ public class AuthAccessRevocationService {
             throw new ApiException(ErrorCode.VALIDATION_ERROR, "roleCode is required");
         }
         String normalized = requestedRoleCode.trim().toUpperCase();
-        if (!normalized.equals(ROLE_CENTER_ADMIN)
+        if (!normalized.equals(ROLE_SUPER_ADMIN)
+                && !normalized.equals(ROLE_CENTER_ADMIN)
                 && !normalized.equals(ROLE_MANAGER)
                 && !normalized.equals(ROLE_TRAINER)
                 && !normalized.equals(ROLE_DESK)) {

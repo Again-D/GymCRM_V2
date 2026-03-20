@@ -29,6 +29,9 @@ public class AuthUserEntity {
     @Column(name = "display_name", nullable = false)
     private String displayName;
 
+    @Column(name = "phone")
+    private String phone;
+
     @Column(name = "role_code", nullable = false)
     private String roleCode;
 
@@ -74,6 +77,8 @@ public class AuthUserEntity {
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
     public String getDisplayName() { return displayName; }
     public void setDisplayName(String displayName) { this.displayName = displayName; }
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
     public String getRoleCode() { return roleCode; }
     public void setRoleCode(String roleCode) { this.roleCode = roleCode; }
     public String getUserStatus() { return userStatus; }

@@ -22,6 +22,10 @@ import type {
   SettlementReport,
 } from "../pages/settlements/modules/types";
 import type { ReservationTargetSummary } from "../pages/reservations/modules/useReservationTargetsQuery";
+import type {
+  TrainerDetail,
+  TrainerSummary,
+} from "../pages/trainers/modules/types";
 import { isMembershipReservableOn } from "../pages/reservations/modules/reservableMemberships";
 
 const initialMembers: MemberSummary[] = [
@@ -64,6 +68,35 @@ const trainerAssignedMemberIds = new Map<number, number[]>([
   [41, [101]],
   [42, [102]],
 ]);
+
+type MockTrainerRecord = {
+  userId: number;
+  centerId: number;
+  loginId: string;
+  displayName: string;
+  phone: string | null;
+  userStatus: "ACTIVE" | "INACTIVE";
+};
+
+let trainerIdSeed = 42;
+let mockTrainers: MockTrainerRecord[] = [
+  {
+    userId: 41,
+    centerId: 1,
+    loginId: "trainer-a",
+    displayName: "정트레이너",
+    phone: "010-1111-2222",
+    userStatus: "ACTIVE",
+  },
+  {
+    userId: 42,
+    centerId: 1,
+    loginId: "trainer-b",
+    displayName: "김트레이너",
+    phone: "010-3333-4444",
+    userStatus: "ACTIVE",
+  },
+];
 
 const initialMemberDetails = new Map<number, MemberDetail>([
   [
@@ -1408,8 +1441,165 @@ export function processMockCrmQueue() {
   };
 }
 
+function buildMockTrainerSummary(trainer: MockTrainerRecord): TrainerSummary {
+  const assignedMemberIds = trainerAssignedMemberIds.get(trainer.userId) ?? [];
+  const todayConfirmedReservationCount = assignedMemberIds.reduce((count, memberId) => {
+    const reservations = mockReservationsByMemberId.get(memberId) ?? [];
+    return (
+      count +
+      reservations.filter(
+        (reservation) => reservation.reservationStatus === "CONFIRMED",
+      ).length
+    );
+  }, 0);
+
+  return {
+    userId: trainer.userId,
+    centerId: trainer.centerId,
+    displayName: trainer.displayName,
+    userStatus: trainer.userStatus,
+    phone: trainer.phone,
+    assignedMemberCount: new Set(assignedMemberIds).size,
+    todayConfirmedReservationCount,
+  };
+}
+
+function buildMockTrainerDetail(trainer: MockTrainerRecord): TrainerDetail {
+  const summary = buildMockTrainerSummary(trainer);
+  const assignedMembers = (trainerAssignedMemberIds.get(trainer.userId) ?? [])
+    .map((memberId) => {
+      const member = initialMemberDetails.get(memberId);
+      const membership = (mockMemberMemberships.get(memberId) ?? []).find(
+        (item) =>
+          item.membershipStatus === "ACTIVE" || item.membershipStatus === "HOLDING",
+      );
+      if (!member || !membership) {
+        return null;
+      }
+      return {
+        memberId,
+        memberName: member.memberName,
+        membershipId: membership.membershipId,
+        membershipStatus: membership.membershipStatus,
+      };
+    })
+    .filter((member): member is NonNullable<typeof member> => member != null);
+
+  return {
+    ...summary,
+    loginId: trainer.loginId,
+    assignedMembers,
+  };
+}
+
+function filterTrainers(url: URL) {
+  const keyword = url.searchParams.get("keyword")?.trim() ?? "";
+  const status = url.searchParams.get("status")?.trim().toUpperCase() ?? "";
+
+  return mockTrainers
+    .filter((trainer) => !status || trainer.userStatus === status)
+    .filter((trainer) => {
+      if (!keyword) {
+        return true;
+      }
+      return (
+        trainer.displayName.includes(keyword) ||
+        trainer.loginId.includes(keyword) ||
+        (trainer.phone ?? "").includes(keyword)
+      );
+    })
+    .map((trainer) => buildMockTrainerSummary(trainer));
+}
+
+export function getMockTrainerDetail(userId: number) {
+  const trainer = mockTrainers.find((item) => item.userId === userId);
+  return trainer ? buildMockTrainerDetail(trainer) : null;
+}
+
+export function createMockTrainer(input: {
+  centerId: number;
+  loginId: string;
+  password: string;
+  displayName: string;
+  phone: string | null;
+}) {
+  trainerIdSeed += 1;
+  const nextTrainer: MockTrainerRecord = {
+    userId: trainerIdSeed,
+    centerId: input.centerId,
+    loginId: input.loginId,
+    displayName: input.displayName,
+    phone: input.phone,
+    userStatus: "ACTIVE",
+  };
+  mockTrainers = [nextTrainer, ...mockTrainers];
+  bumpMockDataVersion();
+  return buildMockTrainerDetail(nextTrainer);
+}
+
+export function updateMockTrainer(
+  userId: number,
+  input: {
+    loginId: string;
+    displayName: string;
+    phone: string | null;
+  },
+) {
+  let nextTrainer: MockTrainerRecord | null = null;
+  mockTrainers = mockTrainers.map((trainer) => {
+    if (trainer.userId !== userId) {
+      return trainer;
+    }
+    nextTrainer = {
+      ...trainer,
+      loginId: input.loginId,
+      displayName: input.displayName,
+      phone: input.phone,
+    };
+    return nextTrainer;
+  });
+  if (!nextTrainer) {
+    return null;
+  }
+  bumpMockDataVersion();
+  return buildMockTrainerDetail(nextTrainer);
+}
+
+export function updateMockTrainerStatus(
+  userId: number,
+  userStatus: "ACTIVE" | "INACTIVE",
+) {
+  let nextTrainer: MockTrainerRecord | null = null;
+  mockTrainers = mockTrainers.map((trainer) => {
+    if (trainer.userId !== userId) {
+      return trainer;
+    }
+    nextTrainer = {
+      ...trainer,
+      userStatus,
+    };
+    return nextTrainer;
+  });
+  if (!nextTrainer) {
+    return null;
+  }
+  bumpMockDataVersion();
+  return buildMockTrainerDetail(nextTrainer);
+}
+
 export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
   const url = new URL(path, "http://local.mock");
+
+  if (url.pathname === "/api/v1/trainers") {
+    return envelope(filterTrainers(url));
+  }
+
+  if (url.pathname.startsWith("/api/v1/trainers/")) {
+    const segments = url.pathname.split("/").filter(Boolean);
+    const userId = Number(segments[3]);
+    const detail = getMockTrainerDetail(userId);
+    return detail ? envelope(detail) : null;
+  }
 
   if (url.pathname === "/api/v1/members") {
     return envelope(filterMembers(url));

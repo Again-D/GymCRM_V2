@@ -1,6 +1,7 @@
 export type NavSectionKey =
   | "dashboard"
   | "members"
+  | "trainers"
   | "memberships"
   | "reservations"
   | "access"
@@ -17,6 +18,8 @@ export type ShellRoute = {
   protected: boolean;
   showInSidebar: boolean;
   showInDashboard: boolean;
+  visibleRoles?: string[];
+  allowedRoles?: string[];
 };
 
 export const shellRoutes: ShellRoute[] = [
@@ -37,6 +40,17 @@ export const shellRoutes: ShellRoute[] = [
     protected: true,
     showInSidebar: true,
     showInDashboard: true,
+  },
+  {
+    key: "trainers",
+    path: "/trainers",
+    label: "트레이너 관리",
+    description: "계정 운영 / 담당 회원 / 오늘 예약 현황",
+    protected: true,
+    showInSidebar: true,
+    showInDashboard: true,
+    visibleRoles: ["ROLE_SUPER_ADMIN", "ROLE_CENTER_ADMIN", "ROLE_DESK"],
+    allowedRoles: ["ROLE_SUPER_ADMIN", "ROLE_CENTER_ADMIN", "ROLE_DESK"],
   },
   {
     key: "memberships",
@@ -109,4 +123,52 @@ const shellRouteByPath = new Map(
 
 export function getShellRouteByPath(pathname: string) {
   return shellRouteByPath.get(pathname) ?? null;
+}
+
+function isAllowedRole(allowedRoles: string[] | undefined, role: string | null | undefined) {
+  if (!allowedRoles || allowedRoles.length === 0) {
+    return true;
+  }
+  return role != null && allowedRoles.includes(role);
+}
+
+export function canAccessShellRoute(
+  route: ShellRoute,
+  role: string | null | undefined,
+  isMockMode: boolean,
+) {
+  if (isMockMode) {
+    return true;
+  }
+  return isAllowedRole(route.allowedRoles, role);
+}
+
+export function canSeeShellRoute(
+  route: ShellRoute,
+  role: string | null | undefined,
+  isMockMode: boolean,
+) {
+  if (isMockMode) {
+    return true;
+  }
+  return isAllowedRole(route.visibleRoles, role);
+}
+
+export function getSidebarRoutes(
+  role: string | null | undefined,
+  isMockMode: boolean,
+) {
+  return shellRoutes.filter(
+    (route) => route.showInSidebar && canSeeShellRoute(route, role, isMockMode),
+  );
+}
+
+export function getDashboardRoutes(
+  role: string | null | undefined,
+  isMockMode: boolean,
+) {
+  return shellRoutes.filter(
+    (route) =>
+      route.showInDashboard && canSeeShellRoute(route, role, isMockMode),
+  );
 }

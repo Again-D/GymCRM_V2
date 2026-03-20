@@ -1,7 +1,7 @@
 ---
 title: "feat: Trainer management and account operations"
 type: feat
-status: active
+status: completed
 date: 2026-03-20
 origin: docs/brainstorms/2026-03-20-trainer-management-and-scope-brainstorm.md
 ---
@@ -443,30 +443,30 @@ Success criteria:
 
 ### Functional Requirements
 
-- [ ] A dedicated trainer management menu exists for `SUPER_ADMIN`, `CENTER_ADMIN`, and `DESK`.
-- [ ] Trainer records are stored in `users` with `ROLE_TRAINER`; no separate trainer root table is introduced.
-- [ ] `SUPER_ADMIN` can list, create, edit, activate, and deactivate trainers across centers.
-- [ ] `CENTER_ADMIN` can list, create, edit, activate, and deactivate trainers only in their own center.
-- [ ] `DESK` can list and view trainer details only in their own center and cannot mutate trainer data.
-- [ ] `TRAINER` cannot access trainer management UI or mutation APIs.
-- [ ] Trainer management list shows name, status, phone, assigned distinct member count, and today confirmed reservation count.
-- [ ] Trainer detail shown to desk omits `loginId` and other account-management-only fields.
-- [ ] Membership trainer assignment flows continue using active `ROLE_TRAINER` users from the same center.
-- [ ] Inactive trainers are excluded from new assignment pickers but historical linked data remains readable.
+- [x] A dedicated trainer management menu exists for `SUPER_ADMIN`, `CENTER_ADMIN`, and `DESK`.
+- [x] Trainer records are stored in `users` with `ROLE_TRAINER`; no separate trainer root table is introduced.
+- [x] `SUPER_ADMIN` can list, create, edit, activate, and deactivate trainers across centers.
+- [x] `CENTER_ADMIN` can list, create, edit, activate, and deactivate trainers only in their own center.
+- [x] `DESK` can list and view trainer details only in their own center and cannot mutate trainer data.
+- [x] `TRAINER` cannot access trainer management UI or mutation APIs.
+- [x] Trainer management list shows name, status, phone, assigned distinct member count, and today confirmed reservation count.
+- [x] Trainer detail shown to desk omits `loginId` and other account-management-only fields.
+- [x] Membership trainer assignment flows continue using active `ROLE_TRAINER` users from the same center.
+- [x] Inactive trainers are excluded from new assignment pickers but historical linked data remains readable.
 
 ### Non-Functional Requirements
 
-- [ ] All list/detail/mutation paths enforce center scope on the server.
-- [ ] Aggregation queries stay aligned with reservation state semantics documented in prior reservation learnings.
-- [ ] UI follows existing styling and read-only patterns rather than introducing a new design system.
-- [ ] Sensitive account identifiers are not leaked into desk-facing detail responses.
+- [x] All list/detail/mutation paths enforce center scope on the server.
+- [x] Aggregation queries stay aligned with reservation state semantics documented in prior reservation learnings.
+- [x] UI follows existing styling and read-only patterns rather than introducing a new design system.
+- [x] Sensitive account identifiers are not leaked into desk-facing detail responses.
 
 ### Quality Gates
 
-- [ ] Backend service/repository tests cover role and center scope boundaries.
-- [ ] Frontend tests cover menu visibility, read-only behavior, and route blocking.
-- [ ] Mock mode fixtures, if extended, preserve parity with live permission behavior.
-- [ ] API and DTO changes are documented in plan-linked notes or OpenAPI output as part of implementation review.
+- [x] Backend service/repository tests cover role and center scope boundaries.
+- [x] Frontend tests cover menu visibility, read-only behavior, and route blocking.
+- [x] Mock mode fixtures, if extended, preserve parity with live permission behavior.
+- [x] API and DTO changes are documented in plan-linked notes or OpenAPI output as part of implementation review.
 
 ## Success Metrics
 

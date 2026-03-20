@@ -8,6 +8,7 @@ public record AuthUser(
         String loginId,
         String passwordHash,
         String displayName,
+        String phone,
         String roleCode,
         String userStatus,
         OffsetDateTime lastLoginAt,
