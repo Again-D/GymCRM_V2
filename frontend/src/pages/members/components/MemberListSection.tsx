@@ -54,6 +54,7 @@ export function MemberListSection() {
     getDefaultFilters: () => ({
       name,
       phone,
+      memberStatus,
       membershipOperationalStatus,
       dateFrom: dateFilter.dateFrom,
       dateTo: dateFilter.dateTo
@@ -62,7 +63,7 @@ export function MemberListSection() {
 
   const pagination = usePagination(members, {
     initialPageSize: 20,
-    resetDeps: [name, phone, membershipOperationalStatus, dateFilter.presetRange, dateFilter.dateFrom, dateFilter.dateTo, members.length]
+    resetDeps: [name, phone, memberStatus, membershipOperationalStatus, dateFilter.presetRange, dateFilter.dateFrom, dateFilter.dateTo, members.length]
   });
 
   useEffect(() => {
@@ -215,11 +216,13 @@ export function MemberListSection() {
               onClick={() => {
                 setName("");
                 setPhone("");
+                setMemberStatus("");
                 setMembershipOperationalStatus("");
                 reset();
                 void loadMembers({
                   name: "",
                   phone: "",
+                  memberStatus: "",
                   membershipOperationalStatus: "",
                   dateFrom: "",
                   dateTo: ""

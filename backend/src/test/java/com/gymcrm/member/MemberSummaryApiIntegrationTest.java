@@ -327,6 +327,33 @@ class MemberSummaryApiIntegrationTest {
     }
 
     @Test
+    void memberListCanFilterByMemberStatus() throws Exception {
+        ensureDeskUser();
+        String token = loginAndGetAccessToken(DESK_LOGIN_ID, DESK_PASSWORD);
+
+        long activeMemberId = insertMemberFixture("회원상태활성-" + shortId());
+        long inactiveMemberId = insertInactiveMemberFixture("회원상태비활성-" + shortId());
+
+        MvcResult activeResult = mockMvc.perform(get("/api/v1/members")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .param("memberStatus", "ACTIVE"))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode activeData = objectMapper.readTree(activeResult.getResponse().getContentAsString()).path("data");
+        assertEquals("ACTIVE", findMember(activeData, activeMemberId).path("memberStatus").asText());
+        assertMemberMissing(activeData, inactiveMemberId);
+
+        MvcResult inactiveResult = mockMvc.perform(get("/api/v1/members")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .param("memberStatus", "INACTIVE"))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode inactiveData = objectMapper.readTree(inactiveResult.getResponse().getContentAsString()).path("data");
+        assertEquals("INACTIVE", findMember(inactiveData, inactiveMemberId).path("memberStatus").asText());
+        assertMemberMissing(inactiveData, activeMemberId);
+    }
+
+    @Test
     void membershipOperationalStatusFilterCanReachRowsOutsideDefaultTopHundredWindow() throws Exception {
         LocalDate today = LocalDate.now();
 

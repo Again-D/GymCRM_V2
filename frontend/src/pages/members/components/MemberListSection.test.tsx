@@ -227,4 +227,21 @@ describe("MemberListSection", () => {
 
     expect(screen.queryByRole("button", { name: "회원 등록" })).toBeNull();
   });
+
+  it("clears memberStatus together with the other filters on reset", () => {
+    renderWithAuth();
+
+    fireEvent.change(screen.getByLabelText("회원상태"), { target: { value: "INACTIVE" } });
+    fireEvent.click(screen.getByRole("button", { name: "초기화" }));
+
+    expect(currentLoadMembers).toHaveBeenLastCalledWith({
+      name: "",
+      phone: "",
+      memberStatus: "",
+      membershipOperationalStatus: "",
+      dateFrom: "",
+      dateTo: ""
+    });
+    expect((screen.getByLabelText("회원상태") as HTMLSelectElement).value).toBe("");
+  });
 });

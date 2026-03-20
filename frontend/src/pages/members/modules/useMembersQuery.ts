@@ -40,6 +40,7 @@ export function useMembersQuery({
         const defaults = getDefaultFiltersRef.current();
         const name = filters?.name ?? defaults.name;
         const phone = filters?.phone ?? defaults.phone;
+        const memberStatus = filters?.memberStatus ?? defaults.memberStatus;
         const membershipOperationalStatus =
           filters?.membershipOperationalStatus ??
           defaults.membershipOperationalStatus;
@@ -48,6 +49,7 @@ export function useMembersQuery({
         const params = new URLSearchParams();
         if (name.trim()) params.set("name", name.trim());
         if (phone.trim()) params.set("phone", phone.trim());
+        if (memberStatus.trim()) params.set("memberStatus", memberStatus.trim());
         if (membershipOperationalStatus.trim())
           params.set(
             "membershipOperationalStatus",

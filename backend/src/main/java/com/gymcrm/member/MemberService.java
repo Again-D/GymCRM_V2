@@ -81,6 +81,7 @@ public class MemberService {
             String memberCodeKeyword,
             String nameKeyword,
             String phoneKeyword,
+            String memberStatus,
             Long trainerId,
             Long productId,
             String membershipOperationalStatus,
@@ -89,12 +90,17 @@ public class MemberService {
     ) {
         LocalDate businessDate = LocalDate.now(BUSINESS_ZONE);
         Long effectiveTrainerId = resolveTrainerScopedFilter(trainerId);
+        String normalizedMemberStatus = normalizeStatus(memberStatus);
+        if (normalizedMemberStatus != null) {
+            validateStatus(normalizedMemberStatus);
+        }
         return memberRepository.findAllSummaries(
                         DEFAULT_CENTER_ID,
                         keyword,
                         memberCodeKeyword,
                         nameKeyword,
                         phoneKeyword,
+                        normalizedMemberStatus,
                         effectiveTrainerId,
                         productId,
                         membershipOperationalStatus,

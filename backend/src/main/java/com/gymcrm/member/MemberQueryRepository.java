@@ -72,6 +72,7 @@ public class MemberQueryRepository {
             String memberCodeKeyword,
             String nameKeyword,
             String phoneKeyword,
+            String memberStatus,
             Long trainerId,
             Long productId,
             String membershipOperationalStatus,
@@ -103,7 +104,8 @@ public class MemberQueryRepository {
                         containsSummaryKeyword(keyword),
                         containsIgnoreCase(memberEntity.memberCode, memberCodeKeyword),
                         containsIgnoreCase(memberEntity.memberName, nameKeyword),
-                        containsIgnoreCase(memberEntity.phone, phoneKeyword)
+                        containsIgnoreCase(memberEntity.phone, phoneKeyword),
+                        equalsIgnoreCase(memberEntity.memberStatus, memberStatus)
                 )
                 .orderBy(memberEntity.memberId.desc());
         if (!hasMembershipFilters) {
@@ -202,6 +204,13 @@ public class MemberQueryRepository {
             String keyword
     ) {
         return hasText(keyword) ? path.containsIgnoreCase(keyword.trim()) : null;
+    }
+
+    private com.querydsl.core.types.Predicate equalsIgnoreCase(
+            com.querydsl.core.types.dsl.StringPath path,
+            String keyword
+    ) {
+        return hasText(keyword) ? path.equalsIgnoreCase(keyword.trim()) : null;
     }
 
     private boolean hasText(String value) {

@@ -94,6 +94,7 @@ export type ReservationRow = {
 export type MemberQueryFilters = {
   name: string;
   phone: string;
+  memberStatus: string;
   membershipOperationalStatus: string;
   dateFrom: string;
   dateTo: string;

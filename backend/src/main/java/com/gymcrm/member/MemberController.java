@@ -57,6 +57,8 @@ public class MemberController {
             @RequestParam(required = false) String memberCode,
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String phone,
+            @Pattern(regexp = "^(?i)(ACTIVE|INACTIVE)?$", message = "memberStatus must be ACTIVE or INACTIVE")
+            @RequestParam(required = false) String memberStatus,
             @RequestParam(required = false) Long trainerId,
             @RequestParam(required = false) Long productId,
             @RequestParam(required = false) String membershipOperationalStatus,
@@ -68,6 +70,7 @@ public class MemberController {
                         memberCode,
                         name,
                         phone,
+                        memberStatus,
                         trainerId,
                         productId,
                         membershipOperationalStatus,

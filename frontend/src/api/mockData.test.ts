@@ -95,4 +95,14 @@ describe("mockData membership propagation", () => {
     expect(detail.memberStatus).toBe("INACTIVE");
     expect(detail.memo).toBe("비활성화 처리");
   });
+
+  it("filters members by memberStatus in mock responses", () => {
+    const activeMembers = getMockResponse("/api/v1/members?memberStatus=ACTIVE")?.data as MemberSummary[];
+    const inactiveMembers = getMockResponse("/api/v1/members?memberStatus=INACTIVE")?.data as MemberSummary[];
+
+    expect(activeMembers.length).toBeGreaterThan(0);
+    expect(activeMembers.every((member) => member.memberStatus === "ACTIVE")).toBe(true);
+    expect(inactiveMembers.length).toBeGreaterThan(0);
+    expect(inactiveMembers.every((member) => member.memberStatus === "INACTIVE")).toBe(true);
+  });
 });

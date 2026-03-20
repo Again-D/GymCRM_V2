@@ -11,7 +11,7 @@ describe("useMembersQuery", () => {
     setMockApiModeForTests(false);
   });
 
-  it("includes summary status and date filters in the request", async () => {
+  it("includes member status, summary status, and date filters in the request", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -29,6 +29,7 @@ describe("useMembersQuery", () => {
         getDefaultFilters: () => ({
           name: "",
           phone: "",
+          memberStatus: "",
           membershipOperationalStatus: "",
           dateFrom: "",
           dateTo: ""
@@ -38,13 +39,14 @@ describe("useMembersQuery", () => {
 
     await result.current.loadMembers({
       name: "김회원",
+      memberStatus: "INACTIVE",
       membershipOperationalStatus: "홀딩중",
       dateFrom: "2026-03-12",
       dateTo: "2026-04-12"
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/v1/members?name=%EA%B9%80%ED%9A%8C%EC%9B%90&membershipOperationalStatus=%ED%99%80%EB%94%A9%EC%A4%91&dateFrom=2026-03-12&dateTo=2026-04-12",
+      "/api/v1/members?name=%EA%B9%80%ED%9A%8C%EC%9B%90&memberStatus=INACTIVE&membershipOperationalStatus=%ED%99%80%EB%94%A9%EC%A4%91&dateFrom=2026-03-12&dateTo=2026-04-12",
       expect.objectContaining({
         credentials: "include",
         method: "GET"
@@ -95,6 +97,7 @@ describe("useMembersQuery", () => {
           getDefaultFilters: () => ({
             name: "",
             phone: "",
+            memberStatus: "",
             membershipOperationalStatus: "",
             dateFrom: "",
             dateTo: ""
@@ -147,6 +150,7 @@ describe("useMembersQuery", () => {
           getDefaultFilters: () => ({
             name: "",
             phone: "",
+            memberStatus: "",
             membershipOperationalStatus: "",
             dateFrom: "",
             dateTo: ""

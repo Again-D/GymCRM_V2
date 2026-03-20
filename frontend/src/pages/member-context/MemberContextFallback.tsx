@@ -20,6 +20,7 @@ export function MemberContextFallback({ title, description, submitLabel }: Membe
     getDefaultFilters: () => ({
       name: keyword,
       phone: keyword,
+      memberStatus: "",
       membershipOperationalStatus: "",
       dateFrom: "",
       dateTo: ""

@@ -35,6 +35,7 @@ export default function LockersPage() {
     getDefaultFilters: () => ({
       name: "",
       phone: "",
+      memberStatus: "",
       membershipOperationalStatus: "",
       dateFrom: "",
       dateTo: ""

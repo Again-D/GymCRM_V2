@@ -878,15 +878,18 @@ function filterSettlementReport(url: URL): SettlementReport {
 function filterMembers(url: URL) {
   const name = url.searchParams.get("name")?.trim() ?? "";
   const phone = url.searchParams.get("phone")?.trim() ?? "";
+  const memberStatus = url.searchParams.get("memberStatus")?.trim() ?? "";
   const status =
     url.searchParams.get("membershipOperationalStatus")?.trim() ?? "";
 
   return deriveMembers().filter((member) => {
     const matchesName = !name || member.memberName.includes(name);
     const matchesPhone = !phone || member.phone.includes(phone);
+    const matchesMemberStatus =
+      !memberStatus || member.memberStatus === memberStatus;
     const matchesStatus =
       !status || member.membershipOperationalStatus === status;
-    return matchesName && matchesPhone && matchesStatus;
+    return matchesName && matchesPhone && matchesMemberStatus && matchesStatus;
   });
 }
 

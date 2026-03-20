@@ -45,6 +45,7 @@ export default function AccessPage() {
     getDefaultFilters: () => ({
       name: accessMemberQuery,
       phone: accessMemberQuery,
+      memberStatus: "",
       membershipOperationalStatus: "",
       dateFrom: "",
       dateTo: ""
