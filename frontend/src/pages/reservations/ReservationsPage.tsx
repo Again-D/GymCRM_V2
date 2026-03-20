@@ -142,6 +142,15 @@ export default function ReservationsPage() {
     setReservationPanelError(null);
   }, []);
 
+  const resetCreateForm = useCallback(() => {
+    setReservationCreateForm({ membershipId: "", scheduleId: "", memo: "" });
+  }, []);
+
+  const closeNewReservationModal = useCallback(() => {
+    setIsNewModalOpen(false);
+    resetCreateForm();
+  }, [resetCreateForm]);
+
   const handleReservationCreateSubmit = async () => {
     clearPanelFeedback();
 
@@ -172,7 +181,7 @@ export default function ReservationsPage() {
         loadSelectedMemberMemberships(selectedMemberId),
         loadReservationTargets(debouncedReservationTargetsKeyword)
       ]);
-      setReservationCreateForm({ membershipId: "", scheduleId: "", memo: "" });
+      resetCreateForm();
       setReservationPanelMessage(`예약 #${reservation.reservationId}이(가) 생성되었습니다.`);
       setIsNewModalOpen(false);
     } catch (error) {
@@ -365,7 +374,11 @@ export default function ReservationsPage() {
               <button 
                 type="button" 
                 className="primary-button"
-                onClick={() => setIsNewModalOpen(true)}
+                onClick={() => {
+                  clearPanelFeedback();
+                  resetCreateForm();
+                  setIsNewModalOpen(true);
+                }}
               >
                 신규 예약 등록
               </button>
@@ -465,6 +478,107 @@ export default function ReservationsPage() {
               {reservationPanelError && <div className="pill danger full-span" >{reservationPanelError}</div>}
             </div>
           )}
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={isNewModalOpen}
+        onClose={closeNewReservationModal}
+        title={`신규 예약 등록${selectedMember ? `: ${selectedMember.memberName}` : ""}`}
+        size="md"
+        footer={
+          <>
+            <button type="button" className="secondary-button" onClick={closeNewReservationModal}>
+              취소
+            </button>
+            <button
+              type="button"
+              className="primary-button"
+              onClick={() => void handleReservationCreateSubmit()}
+              disabled={!selectedMemberId || selectedMemberMembershipsLoading || reservationSchedulesLoading}
+            >
+              예약 등록
+            </button>
+          </>
+        }
+      >
+        <div className="stack-md">
+          <p className="text-sm text-muted">
+            {selectedMember
+              ? `${selectedMember.memberName} 회원의 예약 가능 회원권과 수업 일정을 선택합니다.`
+              : "먼저 회원을 선택해야 예약을 등록할 수 있습니다."}
+          </p>
+
+          {selectedMemberMembershipsError ? (
+            <div className="pill danger full-span">{selectedMemberMembershipsError}</div>
+          ) : null}
+          {reservationSchedulesError ? (
+            <div className="pill danger full-span">{reservationSchedulesError}</div>
+          ) : null}
+          {!selectedMemberMembershipsLoading && selectedMemberId && reservableMemberships.length === 0 ? (
+            <div className="pill muted full-span">예약 가능한 회원권이 없습니다.</div>
+          ) : null}
+
+          <label className="stack-sm">
+            <span className="text-sm">예약 회원권</span>
+            <select
+              value={reservationCreateForm.membershipId}
+              disabled={!selectedMemberId || selectedMemberMembershipsLoading || reservableMemberships.length === 0}
+              onChange={(event) =>
+                setReservationCreateForm((current) => ({
+                  ...current,
+                  membershipId: event.target.value
+                }))
+              }
+            >
+              <option value="">
+                {selectedMemberMembershipsLoading ? "회원권 불러오는 중..." : "회원권 선택"}
+              </option>
+              {reservableMemberships.map((membership) => (
+                <option key={membership.membershipId} value={membership.membershipId}>
+                  {membership.productNameSnapshot} (#{membership.membershipId})
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="stack-sm">
+            <span className="text-sm">수업 일정</span>
+            <select
+              value={reservationCreateForm.scheduleId}
+              disabled={reservationSchedulesLoading || reservationSchedules.length === 0}
+              onChange={(event) =>
+                setReservationCreateForm((current) => ({
+                  ...current,
+                  scheduleId: event.target.value
+                }))
+              }
+            >
+              <option value="">
+                {reservationSchedulesLoading ? "일정 불러오는 중..." : "일정 선택"}
+              </option>
+              {reservationSchedules.map((schedule) => (
+                <option key={schedule.scheduleId} value={schedule.scheduleId}>
+                  {schedule.slotTitle} · {schedule.trainerName}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="stack-sm">
+            <span className="text-sm">메모</span>
+            <textarea
+              rows={4}
+              value={reservationCreateForm.memo}
+              onChange={(event) =>
+                setReservationCreateForm((current) => ({
+                  ...current,
+                  memo: event.target.value
+                }))
+              }
+              placeholder="선택 사항"
+            />
+          </label>
         </div>
       </Modal>
 
