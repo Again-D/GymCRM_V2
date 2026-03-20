@@ -532,6 +532,7 @@ let accessEventIdSeed = 97000;
 let lockerAssignmentIdSeed = 98000;
 let productIdSeed = 200;
 let crmMessageEventIdSeed = 12050;
+let memberIdSeed = 103;
 
 function cloneMembers(source: MemberSummary[]) {
   return source.map((member) => ({ ...member }));
@@ -922,6 +923,82 @@ export function resetMockData() {
   lockerAssignmentIdSeed = 98000;
   productIdSeed = 200;
   crmMessageEventIdSeed = 12050;
+  memberIdSeed = 103;
+}
+
+export function createMockMember(input: {
+  memberName: string;
+  phone: string;
+  email?: string | null;
+  gender?: MemberDetail["gender"];
+  birthDate?: string | null;
+  memberStatus: MemberDetail["memberStatus"];
+  joinDate?: string | null;
+  consentSms?: boolean | null;
+  consentMarketing?: boolean | null;
+  memo?: string | null;
+}) {
+  memberIdSeed += 1;
+  const nextDetail: MemberDetail = {
+    memberId: memberIdSeed,
+    centerId: 1,
+    memberName: input.memberName,
+    phone: input.phone,
+    email: input.email ?? null,
+    gender: input.gender ?? null,
+    birthDate: input.birthDate ?? null,
+    memberStatus: input.memberStatus,
+    joinDate: input.joinDate ?? todayText(),
+    consentSms: input.consentSms ?? false,
+    consentMarketing: input.consentMarketing ?? false,
+    memo: input.memo ?? null,
+  };
+
+  mockMemberDetails.set(nextDetail.memberId, { ...nextDetail });
+  mockMembers = [
+    {
+      memberId: nextDetail.memberId,
+      centerId: nextDetail.centerId,
+      memberName: nextDetail.memberName,
+      phone: nextDetail.phone,
+      memberStatus: nextDetail.memberStatus,
+      joinDate: nextDetail.joinDate,
+      membershipOperationalStatus: "없음",
+      membershipExpiryDate: null,
+      remainingPtCount: null,
+    },
+    ...mockMembers,
+  ];
+  mockMemberMemberships.set(nextDetail.memberId, []);
+  mockReservationsByMemberId.set(nextDetail.memberId, []);
+  bumpMockDataVersion();
+  return { ...nextDetail };
+}
+
+export function updateMockMember(
+  memberId: number,
+  updater: (member: MemberDetail) => MemberDetail,
+) {
+  const existingMember = mockMemberDetails.get(memberId);
+  if (!existingMember) {
+    return null;
+  }
+
+  const nextMember = updater({ ...existingMember });
+  mockMemberDetails.set(memberId, { ...nextMember });
+  mockMembers = mockMembers.map((member) =>
+    member.memberId === memberId
+      ? {
+          ...member,
+          memberName: nextMember.memberName,
+          phone: nextMember.phone,
+          memberStatus: nextMember.memberStatus,
+          joinDate: nextMember.joinDate,
+        }
+      : member,
+  );
+  bumpMockDataVersion();
+  return { ...nextMember };
 }
 
 export function createMockMembership(input: {

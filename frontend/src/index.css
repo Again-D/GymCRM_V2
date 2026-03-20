@@ -540,7 +540,8 @@ textarea.input:focus {
 
 .ops-table-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: start;
+  align-items: center;
   gap: 6px;
   flex-wrap: wrap;
 }
@@ -653,7 +654,7 @@ textarea.input:focus {
   color: var(--text-main);
 }
 
-.members-table table {
+.members-table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;

@@ -11,6 +11,7 @@ import { MembershipPeriodFilter } from "./MembershipPeriodFilter";
 import { SelectedMemberContextBadge } from "./SelectedMemberContextBadge";
 import { SelectedMemberSummaryCard } from "./SelectedMemberSummaryCard";
 import { useMembershipDateFilter } from "../modules/useMembershipDateFilter";
+import { useMemberManagementState } from "../modules/useMemberManagementState";
 import { useMembersQuery } from "../modules/useMembersQuery";
 import { useSelectedMemberStore } from "../modules/SelectedMemberContext";
 
@@ -28,8 +29,26 @@ export function MemberListSection() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [membershipOperationalStatus, setMembershipOperationalStatus] = useState("");
-  const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
   const { selectedMemberId, selectedMember, selectedMemberLoading, clearSelectedMember, selectMember } = useSelectedMemberStore();
+  const {
+    modalState,
+    memberForm,
+    setMemberForm,
+    memberFormSubmitting,
+    memberFormError,
+    memberFormMessage,
+    canManageMembers,
+    closeMemberModal,
+    startCreateMember,
+    openMemberDetail,
+    openMemberEdit,
+    openMemberDeactivate,
+    submitMemberForm,
+    deactivateMember
+  } = useMemberManagementState({
+    selectedMemberId,
+    selectMember
+  });
   const { members, membersLoading, membersQueryError, loadMembers } = useMembersQuery({
     getDefaultFilters: () => ({
       name,
@@ -50,14 +69,16 @@ export function MemberListSection() {
   }, [loadMembers]);
 
   useEffect(() => {
-    if (!selectedMemberId && !selectedMemberLoading) {
-      setIsSummaryModalOpen(false);
+    if (!selectedMemberId && !selectedMemberLoading && modalState.kind === "detail") {
+      closeMemberModal();
     }
-  }, [selectedMemberId, selectedMemberLoading]);
+  }, [closeMemberModal, modalState.kind, selectedMemberId, selectedMemberLoading]);
 
   async function openSelectedMemberSummary(memberId: number) {
     const loaded = await selectMember(memberId);
-    setIsSummaryModalOpen(loaded);
+    if (loaded) {
+      openMemberDetail(memberId);
+    }
   }
 
   async function goToMemberContext(path: "/memberships" | "/reservations", memberId: number) {
@@ -71,9 +92,22 @@ export function MemberListSection() {
     if (!selectedMemberId) {
       return;
     }
-    setIsSummaryModalOpen(false);
+    closeMemberModal();
     navigate(path);
   }
+
+  async function runMemberSubmit() {
+    await submitMemberForm();
+  }
+
+  async function runDeactivateMember() {
+    if (modalState.kind !== "deactivate") {
+      return;
+    }
+    await deactivateMember(modalState.memberId);
+  }
+
+  const formTitle = modalState.kind === "create" ? "신규 회원 등록" : modalState.kind === "edit" ? `회원 #${modalState.memberId} 수정` : "회원 수정";
 
   return (
     <section className="ops-shell">
@@ -89,6 +123,11 @@ export function MemberListSection() {
               <span className="ops-meta__pill">데스크 + 현장 대응</span>
             </div>
           </div>
+          {canManageMembers ? (
+            <button type="button" className="primary-button" onClick={startCreateMember}>
+              회원 등록
+            </button>
+          ) : null}
         </div>
 
         <div className="ops-stat-strip">
@@ -114,7 +153,11 @@ export function MemberListSection() {
               type="button"
               className="secondary-button"
               disabled={!selectedMemberId}
-              onClick={() => setIsSummaryModalOpen(true)}
+              onClick={() => {
+                if (selectedMemberId) {
+                  openMemberDetail(selectedMemberId);
+                }
+              }}
             >
               선택 정보 보기
             </button>
@@ -212,7 +255,7 @@ export function MemberListSection() {
                 </tr>
               ) : (
                 pagination.pagedItems.map((member) => (
-                  <tr key={member.memberId} className={member.memberId === selectedMemberId ? "is-selected-row" : undefined}>
+                  <tr key={member.memberId} className={member.memberId === selectedMemberId ? "is-selected-row" : undefined} onClick={() => void openSelectedMemberSummary(member.memberId)}>
                     <td><strong>{member.memberId}</strong></td>
                     <td>{member.memberName}</td>
                     <td className="text-muted">{member.phone}</td>
@@ -231,13 +274,24 @@ export function MemberListSection() {
                     <td className="text-muted">{formatDate(member.joinDate)}</td>
                     <td>
                       <div className="ops-table-actions">
-                        <button type="button" className="secondary-button ops-action-button" onClick={() => void openSelectedMemberSummary(member.memberId)}>
-                          선택
-                        </button>
-                        <button type="button" className="secondary-button ops-action-button" onClick={() => void goToMemberContext("/memberships", member.memberId)}>
+                        <button
+                          type="button"
+                          className="secondary-button ops-action-button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void goToMemberContext("/memberships", member.memberId);
+                          }}
+                        >
                           회원권
                         </button>
-                        <button type="button" className="secondary-button ops-action-button" onClick={() => void goToMemberContext("/reservations", member.memberId)}>
+                        <button
+                          type="button"
+                          className="secondary-button ops-action-button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void goToMemberContext("/reservations", member.memberId);
+                          }}
+                        >
                           예약
                         </button>
                       </div>
@@ -266,13 +320,13 @@ export function MemberListSection() {
       </article>
 
       <Modal
-        isOpen={isSummaryModalOpen}
-        onClose={() => setIsSummaryModalOpen(false)}
+        isOpen={modalState.kind === "detail"}
+        onClose={closeMemberModal}
         title={selectedMember ? `${selectedMember.memberName} 회원 정보` : "선택 회원 정보"}
         size="lg"
         footer={(
           <>
-            <button type="button" className="secondary-button" onClick={() => setIsSummaryModalOpen(false)}>
+            <button type="button" className="secondary-button" onClick={closeMemberModal}>
               닫기
             </button>
             {selectedMemberId ? (
@@ -282,11 +336,25 @@ export function MemberListSection() {
                   className="secondary-button"
                   onClick={() => {
                     clearSelectedMember();
-                    setIsSummaryModalOpen(false);
+                    closeMemberModal();
                   }}
                 >
                   선택 해제
                 </button>
+                {canManageMembers && selectedMember ? (
+                  <>
+                    <button type="button" className="secondary-button" onClick={() => openMemberEdit(selectedMember)}>
+                      수정
+                    </button>
+                    <button
+                      type="button"
+                      className={`secondary-button ${styles.dangerAction}`}
+                      onClick={() => openMemberDeactivate(selectedMemberId)}
+                    >
+                      비활성화
+                    </button>
+                  </>
+                ) : null}
                 <button type="button" className="secondary-button" onClick={() => goToSelectedMemberContext("/memberships")}>
                   회원권
                 </button>
@@ -299,6 +367,161 @@ export function MemberListSection() {
         )}
       >
         <SelectedMemberSummaryCard surface="plain" />
+      </Modal>
+
+      <Modal
+        isOpen={modalState.kind === "create" || modalState.kind === "edit"}
+        onClose={closeMemberModal}
+        title={formTitle}
+        size="lg"
+        footer={(
+          <>
+            <button type="button" className="secondary-button" onClick={closeMemberModal} disabled={memberFormSubmitting}>
+              닫기
+            </button>
+            <button type="button" className="primary-button" onClick={() => void runMemberSubmit()} disabled={memberFormSubmitting}>
+              {memberFormSubmitting ? "저장 중..." : "저장"}
+            </button>
+          </>
+        )}
+      >
+        <div className={styles.modalFormGrid}>
+          {(memberFormMessage || memberFormError) ? (
+            <div className="ops-feedback-stack full-span">
+              {memberFormMessage ? <div className="pill ok full-span">{memberFormMessage}</div> : null}
+              {memberFormError ? <div className="pill danger full-span">{memberFormError}</div> : null}
+            </div>
+          ) : null}
+          <label className={styles.modalField}>
+            <span className="text-sm">회원명</span>
+            <input
+              autoFocus
+              value={memberForm.memberName}
+              onChange={(event) => setMemberForm((current) => ({ ...current, memberName: event.target.value }))}
+              placeholder="회원 이름"
+            />
+          </label>
+          <label className={styles.modalField}>
+            <span className="text-sm">연락처</span>
+            <input
+              value={memberForm.phone}
+              onChange={(event) => setMemberForm((current) => ({ ...current, phone: event.target.value }))}
+              placeholder="010-1234-5678"
+            />
+          </label>
+          <label className={styles.modalField}>
+            <span className="text-sm">이메일</span>
+            <input
+              value={memberForm.email}
+              onChange={(event) => setMemberForm((current) => ({ ...current, email: event.target.value }))}
+              placeholder="선택 입력"
+            />
+          </label>
+          <label className={styles.modalField}>
+            <span className="text-sm">성별</span>
+            <select
+              value={memberForm.gender}
+              onChange={(event) =>
+                setMemberForm((current) => ({
+                  ...current,
+                  gender: event.target.value as typeof current.gender
+                }))
+              }
+            >
+              <option value="">선택 안 함</option>
+              <option value="MALE">남성</option>
+              <option value="FEMALE">여성</option>
+              <option value="OTHER">기타</option>
+            </select>
+          </label>
+          <label className={styles.modalField}>
+            <span className="text-sm">생년월일</span>
+            <input
+              type="date"
+              value={memberForm.birthDate}
+              onChange={(event) => setMemberForm((current) => ({ ...current, birthDate: event.target.value }))}
+            />
+          </label>
+          <label className={styles.modalField}>
+            <span className="text-sm">가입일</span>
+            <input
+              type="date"
+              value={memberForm.joinDate}
+              onChange={(event) => setMemberForm((current) => ({ ...current, joinDate: event.target.value }))}
+            />
+          </label>
+          <div className={`${styles.modalField} ${styles.modalFieldFull}`}>
+            <span className="text-sm">수신 동의</span>
+            <div className={styles.modalCheckboxRow}>
+              <label className={styles.modalCheckbox}>
+                <input
+                  type="checkbox"
+                  checked={memberForm.consentSms}
+                  onChange={(event) => setMemberForm((current) => ({ ...current, consentSms: event.target.checked }))}
+                />
+                SMS 수신 동의
+              </label>
+              <label className={styles.modalCheckbox}>
+                <input
+                  type="checkbox"
+                  checked={memberForm.consentMarketing}
+                  onChange={(event) =>
+                    setMemberForm((current) => ({
+                      ...current,
+                      consentMarketing: event.target.checked
+                    }))
+                  }
+                />
+                마케팅 수신 동의
+              </label>
+            </div>
+          </div>
+          <label className={`${styles.modalField} ${styles.modalFieldFull}`}>
+            <span className="text-sm">메모</span>
+            <textarea
+              rows={4}
+              value={memberForm.memo}
+              onChange={(event) => setMemberForm((current) => ({ ...current, memo: event.target.value }))}
+              placeholder="회원 메모를 남길 수 있습니다."
+            />
+          </label>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={modalState.kind === "deactivate"}
+        onClose={closeMemberModal}
+        title={selectedMember ? `${selectedMember.memberName} 비활성화` : "회원 비활성화"}
+        size="md"
+        footer={(
+          <>
+            <button type="button" className="secondary-button" onClick={closeMemberModal} disabled={memberFormSubmitting}>
+              취소
+            </button>
+            <button type="button" className="primary-button" onClick={() => void runDeactivateMember()} disabled={memberFormSubmitting}>
+              {memberFormSubmitting ? "처리 중..." : "비활성화"}
+            </button>
+          </>
+        )}
+      >
+        {(memberFormMessage || memberFormError) ? (
+          <div className="ops-feedback-stack mb-md">
+            {memberFormMessage ? <div className="pill ok full-span">{memberFormMessage}</div> : null}
+            {memberFormError ? <div className="pill danger full-span">{memberFormError}</div> : null}
+          </div>
+        ) : null}
+        <div className="stack-sm">
+          <p className="brand-title text-sm">선택한 회원을 삭제하지 않고 비활성 상태로 전환합니다.</p>
+          <p className="text-sm text-muted">
+            비활성 회원은 목록에 계속 남고, 운영 상태는 유지되지만 신규 업무 진입 전 상태 확인이 필요합니다.
+          </p>
+          <div className="field-ops-note field-ops-note--restricted">
+            <span className="field-ops-note__label">확인 필요</span>
+            <div className="mt-xs text-sm">
+              {selectedMember ? `${selectedMember.memberName} (#${selectedMember.memberId}) 회원을 비활성화합니다.` : "이 회원을 비활성화합니다."}
+            </div>
+          </div>
+        </div>
       </Modal>
     </section>
   );

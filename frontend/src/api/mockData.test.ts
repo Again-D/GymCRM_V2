@@ -1,17 +1,20 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import {
+  createMockMember,
   createMockMembership,
   getMockResponse,
   patchMockMembership,
   processMockCrmQueue,
   resetMockData,
-  triggerMockCrmExpiryReminder
+  triggerMockCrmExpiryReminder,
+  updateMockMember
 } from "./mockData";
 import type { MemberSummary } from "../pages/members/modules/types";
 import type { CrmHistoryRow } from "../pages/crm/modules/types";
 import type { SettlementReport } from "../pages/settlements/modules/types";
 import type { ReservationTargetSummary } from "../pages/reservations/modules/useReservationTargetsQuery";
+import type { MemberDetail } from "../pages/members/modules/types";
 
 describe("mockData membership propagation", () => {
   beforeEach(() => {
@@ -69,5 +72,27 @@ describe("mockData membership propagation", () => {
     expect(report.totalGrossSales).toBeGreaterThan(0);
     expect(report.rows.every((row) => row.paymentMethod === "CARD")).toBe(true);
     expect(report.rows.some((row) => row.productName.includes("PT"))).toBe(true);
+  });
+
+  it("creates and updates a member through mock helpers", () => {
+    const created = createMockMember({
+      memberName: "신규 모의회원",
+      phone: "010-2345-6789",
+      memberStatus: "ACTIVE",
+      consentSms: true
+    });
+
+    const membersAfterCreate = getMockResponse("/api/v1/members")?.data as MemberSummary[];
+    expect(membersAfterCreate.some((member) => member.memberId === created.memberId)).toBe(true);
+
+    updateMockMember(created.memberId, (current) => ({
+      ...current,
+      memberStatus: "INACTIVE",
+      memo: "비활성화 처리"
+    }));
+
+    const detail = getMockResponse(`/api/v1/members/${created.memberId}`)?.data as MemberDetail;
+    expect(detail.memberStatus).toBe("INACTIVE");
+    expect(detail.memo).toBe("비활성화 처리");
   });
 });
