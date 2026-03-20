@@ -195,6 +195,7 @@ export function useSelectedMemberMembershipsQuery() {
         );
         appendMembership(response.data.membership);
         invalidateQueryDomains([
+          "trainers",
           "members",
           "reservationTargets",
           "selectedMemberMemberships",
@@ -210,6 +211,7 @@ export function useSelectedMemberMembershipsQuery() {
       );
       appendMembership(membership);
       invalidateQueryDomains([
+        "trainers",
         "members",
         "reservationTargets",
         "selectedMemberMemberships",

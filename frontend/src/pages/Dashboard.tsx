@@ -1,14 +1,16 @@
 import { Link } from "react-router-dom";
 
-import { shellRoutes } from "../app/routes";
+import { useAuthState } from "../app/auth";
+import { getDashboardRoutes, getSidebarRoutes } from "../app/routes";
 import { useThemeStore } from "../app/theme";
 
 import styles from "./Dashboard.module.css";
 
-const dashboardRoutes = shellRoutes.filter((route) => route.showInDashboard);
-
 export default function Dashboard() {
+  const { authUser, isMockMode } = useAuthState();
   const { themePreference, setThemePreference, resolvedTheme } = useThemeStore();
+  const dashboardRoutes = getDashboardRoutes(authUser?.role, isMockMode);
+  const sidebarRoutes = getSidebarRoutes(authUser?.role, isMockMode);
 
   return (
     <div className={styles.dashboard}>
@@ -34,7 +36,7 @@ export default function Dashboard() {
           </div>
           <div className={styles.metricCard}>
             <span className={styles.metricLabel}>사이드바 메뉴</span>
-            <span className={styles.metricValue}>{shellRoutes.filter((route) => route.showInSidebar).length}</span>
+            <span className={styles.metricValue}>{sidebarRoutes.length}</span>
             <span className={styles.metricHint}>셸에서 항상 접근 가능한 업무 경로입니다.</span>
           </div>
           <div className={styles.metricCard}>

@@ -52,6 +52,37 @@ public class AuthUserRepository {
     }
 
     @Transactional
+    public AuthUser insert(AuthUserCreateCommand command) {
+        AuthUserEntity entity = new AuthUserEntity();
+        entity.setCenterId(command.centerId());
+        entity.setLoginId(command.loginId());
+        entity.setPasswordHash(command.passwordHash());
+        entity.setDisplayName(command.displayName());
+        entity.setPhone(command.phone());
+        entity.setRoleCode(command.roleCode());
+        entity.setUserStatus(command.userStatus());
+        entity.setCreatedAt(OffsetDateTime.now());
+        entity.setCreatedBy(command.actorUserId());
+        entity.setUpdatedAt(OffsetDateTime.now());
+        entity.setUpdatedBy(command.actorUserId());
+        return toDomain(authUserJpaRepository.saveAndFlush(entity));
+    }
+
+    @Transactional
+    public AuthUser updateProfile(AuthUserProfileUpdateCommand command) {
+        AuthUserEntity entity = authUserJpaRepository.findByUserIdAndIsDeletedFalse(command.userId()).orElse(null);
+        if (entity == null) {
+            return null;
+        }
+        entity.setLoginId(command.loginId());
+        entity.setDisplayName(command.displayName());
+        entity.setPhone(command.phone());
+        entity.setUpdatedAt(OffsetDateTime.now());
+        entity.setUpdatedBy(command.actorUserId());
+        return toDomain(authUserJpaRepository.saveAndFlush(entity));
+    }
+
+    @Transactional
     public int updateLastLoginAt(Long userId) {
         AuthUserEntity entity = authUserJpaRepository.findByUserIdAndIsDeletedFalse(userId).orElse(null);
         if (entity == null) {
@@ -71,6 +102,7 @@ public class AuthUserRepository {
                 entity.getLoginId(),
                 entity.getPasswordHash(),
                 entity.getDisplayName(),
+                entity.getPhone(),
                 entity.getRoleCode(),
                 entity.getUserStatus(),
                 entity.getLastLoginAt(),
@@ -115,5 +147,26 @@ public class AuthUserRepository {
         entity.setUpdatedBy(updatedBy == null ? userId : updatedBy);
         authUserJpaRepository.saveAndFlush(entity);
         return 1;
+    }
+
+    public record AuthUserCreateCommand(
+            Long centerId,
+            String loginId,
+            String passwordHash,
+            String displayName,
+            String phone,
+            String roleCode,
+            String userStatus,
+            Long actorUserId
+    ) {
+    }
+
+    public record AuthUserProfileUpdateCommand(
+            Long userId,
+            String loginId,
+            String displayName,
+            String phone,
+            Long actorUserId
+    ) {
     }
 }

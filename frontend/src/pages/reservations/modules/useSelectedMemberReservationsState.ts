@@ -94,6 +94,7 @@ export function useSelectedMemberReservationsState() {
         });
         setSelectedMemberReservations((prev) => [response.data, ...prev]);
         invalidateQueryDomains([
+          "trainers",
           "reservationTargets",
           "selectedMemberReservations",
         ]);
@@ -104,6 +105,7 @@ export function useSelectedMemberReservationsState() {
       const reservation = createMockReservation(input);
       setSelectedMemberReservations((prev) => [reservation, ...prev]);
       invalidateQueryDomains([
+        "trainers",
         "reservationTargets",
         "selectedMemberReservations",
       ]);
@@ -150,6 +152,7 @@ export function useSelectedMemberReservationsState() {
         );
         replaceReservation(response.data.reservation);
         invalidateQueryDomains([
+          "trainers",
           "reservationTargets",
           "selectedMemberReservations",
           "selectedMemberMemberships",
@@ -172,6 +175,7 @@ export function useSelectedMemberReservationsState() {
       }
       replaceReservation(nextReservation);
       invalidateQueryDomains([
+        "trainers",
         "reservationTargets",
         "selectedMemberReservations",
         "selectedMemberMemberships",
@@ -192,6 +196,7 @@ export function useSelectedMemberReservationsState() {
         );
         replaceReservation(response.data);
         invalidateQueryDomains([
+          "trainers",
           "reservationTargets",
           "selectedMemberReservations",
         ]);
@@ -213,6 +218,7 @@ export function useSelectedMemberReservationsState() {
       }
       replaceReservation(nextReservation);
       invalidateQueryDomains([
+        "trainers",
         "reservationTargets",
         "selectedMemberReservations",
       ]);
@@ -229,6 +235,7 @@ export function useSelectedMemberReservationsState() {
         );
         replaceReservation(response.data);
         invalidateQueryDomains([
+          "trainers",
           "reservationTargets",
           "selectedMemberReservations",
           "selectedMemberMemberships",
@@ -251,6 +258,7 @@ export function useSelectedMemberReservationsState() {
       }
       replaceReservation(nextReservation);
       invalidateQueryDomains([
+        "trainers",
         "reservationTargets",
         "selectedMemberReservations",
         "selectedMemberMemberships",

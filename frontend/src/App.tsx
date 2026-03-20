@@ -3,7 +3,11 @@ import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import styles from "./App.module.css";
 
 import { useAuthState } from "./app/auth";
-import { getShellRouteByPath, shellRoutes } from "./app/routes";
+import {
+  canAccessShellRoute,
+  getShellRouteByPath,
+  getSidebarRoutes,
+} from "./app/routes";
 import DashboardLayout from "./components/layout/DashboardLayout";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
@@ -14,15 +18,16 @@ import MembershipsPage from "./pages/memberships/MembershipsPage";
 import ProductsPage from "./pages/products/ProductsPage";
 import ReservationsPage from "./pages/reservations/ReservationsPage";
 import SettlementsPage from "./pages/settlements/SettlementsPage";
+import TrainersPage from "./pages/trainers/TrainersPage";
 import MemberList from "./pages/members/MemberList";
 import { SelectedMemberProvider } from "./pages/members/modules/SelectedMemberContext";
 
 export default function App() {
   const location = useLocation();
-  const { authBootstrapping, authUser, securityMode } = useAuthState();
+  const { authBootstrapping, authUser, isMockMode, securityMode } = useAuthState();
   const shellRoute = getShellRouteByPath(location.pathname);
   const isJwt = securityMode === "jwt";
-  const sidebarRoutes = shellRoutes.filter((route) => route.showInSidebar);
+  const sidebarRoutes = getSidebarRoutes(authUser?.role, isMockMode);
 
   if (authBootstrapping) {
     return <BootstrappingScreen />;
@@ -52,12 +57,17 @@ export default function App() {
     return <Navigate to="/login" replace />;
   }
 
+  if (shellRoute && !canAccessShellRoute(shellRoute, authUser?.role, isMockMode)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   return (
     <SelectedMemberProvider>
       <Routes>
         <Route element={<DashboardLayout routes={sidebarRoutes} />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/members" element={<MemberList />} />
+          <Route path="/trainers" element={<TrainersPage />} />
           <Route path="/memberships" element={<MembershipsPage />} />
           <Route path="/reservations" element={<ReservationsPage />} />
           <Route path="/access" element={<AccessPage />} />
