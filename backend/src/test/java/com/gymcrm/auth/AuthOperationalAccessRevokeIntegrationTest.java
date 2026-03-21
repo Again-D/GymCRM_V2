@@ -221,6 +221,30 @@ class AuthOperationalAccessRevokeIntegrationTest {
     }
 
     @Test
+    void centerAdminCannotPromoteUserToSuperAdmin() throws Exception {
+        String adminAccessToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
+
+        mockMvc.perform(post("/api/v1/auth/users/{userId}/role", targetUserId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .contentType("application/json")
+                        .content("""
+                                {"roleCode":"ROLE_SUPER_ADMIN"}
+                                """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("ACCESS_DENIED"));
+
+        String roleCode = jdbcClient.sql("""
+                SELECT role_code
+                FROM users
+                WHERE user_id = :userId
+                """)
+                .param("userId", targetUserId)
+                .query(String.class)
+                .single();
+        assertThat(roleCode).isEqualTo("ROLE_DESK");
+    }
+
+    @Test
     void deactivationRevokesExistingAccessAndRefreshTokens() throws Exception {
         String adminAccessToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
 

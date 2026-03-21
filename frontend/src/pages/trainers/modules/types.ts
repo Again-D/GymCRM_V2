@@ -34,17 +34,17 @@ export type TrainerFormState = {
   phone: string;
 };
 
-export function createDefaultTrainerFilters(): TrainerFilters {
+export function createDefaultTrainerFilters(centerId = 1): TrainerFilters {
   return {
-    centerId: 1,
+    centerId,
     keyword: "",
     status: "",
   };
 }
 
-export function createEmptyTrainerForm(): TrainerFormState {
+export function createEmptyTrainerForm(centerId = 1): TrainerFormState {
   return {
-    centerId: 1,
+    centerId,
     loginId: "",
     password: "",
     displayName: "",

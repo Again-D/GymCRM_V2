@@ -14,6 +14,7 @@ export type SecurityMode = "prototype" | "jwt";
 
 export type PrototypeAuthUser = {
   userId: number;
+  centerId?: number;
   username: string;
   role: string;
   email?: string;
@@ -37,6 +38,7 @@ type AuthTokenResponse = {
   accessToken: string;
   user: {
     userId: number;
+    centerId: number;
     loginId: string;
     displayName: string;
     roleCode: string;
@@ -59,6 +61,7 @@ let memoryPreset: RuntimeAuthPreset | null = null;
 
 const prototypeAdminUser: PrototypeAuthUser = {
   userId: 1,
+  centerId: 1,
   username: "prototype-admin",
   role: "ROLE_CENTER_ADMIN",
   email: "admin@gymcrm.ops"
@@ -66,6 +69,7 @@ const prototypeAdminUser: PrototypeAuthUser = {
 
 const jwtAdminUser: PrototypeAuthUser = {
   userId: 11,
+  centerId: 1,
   username: "jwt-admin",
   role: "ROLE_CENTER_ADMIN",
   email: "ops-lead@gymcrm.ops"
@@ -73,6 +77,7 @@ const jwtAdminUser: PrototypeAuthUser = {
 
 const jwtTrainerUser: PrototypeAuthUser = {
   userId: 41,
+  centerId: 1,
   username: "jwt-trainer-a",
   role: "ROLE_TRAINER",
   email: "trainer-alpha@gymcrm.ops"
@@ -202,6 +207,7 @@ function normalizeLiveUser(user: AuthTokenResponse["user"] | null): PrototypeAut
   }
   return {
     userId: user.userId,
+    centerId: user.centerId,
     username: user.displayName || user.loginId,
     role: user.roleCode
   };

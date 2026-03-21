@@ -74,8 +74,10 @@ public class AuthAccessRevocationService {
     public UpdateUserRoleResult updateRoleAndRevoke(Long targetUserId, String requestedRoleCode) {
         Long centerId = currentUserProvider.currentCenterId();
         Long actorUserId = currentUserProvider.currentUserId();
+        AuthUser actor = requireActor();
         AuthUser targetUser = requireScopedUser(centerId, targetUserId);
         String normalizedRoleCode = normalizeRoleCode(requestedRoleCode);
+        ensureSuperAdminRoleChangeAllowed(actor, targetUser, normalizedRoleCode);
         OffsetDateTime revokedAfter = OffsetDateTime.now(ZoneOffset.UTC);
 
         int updatedRole = authUserRepository.updateRoleCode(targetUser.userId(), normalizedRoleCode, actorUserId);
@@ -129,14 +131,27 @@ public class AuthAccessRevocationService {
     }
 
     private AuthUser requireScopedUser(Long centerId, Long targetUserId) {
-        AuthUser actor = authUserRepository.findActiveById(currentUserProvider.currentUserId())
-                .orElseThrow(() -> new ApiException(ErrorCode.AUTHENTICATION_FAILED, "활성 사용자 정보를 찾을 수 없습니다."));
+        AuthUser actor = requireActor();
         if (ROLE_SUPER_ADMIN.equals(actor.roleCode())) {
             return authUserRepository.findById(targetUserId)
                     .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + targetUserId));
         }
         return authUserRepository.findActiveByCenterAndUserId(centerId, targetUserId)
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + targetUserId));
+    }
+
+    private AuthUser requireActor() {
+        return authUserRepository.findActiveById(currentUserProvider.currentUserId())
+                .orElseThrow(() -> new ApiException(ErrorCode.AUTHENTICATION_FAILED, "활성 사용자 정보를 찾을 수 없습니다."));
+    }
+
+    private void ensureSuperAdminRoleChangeAllowed(AuthUser actor, AuthUser targetUser, String normalizedRoleCode) {
+        if (ROLE_SUPER_ADMIN.equals(actor.roleCode())) {
+            return;
+        }
+        if (ROLE_SUPER_ADMIN.equals(normalizedRoleCode) || ROLE_SUPER_ADMIN.equals(targetUser.roleCode())) {
+            throw new ApiException(ErrorCode.ACCESS_DENIED, "슈퍼 관리자 권한은 슈퍼 관리자만 변경할 수 있습니다.");
+        }
     }
 
     private String normalizeRoleCode(String requestedRoleCode) {

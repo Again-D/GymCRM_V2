@@ -23,6 +23,7 @@ function asNullableText(value: string) {
 
 export default function TrainersPage() {
   const { authUser, isMockMode } = useAuthState();
+  const defaultCenterId = authUser?.centerId ?? 1;
   const canReadLiveTrainers =
     isMockMode ||
     authUser?.role === "ROLE_SUPER_ADMIN" ||
@@ -34,13 +35,17 @@ export default function TrainersPage() {
     authUser?.role === "ROLE_SUPER_ADMIN" ||
     authUser?.role === "ROLE_CENTER_ADMIN";
 
-  const [trainerFilters, setTrainerFilters] = useState(createDefaultTrainerFilters());
+  const [trainerFilters, setTrainerFilters] = useState(() =>
+    createDefaultTrainerFilters(defaultCenterId),
+  );
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [selectedTrainer, setSelectedTrainer] = useState<TrainerDetail | null>(null);
   const [trainerFormOpen, setTrainerFormOpen] = useState(false);
   const [trainerFormMode, setTrainerFormMode] = useState<"create" | "edit">("create");
-  const [trainerForm, setTrainerForm] = useState(createEmptyTrainerForm());
+  const [trainerForm, setTrainerForm] = useState(() =>
+    createEmptyTrainerForm(defaultCenterId),
+  );
   const [trainerFormSubmitting, setTrainerFormSubmitting] = useState(false);
   const [trainerPanelMessage, setTrainerPanelMessage] = useState<string | null>(null);
   const [trainerPanelError, setTrainerPanelError] = useState<string | null>(null);
@@ -72,6 +77,22 @@ export default function TrainersPage() {
       setTrainerFormOpen(false);
     }
   }, [canMutateTrainers, trainerFormOpen]);
+
+  useEffect(() => {
+    if (isSuperAdmin) {
+      return;
+    }
+    setTrainerFilters((current) =>
+      current.centerId === defaultCenterId
+        ? current
+        : { ...current, centerId: defaultCenterId },
+    );
+    setTrainerForm((current) =>
+      current.centerId === defaultCenterId
+        ? current
+        : { ...current, centerId: defaultCenterId },
+    );
+  }, [defaultCenterId, isSuperAdmin]);
 
   function clearFeedback() {
     setTrainerPanelMessage(null);
@@ -107,7 +128,7 @@ export default function TrainersPage() {
   function startCreateTrainer() {
     clearFeedback();
     setTrainerFormMode("create");
-    setTrainerForm(createEmptyTrainerForm());
+    setTrainerForm(createEmptyTrainerForm(defaultCenterId));
     setTrainerFormOpen(true);
   }
 
@@ -414,7 +435,7 @@ export default function TrainersPage() {
               className="secondary-button"
               disabled={!canReadLiveTrainers}
               onClick={() => {
-                const nextFilters = createDefaultTrainerFilters();
+                const nextFilters = createDefaultTrainerFilters(defaultCenterId);
                 setTrainerFilters(nextFilters);
                 void loadTrainers(nextFilters);
               }}
