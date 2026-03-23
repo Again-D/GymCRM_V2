@@ -67,7 +67,7 @@ describe("useMemberManagementState", () => {
             value={{
               securityMode: "jwt",
               authBootstrapping: false,
-              authUser: { userId: 11, username: "jwt-admin", role: "ROLE_CENTER_ADMIN" },
+              authUser: { userId: 11, username: "jwt-admin", primaryRole: "ROLE_CENTER_ADMIN", roles: ["ROLE_CENTER_ADMIN"] },
             }}
           >
             {children}
@@ -145,7 +145,7 @@ describe("useMemberManagementState", () => {
             value={{
               securityMode: "jwt",
               authBootstrapping: false,
-              authUser: { userId: 11, username: "jwt-admin", role: "ROLE_CENTER_ADMIN" },
+              authUser: { userId: 11, username: "jwt-admin", primaryRole: "ROLE_CENTER_ADMIN", roles: ["ROLE_CENTER_ADMIN"] },
             }}
           >
             {children}
@@ -182,7 +182,7 @@ describe("useMemberManagementState", () => {
         wrapper: ({ children }) => (
           <AuthStateProvider
             value={{
-              authUser: { userId: 41, username: "trainer-a", role: "ROLE_TRAINER" },
+              authUser: { userId: 41, username: "trainer-a", primaryRole: "ROLE_TRAINER", roles: ["ROLE_TRAINER"] },
             }}
           >
             {children}

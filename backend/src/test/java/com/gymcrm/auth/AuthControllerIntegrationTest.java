@@ -143,6 +143,7 @@ class AuthControllerIntegrationTest {
     @Test
     void trainersEndpointReturnsActiveTrainerRows() throws Exception {
         ensureTrainerUser();
+        ensureDeskUser();
 
         MvcResult loginResult = mockMvc.perform(post("/api/v1/auth/login")
                         .contentType("application/json")
@@ -162,7 +163,8 @@ class AuthControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data").isArray())
-                .andExpect(jsonPath("$.data[*].loginId", hasItem("trainer-user")));
+                .andExpect(jsonPath("$.data[*].loginId", hasItem("trainer-user")))
+                .andExpect(jsonPath("$.data[*].loginId").value(org.hamcrest.Matchers.not(hasItem("desk-user"))));
     }
 
     private void ensureTrainerUser() {
@@ -170,7 +172,6 @@ class AuthControllerIntegrationTest {
                 UPDATE users
                 SET password_hash = :passwordHash,
                     display_name = :displayName,
-                    role_code = 'ROLE_TRAINER',
                     user_status = 'ACTIVE',
                     is_deleted = FALSE,
                     deleted_at = NULL,
@@ -184,20 +185,102 @@ class AuthControllerIntegrationTest {
                 .param("displayName", "Trainer User")
                 .update();
 
+        Long trainerUserId;
         if (updated == 0) {
-            jdbcClient.sql("""
+            trainerUserId = jdbcClient.sql("""
                     INSERT INTO users (
-                        center_id, login_id, password_hash, display_name, role_code, user_status,
+                        center_id, login_id, password_hash, display_name, user_status,
                         created_by, updated_by
                     )
                     VALUES (
-                        1, 'trainer-user', :passwordHash, 'Trainer User', 'ROLE_TRAINER', 'ACTIVE',
+                        1, 'trainer-user', :passwordHash, 'Trainer User', 'ACTIVE',
                         0, 0
                     )
+                    RETURNING user_id
                     """)
                     .param("passwordHash", passwordEncoder.encode("trainer-user-1234!"))
-                    .update();
+                    .query(Long.class)
+                    .single();
+        } else {
+            trainerUserId = jdbcClient.sql("""
+                    SELECT user_id
+                    FROM users
+                    WHERE center_id = 1
+                      AND login_id = 'trainer-user'
+                    """)
+                    .query(Long.class)
+                    .single();
         }
+
+        jdbcClient.sql("DELETE FROM user_roles WHERE user_id = :userId")
+                .param("userId", trainerUserId)
+                .update();
+        jdbcClient.sql("""
+                INSERT INTO user_roles (user_id, role_id, created_by)
+                SELECT :userId, role_id, 0
+                FROM roles
+                WHERE role_code = 'ROLE_TRAINER'
+                """)
+                .param("userId", trainerUserId)
+                .update();
+    }
+
+    private void ensureDeskUser() {
+        int updated = jdbcClient.sql("""
+                UPDATE users
+                SET password_hash = :passwordHash,
+                    display_name = :displayName,
+                    user_status = 'ACTIVE',
+                    is_deleted = FALSE,
+                    deleted_at = NULL,
+                    deleted_by = NULL,
+                    updated_at = CURRENT_TIMESTAMP,
+                    updated_by = 0
+                WHERE center_id = 1
+                  AND login_id = 'desk-user'
+                """)
+                .param("passwordHash", passwordEncoder.encode("desk-user-1234!"))
+                .param("displayName", "Desk User")
+                .update();
+
+        Long deskUserId;
+        if (updated == 0) {
+            deskUserId = jdbcClient.sql("""
+                    INSERT INTO users (
+                        center_id, login_id, password_hash, display_name, user_status,
+                        created_by, updated_by
+                    )
+                    VALUES (
+                        1, 'desk-user', :passwordHash, 'Desk User', 'ACTIVE',
+                        0, 0
+                    )
+                    RETURNING user_id
+                    """)
+                    .param("passwordHash", passwordEncoder.encode("desk-user-1234!"))
+                    .query(Long.class)
+                    .single();
+        } else {
+            deskUserId = jdbcClient.sql("""
+                    SELECT user_id
+                    FROM users
+                    WHERE center_id = 1
+                      AND login_id = 'desk-user'
+                    """)
+                    .query(Long.class)
+                    .single();
+        }
+
+        jdbcClient.sql("DELETE FROM user_roles WHERE user_id = :userId")
+                .param("userId", deskUserId)
+                .update();
+        jdbcClient.sql("""
+                INSERT INTO user_roles (user_id, role_id, created_by)
+                SELECT :userId, role_id, 0
+                FROM roles
+                WHERE role_code = 'ROLE_DESK'
+                """)
+                .param("userId", deskUserId)
+                .update();
     }
 
     static final class CookieExtractors {

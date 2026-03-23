@@ -191,12 +191,12 @@ class MembershipPurchaseServiceIntegrationTest {
 
     private long createTrainerUser() {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
-        return jdbcClient.sql("""
+        Long userId = jdbcClient.sql("""
                 INSERT INTO users (
-                    center_id, login_id, password_hash, display_name, role_code, user_status,
+                    center_id, login_id, password_hash, display_name, user_status,
                     is_deleted, created_at, created_by, updated_at, updated_by
                 ) VALUES (
-                    1, :loginId, :passwordHash, :displayName, 'ROLE_TRAINER', 'ACTIVE',
+                    1, :loginId, :passwordHash, :displayName, 'ACTIVE',
                     FALSE, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 1
                 )
                 RETURNING user_id
@@ -206,16 +206,18 @@ class MembershipPurchaseServiceIntegrationTest {
                 .param("displayName", "Trainer " + suffix)
                 .query(Long.class)
                 .single();
+        replaceUserRole(userId, "ROLE_TRAINER");
+        return userId;
     }
 
     private long createDeskUser() {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
-        return jdbcClient.sql("""
+        Long userId = jdbcClient.sql("""
                 INSERT INTO users (
-                    center_id, login_id, password_hash, display_name, role_code, user_status,
+                    center_id, login_id, password_hash, display_name, user_status,
                     is_deleted, created_at, created_by, updated_at, updated_by
                 ) VALUES (
-                    1, :loginId, :passwordHash, :displayName, 'ROLE_DESK', 'ACTIVE',
+                    1, :loginId, :passwordHash, :displayName, 'ACTIVE',
                     FALSE, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 1
                 )
                 RETURNING user_id
@@ -225,5 +227,22 @@ class MembershipPurchaseServiceIntegrationTest {
                 .param("displayName", "Desk " + suffix)
                 .query(Long.class)
                 .single();
+        replaceUserRole(userId, "ROLE_DESK");
+        return userId;
+    }
+
+    private void replaceUserRole(Long userId, String roleCode) {
+        jdbcClient.sql("DELETE FROM user_roles WHERE user_id = :userId")
+                .param("userId", userId)
+                .update();
+        jdbcClient.sql("""
+                INSERT INTO user_roles (user_id, role_id, created_by)
+                SELECT :userId, role_id, 1
+                FROM roles
+                WHERE role_code = :roleCode
+                """)
+                .param("userId", userId)
+                .param("roleCode", roleCode)
+                .update();
     }
 }

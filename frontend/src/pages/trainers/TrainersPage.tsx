@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { apiGet, apiPatch, apiPost, isMockApiMode } from "../../api/client";
 import { invalidateQueryDomains } from "../../api/queryInvalidation";
 import { useAuthState } from "../../app/auth";
+import { hasAnyRole, hasRole } from "../../app/roles";
 import { usePagination } from "../../shared/hooks/usePagination";
 import { Modal } from "../../shared/ui/Modal";
 import { PaginationControls } from "../../shared/ui/PaginationControls";
@@ -26,14 +27,11 @@ export default function TrainersPage() {
   const defaultCenterId = authUser?.centerId ?? 1;
   const canReadLiveTrainers =
     isMockMode ||
-    authUser?.role === "ROLE_SUPER_ADMIN" ||
-    authUser?.role === "ROLE_CENTER_ADMIN" ||
-    authUser?.role === "ROLE_DESK";
-  const isSuperAdmin = authUser?.role === "ROLE_SUPER_ADMIN";
+    hasAnyRole(authUser, ["ROLE_SUPER_ADMIN", "ROLE_CENTER_ADMIN", "ROLE_DESK"]);
+  const isSuperAdmin = hasRole(authUser, "ROLE_SUPER_ADMIN");
   const canMutateTrainers =
     isMockMode ||
-    authUser?.role === "ROLE_SUPER_ADMIN" ||
-    authUser?.role === "ROLE_CENTER_ADMIN";
+    hasAnyRole(authUser, ["ROLE_SUPER_ADMIN", "ROLE_CENTER_ADMIN"]);
 
   const [trainerFilters, setTrainerFilters] = useState(() =>
     createDefaultTrainerFilters(defaultCenterId),

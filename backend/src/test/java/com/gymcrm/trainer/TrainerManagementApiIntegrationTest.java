@@ -175,6 +175,8 @@ class TrainerManagementApiIntegrationTest {
     @Test
     void superAdminCanManageTrainersAcrossCenters() throws Exception {
         String superAdminToken = loginAndGetAccessToken("super-admin", "super-admin-1234!");
+        String createLoginId = "super-cross-trainer-" + shortId();
+        String updatedLoginId = "super-cross-trainer-updated-" + shortId();
 
         MvcResult createResult = mockMvc.perform(post("/api/v1/trainers")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + superAdminToken)
@@ -182,12 +184,12 @@ class TrainerManagementApiIntegrationTest {
                         .content("""
                                 {
                                   "centerId": 2,
-                                  "loginId": "super-cross-trainer",
+                                  "loginId": "%s",
                                   "password": "super-cross-1234!",
                                   "displayName": "Super Cross Trainer",
                                   "phone": "010-4444-5555"
                                 }
-                                """))
+                                """.formatted(createLoginId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.centerId").value(2))
                 .andReturn();
@@ -203,18 +205,18 @@ class TrainerManagementApiIntegrationTest {
         mockMvc.perform(get("/api/v1/trainers/{userId}", trainerUserId)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + superAdminToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.loginId").value("super-cross-trainer"));
+                .andExpect(jsonPath("$.data.loginId").value(createLoginId));
 
         mockMvc.perform(patch("/api/v1/trainers/{userId}", trainerUserId)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + superAdminToken)
                         .contentType("application/json")
                         .content("""
                                 {
-                                  "loginId": "super-cross-trainer-updated",
+                                  "loginId": "%s",
                                   "displayName": "Super Cross Trainer Updated",
                                   "phone": "010-6666-7777"
                                 }
-                                """))
+                                """.formatted(updatedLoginId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.displayName").value("Super Cross Trainer Updated"))
                 .andExpect(jsonPath("$.data.phone").value("010-6666-7777"));
@@ -391,7 +393,6 @@ class TrainerManagementApiIntegrationTest {
                 SET password_hash = :passwordHash,
                     display_name = :displayName,
                     phone = '010-1111-2222',
-                    role_code = :roleCode,
                     user_status = 'ACTIVE',
                     is_deleted = FALSE,
                     deleted_at = NULL,
@@ -408,24 +409,55 @@ class TrainerManagementApiIntegrationTest {
                 .param("roleCode", roleCode)
                 .update();
 
+        Long userId;
         if (updated == 0) {
-            jdbcClient.sql("""
+            userId = jdbcClient.sql("""
                     INSERT INTO users (
-                        center_id, login_id, password_hash, display_name, phone, role_code, user_status,
+                        center_id, login_id, password_hash, display_name, phone, user_status,
                         created_by, updated_by
                     )
                     VALUES (
-                        :centerId, :loginId, :passwordHash, :displayName, '010-1111-2222', :roleCode, 'ACTIVE',
+                        :centerId, :loginId, :passwordHash, :displayName, '010-1111-2222', 'ACTIVE',
                         0, 0
                     )
+                    RETURNING user_id
                     """)
                     .param("centerId", centerId)
                     .param("loginId", loginId)
                     .param("passwordHash", passwordEncoder.encode(password))
                     .param("displayName", displayName)
                     .param("roleCode", roleCode)
-                    .update();
+                    .query(Long.class)
+                    .single();
+        } else {
+            userId = jdbcClient.sql("""
+                    SELECT user_id
+                    FROM users
+                    WHERE center_id = :centerId
+                      AND login_id = :loginId
+                    """)
+                    .param("centerId", centerId)
+                    .param("loginId", loginId)
+                    .query(Long.class)
+                    .single();
         }
+
+        replaceUserRole(userId, roleCode);
+    }
+
+    private void replaceUserRole(Long userId, String roleCode) {
+        jdbcClient.sql("DELETE FROM user_roles WHERE user_id = :userId")
+                .param("userId", userId)
+                .update();
+        jdbcClient.sql("""
+                INSERT INTO user_roles (user_id, role_id, created_by)
+                SELECT :userId, role_id, 0
+                FROM roles
+                WHERE role_code = :roleCode
+                """)
+                .param("userId", userId)
+                .param("roleCode", roleCode)
+                .update();
     }
 
     private String loginAndGetAccessToken(String loginId, String password) throws Exception {

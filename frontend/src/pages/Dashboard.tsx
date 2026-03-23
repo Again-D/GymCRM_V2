@@ -9,8 +9,8 @@ import styles from "./Dashboard.module.css";
 export default function Dashboard() {
   const { authUser, isMockMode } = useAuthState();
   const { themePreference, setThemePreference, resolvedTheme } = useThemeStore();
-  const dashboardRoutes = getDashboardRoutes(authUser?.role, isMockMode);
-  const sidebarRoutes = getSidebarRoutes(authUser?.role, isMockMode);
+  const dashboardRoutes = getDashboardRoutes(authUser, isMockMode);
+  const sidebarRoutes = getSidebarRoutes(authUser, isMockMode);
 
   return (
     <div className={styles.dashboard}>

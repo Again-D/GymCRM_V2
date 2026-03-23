@@ -71,7 +71,7 @@ describe("prototype shell routing", () => {
   it("redirects unknown paths to dashboard for authenticated sessions", async () => {
     renderRoute(["/not-a-real-route"], {
       securityMode: "jwt",
-      authUser: { userId: 1, username: "test", role: "ADMIN" }
+      authUser: { userId: 1, username: "test", primaryRole: "ADMIN", roles: ["ADMIN"] }
     });
 
     expect(await screen.findByRole("heading", { name: "운영 대시보드" })).toBeTruthy();

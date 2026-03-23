@@ -2,6 +2,7 @@ import { createContext, type PropsWithChildren, useCallback, useContext, useEffe
 
 import { apiGet } from "../../../api/client";
 import { useAuthState } from "../../../app/auth";
+import { createAuthIdentityKey } from "../../../app/roles";
 import { canAuthUserAccessMember } from "../../member-context/modules/trainerScope";
 import type { MemberDetail } from "./types";
 
@@ -73,7 +74,7 @@ export function SelectedMemberProvider({ children }: PropsWithChildren) {
   }, []);
 
   useEffect(() => {
-    const nextAuthIdentityKey = authUser ? `${authUser.userId}:${authUser.role}` : "anonymous";
+    const nextAuthIdentityKey = createAuthIdentityKey(authUser);
     if (authIdentityKeyRef.current === null) {
       authIdentityKeyRef.current = nextAuthIdentityKey;
       return;

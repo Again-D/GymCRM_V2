@@ -34,7 +34,8 @@ describe("ProductsPage", () => {
           authUser: {
             userId: 21,
             username: "desk-user",
-            role: "ROLE_DESK"
+            primaryRole: "ROLE_DESK",
+            roles: ["ROLE_DESK"]
           }
         }}
       >
@@ -56,7 +57,8 @@ describe("ProductsPage", () => {
           authUser: {
             userId: 41,
             username: "trainer-a",
-            role: "ROLE_TRAINER"
+            primaryRole: "ROLE_TRAINER",
+            roles: ["ROLE_TRAINER"]
           }
         }}
       >
@@ -90,7 +92,8 @@ describe("ProductsPage", () => {
           authUser: {
             userId: 41,
             username: "trainer-a",
-            role: "ROLE_TRAINER"
+            primaryRole: "ROLE_TRAINER",
+            roles: ["ROLE_TRAINER"]
           }
         }}
       >

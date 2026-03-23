@@ -54,7 +54,8 @@ describe("AccessPage", () => {
           authUser: {
             userId: 41,
             username: "jwt-trainer-a",
-            role: "ROLE_TRAINER"
+            primaryRole: "ROLE_TRAINER",
+            roles: ["ROLE_TRAINER"]
           }
         }}
       >
@@ -140,7 +141,8 @@ describe("AccessPage", () => {
           authUser: {
             userId: 11,
             username: "jwt-admin",
-            role: "ROLE_CENTER_ADMIN"
+            primaryRole: "ROLE_CENTER_ADMIN",
+            roles: ["ROLE_CENTER_ADMIN"]
           }
         }}
       >
@@ -159,7 +161,8 @@ describe("AccessPage", () => {
           authUser: {
             userId: 41,
             username: "jwt-trainer-a",
-            role: "ROLE_TRAINER"
+            primaryRole: "ROLE_TRAINER",
+            roles: ["ROLE_TRAINER"]
           }
         }}
       >
@@ -230,7 +233,8 @@ describe("AccessPage", () => {
           authUser: {
             userId: 11,
             username: "jwt-admin",
-            role: "ROLE_CENTER_ADMIN"
+            primaryRole: "ROLE_CENTER_ADMIN",
+            roles: ["ROLE_CENTER_ADMIN"]
           }
         }}
       >

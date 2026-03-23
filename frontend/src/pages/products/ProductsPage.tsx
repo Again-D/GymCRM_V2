@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { useAuthState } from "../../app/auth";
+import { hasAnyRole, hasRole } from "../../app/roles";
 import { usePagination } from "../../shared/hooks/usePagination";
 import { PaginationControls } from "../../shared/ui/PaginationControls";
 import { useProductsQuery } from "./modules/useProductsQuery";
@@ -52,8 +53,8 @@ export default function ProductsPage() {
     getDefaultFilters: createDefaultProductFilters
   });
 
-  const canReadLiveProducts = isMockMode || authUser?.role === "ROLE_CENTER_ADMIN" || authUser?.role === "ROLE_DESK";
-  const canMutateProducts = isMockMode || authUser?.role === "ROLE_CENTER_ADMIN";
+  const canReadLiveProducts = isMockMode || hasAnyRole(authUser, ["ROLE_CENTER_ADMIN", "ROLE_DESK"]);
+  const canMutateProducts = isMockMode || hasRole(authUser, "ROLE_CENTER_ADMIN");
   
   const productsPagination = usePagination(products, {
     initialPageSize: 10,

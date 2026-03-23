@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { apiPatch, apiPost, isMockApiMode } from "../../../api/client";
 import { invalidateQueryDomains } from "../../../api/queryInvalidation";
 import { useAuthState } from "../../../app/auth";
+import { hasAnyRole } from "../../../app/roles";
 import {
   createEmptyMemberForm,
   createMemberFormFromDetail,
@@ -70,8 +71,8 @@ function buildUpdateMemberInput(memberForm: MemberFormState) {
   } as const;
 }
 
-function canManageMember(authRole: string | null | undefined) {
-  return authRole === "ROLE_CENTER_ADMIN" || authRole === "ROLE_DESK";
+function canManageMember(authUser: ReturnType<typeof useAuthState>["authUser"]) {
+  return hasAnyRole(authUser, ["ROLE_CENTER_ADMIN", "ROLE_DESK"]);
 }
 
 export function useMemberManagementState({
@@ -95,8 +96,8 @@ export function useMemberManagementState({
   );
   const useMockMutations = isMockApiMode();
   const canManageMembers = useMemo(
-    () => canManageMember(authUser?.role),
-    [authUser?.role],
+    () => canManageMember(authUser),
+    [authUser],
   );
 
   function clearMemberFeedback() {

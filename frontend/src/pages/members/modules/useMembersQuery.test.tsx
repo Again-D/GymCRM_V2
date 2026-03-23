@@ -105,7 +105,7 @@ describe("useMembersQuery", () => {
         }),
       {
         wrapper: ({ children }) => (
-          <AuthStateProvider value={{ authUser: { userId: 41, username: "trainer-a", role: "ROLE_TRAINER" } }}>
+          <AuthStateProvider value={{ authUser: { userId: 41, username: "trainer-a", primaryRole: "ROLE_TRAINER", roles: ["ROLE_TRAINER"] } }}>
             {children}
           </AuthStateProvider>
         )

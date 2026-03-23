@@ -25,7 +25,8 @@ describe("App route guards", () => {
               authUser: {
                 userId: 21,
                 username: "desk-user",
-                role: "ROLE_DESK",
+                primaryRole: "ROLE_DESK",
+                roles: ["ROLE_DESK"],
               },
             }}
           >
@@ -51,7 +52,8 @@ describe("App route guards", () => {
               authUser: {
                 userId: 1,
                 username: "super-admin",
-                role: "ROLE_SUPER_ADMIN",
+                primaryRole: "ROLE_SUPER_ADMIN",
+                roles: ["ROLE_SUPER_ADMIN"],
               },
             }}
           >
@@ -77,7 +79,8 @@ describe("App route guards", () => {
               authUser: {
                 userId: 41,
                 username: "trainer-a",
-                role: "ROLE_TRAINER",
+                primaryRole: "ROLE_TRAINER",
+                roles: ["ROLE_TRAINER"],
               },
             }}
           >

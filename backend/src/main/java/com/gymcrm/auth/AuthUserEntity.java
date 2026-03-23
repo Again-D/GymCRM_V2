@@ -1,13 +1,8 @@
 package com.gymcrm.auth;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-
+import jakarta.persistence.*;
 import java.time.OffsetDateTime;
+import java.util.Set;
 
 @Entity
 @Table(name = "users")
@@ -32,8 +27,13 @@ public class AuthUserEntity {
     @Column(name = "phone")
     private String phone;
 
-    @Column(name = "role_code", nullable = false)
-    private String roleCode;
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "user_roles",
+        joinColumns = @JoinColumn(name = "user_id"),
+        inverseJoinColumns = @JoinColumn(name = "role_id")
+    )
+    private Set<RoleEntity> roles;
 
     @Column(name = "user_status", nullable = false)
     private String userStatus;
@@ -69,6 +69,7 @@ public class AuthUserEntity {
     }
 
     public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
     public Long getCenterId() { return centerId; }
     public void setCenterId(Long centerId) { this.centerId = centerId; }
     public String getLoginId() { return loginId; }
@@ -79,8 +80,8 @@ public class AuthUserEntity {
     public void setDisplayName(String displayName) { this.displayName = displayName; }
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }
-    public String getRoleCode() { return roleCode; }
-    public void setRoleCode(String roleCode) { this.roleCode = roleCode; }
+    public Set<RoleEntity> getRoles() { return roles; }
+    public void setRoles(Set<RoleEntity> roles) { this.roles = roles; }
     public String getUserStatus() { return userStatus; }
     public void setUserStatus(String userStatus) { this.userStatus = userStatus; }
     public OffsetDateTime getLastLoginAt() { return lastLoginAt; }

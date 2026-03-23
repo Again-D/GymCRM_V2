@@ -5,17 +5,23 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
-import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 
 @Repository
 public class AuthUserRepository {
     private final AuthUserJpaRepository authUserJpaRepository;
+    private final RoleJpaRepository roleJpaRepository;
     private final EntityManager entityManager;
 
-    public AuthUserRepository(AuthUserJpaRepository authUserJpaRepository, EntityManager entityManager) {
+    public AuthUserRepository(
+            AuthUserJpaRepository authUserJpaRepository,
+            RoleJpaRepository roleJpaRepository,
+            EntityManager entityManager
+    ) {
         this.authUserJpaRepository = authUserJpaRepository;
+        this.roleJpaRepository = roleJpaRepository;
         this.entityManager = entityManager;
     }
 
@@ -41,12 +47,13 @@ public class AuthUserRepository {
 
     public List<AuthUser> findActiveByCenterAndRoleCode(Long centerId, String roleCode) {
         entityManager.clear();
-        return authUserJpaRepository.findAll().stream()
-                .filter(entity -> !entity.isDeleted())
-                .filter(entity -> centerId.equals(entity.getCenterId()))
-                .filter(entity -> roleCode.equals(entity.getRoleCode()))
-                .filter(entity -> "ACTIVE".equals(entity.getUserStatus()))
-                .sorted(Comparator.comparing(AuthUserEntity::getUserId))
+        return authUserJpaRepository
+                .findDistinctByCenterIdAndUserStatusAndIsDeletedFalseAndRoles_RoleCodeOrderByUserIdAsc(
+                        centerId,
+                        "ACTIVE",
+                        roleCode
+                )
+                .stream()
                 .map(this::toDomain)
                 .toList();
     }
@@ -59,7 +66,7 @@ public class AuthUserRepository {
         entity.setPasswordHash(command.passwordHash());
         entity.setDisplayName(command.displayName());
         entity.setPhone(command.phone());
-        entity.setRoleCode(command.roleCode());
+        entity.setRoles(new LinkedHashSet<>(List.of(requireRole(command.roleCode()))));
         entity.setUserStatus(command.userStatus());
         entity.setCreatedAt(OffsetDateTime.now());
         entity.setCreatedBy(command.actorUserId());
@@ -95,21 +102,6 @@ public class AuthUserRepository {
         return 1;
     }
 
-    private AuthUser toDomain(AuthUserEntity entity) {
-        return new AuthUser(
-                entity.getUserId(),
-                entity.getCenterId(),
-                entity.getLoginId(),
-                entity.getPasswordHash(),
-                entity.getDisplayName(),
-                entity.getPhone(),
-                entity.getRoleCode(),
-                entity.getUserStatus(),
-                entity.getLastLoginAt(),
-                entity.getAccessRevokedAfter()
-        );
-    }
-
     @Transactional
     public int updateAccessRevokedAfter(Long userId, OffsetDateTime revokedAfter, Long updatedBy) {
         AuthUserEntity entity = authUserJpaRepository.findByUserIdAndIsDeletedFalse(userId).orElse(null);
@@ -129,7 +121,7 @@ public class AuthUserRepository {
         if (entity == null) {
             return 0;
         }
-        entity.setRoleCode(roleCode);
+        entity.setRoles(new LinkedHashSet<>(List.of(requireRole(roleCode))));
         entity.setUpdatedAt(OffsetDateTime.now());
         entity.setUpdatedBy(updatedBy == null ? userId : updatedBy);
         authUserJpaRepository.saveAndFlush(entity);
@@ -147,6 +139,26 @@ public class AuthUserRepository {
         entity.setUpdatedBy(updatedBy == null ? userId : updatedBy);
         authUserJpaRepository.saveAndFlush(entity);
         return 1;
+    }
+
+    private AuthUser toDomain(AuthUserEntity entity) {
+        return new AuthUser(
+                entity.getUserId(),
+                entity.getCenterId(),
+                entity.getLoginId(),
+                entity.getPasswordHash(),
+                entity.getDisplayName(),
+                entity.getPhone(),
+                entity.getRoles().stream().map(RoleEntity::getRoleCode).findFirst().orElse(null),
+                entity.getUserStatus(),
+                entity.getLastLoginAt(),
+                entity.getAccessRevokedAfter()
+        );
+    }
+
+    private RoleEntity requireRole(String roleCode) {
+        return roleJpaRepository.findByRoleCode(roleCode)
+                .orElseThrow(() -> new IllegalStateException("Role not found: " + roleCode));
     }
 
     public record AuthUserCreateCommand(

@@ -82,7 +82,7 @@ public class AuthAccessRevocationService {
 
         int updatedRole = authUserRepository.updateRoleCode(targetUser.userId(), normalizedRoleCode, actorUserId);
         if (updatedRole != 1) {
-            throw new ApiException(ErrorCode.CONFLICT, "사용자 role_code를 갱신하지 못했습니다. userId=" + targetUserId);
+            throw new ApiException(ErrorCode.CONFLICT, "사용자 역할을 갱신하지 못했습니다. userId=" + targetUserId);
         }
         authUserRepository.updateAccessRevokedAfter(targetUser.userId(), revokedAfter, actorUserId);
         accessRevocationMarkerService.mirrorRevokeAfter(targetUser.userId(), revokedAfter);

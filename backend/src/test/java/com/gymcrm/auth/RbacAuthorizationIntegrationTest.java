@@ -314,7 +314,6 @@ class RbacAuthorizationIntegrationTest {
                 UPDATE users
                 SET password_hash = :passwordHash,
                     display_name = :displayName,
-                    role_code = :roleCode,
                     user_status = 'ACTIVE',
                     is_deleted = FALSE,
                     deleted_at = NULL,
@@ -331,23 +330,52 @@ class RbacAuthorizationIntegrationTest {
                 .param("roleCode", roleCode)
                 .update();
         if (updated > 0) {
+            Long userId = jdbcClient.sql("""
+                    SELECT user_id
+                    FROM users
+                    WHERE center_id = :centerId
+                      AND login_id = :loginId
+                    """)
+                    .param("centerId", CENTER_ID)
+                    .param("loginId", loginId)
+                    .query(Long.class)
+                    .single();
+            replaceUserRole(userId, roleCode);
             return;
         }
 
-        jdbcClient.sql("""
+        Long userId = jdbcClient.sql("""
                 INSERT INTO users (
-                    center_id, login_id, password_hash, display_name, role_code, user_status,
+                    center_id, login_id, password_hash, display_name, user_status,
                     created_by, updated_by
                 )
                 VALUES (
-                    :centerId, :loginId, :passwordHash, :displayName, :roleCode, 'ACTIVE',
+                    :centerId, :loginId, :passwordHash, :displayName, 'ACTIVE',
                     0, 0
                 )
+                RETURNING user_id
                 """)
                 .param("centerId", CENTER_ID)
                 .param("loginId", loginId)
                 .param("passwordHash", passwordEncoder.encode(password))
                 .param("displayName", displayName)
+                .param("roleCode", roleCode)
+                .query(Long.class)
+                .single();
+        replaceUserRole(userId, roleCode);
+    }
+
+    private void replaceUserRole(Long userId, String roleCode) {
+        jdbcClient.sql("DELETE FROM user_roles WHERE user_id = :userId")
+                .param("userId", userId)
+                .update();
+        jdbcClient.sql("""
+                INSERT INTO user_roles (user_id, role_id, created_by)
+                SELECT :userId, role_id, 0
+                FROM roles
+                WHERE role_code = :roleCode
+                """)
+                .param("userId", userId)
                 .param("roleCode", roleCode)
                 .update();
     }

@@ -61,7 +61,8 @@ describe("AuthStateProvider bootstrap", () => {
     });
 
     expect(secondRender.result.current.securityMode).toBe("jwt");
-    expect(secondRender.result.current.authUser?.role).toBe("ROLE_TRAINER");
+    expect(secondRender.result.current.authUser?.primaryRole).toBe("ROLE_TRAINER");
+    expect(secondRender.result.current.authUser?.roles).toEqual(["ROLE_TRAINER"]);
   });
 
   it("bootstraps live jwt session from health and refresh", async () => {
@@ -91,7 +92,8 @@ describe("AuthStateProvider bootstrap", () => {
             userId: 7,
             loginId: "center-admin",
             displayName: "센터 관리자",
-            roleCode: "ROLE_CENTER_ADMIN"
+            primaryRole: "ROLE_CENTER_ADMIN",
+            roles: ["ROLE_CENTER_ADMIN"]
           }
         },
         message: "토큰이 재발급되었습니다.",
@@ -154,7 +156,8 @@ describe("AuthStateProvider bootstrap", () => {
             userId: 11,
             loginId: "center-admin",
             displayName: "센터 관리자",
-            roleCode: "ROLE_CENTER_ADMIN"
+            primaryRole: "ROLE_CENTER_ADMIN",
+            roles: ["ROLE_CENTER_ADMIN"]
           }
         },
         message: "로그인되었습니다.",
@@ -207,7 +210,8 @@ describe("AuthStateProvider bootstrap", () => {
             userId: 11,
             loginId: "center-admin",
             displayName: "센터 관리자",
-            roleCode: "ROLE_CENTER_ADMIN"
+            primaryRole: "ROLE_CENTER_ADMIN",
+            roles: ["ROLE_CENTER_ADMIN"]
           }
         },
         message: "기존 세션을 복구했습니다.",

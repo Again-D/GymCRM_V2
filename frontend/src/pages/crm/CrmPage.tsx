@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 
 import { useAuthState } from "../../app/auth";
+import { hasAnyRole } from "../../app/roles";
 import { formatDate } from "../../shared/format";
 import { usePagination } from "../../shared/hooks/usePagination";
 import { PaginationControls } from "../../shared/ui/PaginationControls";
@@ -47,7 +48,7 @@ export default function CrmPage() {
   const { crmHistoryRows, crmHistoryLoading, crmHistoryError, loadCrmHistory, resetCrmHistoryQuery } = useCrmHistoryQuery();
   
   const isLiveCrmRoleSupported =
-    isMockMode || authUser?.role === "ROLE_CENTER_ADMIN" || authUser?.role === "ROLE_DESK";
+    isMockMode || hasAnyRole(authUser, ["ROLE_CENTER_ADMIN", "ROLE_DESK"]);
 
   const historyPagination = usePagination(crmHistoryRows, {
     initialPageSize: 10,

@@ -27,7 +27,7 @@ export default function App() {
   const { authBootstrapping, authUser, isMockMode, securityMode } = useAuthState();
   const shellRoute = getShellRouteByPath(location.pathname);
   const isJwt = securityMode === "jwt";
-  const sidebarRoutes = getSidebarRoutes(authUser?.role, isMockMode);
+  const sidebarRoutes = getSidebarRoutes(authUser, isMockMode);
 
   if (authBootstrapping) {
     return <BootstrappingScreen />;
@@ -57,7 +57,7 @@ export default function App() {
     return <Navigate to="/login" replace />;
   }
 
-  if (shellRoute && !canAccessShellRoute(shellRoute, authUser?.role, isMockMode)) {
+  if (shellRoute && !canAccessShellRoute(shellRoute, authUser, isMockMode)) {
     return <Navigate to="/dashboard" replace />;
   }
 

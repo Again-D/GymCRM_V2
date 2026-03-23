@@ -3,6 +3,7 @@ import { useCallback, useRef, useState } from "react";
 import { apiGet } from "../../../api/client";
 import { useQueryInvalidationVersion } from "../../../api/queryInvalidation";
 import { useAuthState } from "../../../app/auth";
+import { createAuthIdentityKey } from "../../../app/roles";
 import { filterMemberIdsForAuth } from "../../member-context/modules/trainerScope";
 
 export type ReservationTargetSummary = {
@@ -59,7 +60,7 @@ export function useReservationTargetsQuery() {
       try {
         const query = params.toString();
         const currentAuthUser = authUserRef.current;
-        const cacheKey = `${currentAuthUser?.role ?? "anon"}:${currentAuthUser?.userId ?? "none"}:${reservationTargetsVersion}:${query}`;
+        const cacheKey = `${createAuthIdentityKey(currentAuthUser)}:${reservationTargetsVersion}:${query}`;
         if (cacheRef.current.has(cacheKey)) {
           if (requestIdRef.current !== requestId) {
             return;
