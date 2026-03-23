@@ -1,4 +1,4 @@
-package com.gymcrm.member;
+package com.gymcrm.member.service;
 
 import com.gymcrm.auth.AuthUser;
 import com.gymcrm.auth.AuthUserRepository;
@@ -6,6 +6,12 @@ import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
 import com.gymcrm.common.security.PiiEncryptionService;
+import com.gymcrm.member.dto.request.MemberCreateRequest;
+import com.gymcrm.member.dto.request.MemberUpdateRequest;
+import com.gymcrm.member.entity.Member;
+import com.gymcrm.member.enums.Gender;
+import com.gymcrm.member.enums.MemberStatus;
+import com.gymcrm.member.repository.MemberRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
@@ -42,13 +48,10 @@ public class MemberService {
 
     @Transactional
     public Member create(MemberCreateRequest request) {
-        String normalizedStatus = normalizeStatus(request.memberStatus());
-        String normalizedGender = normalizeUpperOrNull(request.gender());
+        MemberStatus memberStatus = parseRequiredMemberStatus(request.memberStatus());
+        Gender gender = parseGender(request.gender());
         String normalizedMemberName = requireTrimmedValue(request.memberName(), "memberName");
         String normalizedPhone = requireTrimmedValue(request.phone(), "phone");
-
-        validateStatus(normalizedStatus);
-        validateGender(normalizedGender);
 
         try {
             String encryptedPhone = piiEncryptionService.encrypt(normalizedPhone);
@@ -59,11 +62,11 @@ public class MemberService {
                     normalizedPhone,
                     encryptedPhone,
                     trimToNull(request.email()),
-                    normalizedGender,
+                    gender,
                     request.birthDate(),
                     encryptedBirthDate,
                     piiKeyVersion,
-                    normalizedStatus,
+                    memberStatus,
                     request.joinDate() == null ? LocalDate.now() : request.joinDate(),
                     request.consentSms() != null && request.consentSms(),
                     request.consentMarketing() != null && request.consentMarketing(),
@@ -90,9 +93,9 @@ public class MemberService {
     ) {
         LocalDate businessDate = LocalDate.now(BUSINESS_ZONE);
         Long effectiveTrainerId = resolveTrainerScopedFilter(trainerId);
-        String normalizedMemberStatus = normalizeStatus(memberStatus);
+        String normalizedMemberStatus = normalizeUpperOrNull(memberStatus);
         if (normalizedMemberStatus != null) {
-            validateStatus(normalizedMemberStatus);
+            parseRequiredMemberStatus(normalizedMemberStatus);
         }
         return memberRepository.findAllSummaries(
                         DEFAULT_CENTER_ID,
@@ -141,10 +144,12 @@ public class MemberService {
         String nextPhone = request.phone() == null
                 ? current.phone()
                 : requireTrimmedValue(request.phone(), "phone");
-        String nextStatus = request.memberStatus() == null ? current.memberStatus() : normalizeStatus(request.memberStatus());
-        String nextGender = request.gender() == null ? current.gender() : normalizeUpperOrNull(request.gender());
-        validateStatus(nextStatus);
-        validateGender(nextGender);
+        MemberStatus nextStatus = request.memberStatus() == null
+                ? current.memberStatus()
+                : parseRequiredMemberStatus(request.memberStatus());
+        Gender nextGender = request.gender() == null
+                ? current.gender()
+                : parseGender(request.gender());
 
         try {
             LocalDate nextBirthDate = request.birthDate() == null ? current.birthDate() : request.birthDate();
@@ -203,21 +208,19 @@ public class MemberService {
         );
     }
 
-    private void validateStatus(String status) {
-        if (status == null || status.isBlank()) {
+    private MemberStatus parseRequiredMemberStatus(String status) {
+        MemberStatus parsed = MemberStatus.from(status);
+        if (parsed == null) {
             throw new ApiException(ErrorCode.VALIDATION_ERROR, "memberStatus is required");
         }
-        if (!"ACTIVE".equals(status) && !"INACTIVE".equals(status)) {
-            throw new ApiException(ErrorCode.VALIDATION_ERROR, "memberStatus must be ACTIVE or INACTIVE");
-        }
+        return parsed;
     }
 
-    private void validateGender(String gender) {
-        if (gender == null) {
-            return;
-        }
-        if (!"MALE".equals(gender) && !"FEMALE".equals(gender) && !"OTHER".equals(gender)) {
-            throw new ApiException(ErrorCode.VALIDATION_ERROR, "gender must be MALE, FEMALE, or OTHER");
+    private Gender parseGender(String gender) {
+        try {
+            return Gender.from(gender);
+        } catch (IllegalArgumentException ex) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, ex.getMessage());
         }
     }
 
@@ -284,43 +287,4 @@ public class MemberService {
             return null;
         }
     }
-
-    public record MemberCreateRequest(
-            String memberName,
-            String phone,
-            String email,
-            String gender,
-            LocalDate birthDate,
-            String memberStatus,
-            LocalDate joinDate,
-            Boolean consentSms,
-            Boolean consentMarketing,
-            String memo
-    ) {}
-
-    public record MemberUpdateRequest(
-            String memberName,
-            String phone,
-            String email,
-            String gender,
-            LocalDate birthDate,
-            String memberStatus,
-            LocalDate joinDate,
-            Boolean consentSms,
-            Boolean consentMarketing,
-            String memo
-    ) {}
-
-    public record MemberSummary(
-            Long memberId,
-            Long centerId,
-            String memberCode,
-            String memberName,
-            String phone,
-            String memberStatus,
-            LocalDate joinDate,
-            String membershipOperationalStatus,
-            LocalDate membershipExpiryDate,
-            Integer remainingPtCount
-    ) {}
 }

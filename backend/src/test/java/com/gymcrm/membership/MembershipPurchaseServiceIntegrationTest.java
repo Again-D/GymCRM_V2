@@ -1,8 +1,9 @@
 package com.gymcrm.membership;
 
 import com.gymcrm.common.error.ApiException;
-import com.gymcrm.member.Member;
-import com.gymcrm.member.MemberService;
+import com.gymcrm.member.dto.request.MemberCreateRequest;
+import com.gymcrm.member.entity.Member;
+import com.gymcrm.member.service.MemberService;
 import com.gymcrm.product.Product;
 import com.gymcrm.product.ProductService;
 import org.junit.jupiter.api.AfterEach;
@@ -139,7 +140,7 @@ class MembershipPurchaseServiceIntegrationTest {
 
     private Member createActiveMember() {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
-        return memberService.create(new MemberService.MemberCreateRequest(
+        return memberService.create(new MemberCreateRequest(
                 "P3구매테스트회원-" + suffix,
                 "010-8" + suffix.substring(0, 3) + "-" + suffix.substring(3, 7),
                 null,

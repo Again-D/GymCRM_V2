@@ -3,8 +3,9 @@ package com.gymcrm.access;
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
-import com.gymcrm.member.Member;
-import com.gymcrm.member.MemberRepository;
+import com.gymcrm.member.entity.Member;
+import com.gymcrm.member.enums.MemberStatus;
+import com.gymcrm.member.repository.MemberRepository;
 import com.gymcrm.reservation.Reservation;
 import com.gymcrm.reservation.ReservationRepository;
 import org.springframework.dao.DataAccessException;
@@ -61,7 +62,7 @@ public class AccessService {
         Member member = getMemberInCenter(request.memberId(), centerId);
         validateReservationIfPresent(centerId, member.memberId(), request.reservationId());
 
-        if (!"ACTIVE".equals(member.memberStatus())) {
+        if (member.memberStatus() != MemberStatus.ACTIVE) {
             return denyAndThrow(centerId, actorUserId, member.memberId(), request.membershipId(), request.reservationId(),
                     "MEMBER_INACTIVE", "ACTIVE 회원만 입장 처리할 수 있습니다.", now);
         }

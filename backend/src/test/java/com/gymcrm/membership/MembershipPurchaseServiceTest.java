@@ -4,8 +4,9 @@ import com.gymcrm.auth.AuthUserRepository;
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
-import com.gymcrm.member.Member;
-import com.gymcrm.member.MemberService;
+import com.gymcrm.member.service.MemberService;
+import com.gymcrm.member.entity.Member;
+import com.gymcrm.member.enums.MemberStatus;
 import com.gymcrm.product.Product;
 import com.gymcrm.product.ProductService;
 import org.junit.jupiter.api.Test;
@@ -116,7 +117,7 @@ class MembershipPurchaseServiceTest {
                 null,
                 null,
                 null,
-                status,
+                MemberStatus.from(status),
                 LocalDate.now(),
                 false,
                 false,

@@ -5,8 +5,9 @@ import com.gymcrm.auth.AuthUserRepository;
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
-import com.gymcrm.member.Member;
-import com.gymcrm.member.MemberService;
+import com.gymcrm.member.service.MemberService;
+import com.gymcrm.member.entity.Member;
+import com.gymcrm.member.enums.MemberStatus;
 import com.gymcrm.product.Product;
 import com.gymcrm.product.ProductService;
 import org.springframework.dao.DataAccessException;
@@ -162,7 +163,7 @@ public class MembershipPurchaseService {
         if (!member.centerId().equals(product.centerId())) {
             throw new ApiException(ErrorCode.BUSINESS_RULE, "회원과 상품의 센터가 일치하지 않습니다.");
         }
-        if (!"ACTIVE".equals(member.memberStatus())) {
+        if (member.memberStatus() != MemberStatus.ACTIVE) {
             throw new ApiException(ErrorCode.BUSINESS_RULE, "비활성 회원은 회원권을 구매할 수 없습니다.");
         }
         if (!"ACTIVE".equals(product.productStatus())) {

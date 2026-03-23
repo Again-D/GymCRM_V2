@@ -1,4 +1,7 @@
-package com.gymcrm.member;
+package com.gymcrm.member.entity;
+
+import com.gymcrm.member.enums.Gender;
+import com.gymcrm.member.enums.MemberStatus;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -11,11 +14,11 @@ public record Member(
         String phone,
         String phoneEncrypted,
         String email,
-        String gender,
+        Gender gender,
         LocalDate birthDate,
         String birthDateEncrypted,
         Integer piiKeyVersion,
-        String memberStatus,
+        MemberStatus memberStatus,
         LocalDate joinDate,
         boolean consentSms,
         boolean consentMarketing,

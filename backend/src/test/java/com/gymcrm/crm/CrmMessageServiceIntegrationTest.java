@@ -1,7 +1,8 @@
 package com.gymcrm.crm;
 
-import com.gymcrm.member.Member;
-import com.gymcrm.member.MemberService;
+import com.gymcrm.member.dto.request.MemberCreateRequest;
+import com.gymcrm.member.entity.Member;
+import com.gymcrm.member.service.MemberService;
 import com.gymcrm.membership.MembershipPurchaseService;
 import com.gymcrm.product.Product;
 import com.gymcrm.product.ProductService;
@@ -210,7 +211,7 @@ class CrmMessageServiceIntegrationTest {
 
     private Member createMember() {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
-        return memberService.create(new MemberService.MemberCreateRequest(
+        return memberService.create(new MemberCreateRequest(
                 "CRM회원-" + suffix,
                 "010-5" + suffix.substring(0, 3) + "-" + suffix.substring(3, 7),
                 null,
@@ -226,7 +227,7 @@ class CrmMessageServiceIntegrationTest {
 
     private Member createMemberWithProfile(LocalDate birthDate, boolean consentMarketing) {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
-        return memberService.create(new MemberService.MemberCreateRequest(
+        return memberService.create(new MemberCreateRequest(
                 "CRM회원-" + suffix,
                 "010-3" + suffix.substring(0, 3) + "-" + suffix.substring(3, 7),
                 null,
