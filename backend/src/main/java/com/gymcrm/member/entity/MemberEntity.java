@@ -1,4 +1,4 @@
-package com.gymcrm.member;
+package com.gymcrm.member.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -86,7 +86,7 @@ public class MemberEntity {
     @Column(name = "updated_by", nullable = false)
     private Long updatedBy;
 
-    protected MemberEntity() {
+    public MemberEntity() {
     }
 
     public Long getMemberId() {

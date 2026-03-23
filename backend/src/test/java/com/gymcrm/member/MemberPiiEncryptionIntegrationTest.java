@@ -1,5 +1,8 @@
 package com.gymcrm.member;
 
+import com.gymcrm.member.dto.request.MemberCreateRequest;
+import com.gymcrm.member.entity.Member;
+import com.gymcrm.member.service.MemberService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -31,7 +34,7 @@ class MemberPiiEncryptionIntegrationTest {
     @Transactional
     void createWritesEncryptedPiiColumns() {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
-        Member created = memberService.create(new MemberService.MemberCreateRequest(
+        Member created = memberService.create(new MemberCreateRequest(
                 "PII회원-" + suffix,
                 "010-2" + suffix.substring(0, 3) + "-" + suffix.substring(3, 7),
                 null,
@@ -71,7 +74,7 @@ class MemberPiiEncryptionIntegrationTest {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
         String phone = "010-6" + suffix.substring(0, 3) + "-" + suffix.substring(3, 7);
         LocalDate birthDate = LocalDate.of(1995, 8, 20);
-        Member created = memberService.create(new MemberService.MemberCreateRequest(
+        Member created = memberService.create(new MemberCreateRequest(
                 "PII복호회원-" + suffix,
                 phone,
                 null,

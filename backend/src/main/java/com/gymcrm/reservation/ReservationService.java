@@ -5,8 +5,9 @@ import com.gymcrm.auth.AuthUserRepository;
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
-import com.gymcrm.member.Member;
-import com.gymcrm.member.MemberService;
+import com.gymcrm.member.service.MemberService;
+import com.gymcrm.member.entity.Member;
+import com.gymcrm.member.enums.MemberStatus;
 import com.gymcrm.membership.MemberMembership;
 import com.gymcrm.membership.MemberMembershipRepository;
 import com.gymcrm.membership.MembershipUsageEventRepository;
@@ -316,7 +317,7 @@ public class ReservationService {
     }
 
     private void validateCreateEligibility(Member member, MemberMembership membership, TrainerSchedule schedule, Long actorCenterId) {
-        if (!"ACTIVE".equals(member.memberStatus())) {
+        if (member.memberStatus() != MemberStatus.ACTIVE) {
             throw new ApiException(ErrorCode.BUSINESS_RULE, "비활성 회원은 예약할 수 없습니다.");
         }
         if (!member.centerId().equals(actorCenterId)) {

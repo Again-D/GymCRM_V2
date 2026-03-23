@@ -1,7 +1,7 @@
 package com.gymcrm.access;
 
 import com.gymcrm.common.security.CurrentUserProvider;
-import com.gymcrm.member.MemberRepository;
+import com.gymcrm.member.repository.MemberRepository;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

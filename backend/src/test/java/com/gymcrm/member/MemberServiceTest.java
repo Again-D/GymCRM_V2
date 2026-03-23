@@ -5,6 +5,13 @@ import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
 import com.gymcrm.common.security.PiiEncryptionService;
 import com.gymcrm.auth.AuthUserRepository;
+import com.gymcrm.member.dto.request.MemberCreateRequest;
+import com.gymcrm.member.dto.request.MemberUpdateRequest;
+import com.gymcrm.member.entity.Member;
+import com.gymcrm.member.enums.Gender;
+import com.gymcrm.member.enums.MemberStatus;
+import com.gymcrm.member.repository.MemberRepository;
+import com.gymcrm.member.service.MemberService;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
 
@@ -38,7 +45,7 @@ class MemberServiceTest {
         ));
 
         ApiException exception = assertThrows(ApiException.class, () -> service.create(
-                new MemberService.MemberCreateRequest(
+                new MemberCreateRequest(
                         "테스트회원",
                         "010-1111-2222",
                         null,
@@ -62,7 +69,7 @@ class MemberServiceTest {
         when(piiEncryptionService.encrypt(any())).thenReturn("enc");
         when(memberRepository.insert(any())).thenReturn(sampleMember());
 
-        Member result = service.create(new MemberService.MemberCreateRequest(
+        Member result = service.create(new MemberCreateRequest(
                 "  테스트회원  ",
                 "010-9999-0000",
                 "   ",
@@ -79,18 +86,18 @@ class MemberServiceTest {
     }
 
     @Test
-    void createAcceptsLowercaseStatusAndGender() {
+    void createAcceptsLowercaseAndTrimmedStatusAndGender() {
         when(currentUserProvider.currentUserId()).thenReturn(99L);
         when(piiEncryptionService.encrypt(any())).thenReturn("enc");
         when(memberRepository.insert(any())).thenReturn(sampleMember());
 
-        service.create(new MemberService.MemberCreateRequest(
+        service.create(new MemberCreateRequest(
                 "테스트회원",
                 "010-9999-0000",
                 null,
-                "female",
+                " female ",
                 null,
-                "active",
+                " active ",
                 LocalDate.of(2026, 2, 23),
                 null,
                 null,
@@ -106,7 +113,7 @@ class MemberServiceTest {
 
         ApiException exception = assertThrows(ApiException.class, () -> service.update(
                 1L,
-                new MemberService.MemberUpdateRequest(
+                new MemberUpdateRequest(
                         "   ",
                         null,
                         null,
@@ -131,7 +138,7 @@ class MemberServiceTest {
 
         ApiException exception = assertThrows(ApiException.class, () -> service.update(
                 1L,
-                new MemberService.MemberUpdateRequest(
+                new MemberUpdateRequest(
                         null,
                         "   ",
                         null,
@@ -160,11 +167,11 @@ class MemberServiceTest {
                 "010-9999-0000",
                 "enc-phone",
                 null,
-                "FEMALE",
+                Gender.FEMALE,
                 null,
                 null,
                 1,
-                "ACTIVE",
+                MemberStatus.ACTIVE,
                 LocalDate.of(2026, 2, 23),
                 false,
                 false,

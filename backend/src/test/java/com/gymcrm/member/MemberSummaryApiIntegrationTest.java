@@ -18,7 +18,10 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -88,6 +91,58 @@ class MemberSummaryApiIntegrationTest {
                         .param("memberCode", memberCode))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].memberCode").value(memberCode));
+    }
+
+    @Test
+    void memberCreateAcceptsLowercaseAndTrimmedEnumInput() throws Exception {
+        ensureDeskUser();
+        String token = loginAndGetAccessToken(DESK_LOGIN_ID, DESK_PASSWORD);
+        String memberName = "enum입력회원-" + shortId();
+        String phone = "010" + randomDigits(8);
+
+        mockMvc.perform(post("/api/v1/members")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "memberName": "%s",
+                                  "phone": "%s",
+                                  "gender": " female ",
+                                  "memberStatus": " active ",
+                                  "joinDate": "%s",
+                                  "consentSms": true,
+                                  "consentMarketing": false
+                                }
+                                """.formatted(memberName, phone, LocalDate.now())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.gender").value("FEMALE"))
+                .andExpect(jsonPath("$.data.memberStatus").value("ACTIVE"));
+    }
+
+    @Test
+    void invalidEnumInputReturnsValidationErrorForBodyAndQueryParam() throws Exception {
+        ensureDeskUser();
+        String token = loginAndGetAccessToken(DESK_LOGIN_ID, DESK_PASSWORD);
+
+        mockMvc.perform(post("/api/v1/members")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "memberName": "잘못된상태회원",
+                                  "phone": "010%s",
+                                  "memberStatus": "BROKEN",
+                                  "joinDate": "%s"
+                                }
+                                """.formatted(randomDigits(8), LocalDate.now())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
+
+        mockMvc.perform(get("/api/v1/members")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .param("memberStatus", "BROKEN"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
     }
 
     @Test
@@ -477,6 +532,76 @@ class MemberSummaryApiIntegrationTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + trainerToken))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("ACCESS_DENIED"));
+    }
+
+    @Test
+    void memberDetailHidesInternalPiiFieldsAndRecordsAuditLog() throws Exception {
+        ensureDeskUser();
+        String token = loginAndGetAccessToken(DESK_LOGIN_ID, DESK_PASSWORD);
+        long memberId = insertMemberFixture("레거시행회원-" + shortId());
+
+        jdbcClient.sql("""
+                UPDATE members
+                SET gender = 'FEMALE',
+                    member_status = 'ACTIVE',
+                    updated_at = CURRENT_TIMESTAMP,
+                    updated_by = 0
+                WHERE member_id = :memberId
+                """)
+                .param("memberId", memberId)
+                .update();
+
+        MvcResult result = mockMvc.perform(get("/api/v1/members/{memberId}", memberId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.memberId").value(memberId))
+                .andExpect(jsonPath("$.data.gender").value("FEMALE"))
+                .andExpect(jsonPath("$.data.memberStatus").value("ACTIVE"))
+                .andReturn();
+
+        JsonNode detail = objectMapper.readTree(result.getResponse().getContentAsString()).path("data");
+        assertFalse(detail.has("phoneEncrypted"));
+        assertFalse(detail.has("birthDateEncrypted"));
+        assertFalse(detail.has("piiKeyVersion"));
+
+        Integer auditCount = jdbcClient.sql("""
+                SELECT COUNT(*)
+                FROM audit_logs
+                WHERE center_id = :centerId
+                  AND event_type = 'PII_READ'
+                  AND resource_type = 'MEMBER'
+                  AND resource_id = :resourceId
+                """)
+                .param("centerId", CENTER_ID)
+                .param("resourceId", String.valueOf(memberId))
+                .query(Integer.class)
+                .single();
+        assertTrue(auditCount != null && auditCount >= 1);
+    }
+
+    @Test
+    void memberUpdateKeepsApiContractAfterRepositoryAndEnumRefactor() throws Exception {
+        ensureDeskUser();
+        String token = loginAndGetAccessToken(DESK_LOGIN_ID, DESK_PASSWORD);
+        long memberId = insertMemberFixture("수정대상회원-" + shortId());
+
+        mockMvc.perform(patch("/api/v1/members/{memberId}", memberId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "memberName": "수정완료회원",
+                                  "gender": " other ",
+                                  "memberStatus": " inactive ",
+                                  "memo": "updated-by-api"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.memberId").value(memberId))
+                .andExpect(jsonPath("$.data.memberName").value("수정완료회원"))
+                .andExpect(jsonPath("$.data.gender").value("OTHER"))
+                .andExpect(jsonPath("$.data.memberStatus").value("INACTIVE"))
+                .andExpect(jsonPath("$.data.memo").value("updated-by-api"));
     }
 
     @Test

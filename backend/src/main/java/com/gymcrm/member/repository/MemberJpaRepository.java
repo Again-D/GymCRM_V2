@@ -1,4 +1,6 @@
-package com.gymcrm.member;
+package com.gymcrm.member.repository;
+
+import com.gymcrm.member.entity.MemberEntity;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 

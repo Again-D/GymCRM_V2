@@ -4,7 +4,7 @@ import com.gymcrm.locker.LockerAssignment;
 import com.gymcrm.locker.LockerAssignmentRepository;
 import com.gymcrm.locker.LockerSlot;
 import com.gymcrm.locker.LockerSlotRepository;
-import com.gymcrm.member.MemberRepository;
+import com.gymcrm.member.repository.MemberRepository;
 import com.gymcrm.product.Product;
 import com.gymcrm.product.ProductRepository;
 import org.junit.jupiter.api.Test;

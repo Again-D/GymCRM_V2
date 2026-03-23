@@ -1,8 +1,9 @@
 package com.gymcrm.reservation;
 
 import com.gymcrm.common.error.ApiException;
-import com.gymcrm.member.Member;
-import com.gymcrm.member.MemberService;
+import com.gymcrm.member.dto.request.MemberCreateRequest;
+import com.gymcrm.member.entity.Member;
+import com.gymcrm.member.service.MemberService;
 import com.gymcrm.membership.MemberMembership;
 import com.gymcrm.membership.MemberMembershipRepository;
 import com.gymcrm.membership.MembershipUsageEventRepository;
@@ -376,7 +377,7 @@ class ReservationServiceIntegrationTest {
 
     private Member createActiveMember() {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
-        return memberService.create(new MemberService.MemberCreateRequest(
+        return memberService.create(new MemberCreateRequest(
                 "P7예약회원-" + suffix,
                 "010-6" + suffix.substring(0, 3) + "-" + suffix.substring(3, 7),
                 null,

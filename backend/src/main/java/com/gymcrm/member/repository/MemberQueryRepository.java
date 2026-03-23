@@ -1,5 +1,8 @@
-package com.gymcrm.member;
+package com.gymcrm.member.repository;
 
+import com.gymcrm.member.entity.Member;
+import com.gymcrm.member.enums.Gender;
+import com.gymcrm.member.enums.MemberStatus;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQuery;
@@ -15,7 +18,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import static com.gymcrm.member.QMemberEntity.memberEntity;
+import static com.gymcrm.member.entity.QMemberEntity.memberEntity;
 import static com.gymcrm.membership.QMemberMembershipEntity.memberMembershipEntity;
 
 @Repository
@@ -31,7 +34,7 @@ public class MemberQueryRepository {
     public List<Member> findAll(Long centerId, String memberCodeKeyword, String nameKeyword, String phoneKeyword) {
         return queryFactory
                 .select(Projections.constructor(
-                        Member.class,
+                        MemberRow.class,
                         memberEntity.memberId,
                         memberEntity.centerId,
                         memberEntity.memberCode,
@@ -63,7 +66,31 @@ public class MemberQueryRepository {
                 )
                 .orderBy(memberEntity.memberId.desc())
                 .limit(100)
-                .fetch();
+                .fetch()
+                .stream()
+                .map(row -> new Member(
+                        row.memberId(),
+                        row.centerId(),
+                        row.memberCode(),
+                        row.memberName(),
+                        row.phone(),
+                        row.phoneEncrypted(),
+                        row.email(),
+                        Gender.from(row.gender()),
+                        row.birthDate(),
+                        row.birthDateEncrypted(),
+                        row.piiKeyVersion(),
+                        MemberStatus.from(row.memberStatus()),
+                        row.joinDate(),
+                        row.consentSms(),
+                        row.consentMarketing(),
+                        row.memo(),
+                        row.createdAt(),
+                        row.createdBy(),
+                        row.updatedAt(),
+                        row.updatedBy()
+                ))
+                .toList();
     }
 
     public List<MemberRepository.MemberSummaryProjection> findAllSummaries(
@@ -357,6 +384,30 @@ public class MemberQueryRepository {
         public LocalDate joinDate() {
             return joinDate;
         }
+    }
+
+    public record MemberRow(
+            Long memberId,
+            Long centerId,
+            String memberCode,
+            String memberName,
+            String phone,
+            String phoneEncrypted,
+            String email,
+            String gender,
+            LocalDate birthDate,
+            String birthDateEncrypted,
+            Integer piiKeyVersion,
+            String memberStatus,
+            LocalDate joinDate,
+            boolean consentSms,
+            boolean consentMarketing,
+            String memo,
+            java.time.OffsetDateTime createdAt,
+            Long createdBy,
+            java.time.OffsetDateTime updatedAt,
+            Long updatedBy
+    ) {
     }
 
     public static final class MembershipSummaryRow {

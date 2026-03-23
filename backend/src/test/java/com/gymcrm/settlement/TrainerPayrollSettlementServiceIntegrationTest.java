@@ -1,7 +1,8 @@
 package com.gymcrm.settlement;
 
-import com.gymcrm.member.Member;
-import com.gymcrm.member.MemberService;
+import com.gymcrm.member.dto.request.MemberCreateRequest;
+import com.gymcrm.member.entity.Member;
+import com.gymcrm.member.service.MemberService;
 import com.gymcrm.membership.MemberMembership;
 import com.gymcrm.membership.MembershipPurchaseService;
 import com.gymcrm.product.Product;
@@ -92,7 +93,7 @@ class TrainerPayrollSettlementServiceIntegrationTest {
 
     private MemberMembership purchasePtMembership() {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
-        Member member = memberService.create(new MemberService.MemberCreateRequest(
+        Member member = memberService.create(new MemberCreateRequest(
                 "SAL-PAY-" + suffix,
                 "010-5" + suffix.substring(0, 3) + "-" + suffix.substring(3, 7),
                 null,

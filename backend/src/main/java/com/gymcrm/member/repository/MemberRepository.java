@@ -1,5 +1,9 @@
-package com.gymcrm.member;
+package com.gymcrm.member.repository;
 
+import com.gymcrm.member.entity.Member;
+import com.gymcrm.member.entity.MemberEntity;
+import com.gymcrm.member.enums.Gender;
+import com.gymcrm.member.enums.MemberStatus;
 import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Repository;
 
@@ -32,11 +36,11 @@ public class MemberRepository {
         entity.setPhone(command.phone());
         entity.setPhoneEncrypted(command.phoneEncrypted());
         entity.setEmail(command.email());
-        entity.setGender(command.gender());
+        entity.setGender(toStorageValue(command.gender()));
         entity.setBirthDate(command.birthDate());
         entity.setBirthDateEncrypted(command.birthDateEncrypted());
         entity.setPiiKeyVersion(command.piiKeyVersion());
-        entity.setMemberStatus(command.memberStatus());
+        entity.setMemberStatus(command.memberStatus().value());
         entity.setJoinDate(command.joinDate());
         entity.setConsentSms(Boolean.TRUE.equals(command.consentSms()));
         entity.setConsentMarketing(Boolean.TRUE.equals(command.consentMarketing()));
@@ -100,11 +104,11 @@ public class MemberRepository {
         entity.setPhone(command.phone());
         entity.setPhoneEncrypted(command.phoneEncrypted());
         entity.setEmail(command.email());
-        entity.setGender(command.gender());
+        entity.setGender(toStorageValue(command.gender()));
         entity.setBirthDate(command.birthDate());
         entity.setBirthDateEncrypted(command.birthDateEncrypted());
         entity.setPiiKeyVersion(command.piiKeyVersion());
-        entity.setMemberStatus(command.memberStatus());
+        entity.setMemberStatus(command.memberStatus().value());
         entity.setJoinDate(command.joinDate());
         entity.setConsentSms(Boolean.TRUE.equals(command.consentSms()));
         entity.setConsentMarketing(Boolean.TRUE.equals(command.consentMarketing()));
@@ -125,11 +129,11 @@ public class MemberRepository {
                 entity.getPhone(),
                 entity.getPhoneEncrypted(),
                 entity.getEmail(),
-                entity.getGender(),
+                Gender.from(entity.getGender()),
                 entity.getBirthDate(),
                 entity.getBirthDateEncrypted(),
                 entity.getPiiKeyVersion(),
-                entity.getMemberStatus(),
+                MemberStatus.from(entity.getMemberStatus()),
                 entity.getJoinDate(),
                 entity.isConsentSms(),
                 entity.isConsentMarketing(),
@@ -141,17 +145,21 @@ public class MemberRepository {
         );
     }
 
+    private String toStorageValue(Enum<?> value) {
+        return value == null ? null : value.name();
+    }
+
     public record MemberCreateCommand(
             Long centerId,
             String memberName,
             String phone,
             String phoneEncrypted,
             String email,
-            String gender,
+            Gender gender,
             java.time.LocalDate birthDate,
             String birthDateEncrypted,
             Integer piiKeyVersion,
-            String memberStatus,
+            MemberStatus memberStatus,
             java.time.LocalDate joinDate,
             Boolean consentSms,
             Boolean consentMarketing,
@@ -165,11 +173,11 @@ public class MemberRepository {
             String phone,
             String phoneEncrypted,
             String email,
-            String gender,
+            Gender gender,
             java.time.LocalDate birthDate,
             String birthDateEncrypted,
             Integer piiKeyVersion,
-            String memberStatus,
+            MemberStatus memberStatus,
             java.time.LocalDate joinDate,
             Boolean consentSms,
             Boolean consentMarketing,

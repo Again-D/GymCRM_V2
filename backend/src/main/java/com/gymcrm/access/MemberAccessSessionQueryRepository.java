@@ -1,6 +1,6 @@
 package com.gymcrm.access;
 
-import com.gymcrm.member.QMemberEntity;
+import com.gymcrm.member.entity.QMemberEntity;
 import com.querydsl.core.Tuple;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
