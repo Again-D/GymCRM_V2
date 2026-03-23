@@ -59,7 +59,7 @@ describe("SelectedMemberContext", () => {
 
     const { result } = renderHook(() => useSelectedMemberStore(), {
       wrapper: ({ children }) => (
-        <AuthStateProvider value={{ authUser: { userId: 41, username: "trainer-a", role: "ROLE_TRAINER" } }}>
+        <AuthStateProvider value={{ authUser: { userId: 41, username: "trainer-a", primaryRole: "ROLE_TRAINER", roles: ["ROLE_TRAINER"] } }}>
           <SelectedMemberProvider>{children}</SelectedMemberProvider>
         </AuthStateProvider>
       )
@@ -104,14 +104,15 @@ describe("SelectedMemberContext", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     let setAuthUser:
-      | ((next: { userId: number; username: string; role: string } | null) => void)
+      | ((next: { userId: number; username: string; primaryRole: string; roles: string[] } | null) => void)
       | null = null;
     const wrapper = ({ children }: { children: ReactNode }) => {
       const [authUser, setAuthUserState] = useState<{
         userId: number;
         username: string;
-        role: string;
-      } | null>({ userId: 11, username: "jwt-admin", role: "ROLE_CENTER_ADMIN" });
+        primaryRole: string;
+        roles: string[];
+      } | null>({ userId: 11, username: "jwt-admin", primaryRole: "ROLE_CENTER_ADMIN", roles: ["ROLE_CENTER_ADMIN"] });
       setAuthUser = setAuthUserState;
       return (
         <AuthStateProvider value={{ authUser }}>
@@ -129,7 +130,7 @@ describe("SelectedMemberContext", () => {
     expect(result.current.selectedMemberId).toBe(17);
 
     await act(async () => {
-      setAuthUser?.({ userId: 41, username: "jwt-trainer-a", role: "ROLE_TRAINER" });
+      setAuthUser?.({ userId: 41, username: "jwt-trainer-a", primaryRole: "ROLE_TRAINER", roles: ["ROLE_TRAINER"] });
     });
 
     expect(result.current.selectedMemberId).toBeNull();

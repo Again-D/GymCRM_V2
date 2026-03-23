@@ -86,10 +86,11 @@ vi.mock("../modules/useMembersQuery", () => ({
 
 describe("MemberListSection", () => {
   function renderWithAuth(
-    authUser: { userId: number; username: string; role: string } = {
+    authUser: { userId: number; username: string; primaryRole: string; roles: string[] } = {
       userId: 11,
       username: "jwt-admin",
-      role: "ROLE_CENTER_ADMIN"
+      primaryRole: "ROLE_CENTER_ADMIN",
+      roles: ["ROLE_CENTER_ADMIN"]
     }
   ) {
     return render(
@@ -140,7 +141,7 @@ describe("MemberListSection", () => {
         value={{
           securityMode: "jwt",
           authBootstrapping: false,
-          authUser: { userId: 11, username: "jwt-admin", role: "ROLE_CENTER_ADMIN" }
+          authUser: { userId: 11, username: "jwt-admin", primaryRole: "ROLE_CENTER_ADMIN", roles: ["ROLE_CENTER_ADMIN"] }
         }}
       >
         <MemberListSection />
@@ -218,7 +219,7 @@ describe("MemberListSection", () => {
         value={{
           securityMode: "jwt",
           authBootstrapping: false,
-          authUser: { userId: 41, username: "jwt-trainer", role: "ROLE_TRAINER" }
+          authUser: { userId: 41, username: "jwt-trainer", primaryRole: "ROLE_TRAINER", roles: ["ROLE_TRAINER"] }
         }}
       >
         <MemberListSection />

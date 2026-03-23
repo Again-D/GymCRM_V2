@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { useAuthState } from "../../app/auth";
+import { hasAnyRole } from "../../app/roles";
 import { formatDate } from "../../shared/format";
 import { useDebouncedValue } from "../../shared/hooks/useDebouncedValue";
 import { usePagination } from "../../shared/hooks/usePagination";
@@ -74,7 +75,7 @@ export default function AccessPage() {
   const [isWorkbenchOpen, setIsWorkbenchOpen] = useState(false);
 
   const isLiveAccessRoleSupported =
-    isMockMode || authUser?.role === "ROLE_CENTER_ADMIN" || authUser?.role === "ROLE_DESK";
+    isMockMode || hasAnyRole(authUser, ["ROLE_CENTER_ADMIN", "ROLE_DESK"]);
 
   const memberResultsPagination = usePagination(members, {
     initialPageSize: 10,

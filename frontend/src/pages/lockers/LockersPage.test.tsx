@@ -35,7 +35,8 @@ describe("LockersPage", () => {
           authUser: {
             userId: 41,
             username: "trainer-a",
-            role: "ROLE_TRAINER"
+            primaryRole: "ROLE_TRAINER",
+            roles: ["ROLE_TRAINER"]
           }
         }}
       >

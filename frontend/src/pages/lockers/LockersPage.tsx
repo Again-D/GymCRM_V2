@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { useAuthState } from "../../app/auth";
+import { hasAnyRole } from "../../app/roles";
 import { usePagination } from "../../shared/hooks/usePagination";
 import { PaginationControls } from "../../shared/ui/PaginationControls";
 import { SelectedMemberContextBadge } from "../members/components/SelectedMemberContextBadge";
@@ -66,7 +67,7 @@ export default function LockersPage() {
   } = useLockerQueries();
 
   const isLiveLockerRoleSupported =
-    isMockMode || authUser?.role === "ROLE_CENTER_ADMIN" || authUser?.role === "ROLE_DESK";
+    isMockMode || hasAnyRole(authUser, ["ROLE_CENTER_ADMIN", "ROLE_DESK"]);
 
   const slotsPagination = usePagination(lockerSlots, {
     initialPageSize: 10,

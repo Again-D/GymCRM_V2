@@ -3,6 +3,7 @@ import { useCallback, useRef, useState } from "react";
 import { apiGet } from "../../../api/client";
 import { useQueryInvalidationVersion } from "../../../api/queryInvalidation";
 import { useAuthState } from "../../../app/auth";
+import { createAuthIdentityKey } from "../../../app/roles";
 import { filterMemberIdsForAuth } from "../../member-context/modules/trainerScope";
 import type { MemberQueryFilters, MemberSummary } from "./types";
 
@@ -58,7 +59,7 @@ export function useMembersQuery({
         if (dateFrom.trim()) params.set("dateFrom", dateFrom.trim());
         if (dateTo.trim()) params.set("dateTo", dateTo.trim());
         const query = params.toString();
-        const cacheKey = `${authUser?.role ?? "anon"}:${authUser?.userId ?? "none"}:${membersVersion}:${query}`;
+        const cacheKey = `${createAuthIdentityKey(authUser)}:${membersVersion}:${query}`;
         if (cacheRef.current.has(cacheKey)) {
           if (requestIdRef.current !== requestId) return;
           setMembers(cacheRef.current.get(cacheKey) ?? []);

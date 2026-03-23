@@ -1,3 +1,6 @@
+import type { PrototypeAuthUser } from "./auth";
+import { hasAnyRole } from "./roles";
+
 export type NavSectionKey =
   | "dashboard"
   | "members"
@@ -125,50 +128,43 @@ export function getShellRouteByPath(pathname: string) {
   return shellRouteByPath.get(pathname) ?? null;
 }
 
-function isAllowedRole(allowedRoles: string[] | undefined, role: string | null | undefined) {
-  if (!allowedRoles || allowedRoles.length === 0) {
-    return true;
-  }
-  return role != null && allowedRoles.includes(role);
-}
-
 export function canAccessShellRoute(
   route: ShellRoute,
-  role: string | null | undefined,
+  authUser: PrototypeAuthUser | null | undefined,
   isMockMode: boolean,
 ) {
   if (isMockMode) {
     return true;
   }
-  return isAllowedRole(route.allowedRoles, role);
+  return hasAnyRole(authUser, route.allowedRoles);
 }
 
 export function canSeeShellRoute(
   route: ShellRoute,
-  role: string | null | undefined,
+  authUser: PrototypeAuthUser | null | undefined,
   isMockMode: boolean,
 ) {
   if (isMockMode) {
     return true;
   }
-  return isAllowedRole(route.visibleRoles, role);
+  return hasAnyRole(authUser, route.visibleRoles);
 }
 
 export function getSidebarRoutes(
-  role: string | null | undefined,
+  authUser: PrototypeAuthUser | null | undefined,
   isMockMode: boolean,
 ) {
   return shellRoutes.filter(
-    (route) => route.showInSidebar && canSeeShellRoute(route, role, isMockMode),
+    (route) => route.showInSidebar && canSeeShellRoute(route, authUser, isMockMode),
   );
 }
 
 export function getDashboardRoutes(
-  role: string | null | undefined,
+  authUser: PrototypeAuthUser | null | undefined,
   isMockMode: boolean,
 ) {
   return shellRoutes.filter(
     (route) =>
-      route.showInDashboard && canSeeShellRoute(route, role, isMockMode),
+      route.showInDashboard && canSeeShellRoute(route, authUser, isMockMode),
   );
 }

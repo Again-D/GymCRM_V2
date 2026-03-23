@@ -99,7 +99,8 @@ describe("TrainersPage", () => {
             userId: 21,
             centerId: 2,
             username: "desk-user",
-            role: "ROLE_DESK",
+            primaryRole: "ROLE_DESK",
+            roles: ["ROLE_DESK"],
           },
         }}
       >
@@ -123,7 +124,8 @@ describe("TrainersPage", () => {
             userId: 41,
             centerId: 2,
             username: "trainer-a",
-            role: "ROLE_TRAINER",
+            primaryRole: "ROLE_TRAINER",
+            roles: ["ROLE_TRAINER"],
           },
         }}
       >
@@ -148,7 +150,8 @@ describe("TrainersPage", () => {
             userId: 11,
             centerId: 2,
             username: "jwt-admin",
-            role: "ROLE_CENTER_ADMIN",
+            primaryRole: "ROLE_CENTER_ADMIN",
+            roles: ["ROLE_CENTER_ADMIN"],
           },
         }}
       >

@@ -16,7 +16,8 @@ export type PrototypeAuthUser = {
   userId: number;
   centerId?: number;
   username: string;
-  role: string;
+  primaryRole: string;
+  roles: string[];
   email?: string;
 };
 
@@ -41,7 +42,9 @@ type AuthTokenResponse = {
     centerId: number;
     loginId: string;
     displayName: string;
-    roleCode: string;
+    primaryRole?: string;
+    roles?: string[];
+    roleCode?: string;
   };
 };
 
@@ -63,7 +66,8 @@ const prototypeAdminUser: PrototypeAuthUser = {
   userId: 1,
   centerId: 1,
   username: "prototype-admin",
-  role: "ROLE_CENTER_ADMIN",
+  primaryRole: "ROLE_CENTER_ADMIN",
+  roles: ["ROLE_CENTER_ADMIN"],
   email: "admin@gymcrm.ops"
 };
 
@@ -71,7 +75,8 @@ const jwtAdminUser: PrototypeAuthUser = {
   userId: 11,
   centerId: 1,
   username: "jwt-admin",
-  role: "ROLE_CENTER_ADMIN",
+  primaryRole: "ROLE_CENTER_ADMIN",
+  roles: ["ROLE_CENTER_ADMIN"],
   email: "ops-lead@gymcrm.ops"
 };
 
@@ -79,7 +84,8 @@ const jwtTrainerUser: PrototypeAuthUser = {
   userId: 41,
   centerId: 1,
   username: "jwt-trainer-a",
-  role: "ROLE_TRAINER",
+  primaryRole: "ROLE_TRAINER",
+  roles: ["ROLE_TRAINER"],
   email: "trainer-alpha@gymcrm.ops"
 };
 
@@ -145,7 +151,7 @@ function presetFromState(state: AuthState): RuntimeAuthPreset {
   if (!state.authUser) {
     return "jwt-anon";
   }
-  return state.authUser.role === "ROLE_TRAINER" ? "jwt-trainer" : "jwt-admin";
+  return state.authUser.primaryRole === "ROLE_TRAINER" ? "jwt-trainer" : "jwt-admin";
 }
 
 function resolveRuntimePreset(): RuntimeAuthPreset {
@@ -201,15 +207,30 @@ function writeStoredPreset(preset: RuntimeAuthPreset) {
   }
 }
 
+function normalizeRoleSet(user: AuthTokenResponse["user"]) {
+  const primaryRole = user.primaryRole ?? user.roleCode ?? null;
+  const roles = Array.isArray(user.roles) && user.roles.length > 0
+    ? Array.from(new Set(user.roles))
+    : primaryRole
+      ? [primaryRole]
+      : [];
+  return {
+    primaryRole: primaryRole ?? roles[0] ?? "",
+    roles
+  };
+}
+
 function normalizeLiveUser(user: AuthTokenResponse["user"] | null): PrototypeAuthUser | null {
   if (!user) {
     return null;
   }
+  const normalizedRoles = normalizeRoleSet(user);
   return {
     userId: user.userId,
     centerId: user.centerId,
     username: user.displayName || user.loginId,
-    role: user.roleCode
+    primaryRole: normalizedRoles.primaryRole,
+    roles: normalizedRoles.roles
   };
 }
 
