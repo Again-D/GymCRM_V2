@@ -64,11 +64,11 @@ class AuthOperationalAccessRevokeIntegrationTest {
         targetPassword = "target-pass-1234!";
         targetUserId = jdbcClient.sql("""
                 INSERT INTO users (
-                    center_id, login_id, password_hash, display_name, role_code, user_status,
+                    center_id, login_id, password_hash, display_name, user_status,
                     created_at, created_by, updated_at, updated_by
                 )
                 VALUES (
-                    1, :loginId, :passwordHash, :displayName, 'ROLE_DESK', 'ACTIVE',
+                    1, :loginId, :passwordHash, :displayName, 'ACTIVE',
                     NOW(), 1, NOW(), 1
                 )
                 RETURNING user_id
@@ -78,6 +78,7 @@ class AuthOperationalAccessRevokeIntegrationTest {
                 .param("displayName", "Revoke Target")
                 .query(Long.class)
                 .single();
+        replaceUserRole(targetUserId, "ROLE_DESK");
     }
 
     @AfterEach
@@ -85,6 +86,9 @@ class AuthOperationalAccessRevokeIntegrationTest {
         if (targetUserId != null) {
             accessRevocationMarkerService.clear(targetUserId);
             jdbcClient.sql("DELETE FROM auth_refresh_tokens WHERE user_id = :userId")
+                    .param("userId", targetUserId)
+                    .update();
+            jdbcClient.sql("DELETE FROM user_roles WHERE user_id = :userId")
                     .param("userId", targetUserId)
                     .update();
             jdbcClient.sql("DELETE FROM users WHERE user_id = :userId")
@@ -162,13 +166,13 @@ class AuthOperationalAccessRevokeIntegrationTest {
         String adminAccessToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
         jdbcClient.sql("""
                 UPDATE users
-                SET role_code = 'ROLE_MANAGER',
-                    updated_at = NOW(),
+                SET updated_at = NOW(),
                     updated_by = 1
                 WHERE user_id = :userId
                 """)
                 .param("userId", targetUserId)
                 .update();
+        replaceUserRole(targetUserId, "ROLE_MANAGER");
 
         MvcResult targetLoginResult = mockMvc.perform(post("/api/v1/auth/login")
                         .contentType("application/json")
@@ -209,9 +213,10 @@ class AuthOperationalAccessRevokeIntegrationTest {
                 .andExpect(jsonPath("$.error.code").value("TOKEN_REVOKED"));
 
         String roleCode = jdbcClient.sql("""
-                SELECT role_code
-                FROM users
-                WHERE user_id = :userId
+                SELECT r.role_code
+                FROM user_roles ur
+                JOIN roles r ON r.role_id = ur.role_id
+                WHERE ur.user_id = :userId
                 """)
                 .param("userId", targetUserId)
                 .query(String.class)
@@ -234,9 +239,10 @@ class AuthOperationalAccessRevokeIntegrationTest {
                 .andExpect(jsonPath("$.error.code").value("ACCESS_DENIED"));
 
         String roleCode = jdbcClient.sql("""
-                SELECT role_code
-                FROM users
-                WHERE user_id = :userId
+                SELECT r.role_code
+                FROM user_roles ur
+                JOIN roles r ON r.role_id = ur.role_id
+                WHERE ur.user_id = :userId
                 """)
                 .param("userId", targetUserId)
                 .query(String.class)
@@ -318,6 +324,21 @@ class AuthOperationalAccessRevokeIntegrationTest {
         } catch (IOException ex) {
             return false;
         }
+    }
+
+    private void replaceUserRole(Long userId, String roleCode) {
+        jdbcClient.sql("DELETE FROM user_roles WHERE user_id = :userId")
+                .param("userId", userId)
+                .update();
+        jdbcClient.sql("""
+                INSERT INTO user_roles (user_id, role_id, created_by)
+                SELECT :userId, role_id, 1
+                FROM roles
+                WHERE role_code = :roleCode
+                """)
+                .param("userId", userId)
+                .param("roleCode", roleCode)
+                .update();
     }
 
     private void assertAuditEventExists(String eventType) {

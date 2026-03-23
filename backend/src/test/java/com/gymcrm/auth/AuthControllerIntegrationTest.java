@@ -170,7 +170,6 @@ class AuthControllerIntegrationTest {
                 UPDATE users
                 SET password_hash = :passwordHash,
                     display_name = :displayName,
-                    role_code = 'ROLE_TRAINER',
                     user_status = 'ACTIVE',
                     is_deleted = FALSE,
                     deleted_at = NULL,
@@ -184,20 +183,44 @@ class AuthControllerIntegrationTest {
                 .param("displayName", "Trainer User")
                 .update();
 
+        Long trainerUserId;
         if (updated == 0) {
-            jdbcClient.sql("""
+            trainerUserId = jdbcClient.sql("""
                     INSERT INTO users (
-                        center_id, login_id, password_hash, display_name, role_code, user_status,
+                        center_id, login_id, password_hash, display_name, user_status,
                         created_by, updated_by
                     )
                     VALUES (
-                        1, 'trainer-user', :passwordHash, 'Trainer User', 'ROLE_TRAINER', 'ACTIVE',
+                        1, 'trainer-user', :passwordHash, 'Trainer User', 'ACTIVE',
                         0, 0
                     )
+                    RETURNING user_id
                     """)
                     .param("passwordHash", passwordEncoder.encode("trainer-user-1234!"))
-                    .update();
+                    .query(Long.class)
+                    .single();
+        } else {
+            trainerUserId = jdbcClient.sql("""
+                    SELECT user_id
+                    FROM users
+                    WHERE center_id = 1
+                      AND login_id = 'trainer-user'
+                    """)
+                    .query(Long.class)
+                    .single();
         }
+
+        jdbcClient.sql("DELETE FROM user_roles WHERE user_id = :userId")
+                .param("userId", trainerUserId)
+                .update();
+        jdbcClient.sql("""
+                INSERT INTO user_roles (user_id, role_id, created_by)
+                SELECT :userId, role_id, 0
+                FROM roles
+                WHERE role_code = 'ROLE_TRAINER'
+                """)
+                .param("userId", trainerUserId)
+                .update();
     }
 
     static final class CookieExtractors {

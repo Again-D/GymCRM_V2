@@ -41,7 +41,13 @@ public class TrainerQueryRepository {
             ) reservation_counts ON reservation_counts.user_id = u.user_id
             WHERE u.center_id = :centerId
               AND u.is_deleted = FALSE
-              AND u.role_code = 'ROLE_TRAINER'
+              AND EXISTS (
+                    SELECT 1
+                    FROM user_roles ur
+                    JOIN roles r ON r.role_id = ur.role_id
+                    WHERE ur.user_id = u.user_id
+                      AND r.role_code = 'ROLE_TRAINER'
+              )
               AND (CAST(:status AS VARCHAR) IS NULL OR u.user_status = CAST(:status AS VARCHAR))
               AND (
                     CAST(:keywordPattern AS VARCHAR) IS NULL
@@ -120,7 +126,13 @@ public class TrainerQueryRepository {
                 ) reservation_counts ON reservation_counts.user_id = u.user_id
                 WHERE u.center_id = :centerId
                   AND u.is_deleted = FALSE
-                  AND u.role_code = 'ROLE_TRAINER'
+                  AND EXISTS (
+                        SELECT 1
+                        FROM user_roles ur
+                        JOIN roles r ON r.role_id = ur.role_id
+                        WHERE ur.user_id = u.user_id
+                          AND r.role_code = 'ROLE_TRAINER'
+                  )
                   AND u.user_id = :trainerUserId
                 """)
                 .param("centerId", centerId)

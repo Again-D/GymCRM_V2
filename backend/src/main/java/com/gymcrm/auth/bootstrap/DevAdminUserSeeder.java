@@ -68,20 +68,31 @@ public class DevAdminUserSeeder implements ApplicationRunner {
             throw new IllegalStateException("app.security.dev-admin.initial-password must not be blank when seed is enabled");
         }
 
-        jdbcClient.sql("""
+        Long userId = jdbcClient.sql("""
                 INSERT INTO users (
-                    center_id, login_id, password_hash, display_name, role_code, user_status,
+                    center_id, login_id, password_hash, display_name, user_status,
                     created_by, updated_by
                 )
                 VALUES (
-                    :centerId, :loginId, :passwordHash, :displayName, 'ROLE_CENTER_ADMIN', 'ACTIVE',
+                    :centerId, :loginId, :passwordHash, :displayName, 'ACTIVE',
                     0, 0
                 )
+                RETURNING user_id
                 """)
                 .param("centerId", centerId)
                 .param("loginId", loginId.trim())
                 .param("passwordHash", passwordEncoder.encode(initialPassword))
                 .param("displayName", displayName.trim())
+                .query(Long.class)
+                .single();
+
+        jdbcClient.sql("""
+                INSERT INTO user_roles (user_id, role_id, created_by)
+                SELECT :userId, role_id, 0
+                FROM roles
+                WHERE role_code = 'ROLE_CENTER_ADMIN'
+                """)
+                .param("userId", userId)
                 .update();
 
         log.warn("Seeded dev/staging admin user loginId='{}' for centerId={} (JWT mode). Change password after first use.", loginId, centerId);

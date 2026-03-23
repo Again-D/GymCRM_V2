@@ -1,7 +1,7 @@
 ---
 title: "refactor: Align role storage with database design"
 type: refactor
-status: active
+status: completed
 date: 2026-03-23
 origin: docs/brainstorms/2026-03-23-role-model-alignment-with-database-design-brainstorm.md
 ---
@@ -286,6 +286,9 @@ Spec-flow 관점에서 빠지기 쉬운 흐름은 다음과 같다.
 - role storage migration does not introduce auth/RBAC regressions
 - critical integration suites pass without fallback to legacy column
 
+실행 로그/검증 기준:
+- [docs/notes/2026-03-23-role-storage-phase5-validation-and-rollout-log.md](../notes/2026-03-23-role-storage-phase5-validation-and-rollout-log.md)
+
 ## Alternative Approaches Considered
 
 ### 1. Keep `users.role_code` and update the design doc
@@ -391,26 +394,26 @@ Spec-flow 관점에서 빠지기 쉬운 흐름은 다음과 같다.
 
 ### Functional Requirements
 
-- [ ] `roles` and `user_roles` become the only role storage source in the database.
-- [ ] Every active runtime path that currently reads `users.role_code` is migrated to the new storage source.
-- [ ] The system continues to operate with one effective role per user, even though the schema uses a mapping table.
-- [ ] `/api/v1/auth/login`, `/api/v1/auth/refresh`, and `/api/v1/auth/me` still expose a single effective `roleCode`.
-- [ ] Existing RBAC behavior for `ROLE_SUPER_ADMIN`, `ROLE_CENTER_ADMIN`, `ROLE_MANAGER`, `ROLE_DESK`, and `ROLE_TRAINER` remains unchanged.
+- [x] `roles` and `user_roles` become the only role storage source in the database.
+- [x] Every active runtime path that currently reads `users.role_code` is migrated to the new storage source.
+- [x] The system continues to operate with one effective role per user, even though the schema uses a mapping table.
+- [x] `/api/v1/auth/login`, `/api/v1/auth/refresh`, and `/api/v1/auth/me` still expose a single effective `roleCode`.
+- [x] Existing RBAC behavior for `ROLE_SUPER_ADMIN`, `ROLE_CENTER_ADMIN`, `ROLE_MANAGER`, `ROLE_DESK`, and `ROLE_TRAINER` remains unchanged.
 
 ### Non-Functional Requirements
 
-- [ ] The role cutover is transactional and fail-fast; invalid legacy role data cannot silently migrate.
-- [ ] JWT mode and prototype mode continue to boot and authorize correctly.
-- [ ] Trainer/member/reservation/membership integrations do not regress.
-- [ ] Minimal frontend compatibility changes are sufficient; no full frontend role-model rewrite is required in this phase.
+- [x] The role cutover is transactional and fail-fast; invalid legacy role data cannot silently migrate.
+- [x] JWT mode and prototype mode continue to boot and authorize correctly.
+- [x] Trainer/member/reservation/membership integrations do not regress.
+- [x] Minimal frontend compatibility changes are sufficient; no full frontend role-model rewrite is required in this phase.
 
 ### Quality Gates
 
-- [ ] Migration/backfill tests cover canonical role seeding and one-role-per-user invariant.
-- [ ] Auth integration tests cover login/refresh/me and role update/revoke after cutover.
-- [ ] RBAC integration tests prove no permission regressions.
-- [ ] Recently added trainer-management flows pass against the new role storage model.
-- [ ] Remaining frontend multi-role refactor work is explicitly documented as backlog, not silently omitted.
+- [x] Migration/backfill tests cover canonical role seeding and one-role-per-user invariant.
+- [x] Auth integration tests cover login/refresh/me and role update/revoke after cutover.
+- [x] RBAC integration tests prove no permission regressions.
+- [x] Recently added trainer-management flows pass against the new role storage model.
+- [x] Remaining frontend multi-role refactor work is explicitly documented as backlog, not silently omitted.
 
 ## Success Metrics
 
@@ -508,4 +511,3 @@ Spec-flow 관점에서 빠지기 쉬운 흐름은 다음과 같다.
 ### Related Work
 
 - Trainer/account operations plan: [docs/plans/2026-03-20-feat-trainer-management-and-account-operations-plan.md](./2026-03-20-feat-trainer-management-and-account-operations-plan.md)
-

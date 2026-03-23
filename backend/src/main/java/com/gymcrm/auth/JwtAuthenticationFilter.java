@@ -68,12 +68,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     user.userId(),
                     user.centerId(),
                     user.loginId(),
-                    user.roleCode()
+                    claims.roleCode()
             );
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                     principal,
                     null,
-                    List.of(new SimpleGrantedAuthority(user.roleCode()))
+                    List.of(new SimpleGrantedAuthority(claims.roleCode()))
             );
             authentication.setDetails(claims);
             SecurityContextHolder.getContext().setAuthentication(authentication);
