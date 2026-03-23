@@ -38,8 +38,12 @@ export function useSelectedMemberReservationsState() {
       setSelectedMemberReservationsError(null);
 
       try {
+        const params = new URLSearchParams({
+          memberId: String(memberId),
+          version: String(selectedMemberReservationsVersion),
+        });
         const response = await apiGet<ReservationRow[]>(
-          `/api/v1/members/${memberId}/reservations?version=${selectedMemberReservationsVersion}`,
+          `/api/v1/reservations?${params.toString()}`,
         );
         if (requestIdRef.current !== requestId) {
           return;

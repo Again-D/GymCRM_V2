@@ -148,8 +148,18 @@ export default function ReservationsPage() {
 
   const closeNewReservationModal = useCallback(() => {
     setIsNewModalOpen(false);
+    if (selectedMemberId != null) {
+      setIsWorkbenchOpen(true);
+    }
     resetCreateForm();
-  }, [resetCreateForm]);
+  }, [resetCreateForm, selectedMemberId]);
+
+  const openNewReservationModal = useCallback(() => {
+    clearPanelFeedback();
+    resetCreateForm();
+    setIsWorkbenchOpen(false);
+    setIsNewModalOpen(true);
+  }, [clearPanelFeedback, resetCreateForm]);
 
   const handleReservationCreateSubmit = async () => {
     clearPanelFeedback();
@@ -184,6 +194,7 @@ export default function ReservationsPage() {
       resetCreateForm();
       setReservationPanelMessage(`예약 #${reservation.reservationId}이(가) 생성되었습니다.`);
       setIsNewModalOpen(false);
+      setIsWorkbenchOpen(true);
     } catch (error) {
       setReservationPanelError(error instanceof Error ? error.message : "예약 생성에 실패했습니다.");
     }
@@ -374,11 +385,7 @@ export default function ReservationsPage() {
               <button 
                 type="button" 
                 className="primary-button"
-                onClick={() => {
-                  clearPanelFeedback();
-                  resetCreateForm();
-                  setIsNewModalOpen(true);
-                }}
+                onClick={openNewReservationModal}
               >
                 신규 예약 등록
               </button>

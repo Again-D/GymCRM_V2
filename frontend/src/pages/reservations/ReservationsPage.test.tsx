@@ -48,6 +48,9 @@ describe("ReservationsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "신규 예약 등록" }));
 
     expect(await screen.findByRole("dialog", { name: "신규 예약 등록: 김민수" })).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: /예약 워크벤치: 김민수/ })).toBeNull();
+    });
 
     fireEvent.change(screen.getByLabelText("예약 회원권"), { target: { value: "9001" } });
     fireEvent.change(screen.getByLabelText("수업 일정"), { target: { value: "7002" } });
@@ -58,6 +61,7 @@ describe("ReservationsPage", () => {
     await waitFor(() => {
       expect(screen.queryByRole("dialog", { name: "신규 예약 등록: 김민수" })).toBeNull();
     });
+    expect(await screen.findByRole("dialog", { name: /예약 워크벤치: 김민수/ })).toBeTruthy();
     expect(await screen.findByText(/예약 #\d+이\(가\) 생성되었습니다\./)).toBeTruthy();
   });
 });

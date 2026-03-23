@@ -42,6 +42,13 @@ describe("useSelectedMemberReservationsState", () => {
       await result.current.loadSelectedMemberReservations(101);
     });
 
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/reservations?memberId=101&version=0",
+      expect.objectContaining({
+        method: "GET",
+        credentials: "include",
+      }),
+    );
     expect(result.current.selectedMemberReservations).toHaveLength(1);
     expect(result.current.selectedMemberReservations[0]?.reservationId).toBe(5001);
   });
