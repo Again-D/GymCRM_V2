@@ -1,5 +1,6 @@
-package com.gymcrm.product;
+package com.gymcrm.product.repository;
 
+import com.gymcrm.product.entity.ProductEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

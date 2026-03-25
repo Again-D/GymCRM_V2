@@ -1,4 +1,4 @@
-package com.gymcrm.reservation;
+package com.gymcrm.reservation.service;
 
 import java.util.function.Supplier;
 

@@ -1,4 +1,4 @@
-package com.gymcrm.reservation;
+package com.gymcrm.reservation.enums;
 
 public enum ReservationStatus {
     CONFIRMED,

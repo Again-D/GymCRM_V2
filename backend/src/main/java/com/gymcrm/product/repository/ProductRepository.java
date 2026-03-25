@@ -1,5 +1,7 @@
-package com.gymcrm.product;
+package com.gymcrm.product.repository;
 
+import com.gymcrm.product.entity.Product;
+import com.gymcrm.product.entity.ProductEntity;
 import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Repository;
 

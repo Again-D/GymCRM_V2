@@ -1,6 +1,9 @@
-package com.gymcrm.reservation;
+package com.gymcrm.reservation.config;
 
 import com.gymcrm.common.config.RedisRuntimeProperties;
+import com.gymcrm.reservation.service.NoOpReservationLockService;
+import com.gymcrm.reservation.service.RedissonReservationLockService;
+import com.gymcrm.reservation.service.ReservationLockService;
 import org.redisson.api.RedissonClient;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;

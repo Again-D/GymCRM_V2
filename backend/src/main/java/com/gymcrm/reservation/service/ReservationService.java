@@ -1,4 +1,4 @@
-package com.gymcrm.reservation;
+package com.gymcrm.reservation.service;
 
 import com.gymcrm.auth.AuthUser;
 import com.gymcrm.auth.AuthUserRepository;
@@ -11,6 +11,12 @@ import com.gymcrm.member.enums.MemberStatus;
 import com.gymcrm.membership.entity.MemberMembership;
 import com.gymcrm.membership.repository.MemberMembershipRepository;
 import com.gymcrm.membership.repository.MembershipUsageEventRepository;
+import com.gymcrm.reservation.entity.Reservation;
+import com.gymcrm.reservation.entity.TrainerSchedule;
+import com.gymcrm.reservation.enums.ReservationStatus;
+import com.gymcrm.reservation.repository.ReservationQueryRepository;
+import com.gymcrm.reservation.repository.ReservationRepository;
+import com.gymcrm.reservation.repository.TrainerScheduleRepository;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

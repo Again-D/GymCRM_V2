@@ -10,8 +10,8 @@ import com.gymcrm.member.enums.MemberStatus;
 import com.gymcrm.membership.PaymentRepository;
 import com.gymcrm.membership.repository.MemberMembershipRepository;
 import com.gymcrm.membership.repository.MembershipHoldRepository;
-import com.gymcrm.product.Product;
-import com.gymcrm.product.ProductService;
+import com.gymcrm.product.entity.Product;
+import com.gymcrm.product.service.ProductService;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;

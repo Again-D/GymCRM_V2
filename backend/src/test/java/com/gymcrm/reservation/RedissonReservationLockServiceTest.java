@@ -3,6 +3,7 @@ package com.gymcrm.reservation;
 import com.gymcrm.common.config.RedisRuntimeProperties;
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
+import com.gymcrm.reservation.service.RedissonReservationLockService;
 import org.junit.jupiter.api.Test;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;

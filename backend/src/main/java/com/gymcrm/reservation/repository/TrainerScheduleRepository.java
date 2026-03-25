@@ -1,5 +1,7 @@
-package com.gymcrm.reservation;
+package com.gymcrm.reservation.repository;
 
+import com.gymcrm.reservation.entity.TrainerSchedule;
+import com.gymcrm.reservation.entity.TrainerScheduleEntity;
 import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;

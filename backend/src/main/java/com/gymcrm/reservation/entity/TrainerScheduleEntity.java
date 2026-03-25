@@ -1,4 +1,4 @@
-package com.gymcrm.reservation;
+package com.gymcrm.reservation.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -65,7 +65,7 @@ public class TrainerScheduleEntity {
     @Column(name = "updated_by", nullable = false)
     private Long updatedBy;
 
-    protected TrainerScheduleEntity() {
+    public TrainerScheduleEntity() {
     }
 
     public Long getScheduleId() {
