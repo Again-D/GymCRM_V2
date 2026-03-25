@@ -1,4 +1,4 @@
-package com.gymcrm.trainer;
+package com.gymcrm.trainer.service;
 
 import com.gymcrm.common.auth.entity.AuthUser;
 import com.gymcrm.common.auth.repository.AuthUserRepository;
@@ -6,6 +6,11 @@ import com.gymcrm.common.auth.service.AuthAccessRevocationService;
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
+import com.gymcrm.trainer.entity.AssignedMemberSummary;
+import com.gymcrm.trainer.entity.TrainerDetail;
+import com.gymcrm.trainer.entity.TrainerSummary;
+import com.gymcrm.trainer.repository.TrainerQueryRepository;
+
 import org.springframework.dao.DataAccessException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -255,7 +260,6 @@ public class TrainerService {
             String phone
     ) {
     }
-
     public record UpdateTrainerCommand(
             String loginId,
             String displayName,
@@ -263,36 +267,5 @@ public class TrainerService {
     ) {
     }
 
-    public record TrainerSummary(
-            Long userId,
-            Long centerId,
-            String displayName,
-            String userStatus,
-            String phone,
-            Long assignedMemberCount,
-            Long todayConfirmedReservationCount
-    ) {
-    }
-
-    public record AssignedMemberSummary(
-            Long memberId,
-            String memberName,
-            Long membershipId,
-            String membershipStatus
-    ) {
-    }
-
-    public record TrainerDetail(
-            Long userId,
-            Long centerId,
-            String loginId,
-            String displayName,
-            String userStatus,
-            String phone,
-            Long assignedMemberCount,
-            Long todayConfirmedReservationCount,
-            List<AssignedMemberSummary> assignedMembers,
-            boolean accountFieldsVisible
-    ) {
-    }
+    
 }

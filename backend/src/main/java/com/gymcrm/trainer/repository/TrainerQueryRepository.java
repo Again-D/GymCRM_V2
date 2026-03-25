@@ -1,4 +1,4 @@
-package com.gymcrm.trainer;
+package com.gymcrm.trainer.repository;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
