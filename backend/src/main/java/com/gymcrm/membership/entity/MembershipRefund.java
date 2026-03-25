@@ -1,4 +1,6 @@
-package com.gymcrm.membership;
+package com.gymcrm.membership.entity;
+
+import com.gymcrm.membership.enums.RefundStatus;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -8,7 +10,7 @@ public record MembershipRefund(
         Long centerId,
         Long membershipId,
         Long refundPaymentId,
-        String refundStatus,
+        RefundStatus refundStatus,
         String refundReason,
         OffsetDateTime requestedAt,
         OffsetDateTime processedAt,

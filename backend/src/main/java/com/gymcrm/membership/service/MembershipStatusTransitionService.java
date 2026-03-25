@@ -1,7 +1,8 @@
-package com.gymcrm.membership;
+package com.gymcrm.membership.service;
 
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
+import com.gymcrm.membership.enums.MembershipStatus;
 import org.springframework.stereotype.Service;
 
 import java.util.EnumMap;

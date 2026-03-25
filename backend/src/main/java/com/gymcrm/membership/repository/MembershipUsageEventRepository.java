@@ -1,5 +1,6 @@
-package com.gymcrm.membership;
+package com.gymcrm.membership.repository;
 
+import com.gymcrm.membership.entity.MembershipUsageEvent;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 

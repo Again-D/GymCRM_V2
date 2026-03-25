@@ -1,4 +1,6 @@
-package com.gymcrm.membership;
+package com.gymcrm.membership.entity;
+
+import com.gymcrm.membership.enums.HoldStatus;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -7,7 +9,7 @@ public record MembershipHold(
         Long membershipHoldId,
         Long centerId,
         Long membershipId,
-        String holdStatus,
+        HoldStatus holdStatus,
         LocalDate holdStartDate,
         LocalDate holdEndDate,
         OffsetDateTime resumedAt,

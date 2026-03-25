@@ -19,7 +19,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static com.gymcrm.member.entity.QMemberEntity.memberEntity;
-import static com.gymcrm.membership.QMemberMembershipEntity.memberMembershipEntity;
+import static com.gymcrm.membership.entity.QMemberMembershipEntity.memberMembershipEntity;
 
 @Repository
 public class MemberQueryRepository {

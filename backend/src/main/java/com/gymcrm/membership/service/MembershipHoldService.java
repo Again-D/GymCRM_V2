@@ -1,8 +1,14 @@
-package com.gymcrm.membership;
+package com.gymcrm.membership.service;
 
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
+import com.gymcrm.membership.entity.MemberMembership;
+import com.gymcrm.membership.entity.MembershipHold;
+import com.gymcrm.membership.enums.HoldStatus;
+import com.gymcrm.membership.enums.MembershipStatus;
+import com.gymcrm.membership.repository.MemberMembershipRepository;
+import com.gymcrm.membership.repository.MembershipHoldRepository;
 import com.gymcrm.product.Product;
 import com.gymcrm.product.ProductService;
 import org.springframework.dao.DataAccessException;
@@ -60,7 +66,7 @@ public class MembershipHoldService {
             MembershipHold hold = membershipHoldRepository.insert(new MembershipHoldRepository.MembershipHoldCreateCommand(
                     membership.centerId(),
                     membership.membershipId(),
-                    "ACTIVE",
+                    HoldStatus.ACTIVE.name(),
                     holdStartDate,
                     holdEndDate,
                     trimToNull(request.reason()),

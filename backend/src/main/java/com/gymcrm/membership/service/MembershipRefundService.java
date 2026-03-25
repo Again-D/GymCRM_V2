@@ -1,8 +1,16 @@
-package com.gymcrm.membership;
+package com.gymcrm.membership.service;
 
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
+import com.gymcrm.membership.Payment;
+import com.gymcrm.membership.PaymentRepository;
+import com.gymcrm.membership.entity.MemberMembership;
+import com.gymcrm.membership.entity.MembershipRefund;
+import com.gymcrm.membership.enums.MembershipStatus;
+import com.gymcrm.membership.enums.RefundStatus;
+import com.gymcrm.membership.repository.MemberMembershipRepository;
+import com.gymcrm.membership.repository.MembershipRefundRepository;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -83,7 +91,7 @@ public class MembershipRefundService {
                     membership.centerId(),
                     membership.membershipId(),
                     refundPayment.paymentId(),
-                    "COMPLETED",
+                    RefundStatus.COMPLETED.name(),
                     trimToNull(request.refundReason()),
                     now,
                     now,

@@ -1,8 +1,12 @@
-package com.gymcrm.membership;
+package com.gymcrm.membership.repository;
 
+import com.gymcrm.membership.entity.MembershipRefund;
+import com.gymcrm.membership.enums.RefundStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.Optional;
 
 @Repository
@@ -28,7 +32,7 @@ public class MembershipRefundRepository {
                 LIMIT 1
                 """)
                 .param("membershipId", membershipId)
-                .query(MembershipRefund.class)
+                .query((rs, rowNum) -> toDomain(rs))
                 .optional();
     }
 
@@ -54,8 +58,30 @@ public class MembershipRefundRepository {
                     created_at, created_by, updated_at, updated_by
                 """)
                 .paramSource(command)
-                .query(MembershipRefund.class)
+                .query((rs, rowNum) -> toDomain(rs))
                 .single();
+    }
+
+    private MembershipRefund toDomain(java.sql.ResultSet rs) throws java.sql.SQLException {
+        return new MembershipRefund(
+                rs.getLong("membership_refund_id"),
+                rs.getLong("center_id"),
+                rs.getLong("membership_id"),
+                rs.getLong("refund_payment_id"),
+                RefundStatus.from(rs.getString("refund_status")),
+                rs.getString("refund_reason"),
+                rs.getObject("requested_at", OffsetDateTime.class),
+                rs.getObject("processed_at", OffsetDateTime.class),
+                rs.getObject("original_amount", BigDecimal.class),
+                rs.getObject("used_amount", BigDecimal.class),
+                rs.getObject("penalty_amount", BigDecimal.class),
+                rs.getObject("refund_amount", BigDecimal.class),
+                rs.getString("memo"),
+                rs.getObject("created_at", OffsetDateTime.class),
+                rs.getObject("created_by", Long.class),
+                rs.getObject("updated_at", OffsetDateTime.class),
+                rs.getObject("updated_by", Long.class)
+        );
     }
 
     public record MembershipRefundCreateCommand(

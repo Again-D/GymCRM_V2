@@ -4,6 +4,12 @@ import com.gymcrm.common.error.ApiException;
 import com.gymcrm.member.dto.request.MemberCreateRequest;
 import com.gymcrm.member.entity.Member;
 import com.gymcrm.member.service.MemberService;
+import com.gymcrm.membership.entity.MemberMembership;
+import com.gymcrm.membership.enums.HoldStatus;
+import com.gymcrm.membership.repository.MemberMembershipRepository;
+import com.gymcrm.membership.repository.MembershipHoldRepository;
+import com.gymcrm.membership.service.MembershipHoldService;
+import com.gymcrm.membership.service.MembershipPurchaseService;
 import com.gymcrm.product.Product;
 import com.gymcrm.product.ProductService;
 import org.junit.jupiter.api.AfterEach;
@@ -90,7 +96,7 @@ class MembershipHoldServiceIntegrationTest {
         ));
 
         assertEquals("HOLDING", holdResult.membership().membershipStatus());
-        assertEquals("ACTIVE", holdResult.hold().holdStatus());
+        assertEquals(HoldStatus.ACTIVE, holdResult.hold().holdStatus());
         assertEquals(LocalDate.of(2026, 3, 5), holdResult.hold().holdStartDate());
         assertEquals(LocalDate.of(2026, 3, 7), holdResult.hold().holdEndDate());
 
@@ -100,7 +106,7 @@ class MembershipHoldServiceIntegrationTest {
         ));
 
         assertEquals("ACTIVE", resumeResult.membership().membershipStatus());
-        assertEquals("RESUMED", resumeResult.hold().holdStatus());
+        assertEquals(HoldStatus.RESUMED, resumeResult.hold().holdStatus());
         assertEquals(3, resumeResult.actualHoldDays());
         assertEquals(originalEndDate.plusDays(3), resumeResult.membership().endDate());
         assertEquals(originalEndDate.plusDays(3), resumeResult.recalculatedEndDate());
