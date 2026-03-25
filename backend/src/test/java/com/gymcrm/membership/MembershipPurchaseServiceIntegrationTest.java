@@ -8,6 +8,7 @@ import com.gymcrm.membership.entity.MemberMembership;
 import com.gymcrm.membership.service.MembershipPurchaseService;
 import com.gymcrm.product.entity.Product;
 import com.gymcrm.product.service.ProductService;
+import com.gymcrm.settlement.repository.PaymentRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

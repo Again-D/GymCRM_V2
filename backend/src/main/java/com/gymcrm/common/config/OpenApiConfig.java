@@ -1,6 +1,6 @@
 package com.gymcrm.common.config;
 
-import com.gymcrm.auth.AuthController;
+import com.gymcrm.common.auth.controller.AuthController;
 import com.gymcrm.common.security.AccessPolicies;
 import com.gymcrm.health.HealthController;
 import io.swagger.v3.oas.models.Components;

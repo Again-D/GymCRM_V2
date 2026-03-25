@@ -1,7 +1,7 @@
 package com.gymcrm.reservation.service;
 
-import com.gymcrm.auth.AuthUser;
-import com.gymcrm.auth.AuthUserRepository;
+import com.gymcrm.common.auth.entity.AuthUser;
+import com.gymcrm.common.auth.repository.AuthUserRepository;
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;

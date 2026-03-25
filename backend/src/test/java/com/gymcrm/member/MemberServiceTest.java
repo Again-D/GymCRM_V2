@@ -4,7 +4,7 @@ import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
 import com.gymcrm.common.security.PiiEncryptionService;
-import com.gymcrm.auth.AuthUserRepository;
+import com.gymcrm.common.auth.repository.AuthUserRepository;
 import com.gymcrm.member.dto.request.MemberCreateRequest;
 import com.gymcrm.member.dto.request.MemberUpdateRequest;
 import com.gymcrm.member.entity.Member;

@@ -1,8 +1,8 @@
 package com.gymcrm.common.config;
 
-import com.gymcrm.auth.JwtAuthenticationFilter;
-import com.gymcrm.auth.RestAccessDeniedHandler;
-import com.gymcrm.auth.RestAuthenticationEntryPoint;
+import com.gymcrm.common.auth.JwtAuthenticationFilter;
+import com.gymcrm.common.auth.RestAccessDeniedHandler;
+import com.gymcrm.common.auth.RestAuthenticationEntryPoint;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;

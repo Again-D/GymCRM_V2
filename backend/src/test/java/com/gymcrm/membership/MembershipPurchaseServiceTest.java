@@ -1,17 +1,17 @@
 package com.gymcrm.membership.service;
 
-import com.gymcrm.auth.AuthUserRepository;
+import com.gymcrm.common.auth.repository.AuthUserRepository;
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
 import com.gymcrm.member.service.MemberService;
 import com.gymcrm.member.entity.Member;
 import com.gymcrm.member.enums.MemberStatus;
-import com.gymcrm.membership.PaymentRepository;
 import com.gymcrm.membership.repository.MemberMembershipRepository;
 import com.gymcrm.membership.repository.MembershipHoldRepository;
 import com.gymcrm.product.entity.Product;
 import com.gymcrm.product.service.ProductService;
+import com.gymcrm.settlement.repository.PaymentRepository;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
