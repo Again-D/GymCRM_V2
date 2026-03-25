@@ -1,12 +1,13 @@
-package com.gymcrm.product;
+package com.gymcrm.product.repository;
 
+import com.gymcrm.product.entity.Product;
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
-import static com.gymcrm.product.QProductEntity.productEntity;
+import static com.gymcrm.product.entity.QProductEntity.productEntity;
 
 @Repository
 public class ProductQueryRepository {

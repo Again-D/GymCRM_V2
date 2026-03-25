@@ -1,7 +1,24 @@
-package com.gymcrm.reservation;
+package com.gymcrm.reservation.controller;
 
 import com.gymcrm.common.api.ApiResponse;
 import com.gymcrm.common.security.AccessPolicies;
+import com.gymcrm.reservation.dto.request.CancelReservationRequest;
+import com.gymcrm.reservation.dto.request.CreateReservationRequest;
+import com.gymcrm.reservation.dto.response.CompleteReservationResponse;
+import com.gymcrm.reservation.dto.response.ReservationResponse;
+import com.gymcrm.reservation.dto.response.ReservationScheduleResponse;
+import com.gymcrm.reservation.dto.response.ReservationTargetResponse;
+import com.gymcrm.reservation.entity.Reservation;
+import com.gymcrm.reservation.entity.TrainerSchedule;
+import com.gymcrm.reservation.service.ReservationService;
+import com.gymcrm.reservation.service.ReservationService.CancelRequest;
+import com.gymcrm.reservation.service.ReservationService.CheckInRequest;
+import com.gymcrm.reservation.service.ReservationService.CompleteRequest;
+import com.gymcrm.reservation.service.ReservationService.CompleteResult;
+import com.gymcrm.reservation.service.ReservationService.CreateRequest;
+import com.gymcrm.reservation.service.ReservationService.NoShowRequest;
+import com.gymcrm.reservation.service.ReservationService.ReservationTarget;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -14,8 +31,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.time.OffsetDateTime;
 import java.util.List;
 
 @Validated
@@ -109,118 +124,5 @@ public class ReservationController {
     public ApiResponse<ReservationResponse> noShow(@PathVariable Long reservationId) {
         Reservation reservation = reservationService.noShow(new ReservationService.NoShowRequest(reservationId));
         return ApiResponse.success(ReservationResponse.from(reservation), "노쇼 처리되었습니다.");
-    }
-
-    public record CreateReservationRequest(
-            @NotNull(message = "memberId is required") Long memberId,
-            @NotNull(message = "membershipId is required") Long membershipId,
-            @NotNull(message = "scheduleId is required") Long scheduleId,
-            String memo
-    ) {}
-
-    public record CancelReservationRequest(String cancelReason) {}
-
-    public record ReservationResponse(
-            Long reservationId,
-            Long centerId,
-            Long memberId,
-            Long membershipId,
-            Long scheduleId,
-            String reservationStatus,
-            OffsetDateTime reservedAt,
-            OffsetDateTime cancelledAt,
-            OffsetDateTime completedAt,
-            OffsetDateTime noShowAt,
-            OffsetDateTime checkedInAt,
-            String cancelReason,
-            String memo
-    ) {
-        static ReservationResponse from(Reservation reservation) {
-            return new ReservationResponse(
-                    reservation.reservationId(),
-                    reservation.centerId(),
-                    reservation.memberId(),
-                    reservation.membershipId(),
-                    reservation.scheduleId(),
-                    reservation.reservationStatus(),
-                    reservation.reservedAt(),
-                    reservation.cancelledAt(),
-                    reservation.completedAt(),
-                    reservation.noShowAt(),
-                    reservation.checkedInAt(),
-                    reservation.cancelReason(),
-                    reservation.memo()
-            );
-        }
-    }
-
-    public record ReservationScheduleResponse(
-            Long scheduleId,
-            Long centerId,
-            String scheduleType,
-            String trainerName,
-            String slotTitle,
-            OffsetDateTime startAt,
-            OffsetDateTime endAt,
-            Integer capacity,
-            Integer currentCount,
-            String memo
-    ) {
-        static ReservationScheduleResponse from(TrainerSchedule schedule) {
-            return new ReservationScheduleResponse(
-                    schedule.scheduleId(),
-                    schedule.centerId(),
-                    schedule.scheduleType(),
-                    schedule.trainerName(),
-                    schedule.slotTitle(),
-                    schedule.startAt(),
-                    schedule.endAt(),
-                    schedule.capacity(),
-                    schedule.currentCount(),
-                    schedule.memo()
-            );
-        }
-    }
-
-    public record CompleteReservationResponse(
-            ReservationResponse reservation,
-            Long membershipId,
-            String membershipStatus,
-            Integer remainingCount,
-            Integer usedCount,
-            boolean countDeducted
-    ) {
-        static CompleteReservationResponse from(ReservationService.CompleteResult result) {
-            return new CompleteReservationResponse(
-                    ReservationResponse.from(result.reservation()),
-                    result.membership().membershipId(),
-                    result.membership().membershipStatus(),
-                    result.membership().remainingCount(),
-                    result.membership().usedCount(),
-                    result.countDeducted()
-            );
-        }
-    }
-
-    public record ReservationTargetResponse(
-            Long memberId,
-            String memberCode,
-            String memberName,
-            String phone,
-            Integer reservableMembershipCount,
-            java.time.LocalDate membershipExpiryDate,
-            Integer confirmedReservationCount
-    ) {
-        static ReservationTargetResponse from(ReservationService.ReservationTarget target) {
-            return new ReservationTargetResponse(
-                    target.memberId(),
-                    target.memberCode(),
-                    target.memberName(),
-                    target.phone(),
-                    target.reservableMembershipCount(),
-                    target.membershipExpiryDate(),
-                    target.confirmedReservationCount()
-            );
-        }
     }
 }

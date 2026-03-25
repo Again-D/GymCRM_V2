@@ -1,7 +1,8 @@
-package com.gymcrm.reservation;
+package com.gymcrm.reservation.service;
 
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
+import com.gymcrm.reservation.enums.ReservationStatus;
 import org.springframework.stereotype.Service;
 
 import java.util.EnumMap;

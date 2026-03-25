@@ -1,5 +1,7 @@
-package com.gymcrm.reservation;
+package com.gymcrm.reservation.repository;
 
+import com.gymcrm.reservation.entity.TrainerSchedule;
+import com.gymcrm.reservation.entity.TrainerScheduleEntity;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Repository;
@@ -8,7 +10,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
-import static com.gymcrm.reservation.QTrainerScheduleEntity.trainerScheduleEntity;
+import static com.gymcrm.reservation.entity.QTrainerScheduleEntity.trainerScheduleEntity;
 
 @Repository
 public class TrainerScheduleQueryRepository {

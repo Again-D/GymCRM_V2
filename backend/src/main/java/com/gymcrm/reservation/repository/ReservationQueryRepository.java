@@ -1,5 +1,7 @@
-package com.gymcrm.reservation;
+package com.gymcrm.reservation.repository;
 
+import com.gymcrm.reservation.entity.Reservation;
+import com.gymcrm.reservation.entity.ReservationEntity;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
@@ -11,7 +13,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static com.gymcrm.membership.entity.QMemberMembershipEntity.memberMembershipEntity;
-import static com.gymcrm.reservation.QReservationEntity.reservationEntity;
+import static com.gymcrm.reservation.entity.QReservationEntity.reservationEntity;
 
 @Repository
 public class ReservationQueryRepository {

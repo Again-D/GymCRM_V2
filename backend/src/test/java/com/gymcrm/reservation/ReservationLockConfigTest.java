@@ -1,5 +1,9 @@
 package com.gymcrm.reservation;
 
+import com.gymcrm.reservation.config.ReservationLockConfig;
+import com.gymcrm.reservation.service.NoOpReservationLockService;
+import com.gymcrm.reservation.service.RedissonReservationLockService;
+import com.gymcrm.reservation.service.ReservationLockService;
 import org.junit.jupiter.api.Test;
 import org.redisson.api.RedissonClient;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;

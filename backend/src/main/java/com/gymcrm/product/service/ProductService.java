@@ -1,8 +1,10 @@
-package com.gymcrm.product;
+package com.gymcrm.product.service;
 
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
+import com.gymcrm.product.entity.Product;
+import com.gymcrm.product.repository.ProductRepository;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

@@ -3,6 +3,8 @@ package com.gymcrm.product;
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
+import com.gymcrm.product.repository.ProductRepository;
+import com.gymcrm.product.service.ProductService;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;

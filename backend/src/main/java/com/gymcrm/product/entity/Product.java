@@ -1,4 +1,4 @@
-package com.gymcrm.product;
+package com.gymcrm.product.entity;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;

@@ -2,6 +2,8 @@ package com.gymcrm.reservation;
 
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
+import com.gymcrm.reservation.enums.ReservationStatus;
+import com.gymcrm.reservation.service.ReservationStatusTransitionService;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

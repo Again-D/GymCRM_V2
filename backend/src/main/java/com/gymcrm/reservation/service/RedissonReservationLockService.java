@@ -1,4 +1,4 @@
-package com.gymcrm.reservation;
+package com.gymcrm.reservation.service;
 
 import com.gymcrm.common.config.RedisRuntimeProperties;
 import com.gymcrm.common.error.ApiException;
