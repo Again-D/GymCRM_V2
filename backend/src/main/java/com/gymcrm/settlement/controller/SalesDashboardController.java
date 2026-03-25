@@ -1,7 +1,8 @@
-package com.gymcrm.settlement;
+package com.gymcrm.settlement.controller;
 
 import com.gymcrm.common.api.ApiResponse;
 import com.gymcrm.common.security.AccessPolicies;
+import com.gymcrm.settlement.service.SalesDashboardService;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.format.annotation.DateTimeFormat;

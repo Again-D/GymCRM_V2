@@ -1,7 +1,10 @@
-package com.gymcrm.settlement;
+package com.gymcrm.settlement.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gymcrm.common.config.RedisRuntimeProperties;
+import com.gymcrm.settlement.service.NoOpSalesDashboardCacheService;
+import com.gymcrm.settlement.service.RedisSalesDashboardCacheService;
+import com.gymcrm.settlement.service.SalesDashboardCacheService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;

@@ -1,6 +1,9 @@
 package com.gymcrm.settlement;
 
 import com.gymcrm.common.security.CurrentUserProvider;
+import com.gymcrm.settlement.repository.SalesDashboardRepository;
+import com.gymcrm.settlement.service.SalesDashboardCacheService;
+import com.gymcrm.settlement.service.SalesDashboardService;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;

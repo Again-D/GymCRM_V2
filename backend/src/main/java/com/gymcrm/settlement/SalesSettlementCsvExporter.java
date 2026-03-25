@@ -1,5 +1,6 @@
 package com.gymcrm.settlement;
 
+import com.gymcrm.settlement.service.SalesSettlementReportService;
 import org.springframework.stereotype.Component;
 
 import java.util.StringJoiner;

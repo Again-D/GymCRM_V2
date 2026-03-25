@@ -1,4 +1,4 @@
-package com.gymcrm.settlement;
+package com.gymcrm.settlement.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;

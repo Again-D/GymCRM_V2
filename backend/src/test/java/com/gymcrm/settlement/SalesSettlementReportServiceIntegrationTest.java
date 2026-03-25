@@ -7,9 +7,11 @@ import com.gymcrm.membership.service.MembershipPurchaseService;
 import com.gymcrm.membership.service.MembershipRefundService;
 import com.gymcrm.product.entity.Product;
 import com.gymcrm.product.service.ProductService;
+import com.gymcrm.settlement.service.SalesSettlementReportService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,6 +47,9 @@ class SalesSettlementReportServiceIntegrationTest {
 
     @Autowired
     private MembershipRefundService refundService;
+
+    @Autowired
+    private JdbcClient jdbcClient;
 
     @Test
     @Transactional
@@ -118,6 +123,30 @@ class SalesSettlementReportServiceIntegrationTest {
         assertTrue(cardOnlyReport.rows().get(0).productName().contains(keyword + "-CARD"));
     }
 
+    @Test
+    @Transactional
+    void reportUsesBusinessTimezoneForDailyBoundaries() {
+        LocalDate reportDate = LocalDate.of(2026, 3, 1);
+        String keyword = "TZ-SAL-" + UUID.randomUUID().toString().substring(0, 6);
+        Member member = createActiveMember();
+        Product product = createCountProduct(keyword, new BigDecimal("100000"));
+        long membershipId = insertMembership(member.memberId(), product.productId(), keyword, reportDate);
+
+        insertPayment(member.memberId(), membershipId, "PURCHASE", "CARD", new BigDecimal("100000"),
+                OffsetDateTime.parse("2026-02-28T15:30:00Z"));
+        insertPayment(member.memberId(), membershipId, "PURCHASE", "CARD", new BigDecimal("50000"),
+                OffsetDateTime.parse("2026-03-01T15:30:00Z"));
+
+        SalesSettlementReportService.SalesReportResult report = reportService.getReport(
+                new SalesSettlementReportService.ReportQuery(reportDate, reportDate, "CARD", keyword)
+        );
+
+        assertEquals(1, report.rows().size());
+        assertEquals(0, new BigDecimal("100000").compareTo(report.totalGrossSales()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(report.totalRefundAmount()));
+        assertEquals(0, new BigDecimal("100000").compareTo(report.totalNetSales()));
+    }
+
     private Member createActiveMember() {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
         return memberService.create(new MemberCreateRequest(
@@ -150,5 +179,61 @@ class SalesSettlementReportServiceIntegrationTest {
                 "ACTIVE",
                 null
         ));
+    }
+
+    private long insertMembership(long memberId, long productId, String productNameSnapshot, LocalDate startDate) {
+        return jdbcClient.sql("""
+                INSERT INTO member_memberships (
+                    center_id, member_id, product_id, membership_status,
+                    product_name_snapshot, product_category_snapshot, product_type_snapshot,
+                    price_amount_snapshot, purchased_at, start_date, end_date,
+                    total_count, remaining_count, used_count,
+                    hold_days_used, hold_count_used,
+                    created_by, updated_by
+                )
+                VALUES (
+                    1, :memberId, :productId, 'ACTIVE',
+                    :productNameSnapshot, 'PT', 'COUNT',
+                    100000, CURRENT_TIMESTAMP, :startDate, :endDate,
+                    10, 10, 0,
+                    0, 0,
+                    0, 0
+                )
+                RETURNING membership_id
+                """)
+                .param("memberId", memberId)
+                .param("productId", productId)
+                .param("productNameSnapshot", productNameSnapshot)
+                .param("startDate", startDate)
+                .param("endDate", startDate.plusDays(30))
+                .query(Long.class)
+                .single();
+    }
+
+    private void insertPayment(
+            long memberId,
+            long membershipId,
+            String paymentType,
+            String paymentMethod,
+            BigDecimal amount,
+            OffsetDateTime paidAt
+    ) {
+        jdbcClient.sql("""
+                INSERT INTO payments (
+                    center_id, member_id, membership_id, payment_type, payment_status, payment_method,
+                    amount, paid_at, created_by, updated_by
+                )
+                VALUES (
+                    1, :memberId, :membershipId, :paymentType, 'COMPLETED', :paymentMethod,
+                    :amount, :paidAt, 0, 0
+                )
+                """)
+                .param("memberId", memberId)
+                .param("membershipId", membershipId)
+                .param("paymentType", paymentType)
+                .param("paymentMethod", paymentMethod)
+                .param("amount", amount)
+                .param("paidAt", paidAt)
+                .update();
     }
 }
