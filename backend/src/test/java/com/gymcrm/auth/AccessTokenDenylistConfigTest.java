@@ -1,5 +1,9 @@
 package com.gymcrm.auth;
 
+import com.gymcrm.common.auth.AccessTokenDenylistConfig;
+import com.gymcrm.common.auth.service.AccessTokenDenylistService;
+import com.gymcrm.common.auth.service.NoOpAccessTokenDenylistService;
+import com.gymcrm.common.auth.service.RedisAccessTokenDenylistService;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.data.redis.core.StringRedisTemplate;

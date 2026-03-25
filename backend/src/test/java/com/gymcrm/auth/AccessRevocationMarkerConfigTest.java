@@ -1,5 +1,9 @@
 package com.gymcrm.auth;
 
+import com.gymcrm.common.auth.AccessRevocationMarkerConfig;
+import com.gymcrm.common.auth.service.AccessRevocationMarkerService;
+import com.gymcrm.common.auth.service.NoOpAccessRevocationMarkerService;
+import com.gymcrm.common.auth.service.RedisAccessRevocationMarkerService;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.data.redis.core.StringRedisTemplate;

@@ -1,5 +1,8 @@
 package com.gymcrm.auth;
 
+import com.gymcrm.common.auth.service.AccessRevocationMarkerService;
+import com.gymcrm.common.auth.service.AuthAccessRevocationService;
+import com.gymcrm.common.auth.service.JwtTokenService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

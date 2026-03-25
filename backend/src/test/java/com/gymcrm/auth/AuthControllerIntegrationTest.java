@@ -1,5 +1,6 @@
 package com.gymcrm.auth;
 
+import com.gymcrm.common.auth.AuthCookieSupport;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

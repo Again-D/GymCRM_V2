@@ -1,8 +1,8 @@
 package com.gymcrm.health;
 
-import com.gymcrm.auth.JwtAuthenticationFilter;
-import com.gymcrm.auth.RestAccessDeniedHandler;
-import com.gymcrm.auth.RestAuthenticationEntryPoint;
+import com.gymcrm.common.auth.JwtAuthenticationFilter;
+import com.gymcrm.common.auth.RestAccessDeniedHandler;
+import com.gymcrm.common.auth.RestAuthenticationEntryPoint;
 import com.gymcrm.common.config.PrototypeModeSettings;
 import com.gymcrm.common.config.RedisRuntimeProperties;
 import com.gymcrm.common.config.SecurityModeSettings;

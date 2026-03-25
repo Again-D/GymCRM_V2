@@ -1,6 +1,6 @@
 package com.gymcrm.membership.dto.response;
 
-import com.gymcrm.membership.Payment;
+import com.gymcrm.settlement.entity.Payment;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
