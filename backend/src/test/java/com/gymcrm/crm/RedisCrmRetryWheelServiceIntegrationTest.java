@@ -7,6 +7,8 @@ import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
+import com.gymcrm.crm.service.RedisCrmRetryWheelService;
+
 import java.io.IOException;
 import java.net.Socket;
 import java.time.OffsetDateTime;

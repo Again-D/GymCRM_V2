@@ -1,6 +1,11 @@
 package com.gymcrm.crm;
 
 import com.gymcrm.common.config.RedisRuntimeProperties;
+import com.gymcrm.crm.config.CrmDispatchClaimConfig;
+import com.gymcrm.crm.service.CrmDispatchClaimService;
+import com.gymcrm.crm.service.NoOpCrmDispatchClaimService;
+import com.gymcrm.crm.service.RedisCrmDispatchClaimService;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;

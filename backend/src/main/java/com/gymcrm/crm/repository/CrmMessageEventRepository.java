@@ -1,7 +1,9 @@
-package com.gymcrm.crm;
+package com.gymcrm.crm.repository;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
+
+import com.gymcrm.crm.entity.CrmMessageEvent;
 
 import java.time.OffsetDateTime;
 import java.util.List;

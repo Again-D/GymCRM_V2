@@ -1,9 +1,22 @@
-package com.gymcrm.crm;
+package com.gymcrm.crm.service;
 
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.logging.TraceIdFilter;
 import com.gymcrm.common.security.CurrentUserProvider;
+import com.gymcrm.crm.CrmMessageSender;
+import com.gymcrm.crm.CrmMessageSender.SendResult;
+import com.gymcrm.crm.entity.CrmMessageEvent;
+import com.gymcrm.crm.repository.CrmMessageEventRepository;
+import com.gymcrm.crm.repository.CrmTargetRepository;
+import com.gymcrm.crm.repository.CrmMessageEventRepository.InsertCommand;
+import com.gymcrm.crm.repository.CrmMessageEventRepository.UpdateDeadCommand;
+import com.gymcrm.crm.repository.CrmMessageEventRepository.UpdateRetryCommand;
+import com.gymcrm.crm.repository.CrmMessageEventRepository.UpdateSentCommand;
+import com.gymcrm.crm.repository.CrmTargetRepository.BirthdayTarget;
+import com.gymcrm.crm.repository.CrmTargetRepository.EventCampaignTarget;
+import com.gymcrm.crm.repository.CrmTargetRepository.ExpiringMembershipTarget;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

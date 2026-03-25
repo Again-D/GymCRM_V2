@@ -1,4 +1,4 @@
-package com.gymcrm.membership.service;
+package com.gymcrm.membership;
 
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
@@ -7,6 +7,8 @@ import com.gymcrm.membership.entity.MemberMembership;
 import com.gymcrm.membership.enums.MembershipStatus;
 import com.gymcrm.membership.repository.MemberMembershipRepository;
 import com.gymcrm.membership.repository.MembershipRefundRepository;
+import com.gymcrm.membership.service.MembershipRefundService;
+import com.gymcrm.membership.service.MembershipStatusTransitionService;
 import com.gymcrm.settlement.repository.PaymentRepository;
 import org.junit.jupiter.api.Test;
 

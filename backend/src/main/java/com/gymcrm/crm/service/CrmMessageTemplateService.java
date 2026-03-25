@@ -1,8 +1,13 @@
-package com.gymcrm.crm;
+package com.gymcrm.crm.service;
 
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
+import com.gymcrm.crm.entity.CrmMessageTemplate;
+import com.gymcrm.crm.repository.CrmMessageTemplateRepository;
+import com.gymcrm.crm.repository.CrmMessageTemplateRepository.InsertCommand;
+import com.gymcrm.crm.repository.CrmMessageTemplateRepository.UpdateCommand;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

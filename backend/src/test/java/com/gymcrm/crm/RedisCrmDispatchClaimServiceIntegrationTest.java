@@ -1,6 +1,8 @@
 package com.gymcrm.crm;
 
 import com.gymcrm.common.config.RedisRuntimeProperties;
+import com.gymcrm.crm.service.RedisCrmDispatchClaimService;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

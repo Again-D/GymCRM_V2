@@ -1,4 +1,4 @@
-package com.gymcrm.crm;
+package com.gymcrm.crm.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

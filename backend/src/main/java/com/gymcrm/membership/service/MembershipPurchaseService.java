@@ -144,7 +144,7 @@ public class MembershipPurchaseService {
                 .toList();
     }
 
-    PurchaseCalculation calculatePurchase(Product product, LocalDate requestedStartDate) {
+    public PurchaseCalculation calculatePurchase(Product product, LocalDate requestedStartDate) {
         LocalDate startDate = requestedStartDate == null ? LocalDate.now() : requestedStartDate;
 
         if ("DURATION".equals(product.productType())) {
@@ -166,7 +166,7 @@ public class MembershipPurchaseService {
         throw new ApiException(ErrorCode.BUSINESS_RULE, "구매 가능한 상품 유형이 아닙니다. productType=" + product.productType());
     }
 
-    void validatePurchaseEligibility(Member member, Product product) {
+    public void validatePurchaseEligibility(Member member, Product product) {
         if (!member.centerId().equals(product.centerId())) {
             throw new ApiException(ErrorCode.BUSINESS_RULE, "회원과 상품의 센터가 일치하지 않습니다.");
         }

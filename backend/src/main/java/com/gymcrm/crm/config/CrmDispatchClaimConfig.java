@@ -1,6 +1,10 @@
-package com.gymcrm.crm;
+package com.gymcrm.crm.config;
 
 import com.gymcrm.common.config.RedisRuntimeProperties;
+import com.gymcrm.crm.service.CrmDispatchClaimService;
+import com.gymcrm.crm.service.NoOpCrmDispatchClaimService;
+import com.gymcrm.crm.service.RedisCrmDispatchClaimService;
+
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;

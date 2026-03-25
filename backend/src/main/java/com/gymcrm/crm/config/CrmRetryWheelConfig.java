@@ -1,10 +1,14 @@
-package com.gymcrm.crm;
+package com.gymcrm.crm.config;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.StringRedisTemplate;
+
+import com.gymcrm.crm.service.CrmRetryWheelService;
+import com.gymcrm.crm.service.NoOpCrmRetryWheelService;
+import com.gymcrm.crm.service.RedisCrmRetryWheelService;
 
 @Configuration
 public class CrmRetryWheelConfig {

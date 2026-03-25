@@ -5,6 +5,11 @@ import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
+import com.gymcrm.crm.config.CrmRetryWheelConfig;
+import com.gymcrm.crm.service.CrmRetryWheelService;
+import com.gymcrm.crm.service.NoOpCrmRetryWheelService;
+import com.gymcrm.crm.service.RedisCrmRetryWheelService;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 class CrmRetryWheelConfigTest {

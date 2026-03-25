@@ -1,12 +1,20 @@
-package com.gymcrm.crm;
+package com.gymcrm.crm.controller;
 
 import com.gymcrm.common.api.ApiResponse;
 import com.gymcrm.common.security.AccessPolicies;
+import com.gymcrm.crm.dto.request.BirthdayTriggerRequest;
+import com.gymcrm.crm.dto.request.EventCampaignTriggerRequest;
+import com.gymcrm.crm.dto.request.ProcessRequest;
+import com.gymcrm.crm.dto.request.TriggerRequest;
+import com.gymcrm.crm.dto.response.HistoryResponse;
+import com.gymcrm.crm.dto.response.ProcessResponse;
+import com.gymcrm.crm.dto.response.TriggerResponse;
+import com.gymcrm.crm.service.CrmMessageService;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,9 +24,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.LocalDate;
-import java.time.OffsetDateTime;
-import java.util.List;
 
 @Validated
 @RestController
@@ -93,114 +98,4 @@ public class CrmMessageController {
         return ApiResponse.success(HistoryResponse.from(result), "CRM 메시지 이력 조회 성공");
     }
 
-    public record TriggerRequest(
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate baseDate,
-            @Min(0) @Max(30) Integer daysAhead,
-            Boolean forceFail,
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime scheduledAt
-    ) {
-    }
-
-    public record ProcessRequest(
-            @Min(1) @Max(200) Integer limit
-    ) {
-    }
-
-    public record BirthdayTriggerRequest(
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate baseDate,
-            Boolean forceFail,
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime scheduledAt
-    ) {
-    }
-
-    public record EventCampaignTriggerRequest(
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate baseDate,
-            @Pattern(regexp = "^[A-Z0-9_\\-]{2,40}$", message = "eventCode is invalid")
-            String eventCode,
-            @Pattern(regexp = "^(?i)(MEMBERSHIP|PT|GX|ETC)?$", message = "productCategory is invalid")
-            String productCategory,
-            Boolean forceFail,
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime scheduledAt
-    ) {
-    }
-
-    public record TriggerResponse(
-            LocalDate baseDate,
-            LocalDate targetDate,
-            int totalTargets,
-            int createdCount,
-            int duplicatedCount
-    ) {
-        static TriggerResponse from(CrmMessageService.TriggerResult result) {
-            return new TriggerResponse(
-                    result.baseDate(),
-                    result.targetDate(),
-                    result.totalTargets(),
-                    result.createdCount(),
-                    result.duplicatedCount()
-            );
-        }
-    }
-
-    public record ProcessResponse(
-            int pickedCount,
-            int sentCount,
-            int retryWaitCount,
-            int deadCount,
-            int maxAttempts
-    ) {
-        static ProcessResponse from(CrmMessageService.ProcessResult result) {
-            return new ProcessResponse(
-                    result.pickedCount(),
-                    result.sentCount(),
-                    result.retryWaitCount(),
-                    result.deadCount(),
-                    result.maxAttempts()
-            );
-        }
-    }
-
-    public record HistoryResponse(
-            List<HistoryRowResponse> rows
-    ) {
-        static HistoryResponse from(CrmMessageService.MessageHistoryResult result) {
-            return new HistoryResponse(result.rows().stream().map(HistoryRowResponse::from).toList());
-        }
-    }
-
-    public record HistoryRowResponse(
-            Long crmMessageEventId,
-            Long memberId,
-            Long membershipId,
-            String eventType,
-            String channelType,
-            String sendStatus,
-            Integer attemptCount,
-            OffsetDateTime lastAttemptedAt,
-            OffsetDateTime nextAttemptAt,
-            OffsetDateTime sentAt,
-            OffsetDateTime failedAt,
-            String lastErrorMessage,
-            String traceId,
-            OffsetDateTime createdAt
-    ) {
-        static HistoryRowResponse from(CrmMessageEvent event) {
-            return new HistoryRowResponse(
-                    event.crmMessageEventId(),
-                    event.memberId(),
-                    event.membershipId(),
-                    event.eventType(),
-                    event.channelType(),
-                    event.sendStatus(),
-                    event.attemptCount(),
-                    event.lastAttemptedAt(),
-                    event.nextAttemptAt(),
-                    event.sentAt(),
-                    event.failedAt(),
-                    event.lastErrorMessage(),
-                    event.traceId(),
-                    event.createdAt()
-            );
-        }
-    }
 }

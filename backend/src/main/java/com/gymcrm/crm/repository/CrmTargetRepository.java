@@ -1,4 +1,4 @@
-package com.gymcrm.crm;
+package com.gymcrm.crm.repository;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
