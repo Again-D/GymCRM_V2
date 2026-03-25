@@ -60,4 +60,31 @@ describe("Modal", () => {
     expect(screen.queryByRole("dialog", { name: "Reservation Create" })).toBeNull();
     expect(trigger).toBe(document.activeElement);
   });
+
+  it("keeps focused input stable when parent rerenders with a new onClose callback", () => {
+    function Harness() {
+      const [isOpen] = useState(true);
+      const [value, setValue] = useState("");
+
+      return (
+        <Modal isOpen={isOpen} onClose={() => undefined} title="Member Create">
+          <input
+            aria-label="회원명"
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+          />
+        </Modal>
+      );
+    }
+
+    render(<Harness />);
+
+    const input = screen.getByLabelText("회원명") as HTMLInputElement;
+    input.focus();
+
+    fireEvent.change(input, { target: { value: "가나다" } });
+
+    expect(input.value).toBe("가나다");
+    expect(document.activeElement).toBe(input);
+  });
 });

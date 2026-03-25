@@ -36,7 +36,10 @@ function getFocusableElements(container: HTMLElement) {
 export function Modal({ isOpen, onClose, title, children, footer, size = "md" }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
   const titleId = useId();
+
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!isOpen) {
@@ -59,7 +62,7 @@ export function Modal({ isOpen, onClose, title, children, footer, size = "md" }:
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
 
@@ -98,7 +101,7 @@ export function Modal({ isOpen, onClose, title, children, footer, size = "md" }:
       document.body.style.overflow = previousOverflow;
       previouslyFocusedElementRef.current?.focus();
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) {
     return null;
