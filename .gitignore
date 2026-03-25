@@ -96,3 +96,12 @@ frontend/vite.config.d.ts
 .agents/skills/vercel-react-best-practices/rules/server-parallel-fetching.md
 .agents/skills/vercel-react-best-practices/rules/server-serialization.md
 .aider*
+docs/prompts/execution.txt
+docs/prompts/fix.txt
+docs/prompts/plan.txt
+docs/folder_structure.md
+*.bak
+folder_structure.md
+frontend.zip
+career_logs.md
+skills-lock.json
