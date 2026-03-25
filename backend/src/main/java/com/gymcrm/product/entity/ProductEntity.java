@@ -1,4 +1,4 @@
-package com.gymcrm.product;
+package com.gymcrm.product.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -78,7 +78,7 @@ public class ProductEntity {
     @Column(name = "updated_by", nullable = false)
     private Long updatedBy;
 
-    protected ProductEntity() {
+    public ProductEntity() {
     }
 
     public Long getProductId() {
