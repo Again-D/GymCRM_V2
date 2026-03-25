@@ -3,6 +3,8 @@ package com.gymcrm.crm;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
+import com.gymcrm.crm.entity.CrmMessageEvent;
+
 import java.util.UUID;
 
 @Component

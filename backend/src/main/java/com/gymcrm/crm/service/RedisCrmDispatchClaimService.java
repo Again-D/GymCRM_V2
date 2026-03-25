@@ -1,6 +1,7 @@
-package com.gymcrm.crm;
+package com.gymcrm.crm.service;
 
 import com.gymcrm.common.config.RedisRuntimeProperties;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -38,7 +39,7 @@ public class RedisCrmDispatchClaimService implements CrmDispatchClaimService {
         }
     }
 
-    long ttlSeconds(Long crmMessageEventId) {
+    public long ttlSeconds(Long crmMessageEventId) {
         Long ttl = stringRedisTemplate.getExpire(key(crmMessageEventId), TimeUnit.SECONDS);
         return ttl == null ? -2L : ttl;
     }

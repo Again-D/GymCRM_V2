@@ -1,4 +1,4 @@
-package com.gymcrm.membership.service;
+package com.gymcrm.membership;
 
 import com.gymcrm.common.auth.repository.AuthUserRepository;
 import com.gymcrm.common.error.ApiException;
@@ -9,6 +9,7 @@ import com.gymcrm.member.entity.Member;
 import com.gymcrm.member.enums.MemberStatus;
 import com.gymcrm.membership.repository.MemberMembershipRepository;
 import com.gymcrm.membership.repository.MembershipHoldRepository;
+import com.gymcrm.membership.service.MembershipPurchaseService;
 import com.gymcrm.product.entity.Product;
 import com.gymcrm.product.service.ProductService;
 import com.gymcrm.settlement.repository.PaymentRepository;

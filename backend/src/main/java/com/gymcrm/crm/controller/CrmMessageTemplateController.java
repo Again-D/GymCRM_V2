@@ -1,7 +1,10 @@
-package com.gymcrm.crm;
+package com.gymcrm.crm.controller;
 
 import com.gymcrm.common.api.ApiResponse;
 import com.gymcrm.common.security.AccessPolicies;
+import com.gymcrm.crm.entity.CrmMessageTemplate;
+import com.gymcrm.crm.service.CrmMessageTemplateService;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;

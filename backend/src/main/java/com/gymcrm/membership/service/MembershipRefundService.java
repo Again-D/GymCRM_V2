@@ -117,7 +117,7 @@ public class MembershipRefundService {
         }
     }
 
-    RefundCalculation calculateRefund(MemberMembership membership, BigDecimal purchaseAmount, LocalDate refundDate) {
+    public RefundCalculation calculateRefund(MemberMembership membership, BigDecimal purchaseAmount, LocalDate refundDate) {
         if (purchaseAmount == null || purchaseAmount.compareTo(BigDecimal.ZERO) < 0) {
             throw new ApiException(ErrorCode.BUSINESS_RULE, "구매 결제금액이 올바르지 않습니다.");
         }
@@ -182,7 +182,7 @@ public class MembershipRefundService {
                 .divide(BigDecimal.valueOf(membership.totalCount()), 2, RoundingMode.HALF_UP));
     }
 
-    void validateRefundEligibility(MemberMembership membership) {
+    public void validateRefundEligibility(MemberMembership membership) {
         if (!MembershipStatus.ACTIVE.name().equals(membership.membershipStatus())) {
             throw new ApiException(
                     ErrorCode.BUSINESS_RULE,

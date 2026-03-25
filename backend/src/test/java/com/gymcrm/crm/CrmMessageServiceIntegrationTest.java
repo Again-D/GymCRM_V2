@@ -1,5 +1,6 @@
 package com.gymcrm.crm;
 
+import com.gymcrm.crm.service.CrmMessageService;
 import com.gymcrm.member.dto.request.MemberCreateRequest;
 import com.gymcrm.member.entity.Member;
 import com.gymcrm.member.service.MemberService;

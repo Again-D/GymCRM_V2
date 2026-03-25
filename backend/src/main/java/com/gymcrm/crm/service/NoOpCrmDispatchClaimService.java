@@ -1,4 +1,4 @@
-package com.gymcrm.crm;
+package com.gymcrm.crm.service;
 
 public class NoOpCrmDispatchClaimService implements CrmDispatchClaimService {
     @Override

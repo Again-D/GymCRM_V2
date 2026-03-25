@@ -137,7 +137,7 @@ public class MembershipHoldService {
         }
     }
 
-    void validateHoldDateRange(LocalDate holdStartDate, LocalDate holdEndDate) {
+    public void validateHoldDateRange(LocalDate holdStartDate, LocalDate holdEndDate) {
         if (holdStartDate == null || holdEndDate == null) {
             throw new ApiException(ErrorCode.VALIDATION_ERROR, "holdStartDate and holdEndDate are required");
         }
@@ -146,7 +146,7 @@ public class MembershipHoldService {
         }
     }
 
-    void validateHoldEligibility(MemberMembership membership, Product product, LocalDate holdStartDate, LocalDate holdEndDate) {
+    public void validateHoldEligibility(MemberMembership membership, Product product, LocalDate holdStartDate, LocalDate holdEndDate) {
         if (!membership.centerId().equals(product.centerId())) {
             throw new ApiException(ErrorCode.BUSINESS_RULE, "회원권과 상품의 센터가 일치하지 않습니다.");
         }
@@ -184,7 +184,7 @@ public class MembershipHoldService {
         }
     }
 
-    void validateResumeEligibility(MemberMembership membership, MembershipHold activeHold, LocalDate resumeDate) {
+    public void validateResumeEligibility(MemberMembership membership, MembershipHold activeHold, LocalDate resumeDate) {
         membershipStatusTransitionService.assertTransitionAllowed(
                 MembershipStatus.valueOf(membership.membershipStatus()),
                 MembershipStatus.ACTIVE
@@ -195,7 +195,7 @@ public class MembershipHoldService {
         }
     }
 
-    int calculateActualHoldDays(LocalDate holdStartDate, LocalDate resumeDate) {
+    public int calculateActualHoldDays(LocalDate holdStartDate, LocalDate resumeDate) {
         long days = ChronoUnit.DAYS.between(holdStartDate, resumeDate) + 1L;
         if (days <= 0) {
             throw new ApiException(ErrorCode.VALIDATION_ERROR, "actual hold days must be positive");
@@ -203,11 +203,11 @@ public class MembershipHoldService {
         return Math.toIntExact(days);
     }
 
-    int calculateRequestedHoldDays(LocalDate holdStartDate, LocalDate holdEndDate) {
+    public int calculateRequestedHoldDays(LocalDate holdStartDate, LocalDate holdEndDate) {
         return calculateActualHoldDays(holdStartDate, holdEndDate);
     }
 
-    LocalDate recalculateEndDateAfterResume(LocalDate currentEndDate, int actualHoldDays) {
+    public LocalDate recalculateEndDateAfterResume(LocalDate currentEndDate, int actualHoldDays) {
         if (currentEndDate == null) {
             return null;
         }

@@ -1,6 +1,9 @@
 package com.gymcrm.crm;
 
 import com.gymcrm.common.error.ApiException;
+import com.gymcrm.crm.entity.CrmMessageTemplate;
+import com.gymcrm.crm.service.CrmMessageTemplateService;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
