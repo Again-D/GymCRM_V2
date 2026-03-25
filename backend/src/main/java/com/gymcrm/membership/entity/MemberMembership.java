@@ -1,4 +1,4 @@
-package com.gymcrm.membership;
+package com.gymcrm.membership.entity;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;

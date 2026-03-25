@@ -1,4 +1,4 @@
-package com.gymcrm.membership;
+package com.gymcrm.membership.entity;
 
 import java.time.OffsetDateTime;
 

@@ -1,8 +1,13 @@
-package com.gymcrm.membership;
+package com.gymcrm.membership.service;
 
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
+import com.gymcrm.membership.PaymentRepository;
+import com.gymcrm.membership.entity.MemberMembership;
+import com.gymcrm.membership.enums.MembershipStatus;
+import com.gymcrm.membership.repository.MemberMembershipRepository;
+import com.gymcrm.membership.repository.MembershipRefundRepository;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -97,7 +102,7 @@ class MembershipRefundServiceTest {
     private MemberMembership durationMembership(LocalDate startDate, LocalDate endDate, int holdDaysUsed) {
         OffsetDateTime now = OffsetDateTime.now();
         return new MemberMembership(
-                1L, 1L, 1L, 1L, null, "ACTIVE",
+                1L, 1L, 1L, 1L, null, MembershipStatus.ACTIVE.name(),
                 "기간제", "MEMBERSHIP", "DURATION",
                 new BigDecimal("100000"),
                 now,
@@ -116,7 +121,7 @@ class MembershipRefundServiceTest {
     private MemberMembership countMembership(int totalCount, int remainingCount, int usedCount) {
         OffsetDateTime now = OffsetDateTime.now();
         return new MemberMembership(
-                1L, 1L, 1L, 1L, null, "ACTIVE",
+                1L, 1L, 1L, 1L, null, MembershipStatus.ACTIVE.name(),
                 "횟수제", "PT", "COUNT",
                 new BigDecimal("200000"),
                 now,

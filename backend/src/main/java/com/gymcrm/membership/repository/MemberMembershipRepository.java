@@ -1,5 +1,7 @@
-package com.gymcrm.membership;
+package com.gymcrm.membership.repository;
 
+import com.gymcrm.membership.entity.MemberMembership;
+import com.gymcrm.membership.entity.MemberMembershipEntity;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Repository;
@@ -9,7 +11,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
-import static com.gymcrm.membership.QMemberMembershipEntity.memberMembershipEntity;
+import static com.gymcrm.membership.entity.QMemberMembershipEntity.memberMembershipEntity;
 
 @Repository
 public class MemberMembershipRepository {

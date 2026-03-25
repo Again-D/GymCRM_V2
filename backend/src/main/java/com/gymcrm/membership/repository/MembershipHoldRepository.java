@@ -1,5 +1,7 @@
-package com.gymcrm.membership;
+package com.gymcrm.membership.repository;
 
+import com.gymcrm.membership.entity.MembershipHold;
+import com.gymcrm.membership.enums.HoldStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
@@ -38,7 +40,7 @@ public class MembershipHoldRepository {
                     created_at, created_by, updated_at, updated_by
                 """)
                 .paramSource(command)
-                .query(MembershipHold.class)
+                .query((rs, rowNum) -> toDomain(rs))
                 .single();
     }
 
@@ -57,7 +59,7 @@ public class MembershipHoldRepository {
                 LIMIT 1
                 """)
                 .param("membershipId", membershipId)
-                .query(MembershipHold.class)
+                .query((rs, rowNum) -> toDomain(rs))
                 .optional();
     }
 
@@ -78,7 +80,7 @@ public class MembershipHoldRepository {
                 ORDER BY membership_id ASC, membership_hold_id DESC
                 """)
                 .param("membershipIds", membershipIds)
-                .query(MembershipHold.class)
+                .query((rs, rowNum) -> toDomain(rs))
                 .list()
                 .stream()
                 .collect(Collectors.toMap(
@@ -107,8 +109,27 @@ public class MembershipHoldRepository {
                     created_at, created_by, updated_at, updated_by
                 """)
                 .paramSource(command)
-                .query(MembershipHold.class)
+                .query((rs, rowNum) -> toDomain(rs))
                 .single();
+    }
+
+    private MembershipHold toDomain(java.sql.ResultSet rs) throws java.sql.SQLException {
+        return new MembershipHold(
+                rs.getLong("membership_hold_id"),
+                rs.getLong("center_id"),
+                rs.getLong("membership_id"),
+                HoldStatus.from(rs.getString("hold_status")),
+                rs.getObject("hold_start_date", LocalDate.class),
+                rs.getObject("hold_end_date", LocalDate.class),
+                rs.getObject("resumed_at", OffsetDateTime.class),
+                rs.getObject("actual_hold_days", Integer.class),
+                rs.getString("reason"),
+                rs.getString("memo"),
+                rs.getObject("created_at", OffsetDateTime.class),
+                rs.getObject("created_by", Long.class),
+                rs.getObject("updated_at", OffsetDateTime.class),
+                rs.getObject("updated_by", Long.class)
+        );
     }
 
     public record MembershipHoldCreateCommand(

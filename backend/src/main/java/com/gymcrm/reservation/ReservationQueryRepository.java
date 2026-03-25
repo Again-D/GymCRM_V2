@@ -10,7 +10,7 @@ import java.sql.Date;
 import java.time.LocalDate;
 import java.util.List;
 
-import static com.gymcrm.membership.QMemberMembershipEntity.memberMembershipEntity;
+import static com.gymcrm.membership.entity.QMemberMembershipEntity.memberMembershipEntity;
 import static com.gymcrm.reservation.QReservationEntity.reservationEntity;
 
 @Repository

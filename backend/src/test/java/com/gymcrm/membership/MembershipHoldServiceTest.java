@@ -1,8 +1,11 @@
-package com.gymcrm.membership;
+package com.gymcrm.membership.service;
 
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
+import com.gymcrm.membership.entity.MemberMembership;
+import com.gymcrm.membership.repository.MemberMembershipRepository;
+import com.gymcrm.membership.repository.MembershipHoldRepository;
 import com.gymcrm.product.Product;
 import com.gymcrm.product.ProductService;
 import org.junit.jupiter.api.Test;

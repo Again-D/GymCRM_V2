@@ -1,4 +1,4 @@
-package com.gymcrm.membership;
+package com.gymcrm.membership.service;
 
 import com.gymcrm.auth.AuthUser;
 import com.gymcrm.auth.AuthUserRepository;
@@ -8,6 +8,13 @@ import com.gymcrm.common.security.CurrentUserProvider;
 import com.gymcrm.member.service.MemberService;
 import com.gymcrm.member.entity.Member;
 import com.gymcrm.member.enums.MemberStatus;
+import com.gymcrm.membership.Payment;
+import com.gymcrm.membership.PaymentRepository;
+import com.gymcrm.membership.entity.MemberMembership;
+import com.gymcrm.membership.entity.MembershipHold;
+import com.gymcrm.membership.enums.MembershipStatus;
+import com.gymcrm.membership.repository.MemberMembershipRepository;
+import com.gymcrm.membership.repository.MembershipHoldRepository;
 import com.gymcrm.product.Product;
 import com.gymcrm.product.ProductService;
 import org.springframework.dao.DataAccessException;

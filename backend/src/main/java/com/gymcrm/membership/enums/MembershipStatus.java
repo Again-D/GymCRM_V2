@@ -1,4 +1,4 @@
-package com.gymcrm.membership;
+package com.gymcrm.membership.enums;
 
 public enum MembershipStatus {
     ACTIVE,
