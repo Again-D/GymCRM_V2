@@ -1,8 +1,9 @@
-package com.gymcrm.settlement;
+package com.gymcrm.settlement.service;
 
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
+import com.gymcrm.settlement.repository.SalesDashboardRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

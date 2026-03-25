@@ -1,5 +1,6 @@
 package com.gymcrm.settlement;
 
+import com.gymcrm.settlement.service.SalesSettlementReportService;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;

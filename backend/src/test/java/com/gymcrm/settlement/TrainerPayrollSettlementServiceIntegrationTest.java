@@ -7,6 +7,7 @@ import com.gymcrm.membership.entity.MemberMembership;
 import com.gymcrm.membership.service.MembershipPurchaseService;
 import com.gymcrm.product.entity.Product;
 import com.gymcrm.product.service.ProductService;
+import com.gymcrm.settlement.service.TrainerPayrollSettlementService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -91,6 +92,36 @@ class TrainerPayrollSettlementServiceIntegrationTest {
         assertEquals(0, new BigDecimal("50000").compareTo(trainerB.payrollAmount()));
     }
 
+    @Test
+    @Transactional
+    void monthlyPayrollUsesBusinessTimezoneMonthBoundaries() {
+        YearMonth targetMonth = YearMonth.of(2026, 3);
+        BigDecimal unitPrice = new BigDecimal("50000");
+        String trainerName = "Trainer-KST-" + UUID.randomUUID().toString().substring(0, 6);
+
+        MemberMembership includedMembership = purchasePtMembership();
+        MemberMembership excludedMembership = purchasePtMembership();
+
+        long includedSchedule = insertSchedule("PT", trainerName, LocalDate.of(2026, 3, 1));
+        long excludedSchedule = insertSchedule("PT", trainerName, LocalDate.of(2026, 4, 1));
+
+        insertReservationAt(includedMembership, includedSchedule, "COMPLETED",
+                OffsetDateTime.parse("2026-02-28T15:30:00Z"), null);
+        insertReservationAt(excludedMembership, excludedSchedule, "COMPLETED",
+                OffsetDateTime.parse("2026-03-31T15:30:00Z"), null);
+
+        TrainerPayrollSettlementService.MonthlyPayrollResult result = service.getMonthlyPayroll(
+                new TrainerPayrollSettlementService.MonthlyPayrollQuery(targetMonth, unitPrice)
+        );
+
+        TrainerPayrollSettlementService.TrainerPayrollRow trainerRow = result.rows().stream()
+                .filter(row -> row.trainerName().equals(trainerName))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(1L, trainerRow.completedClassCount());
+        assertEquals(0, unitPrice.compareTo(trainerRow.payrollAmount()));
+    }
+
     private MemberMembership purchasePtMembership() {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
         Member member = memberService.create(new MemberCreateRequest(
@@ -165,6 +196,37 @@ class TrainerPayrollSettlementServiceIntegrationTest {
         OffsetDateTime reservedAt = date.atTime(9, 0).atOffset(ZoneOffset.UTC);
         OffsetDateTime completedAt = "COMPLETED".equals(reservationStatus) ? date.atTime(11, 0).atOffset(ZoneOffset.UTC) : null;
         OffsetDateTime cancelledAt = "CANCELLED".equals(reservationStatus) ? date.atTime(9, 30).atOffset(ZoneOffset.UTC) : null;
+
+        jdbcClient.sql("""
+                INSERT INTO reservations (
+                    center_id, member_id, membership_id, schedule_id,
+                    reservation_status, reserved_at, cancelled_at, completed_at,
+                    created_by, updated_by
+                )
+                VALUES (
+                    1, :memberId, :membershipId, :scheduleId,
+                    :reservationStatus, :reservedAt, :cancelledAt, :completedAt,
+                    0, 0
+                )
+                """)
+                .param("memberId", membership.memberId())
+                .param("membershipId", membership.membershipId())
+                .param("scheduleId", scheduleId)
+                .param("reservationStatus", reservationStatus)
+                .param("reservedAt", reservedAt)
+                .param("cancelledAt", cancelledAt)
+                .param("completedAt", completedAt)
+                .update();
+    }
+
+    private void insertReservationAt(
+            MemberMembership membership,
+            long scheduleId,
+            String reservationStatus,
+            OffsetDateTime completedAt,
+            OffsetDateTime cancelledAt
+    ) {
+        OffsetDateTime reservedAt = completedAt != null ? completedAt.minusHours(2) : cancelledAt.minusMinutes(30);
 
         jdbcClient.sql("""
                 INSERT INTO reservations (

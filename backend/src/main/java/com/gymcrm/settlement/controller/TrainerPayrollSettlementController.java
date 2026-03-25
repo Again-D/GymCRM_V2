@@ -1,7 +1,8 @@
-package com.gymcrm.settlement;
+package com.gymcrm.settlement.controller;
 
 import com.gymcrm.common.api.ApiResponse;
 import com.gymcrm.common.security.AccessPolicies;
+import com.gymcrm.settlement.service.TrainerPayrollSettlementService;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Pattern;
 import org.springframework.security.access.prepost.PreAuthorize;

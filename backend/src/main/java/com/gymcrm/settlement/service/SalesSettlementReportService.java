@@ -1,19 +1,22 @@
-package com.gymcrm.settlement;
+package com.gymcrm.settlement.service;
 
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
+import com.gymcrm.settlement.repository.SalesSettlementReportRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
 import java.util.List;
 
 @Service
 public class SalesSettlementReportService {
+    private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Seoul");
+
     private final SalesSettlementReportRepository reportRepository;
     private final SalesSettlementReportCacheService reportCacheService;
     private final CurrentUserProvider currentUserProvider;
@@ -54,8 +57,8 @@ public class SalesSettlementReportService {
             String paymentMethod,
             String productKeyword
     ) {
-        OffsetDateTime startAt = startDate.atStartOfDay().atOffset(ZoneOffset.UTC);
-        OffsetDateTime endExclusiveAt = endDate.plusDays(1).atStartOfDay().atOffset(ZoneOffset.UTC);
+        OffsetDateTime startAt = startDate.atStartOfDay(BUSINESS_ZONE).toOffsetDateTime();
+        OffsetDateTime endExclusiveAt = endDate.plusDays(1).atStartOfDay(BUSINESS_ZONE).toOffsetDateTime();
 
         List<SalesSettlementReportRepository.SalesAggregateRow> rows = reportRepository.findSalesRows(
                 new SalesSettlementReportRepository.QueryCommand(

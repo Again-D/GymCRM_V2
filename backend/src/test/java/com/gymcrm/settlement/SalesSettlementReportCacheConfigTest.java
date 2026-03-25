@@ -2,6 +2,10 @@ package com.gymcrm.settlement;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gymcrm.common.config.RedisRuntimeProperties;
+import com.gymcrm.settlement.config.SalesSettlementReportCacheConfig;
+import com.gymcrm.settlement.service.NoOpSalesSettlementReportCacheService;
+import com.gymcrm.settlement.service.RedisSalesSettlementReportCacheService;
+import com.gymcrm.settlement.service.SalesSettlementReportCacheService;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;

@@ -1,4 +1,4 @@
-package com.gymcrm.settlement;
+package com.gymcrm.settlement.repository;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;

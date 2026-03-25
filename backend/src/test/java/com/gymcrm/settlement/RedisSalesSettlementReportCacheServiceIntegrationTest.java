@@ -2,6 +2,8 @@ package com.gymcrm.settlement;
 
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.gymcrm.common.config.RedisRuntimeProperties;
+import com.gymcrm.settlement.service.RedisSalesSettlementReportCacheService;
+import com.gymcrm.settlement.service.SalesSettlementReportService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

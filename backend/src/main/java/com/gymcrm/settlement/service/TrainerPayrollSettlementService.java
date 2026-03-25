@@ -1,19 +1,22 @@
-package com.gymcrm.settlement;
+package com.gymcrm.settlement.service;
 
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
+import com.gymcrm.settlement.repository.TrainerPayrollSettlementRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.YearMonth;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
 import java.util.List;
 
 @Service
 public class TrainerPayrollSettlementService {
+    private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Seoul");
+
     private final TrainerPayrollSettlementRepository repository;
     private final CurrentUserProvider currentUserProvider;
 
@@ -37,8 +40,8 @@ public class TrainerPayrollSettlementService {
             throw new ApiException(ErrorCode.VALIDATION_ERROR, "sessionUnitPrice must be >= 0");
         }
 
-        OffsetDateTime startAt = query.settlementMonth().atDay(1).atStartOfDay().atOffset(ZoneOffset.UTC);
-        OffsetDateTime endExclusiveAt = query.settlementMonth().plusMonths(1).atDay(1).atStartOfDay().atOffset(ZoneOffset.UTC);
+        OffsetDateTime startAt = query.settlementMonth().atDay(1).atStartOfDay(BUSINESS_ZONE).toOffsetDateTime();
+        OffsetDateTime endExclusiveAt = query.settlementMonth().plusMonths(1).atDay(1).atStartOfDay(BUSINESS_ZONE).toOffsetDateTime();
 
         List<TrainerPayrollSettlementRepository.TrainerCompletedCountRow> rows = repository.findMonthlyCompletedPtCounts(
                 new TrainerPayrollSettlementRepository.QueryCommand(

@@ -1,4 +1,4 @@
-package com.gymcrm.settlement;
+package com.gymcrm.settlement.service;
 
 import java.time.LocalDate;
 import java.util.Optional;
