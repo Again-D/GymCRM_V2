@@ -1156,6 +1156,7 @@ export function createMockMembership(input: {
   memberId: number;
   productNameSnapshot: string;
   productTypeSnapshot: "DURATION" | "COUNT";
+  assignedTrainerId?: number | null;
   startDate: string;
   endDate: string | null;
   remainingCount: number | null;
@@ -2025,6 +2026,18 @@ export function deleteMockTrainerAvailabilityException(
 
 export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
   const url = new URL(path, "http://local.mock");
+
+  if (url.pathname === "/api/v1/auth/trainers") {
+    return envelope(
+      mockTrainers
+        .filter((trainer) => trainer.userStatus === "ACTIVE")
+        .map((trainer) => ({
+          userId: trainer.userId,
+          centerId: trainer.centerId,
+          displayName: trainer.displayName,
+        })),
+    );
+  }
 
   if (url.pathname === "/api/v1/trainers") {
     return envelope(filterTrainers(url));

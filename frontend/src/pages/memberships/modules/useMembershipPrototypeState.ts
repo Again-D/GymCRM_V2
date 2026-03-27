@@ -11,6 +11,7 @@ type PaymentMethod = "CASH" | "CARD" | "TRANSFER" | "ETC";
 
 type PurchaseFormState = {
   productId: string;
+  assignedTrainerId: string;
   startDate: string;
   paymentMethod: PaymentMethod;
   paidAmount: string;
@@ -42,6 +43,7 @@ type CreateMembership = (input: {
   memberId: number;
   productNameSnapshot: string;
   productTypeSnapshot: "DURATION" | "COUNT";
+  assignedTrainerId: number | null;
   startDate: string;
   endDate: string | null;
   remainingCount: number | null;
@@ -122,6 +124,7 @@ function dateDiffInDays(startDate: string, endDate: string) {
 function createEmptyPurchaseForm(): PurchaseFormState {
   return {
     productId: "",
+    assignedTrainerId: "",
     startDate: todayText(),
     paymentMethod: "CASH",
     paidAmount: "",
@@ -346,11 +349,21 @@ export function useMembershipPrototypeState(
       setMembershipPanelError("상품을 선택해야 합니다.");
       return null;
     }
+    if (
+      purchasePreview.product.productCategory === "PT" &&
+      !purchaseForm.assignedTrainerId
+    ) {
+      setMembershipPanelError("PT 상품은 담당 트레이너를 선택해야 합니다.");
+      return null;
+    }
 
     try {
       const result = await createMembership({
         ...membershipInput,
         productId: purchasePreview.product.productId,
+        assignedTrainerId: purchaseForm.assignedTrainerId
+          ? Number(purchaseForm.assignedTrainerId)
+          : null,
         paymentMethod: purchaseForm.paymentMethod,
         paidAmount: purchasePreview.chargeAmount,
         membershipMemo: purchaseForm.membershipMemo || null,

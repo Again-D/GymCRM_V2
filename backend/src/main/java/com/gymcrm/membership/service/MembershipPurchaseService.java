@@ -18,6 +18,7 @@ import com.gymcrm.product.service.ProductService;
 import com.gymcrm.settlement.entity.Payment;
 import com.gymcrm.settlement.repository.PaymentRepository;
 import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +33,7 @@ import java.util.Set;
 @Service
 public class MembershipPurchaseService {
     private static final Set<String> PAYMENT_METHODS = Set.of("CASH", "CARD", "TRANSFER", "ETC");
+    private static final String PT_CATEGORY = "PT";
 
     private final MemberService memberService;
     private final ProductService productService;
@@ -71,7 +73,7 @@ public class MembershipPurchaseService {
         Member member = memberService.get(request.memberId());
         Product product = productService.get(request.productId());
         validatePurchaseEligibility(member, product);
-        Long assignedTrainerId = validateAssignedTrainer(member.centerId(), request.assignedTrainerId());
+        Long assignedTrainerId = validateAssignedTrainer(member.centerId(), request.assignedTrainerId(), product);
 
         PurchaseCalculation calculation = calculatePurchase(product, request.startDate());
         String paymentMethod = normalizePaymentMethod(request.paymentMethod());
@@ -179,6 +181,23 @@ public class MembershipPurchaseService {
         if (!"DURATION".equals(product.productType()) && !"COUNT".equals(product.productType())) {
             throw new ApiException(ErrorCode.BUSINESS_RULE, "지원하지 않는 상품 유형입니다.");
         }
+        validatePtPurchasePolicy(member, product);
+    }
+
+    private void validatePtPurchasePolicy(Member member, Product product) {
+        if (!PT_CATEGORY.equals(product.productCategory())) {
+            return;
+        }
+        if (memberMembershipRepository.existsNonTerminalPtMembership(member.centerId(), member.memberId())) {
+            throw new ApiException(ErrorCode.CONFLICT, "회원은 활성 또는 홀딩 중인 PT 회원권을 동시에 두 개 가질 수 없습니다.");
+        }
+    }
+
+    private Long validateAssignedTrainer(Long centerId, Long assignedTrainerId, Product product) {
+        if (PT_CATEGORY.equals(product.productCategory()) && assignedTrainerId == null) {
+            throw new ApiException(ErrorCode.BUSINESS_RULE, "PT 상품 구매 시 담당 트레이너를 선택해야 합니다.");
+        }
+        return validateAssignedTrainer(centerId, assignedTrainerId);
     }
 
     private Long validateAssignedTrainer(Long centerId, Long assignedTrainerId) {
@@ -234,6 +253,10 @@ public class MembershipPurchaseService {
     }
 
     private ApiException mapDataAccessException(DataAccessException ex) {
+        if (ex instanceof DataIntegrityViolationException && ex.getMessage() != null
+                && ex.getMessage().contains("uk_member_memberships_member_active_pt")) {
+            return new ApiException(ErrorCode.CONFLICT, "회원은 활성 또는 홀딩 중인 PT 회원권을 동시에 두 개 가질 수 없습니다.");
+        }
         return new ApiException(ErrorCode.INTERNAL_ERROR, "회원권 구매 처리 중 데이터 오류가 발생했습니다.");
     }
 

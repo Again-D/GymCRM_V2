@@ -164,8 +164,9 @@ class AuthControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data").isArray())
-                .andExpect(jsonPath("$.data[*].loginId", hasItem("trainer-user")))
-                .andExpect(jsonPath("$.data[*].loginId").value(org.hamcrest.Matchers.not(hasItem("desk-user"))));
+                .andExpect(jsonPath("$.data[*].displayName", hasItem("Trainer User")))
+                .andExpect(jsonPath("$.data[*].loginId").doesNotExist())
+                .andExpect(jsonPath("$.data[*].displayName").value(org.hamcrest.Matchers.not(hasItem("Desk User"))));
     }
 
     private void ensureTrainerUser() {

@@ -15,6 +15,7 @@ type CreateMembershipInput = {
   productId: number;
   productNameSnapshot: string;
   productTypeSnapshot: "DURATION" | "COUNT";
+  assignedTrainerId: number | null;
   startDate: string;
   endDate: string | null;
   remainingCount: number | null;
@@ -186,6 +187,7 @@ export function useSelectedMemberMembershipsQuery() {
           `/api/v1/members/${input.memberId}/memberships`,
           {
             productId: input.productId,
+            assignedTrainerId: input.assignedTrainerId,
             startDate: input.startDate || null,
             paidAmount: input.paidAmount,
             paymentMethod: input.paymentMethod,

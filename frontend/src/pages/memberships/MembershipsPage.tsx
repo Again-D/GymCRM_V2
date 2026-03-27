@@ -8,6 +8,7 @@ import type { MembershipPaymentRecord, PurchasedMembership } from "../members/mo
 import { createDefaultProductFilters } from "../products/modules/types";
 import { useProductsQuery } from "../products/modules/useProductsQuery";
 import { useMembershipPrototypeState } from "./modules/useMembershipPrototypeState";
+import { useTrainerOptionsQuery } from "./modules/useTrainerOptionsQuery";
 import { Modal } from "../../shared/ui/Modal";
 
 import styles from "./MembershipsPage.module.css";
@@ -56,6 +57,13 @@ export default function MembershipsPage() {
       status: "ACTIVE"
     })
   });
+  const {
+    trainerOptions,
+    trainerOptionsLoading,
+    trainerOptionsError,
+    loadTrainerOptions,
+    resetTrainerOptions
+  } = useTrainerOptionsQuery();
 
   const {
     purchaseForm,
@@ -101,10 +109,12 @@ export default function MembershipsPage() {
       ...createDefaultProductFilters(),
       status: "ACTIVE"
     });
+    void loadTrainerOptions();
     return () => {
       resetProductsQuery();
+      resetTrainerOptions();
     };
-  }, []);
+  }, [loadProducts, loadTrainerOptions, resetProductsQuery, resetTrainerOptions]);
 
   if (!selectedMember) {
     return (
@@ -331,7 +341,7 @@ export default function MembershipsPage() {
               <button 
                 type="button" 
                 className="primary-button" 
-                disabled={!purchaseForm.productId}
+                disabled={!purchaseForm.productId || (purchasePreview?.product.productCategory === "PT" && !purchaseForm.assignedTrainerId)}
                 onClick={async () => {
                   const res = await handlePurchaseSubmit();
                   if (res) handleCloseModal();
@@ -350,7 +360,7 @@ export default function MembershipsPage() {
                 value={purchaseForm.productId}
                 onChange={(event) => {
                   clearPanelFeedback();
-                  setPurchaseForm((prev) => ({ ...prev, productId: event.target.value }));
+                  setPurchaseForm((prev) => ({ ...prev, productId: event.target.value, assignedTrainerId: "" }));
                 }}
               >
                 <option value="">-- 상품을 선택하세요 --</option>
@@ -361,6 +371,34 @@ export default function MembershipsPage() {
                 ))}
               </select>
             </label>
+            {purchasePreview?.product.productCategory === "PT" && (
+              <label className="stack-sm">
+                <span className="text-sm">담당 트레이너</span>
+                <select
+                  className="input"
+                  value={purchaseForm.assignedTrainerId}
+                  onChange={(event) =>
+                    setPurchaseForm((prev) => ({
+                      ...prev,
+                      assignedTrainerId: event.target.value
+                    }))
+                  }
+                  disabled={trainerOptionsLoading}
+                >
+                  <option value="">
+                    {trainerOptionsLoading ? "-- 트레이너를 불러오는 중 --" : "-- 담당 트레이너를 선택하세요 --"}
+                  </option>
+                  {trainerOptions.map((trainer) => (
+                    <option key={trainer.userId} value={trainer.userId}>
+                      {trainer.displayName}
+                    </option>
+                  ))}
+                </select>
+                {trainerOptionsError ? (
+                  <span className="text-xs text-danger">{trainerOptionsError}</span>
+                ) : null}
+              </label>
+            )}
             <div className={`row-actions ${styles.gap16}`}>
               <label className={`stack-sm ${styles.flex1}`}>
                 <span className="text-sm">시작일</span>
