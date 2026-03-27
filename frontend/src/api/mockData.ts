@@ -2,6 +2,8 @@ import type { ApiEnvelope } from "./client";
 import type {
   MemberDetail,
   MemberSummary,
+  PtReservationCandidate,
+  PtReservationCandidatesPayload,
   PurchasedMembership,
   ReservationRow,
   ReservationScheduleSummary,
@@ -236,33 +238,39 @@ const initialMemberMemberships = new Map<number, PurchasedMembership[]>([
         membershipId: 9001,
         memberId: 101,
         productNameSnapshot: "PT 10회권",
+        productCategorySnapshot: "PT",
         productTypeSnapshot: "COUNT",
         membershipStatus: "ACTIVE",
         startDate: "2026-03-01",
         endDate: "2026-06-30",
         remainingCount: 8,
+        assignedTrainerId: 41,
         activeHoldStatus: null,
       },
       {
         membershipId: 9002,
         memberId: 101,
         productNameSnapshot: "헬스 3개월",
+        productCategorySnapshot: "GYM",
         productTypeSnapshot: "DURATION",
         membershipStatus: "HOLDING",
         startDate: "2026-02-15",
         endDate: "2026-05-15",
         remainingCount: null,
+        assignedTrainerId: null,
         activeHoldStatus: "ACTIVE",
       },
       {
         membershipId: 9003,
         memberId: 101,
         productNameSnapshot: "만료된 PT 5회권",
+        productCategorySnapshot: "PT",
         productTypeSnapshot: "COUNT",
         membershipStatus: "ACTIVE",
         startDate: "2025-12-01",
         endDate: "2026-01-15",
         remainingCount: 3,
+        assignedTrainerId: 41,
         activeHoldStatus: null,
       },
     ],
@@ -274,22 +282,26 @@ const initialMemberMemberships = new Map<number, PurchasedMembership[]>([
         membershipId: 9011,
         memberId: 102,
         productNameSnapshot: "PT 20회권",
+        productCategorySnapshot: "PT",
         productTypeSnapshot: "COUNT",
         membershipStatus: "ACTIVE",
         startDate: "2026-02-01",
         endDate: "2026-07-20",
         remainingCount: 12,
+        assignedTrainerId: 42,
         activeHoldStatus: null,
       },
       {
         membershipId: 9012,
         memberId: 102,
         productNameSnapshot: "GX 12회권",
+        productCategorySnapshot: "GX",
         productTypeSnapshot: "COUNT",
         membershipStatus: "ACTIVE",
         startDate: "2026-02-20",
         endDate: "2026-04-30",
         remainingCount: 0,
+        assignedTrainerId: null,
         activeHoldStatus: null,
       },
     ],
@@ -301,6 +313,7 @@ const initialReservationSchedules: ReservationScheduleSummary[] = [
   {
     scheduleId: 7001,
     scheduleType: "PT",
+    trainerUserId: 41,
     trainerName: "정트레이너",
     slotTitle: "오전 PT A",
     startAt: "2026-03-12T09:00:00+09:00",
@@ -311,6 +324,7 @@ const initialReservationSchedules: ReservationScheduleSummary[] = [
   {
     scheduleId: 7002,
     scheduleType: "PT",
+    trainerUserId: 42,
     trainerName: "김트레이너",
     slotTitle: "오후 PT B",
     startAt: "2026-03-12T15:00:00+09:00",
@@ -321,6 +335,7 @@ const initialReservationSchedules: ReservationScheduleSummary[] = [
   {
     scheduleId: 7101,
     scheduleType: "GX",
+    trainerUserId: null,
     trainerName: "한코치",
     slotTitle: "저녁 GX C",
     startAt: "2026-03-12T19:00:00+09:00",
@@ -639,6 +654,7 @@ let mockSettlementTransactions = initialSettlementTransactions.map(
 let mockDataVersion = 0;
 let membershipIdSeed = 99000;
 let reservationIdSeed = 5002;
+let scheduleIdSeed = 7101;
 let accessSessionIdSeed = 92000;
 let accessEventIdSeed = 97000;
 let lockerAssignmentIdSeed = 98000;
@@ -1050,6 +1066,7 @@ export function resetMockData() {
   mockDataVersion = 0;
   membershipIdSeed = 99000;
   reservationIdSeed = 5002;
+  scheduleIdSeed = 7101;
   accessSessionIdSeed = 92000;
   accessEventIdSeed = 97000;
   lockerAssignmentIdSeed = 98000;
@@ -1148,11 +1165,18 @@ export function createMockMembership(input: {
     membershipId: membershipIdSeed,
     memberId: input.memberId,
     productNameSnapshot: input.productNameSnapshot,
+    productCategorySnapshot:
+      input.productNameSnapshot.includes("PT")
+        ? "PT"
+        : input.productNameSnapshot.includes("GX")
+          ? "GX"
+          : null,
     productTypeSnapshot: input.productTypeSnapshot,
     membershipStatus: "ACTIVE",
     startDate: input.startDate,
     endDate: input.endDate,
     remainingCount: input.remainingCount,
+    assignedTrainerId: null,
     activeHoldStatus: null,
   };
 
@@ -1212,6 +1236,152 @@ export function createMockReservation(input: {
   ]);
   bumpMockDataVersion();
   return { ...reservation };
+}
+
+function formatMockIso(dateText: string, timeText: string) {
+  return `${dateText}T${timeText}+09:00`;
+}
+
+function getMockPtReservationCandidates(
+  membershipId: number,
+  trainerUserId: number,
+  date: string,
+): PtReservationCandidatesPayload {
+  const membership = Array.from(mockMemberMemberships.values())
+    .flat()
+    .find((item) => item.membershipId === membershipId);
+  const trainer = mockTrainers.find((item) => item.userId === trainerUserId);
+  const memberReservations = membership
+    ? mockReservationsByMemberId.get(membership.memberId) ?? []
+    : [];
+
+  if (!membership || membership.productCategorySnapshot !== "PT" || !trainer) {
+    return {
+      date,
+      trainerUserId,
+      membershipId,
+      slotDurationMinutes: 60,
+      slotStepMinutes: 30,
+      items: [],
+    };
+  }
+
+  const weekday = new Date(`${date}T00:00:00+09:00`).getDay();
+  const normalizedWeekday = weekday === 0 ? 7 : weekday;
+  const availability = mockTrainerAvailabilityByUserId.get(trainerUserId);
+  const rule = availability?.weeklyRules.find((item) => item.dayOfWeek === normalizedWeekday);
+  if (!rule) {
+    return {
+      date,
+      trainerUserId,
+      membershipId,
+      slotDurationMinutes: 60,
+      slotStepMinutes: 30,
+      items: [],
+    };
+  }
+
+  const trainerReservations = Array.from(mockReservationsByMemberId.values())
+    .flat()
+    .map((reservation) => {
+      const schedule = mockReservationSchedules.find((item) => item.scheduleId === reservation.scheduleId);
+      return schedule && schedule.trainerUserId === trainerUserId && reservation.reservationStatus === "CONFIRMED"
+        ? schedule
+        : null;
+    })
+    .filter((item): item is ReservationScheduleSummary => item != null);
+
+  const memberBlocks = memberReservations
+    .map((reservation) => mockReservationSchedules.find((item) => item.scheduleId === reservation.scheduleId))
+    .filter((item): item is ReservationScheduleSummary => item != null && item.scheduleType !== undefined && memberReservations.some((reservation) => reservation.scheduleId === item.scheduleId && reservation.reservationStatus === "CONFIRMED"));
+
+  const [startHour, startMinute] = rule.startTime.split(":").map(Number);
+  const [endHour, endMinute] = rule.endTime.split(":").map(Number);
+  const windowStartMinutes = startHour * 60 + startMinute;
+  const windowEndMinutes = endHour * 60 + endMinute;
+  const items: PtReservationCandidate[] = [];
+
+  for (let startMinutes = windowStartMinutes; startMinutes + 60 <= windowEndMinutes; startMinutes += 30) {
+    const candidateStartHour = String(Math.floor(startMinutes / 60)).padStart(2, "0");
+    const candidateStartMinute = String(startMinutes % 60).padStart(2, "0");
+    const candidateEndTotalMinutes = startMinutes + 60;
+    const candidateEndHour = String(Math.floor(candidateEndTotalMinutes / 60)).padStart(2, "0");
+    const candidateEndMinute = String(candidateEndTotalMinutes % 60).padStart(2, "0");
+    const candidateStartAt = formatMockIso(date, `${candidateStartHour}:${candidateStartMinute}:00`);
+    const candidateEndAt = formatMockIso(date, `${candidateEndHour}:${candidateEndMinute}:00`);
+    const candidateStartTime = new Date(candidateStartAt).getTime();
+    const candidateEndTime = new Date(candidateEndAt).getTime();
+    const overlapsTrainer = trainerReservations.some((schedule) => {
+      const scheduleStart = new Date(schedule.startAt).getTime();
+      const scheduleEnd = new Date(schedule.endAt).getTime();
+      return candidateStartTime < scheduleEnd && scheduleStart < candidateEndTime;
+    });
+    const overlapsMember = memberBlocks.some((schedule) => {
+      const scheduleStart = new Date(schedule.startAt).getTime();
+      const scheduleEnd = new Date(schedule.endAt).getTime();
+      return candidateStartTime < scheduleEnd && scheduleStart < candidateEndTime;
+    });
+    if (overlapsTrainer || overlapsMember || candidateStartTime <= Date.now()) {
+      continue;
+    }
+    items.push({
+      startAt: candidateStartAt,
+      endAt: candidateEndAt,
+      source: "MOCK_AVAILABILITY",
+    });
+  }
+
+  return {
+    date,
+    trainerUserId,
+    membershipId,
+    slotDurationMinutes: 60,
+    slotStepMinutes: 30,
+    items,
+  };
+}
+
+export function createMockPtReservation(input: {
+  memberId: number;
+  membershipId: number;
+  trainerUserId: number;
+  startAt: string;
+  memo?: string | null;
+}) {
+  const trainer = mockTrainers.find((item) => item.userId === input.trainerUserId);
+  const startAt = new Date(input.startAt);
+  const endAt = new Date(startAt.getTime() + 60 * 60 * 1000);
+
+  scheduleIdSeed += 1;
+  const schedule: ReservationScheduleSummary = {
+    scheduleId: scheduleIdSeed,
+    scheduleType: "PT",
+    trainerUserId: input.trainerUserId,
+    trainerName: trainer?.displayName ?? `트레이너 #${input.trainerUserId}`,
+    slotTitle: "PT 예약",
+    startAt: startAt.toISOString(),
+    endAt: endAt.toISOString(),
+    capacity: 1,
+    currentCount: 1,
+  };
+  mockReservationSchedules = [schedule, ...mockReservationSchedules];
+
+  const memberships = mockMemberMemberships.get(input.memberId) ?? [];
+  mockMemberMemberships.set(
+    input.memberId,
+    memberships.map((membership) =>
+      membership.membershipId === input.membershipId && membership.remainingCount != null
+        ? { ...membership, remainingCount: Math.max(0, membership.remainingCount - 1) }
+        : membership,
+    ),
+  );
+
+  return createMockReservation({
+    memberId: input.memberId,
+    membershipId: input.membershipId,
+    scheduleId: schedule.scheduleId,
+    memo: input.memo,
+  });
 }
 
 export function patchMockReservation(
@@ -1912,6 +2082,15 @@ export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
   if (url.pathname === "/api/v1/reservations/schedules") {
     return envelope(
       mockReservationSchedules.map((schedule) => ({ ...schedule })),
+    );
+  }
+
+  if (url.pathname === "/api/v1/reservations/pt-candidates") {
+    const membershipId = Number(url.searchParams.get("membershipId"));
+    const trainerUserId = Number(url.searchParams.get("trainerUserId"));
+    const date = url.searchParams.get("date") ?? "";
+    return envelope(
+      getMockPtReservationCandidates(membershipId, trainerUserId, date),
     );
   }
 

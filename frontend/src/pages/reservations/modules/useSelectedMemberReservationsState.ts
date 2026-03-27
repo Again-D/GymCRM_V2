@@ -14,6 +14,14 @@ type CreateReservationInput = {
   memo?: string;
 };
 
+type CreatePtReservationInput = {
+  memberId: number;
+  membershipId: number;
+  trainerUserId: number;
+  startAt: string;
+  memo?: string;
+};
+
 export function useSelectedMemberReservationsState() {
   const [selectedMemberReservations, setSelectedMemberReservations] = useState<
     ReservationRow[]
@@ -112,6 +120,40 @@ export function useSelectedMemberReservationsState() {
         "trainers",
         "reservationTargets",
         "selectedMemberReservations",
+      ]);
+      return reservation;
+    },
+    [useMockMutations],
+  );
+
+  const createPtReservation = useCallback(
+    async (input: CreatePtReservationInput) => {
+      if (!useMockMutations) {
+        const response = await apiPost<ReservationRow>("/api/v1/reservations/pt", {
+          memberId: input.memberId,
+          membershipId: input.membershipId,
+          trainerUserId: input.trainerUserId,
+          startAt: input.startAt,
+          memo: input.memo ?? null,
+        });
+        setSelectedMemberReservations((prev) => [response.data, ...prev]);
+        invalidateQueryDomains([
+          "trainers",
+          "reservationTargets",
+          "selectedMemberReservations",
+          "selectedMemberMemberships",
+        ]);
+        return response.data;
+      }
+
+      const { createMockPtReservation } = await import("../../../api/mockData");
+      const reservation = createMockPtReservation(input);
+      setSelectedMemberReservations((prev) => [reservation, ...prev]);
+      invalidateQueryDomains([
+        "trainers",
+        "reservationTargets",
+        "selectedMemberReservations",
+        "selectedMemberMemberships",
       ]);
       return reservation;
     },
@@ -279,6 +321,7 @@ export function useSelectedMemberReservationsState() {
     loadSelectedMemberReservations,
     resetSelectedMemberReservationsState,
     createReservation,
+    createPtReservation,
     checkInReservation,
     completeReservation,
     cancelReservation,

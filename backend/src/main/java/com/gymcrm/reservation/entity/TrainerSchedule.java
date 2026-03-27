@@ -5,6 +5,7 @@ import java.time.OffsetDateTime;
 public record TrainerSchedule(
         Long scheduleId,
         Long centerId,
+        Long trainerUserId,
         String scheduleType,
         String trainerName,
         String slotTitle,

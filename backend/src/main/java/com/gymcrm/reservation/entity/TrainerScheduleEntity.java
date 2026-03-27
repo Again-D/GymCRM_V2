@@ -20,6 +20,9 @@ public class TrainerScheduleEntity {
     @Column(name = "center_id", nullable = false)
     private Long centerId;
 
+    @Column(name = "trainer_user_id")
+    private Long trainerUserId;
+
     @Column(name = "schedule_type", nullable = false)
     private String scheduleType;
 
@@ -78,6 +81,14 @@ public class TrainerScheduleEntity {
 
     public void setCenterId(Long centerId) {
         this.centerId = centerId;
+    }
+
+    public Long getTrainerUserId() {
+        return trainerUserId;
+    }
+
+    public void setTrainerUserId(Long trainerUserId) {
+        this.trainerUserId = trainerUserId;
     }
 
     public String getScheduleType() {

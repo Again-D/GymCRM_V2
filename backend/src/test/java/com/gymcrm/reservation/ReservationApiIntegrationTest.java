@@ -16,7 +16,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.hasItem;
@@ -39,6 +42,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class ReservationApiIntegrationTest {
     private static final long CENTER_ID = 1L;
+    private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Seoul");
     private static final String DESK_LOGIN_ID = "desk-user";
     private static final String DESK_PASSWORD = "desk-user-1234!";
     private static final String TRAINER_LOGIN_ID = "trainer-user";
@@ -318,6 +322,295 @@ class ReservationApiIntegrationTest {
     }
 
     @Test
+    void deskRoleCanListPtCandidatesAndCreatePtReservation() throws Exception {
+        ensureDeskUser();
+        ensureTrainerUser();
+        String deskToken = loginAndGetAccessToken(DESK_LOGIN_ID, DESK_PASSWORD);
+        long trainerUserId = findUserIdByLoginId(TRAINER_LOGIN_ID);
+
+        LocalDate targetDate = LocalDate.now(BUSINESS_ZONE).plusDays(2);
+        clearTrainerSchedulesForDate(CENTER_ID, trainerUserId, targetDate);
+        insertWeeklyAvailabilityRule(CENTER_ID, trainerUserId, targetDate.getDayOfWeek().getValue(), "10:00", "12:00");
+
+        long memberId = insertMemberFixture("PT후보회원");
+        long productId = insertProductFixture("PT", "COUNT");
+        long membershipId = insertMembershipFixture(CENTER_ID, memberId, productId, "PT", "COUNT", 2, 2, 0, trainerUserId);
+
+        TrainerSchedule gxSchedule = createScheduleAt(CENTER_ID, null, "GX", 10, targetDate, 10, 0, 60);
+        insertReservationFixture(CENTER_ID, memberId, membershipId, gxSchedule.scheduleId());
+
+        mockMvc.perform(get("/api/v1/reservations/pt-candidates")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + deskToken)
+                        .param("membershipId", String.valueOf(membershipId))
+                        .param("trainerUserId", String.valueOf(trainerUserId))
+                        .param("date", targetDate.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].startAt").value(targetDate + "T02:00:00Z"));
+
+        mockMvc.perform(post("/api/v1/reservations/pt")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + deskToken)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "memberId": %d,
+                                  "membershipId": %d,
+                                  "trainerUserId": %d,
+                                  "startAt": "%sT11:00:00+09:00",
+                                  "memo": "  pt create  "
+                                }
+                                """.formatted(memberId, membershipId, trainerUserId, targetDate)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.reservationStatus").value("CONFIRMED"));
+
+        Integer currentCount = jdbcClient.sql("""
+                SELECT current_count
+                FROM trainer_schedules
+                WHERE center_id = :centerId
+                  AND trainer_user_id = :trainerUserId
+                  AND schedule_type = 'PT'
+                  AND start_at = :startAt
+                """)
+                .param("centerId", CENTER_ID)
+                .param("trainerUserId", trainerUserId)
+                .param("startAt", OffsetDateTime.parse(targetDate + "T11:00:00+09:00"))
+                .query(Integer.class)
+                .single();
+        org.junit.jupiter.api.Assertions.assertEquals(1, currentCount);
+    }
+
+    @Test
+    void ptCreateRejectsWhenOutstandingConfirmedPtAlreadyUsesRemainingCount() throws Exception {
+        ensureDeskUser();
+        ensureTrainerUser();
+        String deskToken = loginAndGetAccessToken(DESK_LOGIN_ID, DESK_PASSWORD);
+        long trainerUserId = findUserIdByLoginId(TRAINER_LOGIN_ID);
+
+        LocalDate targetDate = LocalDate.now(BUSINESS_ZONE).plusDays(3);
+        clearTrainerSchedulesForDate(CENTER_ID, trainerUserId, targetDate);
+        insertWeeklyAvailabilityRule(CENTER_ID, trainerUserId, targetDate.getDayOfWeek().getValue(), "09:00", "13:00");
+
+        long memberId = insertMemberFixture("PT잔여회원");
+        long productId = insertProductFixture("PT", "COUNT");
+        long membershipId = insertMembershipFixture(CENTER_ID, memberId, productId, "PT", "COUNT", 1, 1, 0, trainerUserId);
+
+        mockMvc.perform(post("/api/v1/reservations/pt")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + deskToken)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "memberId": %d,
+                                  "membershipId": %d,
+                                  "trainerUserId": %d,
+                                  "startAt": "%sT09:00:00+09:00"
+                                }
+                                """.formatted(memberId, membershipId, trainerUserId, targetDate)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/reservations/pt")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + deskToken)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "memberId": %d,
+                                  "membershipId": %d,
+                                  "trainerUserId": %d,
+                                  "startAt": "%sT10:00:00+09:00"
+                                }
+                                """.formatted(memberId, membershipId, trainerUserId, targetDate)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error.code").value("BUSINESS_RULE"));
+    }
+
+    @Test
+    void trainerRoleCannotQueryPtCandidatesForUnassignedMembership() throws Exception {
+        ensureTrainerUser();
+        String trainerToken = loginAndGetAccessToken(TRAINER_LOGIN_ID, TRAINER_PASSWORD);
+        long trainerUserId = findUserIdByLoginId(TRAINER_LOGIN_ID);
+
+        LocalDate targetDate = LocalDate.now(BUSINESS_ZONE).plusDays(4);
+        clearTrainerSchedulesForDate(CENTER_ID, trainerUserId, targetDate);
+        insertWeeklyAvailabilityRule(CENTER_ID, trainerUserId, targetDate.getDayOfWeek().getValue(), "09:00", "12:00");
+
+        long memberId = insertMemberFixture("PT비담당회원");
+        long productId = insertProductFixture("PT", "COUNT");
+        long membershipId = insertMembershipFixture(CENTER_ID, memberId, productId, "PT", "COUNT", 3, 3, 0, null);
+
+        mockMvc.perform(get("/api/v1/reservations/pt-candidates")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + trainerToken)
+                        .param("membershipId", String.valueOf(membershipId))
+                        .param("trainerUserId", String.valueOf(trainerUserId))
+                        .param("date", targetDate.toString()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
+    }
+
+    @Test
+    void ptCandidateAndCreateRejectMalformedInputs() throws Exception {
+        ensureDeskUser();
+        ensureTrainerUser();
+        String deskToken = loginAndGetAccessToken(DESK_LOGIN_ID, DESK_PASSWORD);
+        long trainerUserId = findUserIdByLoginId(TRAINER_LOGIN_ID);
+
+        LocalDate targetDate = LocalDate.now(BUSINESS_ZONE).plusDays(5);
+        clearTrainerSchedulesForDate(CENTER_ID, trainerUserId, targetDate);
+        insertWeeklyAvailabilityRule(CENTER_ID, trainerUserId, targetDate.getDayOfWeek().getValue(), "09:00", "12:00");
+
+        long memberId = insertMemberFixture("PT검증회원");
+        long productId = insertProductFixture("PT", "COUNT");
+        long membershipId = insertMembershipFixture(CENTER_ID, memberId, productId, "PT", "COUNT", 3, 3, 0, trainerUserId);
+
+        mockMvc.perform(get("/api/v1/reservations/pt-candidates")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + deskToken)
+                .param("membershipId", String.valueOf(membershipId))
+                .param("trainerUserId", String.valueOf(trainerUserId))
+                .param("date", "2026/03/27"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
+
+        mockMvc.perform(post("/api/v1/reservations/pt")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + deskToken)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "memberId": %d,
+                                  "membershipId": %d,
+                                  "trainerUserId": %d,
+                                  "startAt": "%sT09:15:00+09:00"
+                                }
+                                """.formatted(memberId, membershipId, trainerUserId, targetDate)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
+
+        mockMvc.perform(post("/api/v1/reservations/pt")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + deskToken)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "memberId": %d,
+                                  "membershipId": 0,
+                                  "trainerUserId": %d,
+                                  "startAt": "%sT09:00:00+09:00"
+                                }
+                                """.formatted(memberId, trainerUserId, targetDate)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
+
+        mockMvc.perform(post("/api/v1/reservations/pt")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + deskToken)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "memberId": %d,
+                                  "membershipId": %d,
+                                  "trainerUserId": %d,
+                                  "startAt": "%sT09:00:00"
+                                }
+                                """.formatted(memberId, membershipId, trainerUserId, targetDate)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void ptCreateNormalizesMemoAndTimezone() throws Exception {
+        ensureDeskUser();
+        ensureTrainerUser();
+        String deskToken = loginAndGetAccessToken(DESK_LOGIN_ID, DESK_PASSWORD);
+        long trainerUserId = findUserIdByLoginId(TRAINER_LOGIN_ID);
+
+        LocalDate targetDate = LocalDate.now(BUSINESS_ZONE).plusDays(6);
+        clearTrainerSchedulesForDate(CENTER_ID, trainerUserId, targetDate);
+        insertWeeklyAvailabilityRule(CENTER_ID, trainerUserId, targetDate.getDayOfWeek().getValue(), "09:00", "13:00");
+
+        long memberId = insertMemberFixture("PT정규화회원");
+        long productId = insertProductFixture("PT", "COUNT");
+        long membershipId = insertMembershipFixture(CENTER_ID, memberId, productId, "PT", "COUNT", 3, 3, 0, trainerUserId);
+
+        MvcResult createResult = mockMvc.perform(post("/api/v1/reservations/pt")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + deskToken)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "memberId": %d,
+                                  "membershipId": %d,
+                                  "trainerUserId": %d,
+                                  "startAt": "%sT00:00:00Z",
+                                  "memo": "   현장 조율 메모   "
+                                }
+                                """.formatted(memberId, membershipId, trainerUserId, targetDate)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.memo").value("현장 조율 메모"))
+                .andReturn();
+
+        long reservationId = jsonLong(createResult, "/data/reservationId");
+        long scheduleId = jsonLong(createResult, "/data/scheduleId");
+
+        OffsetDateTime storedScheduleStartAt = jdbcClient.sql("""
+                SELECT start_at
+                FROM trainer_schedules
+                WHERE schedule_id = :scheduleId
+                """)
+                .param("scheduleId", scheduleId)
+                .query(OffsetDateTime.class)
+                .single();
+        OffsetDateTime storedScheduleCreatedAt = jdbcClient.sql("""
+                SELECT created_at
+                FROM trainer_schedules
+                WHERE schedule_id = :scheduleId
+                """)
+                .param("scheduleId", scheduleId)
+                .query(OffsetDateTime.class)
+                .single();
+        String storedMemo = jdbcClient.sql("""
+                SELECT memo
+                FROM reservations
+                WHERE reservation_id = :reservationId
+                """)
+                .param("reservationId", reservationId)
+                .query(String.class)
+                .single();
+
+        org.junit.jupiter.api.Assertions.assertEquals(
+                OffsetDateTime.parse(targetDate + "T09:00:00+09:00").toInstant(),
+                storedScheduleStartAt.toInstant()
+        );
+        org.junit.jupiter.api.Assertions.assertTrue(storedScheduleCreatedAt.isBefore(storedScheduleStartAt));
+        org.junit.jupiter.api.Assertions.assertEquals("현장 조율 메모", storedMemo);
+    }
+
+    @Test
+    void ptCreateRejectsMemoLongerThan500Characters() throws Exception {
+        ensureDeskUser();
+        ensureTrainerUser();
+        String deskToken = loginAndGetAccessToken(DESK_LOGIN_ID, DESK_PASSWORD);
+        long trainerUserId = findUserIdByLoginId(TRAINER_LOGIN_ID);
+
+        LocalDate targetDate = LocalDate.now(BUSINESS_ZONE).plusDays(7);
+        clearTrainerSchedulesForDate(CENTER_ID, trainerUserId, targetDate);
+        insertWeeklyAvailabilityRule(CENTER_ID, trainerUserId, targetDate.getDayOfWeek().getValue(), "09:00", "12:00");
+
+        long memberId = insertMemberFixture("PT메모회원");
+        long productId = insertProductFixture("PT", "COUNT");
+        long membershipId = insertMembershipFixture(CENTER_ID, memberId, productId, "PT", "COUNT", 3, 3, 0, trainerUserId);
+        String longMemo = "x".repeat(501);
+
+        mockMvc.perform(post("/api/v1/reservations/pt")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + deskToken)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "memberId": %d,
+                                  "membershipId": %d,
+                                  "trainerUserId": %d,
+                                  "startAt": "%sT09:00:00+09:00",
+                                  "memo": "%s"
+                                }
+                                """.formatted(memberId, membershipId, trainerUserId, targetDate, longMemo)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
     void deskRoleCannotReadOrMutateReservationFromAnotherCenter() throws Exception {
         ensureDeskUser();
         String deskToken = loginAndGetAccessToken(DESK_LOGIN_ID, DESK_PASSWORD);
@@ -493,6 +786,20 @@ class ReservationApiIntegrationTest {
         return node.asLong();
     }
 
+    private long findUserIdByLoginId(String loginId) {
+        return jdbcClient.sql("""
+                SELECT user_id
+                FROM users
+                WHERE center_id = :centerId
+                  AND login_id = :loginId
+                  AND is_deleted = FALSE
+                """)
+                .param("centerId", CENTER_ID)
+                .param("loginId", loginId)
+                .query(Long.class)
+                .single();
+    }
+
     private TrainerSchedule createFutureSchedule(String type, int capacity) {
         return createFutureSchedule(CENTER_ID, type, capacity);
     }
@@ -503,6 +810,7 @@ class ReservationApiIntegrationTest {
         OffsetDateTime endAt = startAt.plusMinutes("PT".equals(type) ? 50 : 60);
         return trainerScheduleRepository.insert(new TrainerScheduleRepository.TrainerScheduleCreateCommand(
                 centerId,
+                null,
                 type,
                 "P7API트레이너-" + suffix,
                 "P7API슬롯-" + suffix,
@@ -515,12 +823,41 @@ class ReservationApiIntegrationTest {
         ));
     }
 
+    private TrainerSchedule createScheduleAt(
+            long centerId,
+            Long trainerUserId,
+            String type,
+            int capacity,
+            LocalDate date,
+            int startHour,
+            int startMinute,
+            int durationMinutes
+    ) {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        OffsetDateTime startAt = date.atTime(startHour, startMinute).atZone(BUSINESS_ZONE).toOffsetDateTime();
+        OffsetDateTime endAt = startAt.plusMinutes(durationMinutes);
+        return trainerScheduleRepository.insert(new TrainerScheduleRepository.TrainerScheduleCreateCommand(
+                centerId,
+                trainerUserId,
+                type,
+                "고정트레이너-" + suffix,
+                "고정슬롯-" + suffix,
+                startAt,
+                endAt,
+                capacity,
+                0,
+                "fixed fixture",
+                1L
+        ));
+    }
+
     private TrainerSchedule createPastSchedule(String type, int capacity) {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
         OffsetDateTime endAt = OffsetDateTime.now().minusHours(1).withNano(0);
         OffsetDateTime startAt = endAt.minusMinutes("PT".equals(type) ? 50 : 60);
         return trainerScheduleRepository.insert(new TrainerScheduleRepository.TrainerScheduleCreateCommand(
                 CENTER_ID,
+                null,
                 type,
                 "P7API과거트레이너-" + suffix,
                 "P7API과거슬롯-" + suffix,
@@ -555,6 +892,74 @@ class ReservationApiIntegrationTest {
                 .param("phone", "0105" + suffix.substring(0, 6))
                 .query(Long.class)
                 .single();
+    }
+
+    private void insertWeeklyAvailabilityRule(
+            long centerId,
+            long trainerUserId,
+            int dayOfWeek,
+            String startTime,
+            String endTime
+    ) {
+        jdbcClient.sql("""
+                DELETE FROM trainer_availability_rules
+                WHERE center_id = :centerId
+                  AND trainer_user_id = :trainerUserId
+                  AND day_of_week = :dayOfWeek
+                """)
+                .param("centerId", centerId)
+                .param("trainerUserId", trainerUserId)
+                .param("dayOfWeek", dayOfWeek)
+                .update();
+        jdbcClient.sql("""
+                INSERT INTO trainer_availability_rules (
+                    center_id, trainer_user_id, day_of_week, start_time, end_time,
+                    created_at, created_by, updated_at, updated_by
+                )
+                VALUES (
+                    :centerId, :trainerUserId, :dayOfWeek, :startTime, :endTime,
+                    CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 1
+                )
+                """)
+                .param("centerId", centerId)
+                .param("trainerUserId", trainerUserId)
+                .param("dayOfWeek", dayOfWeek)
+                .param("startTime", LocalTime.parse(startTime))
+                .param("endTime", LocalTime.parse(endTime))
+                .update();
+    }
+
+    private void clearTrainerSchedulesForDate(long centerId, long trainerUserId, LocalDate date) {
+        OffsetDateTime dayStart = date.atStartOfDay(BUSINESS_ZONE).toOffsetDateTime();
+        OffsetDateTime dayEnd = dayStart.plusDays(1);
+        jdbcClient.sql("""
+                DELETE FROM reservations
+                WHERE schedule_id IN (
+                    SELECT schedule_id
+                    FROM trainer_schedules
+                    WHERE center_id = :centerId
+                      AND trainer_user_id = :trainerUserId
+                      AND start_at >= :dayStart
+                      AND start_at < :dayEnd
+                )
+                """)
+                .param("centerId", centerId)
+                .param("trainerUserId", trainerUserId)
+                .param("dayStart", dayStart)
+                .param("dayEnd", dayEnd)
+                .update();
+        jdbcClient.sql("""
+                DELETE FROM trainer_schedules
+                WHERE center_id = :centerId
+                  AND trainer_user_id = :trainerUserId
+                  AND start_at >= :dayStart
+                  AND start_at < :dayEnd
+                """)
+                .param("centerId", centerId)
+                .param("trainerUserId", trainerUserId)
+                .param("dayStart", dayStart)
+                .param("dayEnd", dayEnd)
+                .update();
     }
 
     private long insertProductFixture(String productCategory, String productType) {

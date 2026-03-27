@@ -66,6 +66,25 @@ public class MemberMembershipRepository {
         return memberMembershipJpaRepository.findByMembershipIdAndIsDeletedFalse(membershipId).map(this::toDomain);
     }
 
+    public Optional<MemberMembership> findByIdForUpdate(Long membershipId) {
+        Number lockedId = (Number) entityManager.createNativeQuery("""
+                SELECT membership_id
+                FROM member_memberships
+                WHERE membership_id = :membershipId
+                  AND is_deleted = FALSE
+                FOR UPDATE
+                """)
+                .setParameter("membershipId", membershipId)
+                .getResultStream()
+                .findFirst()
+                .orElse(null);
+        if (lockedId == null) {
+            return Optional.empty();
+        }
+        entityManager.clear();
+        return memberMembershipJpaRepository.findByMembershipIdAndIsDeletedFalse(lockedId.longValue()).map(this::toDomain);
+    }
+
     public MemberMembership updateStatus(Long membershipId, String membershipStatus, Long actorUserId) {
         MemberMembershipEntity entity = memberMembershipJpaRepository.findByMembershipIdAndIsDeletedFalse(membershipId)
                 .orElseThrow();

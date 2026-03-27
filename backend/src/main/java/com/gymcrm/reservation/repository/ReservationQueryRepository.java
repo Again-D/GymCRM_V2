@@ -10,10 +10,12 @@ import org.springframework.stereotype.Repository;
 
 import java.sql.Date;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 import static com.gymcrm.membership.entity.QMemberMembershipEntity.memberMembershipEntity;
 import static com.gymcrm.reservation.entity.QReservationEntity.reservationEntity;
+import static com.gymcrm.reservation.entity.QTrainerScheduleEntity.trainerScheduleEntity;
 
 @Repository
 public class ReservationQueryRepository {
@@ -71,6 +73,56 @@ public class ReservationQueryRepository {
                 )
                 .fetchFirst();
         return fetched != null;
+    }
+
+    public int countActiveConfirmedPtReservationsForMembership(Long centerId, Long membershipId) {
+        Long count = queryFactory
+                .select(reservationEntity.count())
+                .from(reservationEntity)
+                .join(trainerScheduleEntity)
+                .on(trainerScheduleEntity.scheduleId.eq(reservationEntity.scheduleId))
+                .where(
+                        reservationEntity.centerId.eq(centerId),
+                        reservationEntity.membershipId.eq(membershipId),
+                        reservationEntity.reservationStatus.eq("CONFIRMED"),
+                        reservationEntity.isDeleted.isFalse(),
+                        trainerScheduleEntity.isDeleted.isFalse(),
+                        trainerScheduleEntity.scheduleType.eq("PT")
+                )
+                .fetchOne();
+        return count == null ? 0 : count.intValue();
+    }
+
+    public List<TimeBlock> findConfirmedTimeBlocksByMemberAndRange(
+            Long centerId,
+            Long memberId,
+            OffsetDateTime rangeStart,
+            OffsetDateTime rangeEnd
+    ) {
+        return queryFactory
+                .select(
+                        trainerScheduleEntity.startAt,
+                        trainerScheduleEntity.endAt
+                )
+                .from(reservationEntity)
+                .join(trainerScheduleEntity)
+                .on(trainerScheduleEntity.scheduleId.eq(reservationEntity.scheduleId))
+                .where(
+                        reservationEntity.centerId.eq(centerId),
+                        reservationEntity.memberId.eq(memberId),
+                        reservationEntity.reservationStatus.eq("CONFIRMED"),
+                        reservationEntity.isDeleted.isFalse(),
+                        trainerScheduleEntity.isDeleted.isFalse(),
+                        trainerScheduleEntity.startAt.lt(rangeEnd),
+                        trainerScheduleEntity.endAt.gt(rangeStart)
+                )
+                .fetch()
+                .stream()
+                .map(tuple -> new TimeBlock(
+                        tuple.get(trainerScheduleEntity.startAt),
+                        tuple.get(trainerScheduleEntity.endAt)
+                ))
+                .toList();
     }
 
     public List<ReservationTargetProjection> findReservationTargets(Long centerId, String keyword, Long trainerUserId, LocalDate businessDate) {
@@ -230,4 +282,10 @@ public class ReservationQueryRepository {
             LocalDate membershipExpiryDate,
             Integer confirmedReservationCount
     ) {}
+
+    public record TimeBlock(
+            OffsetDateTime startAt,
+            OffsetDateTime endAt
+    ) {
+    }
 }

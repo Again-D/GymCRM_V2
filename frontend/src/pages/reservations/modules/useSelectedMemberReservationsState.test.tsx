@@ -79,6 +79,24 @@ describe("useSelectedMemberReservationsState", () => {
     expect(result.current.selectedMemberReservations[0]?.reservationStatus).toBe("COMPLETED");
   });
 
+  it("creates PT reservations through dedicated flow in mock mode", async () => {
+    setMockApiModeForTests(true);
+    const { result } = renderHook(() => useSelectedMemberReservationsState());
+
+    await act(async () => {
+      await result.current.createPtReservation({
+        memberId: 101,
+        membershipId: 9001,
+        trainerUserId: 41,
+        startAt: "2026-03-16T10:00:00+09:00",
+        memo: "pt",
+      });
+    });
+
+    expect(result.current.selectedMemberReservations).toHaveLength(1);
+    expect(result.current.selectedMemberReservations[0]?.reservationStatus).toBe("CONFIRMED");
+  });
+
   it("creates reservations through live API mode", async () => {
     setMockApiModeForTests(false);
     const fetchMock = vi.fn().mockResolvedValue({
@@ -122,5 +140,51 @@ describe("useSelectedMemberReservationsState", () => {
       })
     );
     expect(result.current.selectedMemberReservations[0]?.reservationId).toBe(9001);
+  });
+
+  it("creates PT reservations through live API mode", async () => {
+    setMockApiModeForTests(false);
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: {
+          reservationId: 9002,
+          membershipId: 8001,
+          scheduleId: 7100,
+          reservationStatus: "CONFIRMED",
+          reservedAt: "2026-03-13T10:00:00+09:00",
+          cancelledAt: null,
+          completedAt: null,
+          noShowAt: null,
+          checkedInAt: null
+        },
+        message: "PT 예약이 생성되었습니다.",
+        timestamp: "2026-03-13T00:00:00Z",
+        traceId: "trace-create-pt"
+      })
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result } = renderHook(() => useSelectedMemberReservationsState());
+
+    await act(async () => {
+      await result.current.createPtReservation({
+        memberId: 101,
+        membershipId: 8001,
+        trainerUserId: 41,
+        startAt: "2026-03-13T10:00:00+09:00",
+        memo: "live pt"
+      });
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/reservations/pt",
+      expect.objectContaining({
+        method: "POST",
+        credentials: "include"
+      })
+    );
+    expect(result.current.selectedMemberReservations[0]?.reservationId).toBe(9002);
   });
 });

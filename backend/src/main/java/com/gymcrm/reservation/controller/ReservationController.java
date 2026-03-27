@@ -4,13 +4,16 @@ import com.gymcrm.common.api.ApiResponse;
 import com.gymcrm.common.security.AccessPolicies;
 import com.gymcrm.reservation.dto.request.CancelReservationRequest;
 import com.gymcrm.reservation.dto.request.CreateReservationRequest;
+import com.gymcrm.reservation.dto.request.CreatePtReservationRequest;
 import com.gymcrm.reservation.dto.response.CompleteReservationResponse;
+import com.gymcrm.reservation.dto.response.PtReservationCandidatesResponse;
 import com.gymcrm.reservation.dto.response.ReservationResponse;
 import com.gymcrm.reservation.dto.response.ReservationScheduleResponse;
 import com.gymcrm.reservation.dto.response.ReservationTargetResponse;
 import com.gymcrm.reservation.entity.Reservation;
 import com.gymcrm.reservation.entity.TrainerSchedule;
 import com.gymcrm.reservation.service.ReservationService;
+import com.gymcrm.reservation.service.PtReservationService;
 import com.gymcrm.reservation.service.ReservationService.CancelRequest;
 import com.gymcrm.reservation.service.ReservationService.CheckInRequest;
 import com.gymcrm.reservation.service.ReservationService.CompleteRequest;
@@ -38,9 +41,11 @@ import java.util.List;
 @RequestMapping("/api/v1/reservations")
 public class ReservationController {
     private final ReservationService reservationService;
+    private final PtReservationService ptReservationService;
 
-    public ReservationController(ReservationService reservationService) {
+    public ReservationController(ReservationService reservationService, PtReservationService ptReservationService) {
         this.reservationService = reservationService;
+        this.ptReservationService = ptReservationService;
     }
 
     @PostMapping
@@ -75,6 +80,32 @@ public class ReservationController {
                 .map(ReservationScheduleResponse::from)
                 .toList();
         return ApiResponse.success(items, "예약 스케줄 목록 조회 성공");
+    }
+
+    @GetMapping("/pt-candidates")
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER)
+    public ApiResponse<PtReservationCandidatesResponse> listPtCandidates(
+            @RequestParam Long membershipId,
+            @RequestParam Long trainerUserId,
+            @RequestParam String date
+    ) {
+        return ApiResponse.success(
+                PtReservationCandidatesResponse.from(ptReservationService.listCandidates(membershipId, trainerUserId, date)),
+                "PT 예약 가능 시각 조회 성공"
+        );
+    }
+
+    @PostMapping("/pt")
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER)
+    public ApiResponse<ReservationResponse> createPt(@Valid @RequestBody CreatePtReservationRequest request) {
+        Reservation reservation = ptReservationService.create(new PtReservationService.CreatePtReservationRequest(
+                request.memberId(),
+                request.membershipId(),
+                request.trainerUserId(),
+                request.startAt(),
+                request.memo()
+        ));
+        return ApiResponse.success(ReservationResponse.from(reservation), "PT 예약이 생성되었습니다.");
     }
 
     @GetMapping("/targets")

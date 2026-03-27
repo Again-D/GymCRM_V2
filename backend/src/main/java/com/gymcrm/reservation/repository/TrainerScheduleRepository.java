@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
@@ -48,8 +49,10 @@ public class TrainerScheduleRepository {
 
     @Transactional
     public TrainerSchedule insert(TrainerScheduleCreateCommand command) {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         TrainerScheduleEntity entity = new TrainerScheduleEntity();
         entity.setCenterId(command.centerId());
+        entity.setTrainerUserId(command.trainerUserId());
         entity.setScheduleType(command.scheduleType());
         entity.setTrainerName(command.trainerName());
         entity.setSlotTitle(command.slotTitle());
@@ -59,9 +62,9 @@ public class TrainerScheduleRepository {
         entity.setCurrentCount(command.currentCount());
         entity.setMemo(command.memo());
         entity.setDeleted(false);
-        entity.setCreatedAt(command.startAt());
+        entity.setCreatedAt(now);
         entity.setCreatedBy(command.actorUserId());
-        entity.setUpdatedAt(command.startAt());
+        entity.setUpdatedAt(now);
         entity.setUpdatedBy(command.actorUserId());
         TrainerScheduleEntity saved = trainerScheduleJpaRepository.saveAndFlush(entity);
         entityManager.refresh(saved);
@@ -72,6 +75,7 @@ public class TrainerScheduleRepository {
         return new TrainerSchedule(
                 entity.getScheduleId(),
                 entity.getCenterId(),
+                entity.getTrainerUserId(),
                 entity.getScheduleType(),
                 entity.getTrainerName(),
                 entity.getSlotTitle(),
@@ -89,6 +93,7 @@ public class TrainerScheduleRepository {
 
     public record TrainerScheduleCreateCommand(
             Long centerId,
+            Long trainerUserId,
             String scheduleType,
             String trainerName,
             String slotTitle,

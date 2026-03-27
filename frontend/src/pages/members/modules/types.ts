@@ -49,11 +49,13 @@ export type PurchasedMembership = {
   membershipId: number;
   memberId: number;
   productNameSnapshot: string;
+  productCategorySnapshot?: string | null;
   productTypeSnapshot: "DURATION" | "COUNT";
   membershipStatus: "ACTIVE" | "HOLDING" | "REFUNDED" | "EXPIRED";
   startDate: string;
   endDate: string | null;
   remainingCount: number | null;
+  assignedTrainerId?: number | null;
   activeHoldStatus?: "ACTIVE" | null;
 };
 
@@ -71,12 +73,28 @@ export type MembershipPaymentRecord = {
 export type ReservationScheduleSummary = {
   scheduleId: number;
   scheduleType: "PT" | "GX";
+  trainerUserId?: number | null;
   trainerName: string;
   slotTitle: string;
   startAt: string;
   endAt: string;
   capacity: number;
   currentCount: number;
+};
+
+export type PtReservationCandidate = {
+  startAt: string;
+  endAt: string;
+  source: string;
+};
+
+export type PtReservationCandidatesPayload = {
+  date: string;
+  trainerUserId: number;
+  membershipId: number;
+  slotDurationMinutes: number;
+  slotStepMinutes: number;
+  items: PtReservationCandidate[];
 };
 
 export type ReservationRow = {
