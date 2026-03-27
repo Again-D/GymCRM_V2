@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useAuthState } from "../../app/auth";
 import { hasRole } from "../../app/roles";
-import { ApiClientError } from "../../api/client";
 import { useDebouncedValue } from "../../shared/hooks/useDebouncedValue";
 import { usePagination } from "../../shared/hooks/usePagination";
 import { PaginationControls } from "../../shared/ui/PaginationControls";
@@ -11,6 +10,7 @@ import { useSelectedMemberMembershipsQuery } from "../member-context/modules/use
 
 import { useSelectedMemberStore } from "../members/modules/SelectedMemberContext";
 import type { PurchasedMembership, ReservationRow } from "../members/modules/types";
+import { getReservationPanelErrorMessage } from "./modules/getReservationPanelErrorMessage";
 import { isMembershipReservableOn } from "./modules/reservableMemberships";
 import { usePtReservationCandidatesQuery } from "./modules/usePtReservationCandidatesQuery";
 import { useReservationSchedulesQuery } from "./modules/useReservationSchedulesQuery";
@@ -31,16 +31,6 @@ type ReservationCreateForm = {
   ptCandidateStartAt: string;
   memo: string;
 };
-
-export function getReservationPanelErrorMessage(error: unknown, fallbackMessage: string) {
-  if (error instanceof ApiClientError && error.detail) {
-    return error.detail;
-  }
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return fallbackMessage;
-}
 
 function formatDateTime(value: string | null) {
   if (!value) {
