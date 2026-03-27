@@ -553,6 +553,14 @@ class ReservationApiIntegrationTest {
                 .param("scheduleId", scheduleId)
                 .query(OffsetDateTime.class)
                 .single();
+        OffsetDateTime storedScheduleCreatedAt = jdbcClient.sql("""
+                SELECT created_at
+                FROM trainer_schedules
+                WHERE schedule_id = :scheduleId
+                """)
+                .param("scheduleId", scheduleId)
+                .query(OffsetDateTime.class)
+                .single();
         String storedMemo = jdbcClient.sql("""
                 SELECT memo
                 FROM reservations
@@ -566,6 +574,7 @@ class ReservationApiIntegrationTest {
                 OffsetDateTime.parse(targetDate + "T09:00:00+09:00").toInstant(),
                 storedScheduleStartAt.toInstant()
         );
+        org.junit.jupiter.api.Assertions.assertTrue(storedScheduleCreatedAt.isBefore(storedScheduleStartAt));
         org.junit.jupiter.api.Assertions.assertEquals("현장 조율 메모", storedMemo);
     }
 
