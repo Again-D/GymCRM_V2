@@ -50,7 +50,7 @@ describe("ReservationsPage", () => {
     ).toBe("네트워크 오류");
   });
 
-  it("opens the new reservation modal from the workbench and creates a reservation", async () => {
+  it("opens the new reservation modal from the workbench and creates a PT reservation", async () => {
     vi.spyOn(Date, "now").mockReturnValue(new Date("2026-03-12T09:00:00+09:00").getTime());
 
     render(
@@ -75,9 +75,23 @@ describe("ReservationsPage", () => {
     await waitFor(() => {
       expect(screen.queryByRole("dialog", { name: /예약 워크벤치: 김민수/ })).toBeNull();
     });
+    const modal = screen.getByRole("dialog", { name: "신규 예약 등록: 김민수" });
 
     fireEvent.change(screen.getByLabelText("예약 회원권"), { target: { value: "9001" } });
-    fireEvent.change(screen.getByLabelText("수업 일정"), { target: { value: "7002" } });
+    await waitFor(() => {
+      expect(screen.getByText("담당 트레이너 기본값: 정트레이너")).toBeTruthy();
+    });
+    const selects = modal.querySelectorAll("select");
+    const trainerSelect = selects[1] as HTMLSelectElement;
+    const candidateSelect = selects[2] as HTMLSelectElement;
+    const dateInput = modal.querySelector('input[type="date"]') as HTMLInputElement;
+    fireEvent.change(trainerSelect, { target: { value: "41" } });
+    fireEvent.change(dateInput, { target: { value: "2026-03-16" } });
+    await waitFor(() => {
+      const options = within(candidateSelect).getAllByRole("option");
+      expect(options.length).toBeGreaterThan(1);
+    });
+    fireEvent.change(candidateSelect, { target: { value: "2026-03-16T10:00:00+09:00" } });
     fireEvent.change(screen.getByLabelText("메모"), { target: { value: "현장 등록" } });
 
     fireEvent.click(screen.getByRole("button", { name: "예약 등록" }));
@@ -87,5 +101,30 @@ describe("ReservationsPage", () => {
     });
     expect(await screen.findByRole("dialog", { name: /예약 워크벤치: 김민수/ })).toBeTruthy();
     expect(await screen.findByText(/예약 #\d+이\(가\) 생성되었습니다\./)).toBeTruthy();
+  });
+
+  it("shows PT guidance and keeps submit disabled until required PT fields are selected", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(new Date("2026-03-12T09:00:00+09:00").getTime());
+
+    render(
+      <AuthStateProvider>
+        <SelectedMemberProvider>
+          <ReservationsPage />
+        </SelectedMemberProvider>
+      </AuthStateProvider>
+    );
+
+    const memberRow = await screen.findByText("김민수");
+    fireEvent.click(within(memberRow.closest("tr") as HTMLTableRowElement).getByRole("button", { name: "선택 후 조회" }));
+    fireEvent.click(await screen.findByRole("button", { name: "신규 예약 등록" }));
+
+    const submitButton = await screen.findByRole("button", { name: "예약 등록" });
+    expect((submitButton as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.change(screen.getByLabelText("예약 회원권"), { target: { value: "9001" } });
+
+    expect(await screen.findByText("PT는 트레이너 가능 시간에서 60분 블록으로 예약합니다.")).toBeTruthy();
+    expect(await screen.findByText("담당 트레이너 기본값: 정트레이너")).toBeTruthy();
+    expect((submitButton as HTMLButtonElement).disabled).toBe(true);
   });
 });
