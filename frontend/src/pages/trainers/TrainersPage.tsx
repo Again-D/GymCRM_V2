@@ -7,6 +7,13 @@ import { hasAnyRole, hasRole } from "../../app/roles";
 import { usePagination } from "../../shared/hooks/usePagination";
 import { Modal } from "../../shared/ui/Modal";
 import { PaginationControls } from "../../shared/ui/PaginationControls";
+import { TrainerAvailabilityMonthView } from "../trainer-availability/TrainerAvailabilityMonthView";
+import {
+  formatAvailabilityTimeRange,
+  getAvailabilityStatusLabel,
+  getCurrentMonthValue,
+} from "../trainer-availability/modules/types";
+import { useTrainerAvailabilityQuery } from "../trainer-availability/modules/useTrainerAvailabilityQuery";
 import {
   createDefaultTrainerFilters,
   createEmptyTrainerForm,
@@ -39,6 +46,7 @@ export default function TrainersPage() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [selectedTrainer, setSelectedTrainer] = useState<TrainerDetail | null>(null);
+  const [availabilityMonth, setAvailabilityMonth] = useState(getCurrentMonthValue);
   const [trainerFormOpen, setTrainerFormOpen] = useState(false);
   const [trainerFormMode, setTrainerFormMode] = useState<"create" | "edit">("create");
   const [trainerForm, setTrainerForm] = useState(() =>
@@ -53,6 +61,13 @@ export default function TrainersPage() {
     useTrainersQuery({
       getDefaultFilters: () => trainerFilters,
     });
+  const {
+    snapshot: trainerAvailabilitySnapshot,
+    loading: trainerAvailabilityLoading,
+    error: trainerAvailabilityError,
+    loadSnapshot: loadTrainerAvailability,
+    reset: resetTrainerAvailability,
+  } = useTrainerAvailabilityQuery();
 
   const pagination = usePagination(trainers, {
     initialPageSize: 10,
@@ -92,10 +107,28 @@ export default function TrainersPage() {
     );
   }, [defaultCenterId, isSuperAdmin]);
 
+  useEffect(() => {
+    if (!detailOpen || !selectedTrainer) {
+      resetTrainerAvailability();
+      return;
+    }
+    void loadTrainerAvailabilitySnapshot(selectedTrainer.userId, availabilityMonth);
+  }, [
+    availabilityMonth,
+    detailOpen,
+    loadTrainerAvailability,
+    resetTrainerAvailability,
+    selectedTrainer,
+  ]);
+
   function clearFeedback() {
     setTrainerPanelMessage(null);
     setTrainerPanelError(null);
     setTrainerFormError(null);
+  }
+
+  async function loadTrainerAvailabilitySnapshot(userId: number, month: string) {
+    return loadTrainerAvailability({ type: "trainer", trainerUserId: userId }, month);
   }
 
   async function loadTrainerDetail(userId: number) {
@@ -620,6 +653,86 @@ export default function TrainersPage() {
                     </div>
                   ))}
                 </div>
+              )}
+            </div>
+
+            <div className="ops-section mt-lg">
+              <div className="ops-section__header">
+                <div>
+                  <h3 className="ops-section__title">가용 스케줄</h3>
+                  <p className="ops-section__subtitle">
+                    트레이너가 등록한 주간 가능 시간과 날짜별 예외를 조회합니다.
+                  </p>
+                </div>
+                <label className="stack-sm">
+                  <span className="text-xs text-muted brand-title">조회 월</span>
+                  <input
+                    className="input"
+                    type="month"
+                    value={availabilityMonth}
+                    onChange={(event) => setAvailabilityMonth(event.target.value)}
+                  />
+                </label>
+              </div>
+              {trainerAvailabilityError ? (
+                <div className="pill danger">{trainerAvailabilityError}</div>
+              ) : null}
+              {trainerAvailabilityLoading ? (
+                <div className="text-sm text-muted">가용 스케줄을 불러오는 중입니다...</div>
+              ) : trainerAvailabilitySnapshot ? (
+                <div className={styles.availabilitySection}>
+                  <div className={styles.availabilitySummary}>
+                    <div className={styles.availabilityCard}>
+                      <div className="text-xs text-muted">가용 일수</div>
+                      <div className="brand-title mt-xs">
+                        {
+                          trainerAvailabilitySnapshot.effectiveDays.filter(
+                            (day) => day.availabilityStatus === "AVAILABLE",
+                          ).length
+                        }
+                        일
+                      </div>
+                    </div>
+                    <div className={styles.availabilityCard}>
+                      <div className="text-xs text-muted">예외 일정</div>
+                      <div className="brand-title mt-xs">
+                        {trainerAvailabilitySnapshot.exceptions.length}건
+                      </div>
+                    </div>
+                  </div>
+
+                  <TrainerAvailabilityMonthView snapshot={trainerAvailabilitySnapshot} />
+
+                  <div className={styles.readonlyExceptionList}>
+                    {trainerAvailabilitySnapshot.exceptions.length === 0 ? (
+                      <div className="text-sm text-muted">등록된 예외 일정이 없습니다.</div>
+                    ) : (
+                      trainerAvailabilitySnapshot.exceptions.map((exception) => (
+                        <div
+                          key={exception.availabilityExceptionId}
+                          className={styles.readonlyExceptionItem}
+                        >
+                          <div>
+                            <div className="brand-title">{exception.exceptionDate}</div>
+                            <div className="text-xs text-muted">
+                              {exception.exceptionType === "OFF"
+                                ? getAvailabilityStatusLabel("OFF")
+                                : formatAvailabilityTimeRange(
+                                    exception.overrideStartTime,
+                                    exception.overrideEndTime,
+                                  )}
+                            </div>
+                          </div>
+                          <div className="text-sm text-muted">
+                            {exception.memo ?? "메모 없음"}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-sm text-muted">등록된 스케줄 정보가 없습니다.</div>
               )}
             </div>
           </>

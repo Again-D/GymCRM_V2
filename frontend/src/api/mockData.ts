@@ -26,6 +26,7 @@ import type {
   TrainerDetail,
   TrainerSummary,
 } from "../pages/trainers/modules/types";
+import type { TrainerAvailabilitySnapshot } from "../pages/trainer-availability/modules/types";
 import { isMembershipReservableOn } from "../pages/reservations/modules/reservableMemberships";
 
 const initialMembers: MemberSummary[] = [
@@ -78,7 +79,30 @@ type MockTrainerRecord = {
   userStatus: "ACTIVE" | "INACTIVE";
 };
 
+type MockTrainerAvailabilityRuleRecord = {
+  availabilityRuleId: number;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+};
+
+type MockTrainerAvailabilityExceptionRecord = {
+  availabilityExceptionId: number;
+  exceptionDate: string;
+  exceptionType: "OFF" | "OVERRIDE";
+  overrideStartTime: string | null;
+  overrideEndTime: string | null;
+  memo: string | null;
+};
+
+type MockTrainerAvailabilityState = {
+  weeklyRules: MockTrainerAvailabilityRuleRecord[];
+  exceptions: MockTrainerAvailabilityExceptionRecord[];
+};
+
 let trainerIdSeed = 42;
+let trainerAvailabilityRuleIdSeed = 4;
+let trainerAvailabilityExceptionIdSeed = 11;
 let mockTrainers: MockTrainerRecord[] = [
   {
     userId: 41,
@@ -97,6 +121,58 @@ let mockTrainers: MockTrainerRecord[] = [
     userStatus: "ACTIVE",
   },
 ];
+
+const initialTrainerAvailabilityByUserId = new Map<number, MockTrainerAvailabilityState>([
+  [
+    41,
+    {
+      weeklyRules: [
+        {
+          availabilityRuleId: 1,
+          dayOfWeek: 1,
+          startTime: "09:00:00",
+          endTime: "18:00:00",
+        },
+        {
+          availabilityRuleId: 2,
+          dayOfWeek: 3,
+          startTime: "10:00:00",
+          endTime: "16:00:00",
+        },
+      ],
+      exceptions: [
+        {
+          availabilityExceptionId: 11,
+          exceptionDate: "2026-04-07",
+          exceptionType: "OFF",
+          overrideStartTime: null,
+          overrideEndTime: null,
+          memo: "세미나",
+        },
+      ],
+    },
+  ],
+  [
+    42,
+    {
+      weeklyRules: [
+        {
+          availabilityRuleId: 3,
+          dayOfWeek: 2,
+          startTime: "09:30:00",
+          endTime: "18:30:00",
+        },
+        {
+          availabilityRuleId: 4,
+          dayOfWeek: 4,
+          startTime: "12:00:00",
+          endTime: "20:00:00",
+        },
+      ],
+      exceptions: [],
+    },
+  ],
+]);
 
 const initialMemberDetails = new Map<number, MemberDetail>([
   [
@@ -554,6 +630,9 @@ let mockLockerSlots = cloneLockerSlots(initialLockerSlots);
 let mockLockerAssignments = cloneLockerAssignments(initialLockerAssignments);
 let mockProducts = cloneProducts(initialProducts);
 let mockCrmHistoryRows = cloneCrmHistoryRows(initialCrmHistoryRows);
+let mockTrainerAvailabilityByUserId = cloneTrainerAvailabilityMap(
+  initialTrainerAvailabilityByUserId,
+);
 let mockSettlementTransactions = initialSettlementTransactions.map(
   (transaction) => ({ ...transaction }),
 );
@@ -620,6 +699,20 @@ function cloneLockerAssignments(source: LockerAssignment[]) {
 
 function cloneProducts(source: ProductRecord[]) {
   return source.map((product) => ({ ...product }));
+}
+
+function cloneTrainerAvailabilityMap(
+  source: Map<number, MockTrainerAvailabilityState>,
+) {
+  return new Map(
+    Array.from(source.entries(), ([userId, state]) => [
+      userId,
+      {
+        weeklyRules: state.weeklyRules.map((rule) => ({ ...rule })),
+        exceptions: state.exceptions.map((exception) => ({ ...exception })),
+      },
+    ]),
+  );
 }
 
 function cloneCrmHistoryRows(source: CrmHistoryRow[]) {
@@ -948,6 +1041,9 @@ export function resetMockData() {
   mockLockerAssignments = cloneLockerAssignments(initialLockerAssignments);
   mockProducts = cloneProducts(initialProducts);
   mockCrmHistoryRows = cloneCrmHistoryRows(initialCrmHistoryRows);
+  mockTrainerAvailabilityByUserId = cloneTrainerAvailabilityMap(
+    initialTrainerAvailabilityByUserId,
+  );
   mockSettlementTransactions = cloneSettlementTransactions(
     initialSettlementTransactions,
   );
@@ -960,6 +1056,8 @@ export function resetMockData() {
   productIdSeed = 200;
   crmMessageEventIdSeed = 12050;
   memberIdSeed = 103;
+  trainerAvailabilityRuleIdSeed = 4;
+  trainerAvailabilityExceptionIdSeed = 11;
 }
 
 export function createMockMember(input: {
@@ -1533,6 +1631,10 @@ export function createMockTrainer(input: {
     userStatus: "ACTIVE",
   };
   mockTrainers = [nextTrainer, ...mockTrainers];
+  mockTrainerAvailabilityByUserId.set(nextTrainer.userId, {
+    weeklyRules: [],
+    exceptions: [],
+  });
   bumpMockDataVersion();
   return buildMockTrainerDetail(nextTrainer);
 }
@@ -1587,6 +1689,170 @@ export function updateMockTrainerStatus(
   return buildMockTrainerDetail(nextTrainer);
 }
 
+function getDayOfWeekNumber(dateText: string) {
+  const day = new Date(`${dateText}T00:00:00+09:00`).getDay();
+  return day === 0 ? 7 : day;
+}
+
+function buildMockTrainerAvailabilitySnapshot(
+  userId: number,
+  month: string,
+): TrainerAvailabilitySnapshot {
+  const state = mockTrainerAvailabilityByUserId.get(userId) ?? {
+    weeklyRules: [],
+    exceptions: [],
+  };
+  const [yearText, monthText] = month.split("-");
+  const year = Number(yearText);
+  const monthIndex = Number(monthText);
+  const lastDay = new Date(year, monthIndex, 0).getDate();
+  const exceptionByDate = new Map(
+    state.exceptions.map((exception) => [exception.exceptionDate, exception]),
+  );
+  const ruleByDay = new Map(state.weeklyRules.map((rule) => [rule.dayOfWeek, rule]));
+
+  return {
+    trainerUserId: userId,
+    month,
+    weeklyRules: state.weeklyRules.map((rule) => ({ ...rule })),
+    exceptions: state.exceptions
+      .filter((exception) => exception.exceptionDate.startsWith(`${month}-`))
+      .map((exception) => ({ ...exception })),
+    effectiveDays: Array.from({ length: lastDay }, (_, index) => {
+      const dayOfMonth = `${index + 1}`.padStart(2, "0");
+      const date = `${month}-${dayOfMonth}`;
+      const exception = exceptionByDate.get(date);
+      if (exception) {
+        if (exception.exceptionType === "OFF") {
+          return {
+            date,
+            source: "EXCEPTION_OFF" as const,
+            availabilityStatus: "OFF" as const,
+            startTime: null,
+            endTime: null,
+            memo: exception.memo,
+          };
+        }
+        return {
+          date,
+          source: "EXCEPTION_OVERRIDE" as const,
+          availabilityStatus: "AVAILABLE" as const,
+          startTime: exception.overrideStartTime,
+          endTime: exception.overrideEndTime,
+          memo: exception.memo,
+        };
+      }
+
+      const weeklyRule = ruleByDay.get(getDayOfWeekNumber(date));
+      if (!weeklyRule) {
+        return {
+          date,
+          source: "NONE" as const,
+          availabilityStatus: "UNSET" as const,
+          startTime: null,
+          endTime: null,
+          memo: null,
+        };
+      }
+      return {
+        date,
+        source: "WEEKLY_RULE" as const,
+        availabilityStatus: "AVAILABLE" as const,
+        startTime: weeklyRule.startTime,
+        endTime: weeklyRule.endTime,
+        memo: null,
+      };
+    }),
+  };
+}
+
+export function getMockTrainerAvailabilitySnapshot(userId: number, month: string) {
+  return buildMockTrainerAvailabilitySnapshot(userId, month);
+}
+
+export function replaceMockTrainerAvailabilityWeeklyRules(
+  userId: number,
+  month: string,
+  rules: Array<{ dayOfWeek: number; startTime: string; endTime: string }>,
+) {
+  mockTrainerAvailabilityByUserId.set(userId, {
+    weeklyRules: rules.map((rule) => {
+      trainerAvailabilityRuleIdSeed += 1;
+      return {
+        availabilityRuleId: trainerAvailabilityRuleIdSeed,
+        dayOfWeek: rule.dayOfWeek,
+        startTime: `${rule.startTime}:00`,
+        endTime: `${rule.endTime}:00`,
+      };
+    }),
+    exceptions: mockTrainerAvailabilityByUserId.get(userId)?.exceptions ?? [],
+  });
+  bumpMockDataVersion();
+  return buildMockTrainerAvailabilitySnapshot(userId, month);
+}
+
+export function upsertMockTrainerAvailabilityException(
+  userId: number,
+  month: string,
+  exceptionDate: string,
+  payload: {
+    exceptionType: "OFF" | "OVERRIDE";
+    overrideStartTime: string | null;
+    overrideEndTime: string | null;
+    memo: string | null;
+  },
+) {
+  const current = mockTrainerAvailabilityByUserId.get(userId) ?? {
+    weeklyRules: [],
+    exceptions: [],
+  };
+  const existing = current.exceptions.find(
+    (exception) => exception.exceptionDate === exceptionDate,
+  );
+  const nextException: MockTrainerAvailabilityExceptionRecord = {
+    availabilityExceptionId:
+      existing?.availabilityExceptionId ?? ++trainerAvailabilityExceptionIdSeed,
+    exceptionDate,
+    exceptionType: payload.exceptionType,
+    overrideStartTime: payload.overrideStartTime
+      ? `${payload.overrideStartTime}:00`
+      : null,
+    overrideEndTime: payload.overrideEndTime ? `${payload.overrideEndTime}:00` : null,
+    memo: payload.memo,
+  };
+
+  mockTrainerAvailabilityByUserId.set(userId, {
+    weeklyRules: current.weeklyRules,
+    exceptions: [
+      ...current.exceptions.filter(
+        (exception) => exception.exceptionDate !== exceptionDate,
+      ),
+      nextException,
+    ].sort((left, right) => left.exceptionDate.localeCompare(right.exceptionDate)),
+  });
+  bumpMockDataVersion();
+  return buildMockTrainerAvailabilitySnapshot(userId, month);
+}
+
+export function deleteMockTrainerAvailabilityException(
+  userId: number,
+  month: string,
+  exceptionDate: string,
+) {
+  const current = mockTrainerAvailabilityByUserId.get(userId) ?? {
+    weeklyRules: [],
+    exceptions: [],
+  };
+  mockTrainerAvailabilityByUserId.set(userId, {
+    weeklyRules: current.weeklyRules,
+    exceptions: current.exceptions.filter(
+      (exception) => exception.exceptionDate !== exceptionDate,
+    ),
+  });
+  bumpMockDataVersion();
+  return buildMockTrainerAvailabilitySnapshot(userId, month);
+}
+
 export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
   const url = new URL(path, "http://local.mock");
 
@@ -1597,6 +1863,10 @@ export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
   if (url.pathname.startsWith("/api/v1/trainers/")) {
     const segments = url.pathname.split("/").filter(Boolean);
     const userId = Number(segments[3]);
+    if (segments[4] === "availability") {
+      const month = url.searchParams.get("month") ?? "2026-04";
+      return envelope(getMockTrainerAvailabilitySnapshot(userId, month));
+    }
     const detail = getMockTrainerDetail(userId);
     return detail ? envelope(detail) : null;
   }

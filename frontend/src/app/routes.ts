@@ -4,6 +4,7 @@ import { hasAnyRole } from "./roles";
 export type NavSectionKey =
   | "dashboard"
   | "members"
+  | "mySchedule"
   | "trainers"
   | "memberships"
   | "reservations"
@@ -43,6 +44,17 @@ export const shellRoutes: ShellRoute[] = [
     protected: true,
     showInSidebar: true,
     showInDashboard: true,
+  },
+  {
+    key: "mySchedule",
+    path: "/my-schedule",
+    label: "내 스케줄",
+    description: "주간 가능 시간 / 휴무 / 날짜별 예외",
+    protected: true,
+    showInSidebar: true,
+    showInDashboard: true,
+    visibleRoles: ["ROLE_TRAINER"],
+    allowedRoles: ["ROLE_TRAINER"],
   },
   {
     key: "trainers",

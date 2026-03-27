@@ -193,3 +193,19 @@ export function apiPatch<T>(
     body: JSON.stringify(body),
   });
 }
+
+export function apiPut<T>(
+  path: string,
+  body: unknown,
+): Promise<ApiEnvelope<T>> {
+  return request<T>(path, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}
+
+export function apiDelete<T>(path: string): Promise<ApiEnvelope<T>> {
+  return request<T>(path, {
+    method: "DELETE",
+  });
+}
