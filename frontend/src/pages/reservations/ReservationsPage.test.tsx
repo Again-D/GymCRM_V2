@@ -5,7 +5,8 @@ import { AuthStateProvider } from "../../app/auth";
 import { ApiClientError, setMockApiModeForTests } from "../../api/client";
 import { resetMockData } from "../../api/mockData";
 import { SelectedMemberProvider } from "../members/modules/SelectedMemberContext";
-import ReservationsPage, { getReservationPanelErrorMessage } from "./ReservationsPage";
+import { getReservationPanelErrorMessage } from "./modules/getReservationPanelErrorMessage";
+import ReservationsPage from "./ReservationsPage";
 
 describe("ReservationsPage", () => {
   beforeEach(() => {
