@@ -10,6 +10,50 @@ describe("TrainersPage", () => {
     const url = String(input);
 
     if (url.includes("/api/v1/trainers/")) {
+      if (url.includes("/availability")) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: {
+              trainerUserId: 41,
+              month: "2026-04",
+              weeklyRules: [
+                {
+                  availabilityRuleId: 1,
+                  dayOfWeek: 1,
+                  startTime: "09:00:00",
+                  endTime: "18:00:00",
+                },
+              ],
+              exceptions: [
+                {
+                  availabilityExceptionId: 11,
+                  exceptionDate: "2026-04-07",
+                  exceptionType: "OFF",
+                  overrideStartTime: null,
+                  overrideEndTime: null,
+                  memo: "세미나",
+                },
+              ],
+              effectiveDays: [
+                {
+                  date: "2026-04-07",
+                  source: "EXCEPTION_OFF",
+                  availabilityStatus: "OFF",
+                  startTime: null,
+                  endTime: null,
+                  memo: "세미나",
+                },
+              ],
+            },
+            message: "ok",
+            timestamp: "2026-03-20T00:00:00Z",
+            traceId: "trace-trainer-availability",
+          }),
+        };
+      }
+
       return {
         ok: true,
         json: async () => ({
@@ -111,6 +155,32 @@ describe("TrainersPage", () => {
     expect(await screen.findByRole("heading", { name: "트레이너 관리" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "트레이너 등록" })).toBeNull();
     expect(screen.getByText("조회 전용 모드")).toBeTruthy();
+  });
+
+  it("shows readonly availability section in trainer detail", async () => {
+    setMockApiModeForTests(false);
+
+    render(
+      <AuthStateProvider
+        value={{
+          securityMode: "jwt",
+          authUser: {
+            userId: 21,
+            centerId: 2,
+            username: "desk-user",
+            primaryRole: "ROLE_DESK",
+            roles: ["ROLE_DESK"],
+          },
+        }}
+      >
+        <TrainersPage />
+      </AuthStateProvider>,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "상세" }));
+
+    expect(await screen.findByRole("heading", { name: "가용 스케줄" })).toBeTruthy();
+    expect((await screen.findAllByText("세미나")).length).toBeGreaterThan(0);
   });
 
   it("shows unsupported note for trainer role in live mode", async () => {

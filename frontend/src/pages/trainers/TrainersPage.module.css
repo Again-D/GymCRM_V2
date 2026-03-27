@@ -50,3 +50,36 @@
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.03);
 }
+
+.availabilitySection {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.availabilitySummary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.availabilityCard {
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  border-radius: 14px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.readonlyExceptionList {
+  display: grid;
+  gap: 10px;
+}
+
+.readonlyExceptionItem {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+}

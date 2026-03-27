@@ -93,4 +93,32 @@ describe("App route guards", () => {
     expect(await screen.findByRole("heading", { name: "운영 대시보드" })).toBeTruthy();
     expect(screen.queryByRole("link", { name: "트레이너 관리" })).toBeNull();
   });
+
+  it("shows my schedule navigation to trainer users", async () => {
+    setMockApiModeForTests(false);
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <ThemeProvider>
+          <AuthStateProvider
+            value={{
+              securityMode: "jwt",
+              authBootstrapping: false,
+              authUser: {
+                userId: 41,
+                username: "trainer-a",
+                primaryRole: "ROLE_TRAINER",
+                roles: ["ROLE_TRAINER"],
+              },
+            }}
+          >
+            <App />
+          </AuthStateProvider>
+        </ThemeProvider>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("link", { name: "내 스케줄" })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "트레이너 관리" })).toBeNull();
+  });
 });
