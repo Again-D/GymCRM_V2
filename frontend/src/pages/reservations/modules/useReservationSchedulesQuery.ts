@@ -27,7 +27,13 @@ export function useReservationSchedulesQuery() {
       if (requestIdRef.current !== requestId) {
         return;
       }
-      setReservationSchedules(response.data);
+      const now = Date.now();
+      setReservationSchedules(
+        response.data.filter((schedule) => {
+          const startAt = new Date(schedule.startAt).getTime();
+          return Number.isFinite(startAt) && startAt > now;
+        }),
+      );
     } catch (error) {
       if (requestIdRef.current !== requestId) {
         return;

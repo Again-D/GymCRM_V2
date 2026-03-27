@@ -11,6 +11,8 @@ describe("useReservationSchedulesQuery", () => {
   });
 
   it("loads reservation schedules", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-03-12T09:30:00+09:00"));
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -25,6 +27,16 @@ describe("useReservationSchedulesQuery", () => {
             endAt: "2026-03-12T09:50:00+09:00",
             capacity: 1,
             currentCount: 1
+          },
+          {
+            scheduleId: 7002,
+            scheduleType: "GX",
+            trainerName: "김트레이너",
+            slotTitle: "오후 GX B",
+            startAt: "2026-03-12T11:00:00+09:00",
+            endAt: "2026-03-12T11:50:00+09:00",
+            capacity: 10,
+            currentCount: 3
           }
         ],
         message: "ok",
@@ -41,7 +53,8 @@ describe("useReservationSchedulesQuery", () => {
     });
 
     expect(result.current.reservationSchedules).toHaveLength(1);
-    expect(result.current.reservationSchedules[0]?.scheduleId).toBe(7001);
+    expect(result.current.reservationSchedules[0]?.scheduleId).toBe(7002);
+    vi.useRealTimers();
   });
 
   it("ignores late responses after reset", async () => {
