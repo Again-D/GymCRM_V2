@@ -17,6 +17,8 @@ public record TrainerSchedule(
         OffsetDateTime createdAt,
         Long createdBy,
         OffsetDateTime updatedAt,
-        Long updatedBy
+        Long updatedBy,
+        Long sourceRuleId,
+        Long sourceExceptionId
 ) {
 }

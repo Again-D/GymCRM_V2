@@ -18,6 +18,7 @@ import MembershipsPage from "./pages/memberships/MembershipsPage";
 import ProductsPage from "./pages/products/ProductsPage";
 import ReservationsPage from "./pages/reservations/ReservationsPage";
 import SettlementsPage from "./pages/settlements/SettlementsPage";
+import GxSchedulesPage from "./pages/gx-schedules/GxSchedulesPage";
 import TrainerAvailabilityPage from "./pages/trainer-availability/TrainerAvailabilityPage";
 import TrainersPage from "./pages/trainers/TrainersPage";
 import MemberList from "./pages/members/MemberList";
@@ -69,6 +70,7 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/members" element={<MemberList />} />
           <Route path="/my-schedule" element={<TrainerAvailabilityPage />} />
+          <Route path="/gx-schedules" element={<GxSchedulesPage />} />
           <Route path="/trainers" element={<TrainersPage />} />
           <Route path="/memberships" element={<MembershipsPage />} />
           <Route path="/reservations" element={<ReservationsPage />} />

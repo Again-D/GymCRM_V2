@@ -29,6 +29,7 @@ import type {
   TrainerSummary,
 } from "../pages/trainers/modules/types";
 import type { TrainerAvailabilitySnapshot } from "../pages/trainer-availability/modules/types";
+import type { GxScheduleSnapshot } from "../pages/gx-schedules/modules/types";
 import { isMembershipReservableOn } from "../pages/reservations/modules/reservableMemberships";
 
 const initialMembers: MemberSummary[] = [
@@ -102,9 +103,35 @@ type MockTrainerAvailabilityState = {
   exceptions: MockTrainerAvailabilityExceptionRecord[];
 };
 
+type MockGxScheduleRuleRecord = {
+  ruleId: number;
+  trainerUserId: number;
+  className: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  capacity: number;
+  effectiveStartDate: string;
+  active: boolean;
+};
+
+type MockGxScheduleExceptionRecord = {
+  exceptionId: number;
+  ruleId: number;
+  exceptionDate: string;
+  exceptionType: "OFF" | "OVERRIDE";
+  overrideTrainerUserId: number | null;
+  overrideStartTime: string | null;
+  overrideEndTime: string | null;
+  overrideCapacity: number | null;
+  memo: string | null;
+};
+
 let trainerIdSeed = 42;
 let trainerAvailabilityRuleIdSeed = 4;
 let trainerAvailabilityExceptionIdSeed = 11;
+let gxRuleIdSeed = 1;
+let gxExceptionIdSeed = 1;
 let mockTrainers: MockTrainerRecord[] = [
   {
     userId: 41,
@@ -175,6 +202,34 @@ const initialTrainerAvailabilityByUserId = new Map<number, MockTrainerAvailabili
     },
   ],
 ]);
+
+const initialMockGxRules: MockGxScheduleRuleRecord[] = [
+  {
+    ruleId: 1,
+    trainerUserId: 41,
+    className: "아침 GX",
+    dayOfWeek: 1,
+    startTime: "07:00:00",
+    endTime: "08:00:00",
+    capacity: 12,
+    effectiveStartDate: "2026-03-01",
+    active: true,
+  },
+];
+
+const initialMockGxExceptions: MockGxScheduleExceptionRecord[] = [
+  {
+    exceptionId: 1,
+    ruleId: 1,
+    exceptionDate: "2026-04-06",
+    exceptionType: "OFF",
+    overrideTrainerUserId: null,
+    overrideStartTime: null,
+    overrideEndTime: null,
+    overrideCapacity: null,
+    memo: "대회 일정",
+  },
+];
 
 const initialMemberDetails = new Map<number, MemberDetail>([
   [
@@ -648,6 +703,8 @@ let mockCrmHistoryRows = cloneCrmHistoryRows(initialCrmHistoryRows);
 let mockTrainerAvailabilityByUserId = cloneTrainerAvailabilityMap(
   initialTrainerAvailabilityByUserId,
 );
+let mockGxRules = initialMockGxRules.map((rule) => ({ ...rule }));
+let mockGxExceptions = initialMockGxExceptions.map((exception) => ({ ...exception }));
 let mockSettlementTransactions = initialSettlementTransactions.map(
   (transaction) => ({ ...transaction }),
 );
@@ -729,6 +786,14 @@ function cloneTrainerAvailabilityMap(
       },
     ]),
   );
+}
+
+function cloneMockGxRules(source: MockGxScheduleRuleRecord[]) {
+  return source.map((rule) => ({ ...rule }));
+}
+
+function cloneMockGxExceptions(source: MockGxScheduleExceptionRecord[]) {
+  return source.map((exception) => ({ ...exception }));
 }
 
 function cloneCrmHistoryRows(source: CrmHistoryRow[]) {
@@ -1060,6 +1125,8 @@ export function resetMockData() {
   mockTrainerAvailabilityByUserId = cloneTrainerAvailabilityMap(
     initialTrainerAvailabilityByUserId,
   );
+  mockGxRules = cloneMockGxRules(initialMockGxRules);
+  mockGxExceptions = cloneMockGxExceptions(initialMockGxExceptions);
   mockSettlementTransactions = cloneSettlementTransactions(
     initialSettlementTransactions,
   );
@@ -1075,6 +1142,8 @@ export function resetMockData() {
   memberIdSeed = 103;
   trainerAvailabilityRuleIdSeed = 4;
   trainerAvailabilityExceptionIdSeed = 11;
+  gxRuleIdSeed = 1;
+  gxExceptionIdSeed = 1;
 }
 
 export function createMockMember(input: {
@@ -2022,6 +2091,211 @@ export function deleteMockTrainerAvailabilityException(
   });
   bumpMockDataVersion();
   return buildMockTrainerAvailabilitySnapshot(userId, month);
+}
+
+function buildMockGxScheduleSnapshot(
+  month: string,
+  actor?: { userId: number; roles: string[] | undefined | null },
+): GxScheduleSnapshot {
+  const [yearText, monthText] = month.split("-");
+  const year = Number(yearText);
+  const monthIndex = Number(monthText);
+  const lastDay = new Date(year, monthIndex, 0).getDate();
+  const visibleRules = actor?.roles?.includes("ROLE_TRAINER")
+    ? mockGxRules.filter((rule) => rule.trainerUserId === actor.userId)
+    : mockGxRules;
+  const visibleRuleIds = new Set(visibleRules.map((rule) => rule.ruleId));
+  const visibleExceptions = mockGxExceptions.filter(
+    (exception) =>
+      visibleRuleIds.has(exception.ruleId) &&
+      exception.exceptionDate.startsWith(`${month}-`),
+  );
+
+  const generatedSchedules = Array.from({ length: lastDay }, (_, index) => {
+    const day = `${index + 1}`.padStart(2, "0");
+    const date = `${month}-${day}`;
+    const dayOfWeek = getDayOfWeekNumber(date);
+    return visibleRules.flatMap((rule) => {
+      if (!rule.active || rule.dayOfWeek !== dayOfWeek || rule.effectiveStartDate > date) {
+        return [];
+      }
+      const exception =
+        mockGxExceptions.find(
+          (item) => item.ruleId === rule.ruleId && item.exceptionDate === date,
+        ) ?? null;
+      if (exception?.exceptionType === "OFF") {
+        return [];
+      }
+      const trainerUserId = exception?.overrideTrainerUserId ?? rule.trainerUserId;
+      const trainer = mockTrainers.find((item) => item.userId === trainerUserId);
+      const startTime = exception?.overrideStartTime ?? rule.startTime;
+      const endTime = exception?.overrideEndTime ?? rule.endTime;
+      return [
+        {
+          scheduleId: Number(`${rule.ruleId}${index + 1}`),
+          sourceRuleId: rule.ruleId,
+          sourceExceptionId: exception?.exceptionId ?? null,
+          trainerUserId,
+          trainerName: trainer?.displayName ?? `트레이너 #${trainerUserId}`,
+          className: rule.className,
+          startAt: `${date}T${startTime}+09:00`,
+          endAt: `${date}T${endTime}+09:00`,
+          capacity: exception?.overrideCapacity ?? rule.capacity,
+          currentCount: 0,
+        },
+      ];
+    });
+  }).flat();
+
+  return {
+    month,
+    rules: visibleRules.map((rule) => ({ ...rule })),
+    exceptions: visibleExceptions.map((exception) => ({ ...exception })),
+    generatedSchedules,
+  };
+}
+
+export function getMockGxScheduleSnapshot(
+  month: string,
+  actor?: { userId: number; roles: string[] | undefined | null },
+) {
+  return buildMockGxScheduleSnapshot(month, actor);
+}
+
+export function createMockGxScheduleRule(
+  month: string,
+  input: {
+    className: string;
+    trainerUserId: number;
+    dayOfWeek: number;
+    startTime: string;
+    endTime: string;
+    capacity: number;
+    effectiveStartDate: string;
+  },
+  actor?: { userId: number; roles: string[] | undefined | null },
+) {
+  gxRuleIdSeed += 1;
+  mockGxRules = [
+    ...mockGxRules,
+    {
+      ruleId: gxRuleIdSeed,
+      trainerUserId: input.trainerUserId,
+      className: input.className,
+      dayOfWeek: input.dayOfWeek,
+      startTime: `${input.startTime}:00`,
+      endTime: `${input.endTime}:00`,
+      capacity: input.capacity,
+      effectiveStartDate: input.effectiveStartDate,
+      active: true,
+    },
+  ];
+  bumpMockDataVersion();
+  return buildMockGxScheduleSnapshot(month, actor);
+}
+
+export function updateMockGxScheduleRule(
+  ruleId: number,
+  month: string,
+  input: {
+    className: string;
+    trainerUserId: number;
+    dayOfWeek: number;
+    startTime: string;
+    endTime: string;
+    capacity: number;
+    effectiveStartDate: string;
+    active: boolean;
+  },
+  actor?: { userId: number; roles: string[] | undefined | null },
+) {
+  mockGxRules = mockGxRules.map((rule) =>
+    rule.ruleId === ruleId
+      ? {
+          ...rule,
+          className: input.className,
+          trainerUserId: input.trainerUserId,
+          dayOfWeek: input.dayOfWeek,
+          startTime: `${input.startTime}:00`,
+          endTime: `${input.endTime}:00`,
+          capacity: input.capacity,
+          effectiveStartDate: input.effectiveStartDate,
+          active: input.active,
+        }
+      : rule,
+  );
+  bumpMockDataVersion();
+  return buildMockGxScheduleSnapshot(month, actor);
+}
+
+export function deleteMockGxScheduleRule(
+  ruleId: number,
+  month: string,
+  actor?: { userId: number; roles: string[] | undefined | null },
+) {
+  mockGxRules = mockGxRules.map((rule) =>
+    rule.ruleId === ruleId ? { ...rule, active: false } : rule,
+  );
+  bumpMockDataVersion();
+  return buildMockGxScheduleSnapshot(month, actor);
+}
+
+export function upsertMockGxScheduleException(
+  ruleId: number,
+  exceptionDate: string,
+  month: string,
+  payload: {
+    exceptionType: "OFF" | "OVERRIDE";
+    overrideTrainerUserId: number | null;
+    overrideStartTime: string | null;
+    overrideEndTime: string | null;
+    overrideCapacity: number | null;
+    memo: string | null;
+  },
+  actor?: { userId: number; roles: string[] | undefined | null },
+) {
+  const existing = mockGxExceptions.find(
+    (exception) =>
+      exception.ruleId === ruleId && exception.exceptionDate === exceptionDate,
+  );
+  const nextException: MockGxScheduleExceptionRecord = {
+    exceptionId: existing?.exceptionId ?? ++gxExceptionIdSeed,
+    ruleId,
+    exceptionDate,
+    exceptionType: payload.exceptionType,
+    overrideTrainerUserId: payload.overrideTrainerUserId,
+    overrideStartTime: payload.overrideStartTime
+      ? `${payload.overrideStartTime}:00`
+      : null,
+    overrideEndTime: payload.overrideEndTime
+      ? `${payload.overrideEndTime}:00`
+      : null,
+    overrideCapacity: payload.overrideCapacity,
+    memo: payload.memo,
+  };
+  mockGxExceptions = [
+    ...mockGxExceptions.filter(
+      (exception) =>
+        !(exception.ruleId === ruleId && exception.exceptionDate === exceptionDate),
+    ),
+    nextException,
+  ].sort((left, right) => left.exceptionDate.localeCompare(right.exceptionDate));
+  bumpMockDataVersion();
+  return buildMockGxScheduleSnapshot(month, actor);
+}
+
+export function deleteMockGxScheduleException(
+  ruleId: number,
+  exceptionDate: string,
+  month: string,
+  actor?: { userId: number; roles: string[] | undefined | null },
+) {
+  mockGxExceptions = mockGxExceptions.filter(
+    (exception) =>
+      !(exception.ruleId === ruleId && exception.exceptionDate === exceptionDate),
+  );
+  bumpMockDataVersion();
+  return buildMockGxScheduleSnapshot(month, actor);
 }
 
 export function getMockResponse(path: string): ApiEnvelope<unknown> | null {

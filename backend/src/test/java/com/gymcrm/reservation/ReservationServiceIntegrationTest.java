@@ -361,7 +361,9 @@ class ReservationServiceIntegrationTest {
                 capacity,
                 0,
                 "test fixture",
-                1L
+                1L,
+                null,
+                null
         ));
     }
 
