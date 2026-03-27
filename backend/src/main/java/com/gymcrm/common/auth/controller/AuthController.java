@@ -194,11 +194,10 @@ public class AuthController {
     public record TrainerSummaryResponse(
             Long userId,
             Long centerId,
-            String loginId,
             String displayName
     ) {
         static TrainerSummaryResponse from(AuthUser user) {
-            return new TrainerSummaryResponse(user.userId(), user.centerId(), user.loginId(), user.displayName());
+            return new TrainerSummaryResponse(user.userId(), user.centerId(), user.displayName());
         }
     }
 

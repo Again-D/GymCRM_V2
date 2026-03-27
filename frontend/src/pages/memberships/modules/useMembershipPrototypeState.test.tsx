@@ -85,6 +85,7 @@ describe("useMembershipPrototypeState", () => {
       result.current.setPurchaseForm((prev) => ({
         ...prev,
         productId: "2",
+        assignedTrainerId: "41",
         paidAmount: "510000",
         paymentMemo: "테스트 결제"
       }));
@@ -100,6 +101,7 @@ describe("useMembershipPrototypeState", () => {
         memberId: 101,
         productNameSnapshot: "PT 10회권",
         productTypeSnapshot: "COUNT",
+        assignedTrainerId: 41,
         remainingCount: 10
       })
     );
@@ -109,6 +111,35 @@ describe("useMembershipPrototypeState", () => {
       paymentStatus: "PAID",
       amount: 510000
     });
+  });
+
+  it("blocks PT purchase submission when assigned trainer is missing", async () => {
+    const createMembership = vi.fn();
+    const { result } = renderHook(() =>
+      useMembershipPrototypeState({
+        selectedMemberId: 101,
+        availableProducts,
+        createMembership,
+        holdMembership: vi.fn(),
+        resumeMembership: vi.fn(),
+        previewMembershipRefund: vi.fn(),
+        refundMembership: vi.fn()
+      })
+    );
+
+    act(() => {
+      result.current.setPurchaseForm((prev) => ({
+        ...prev,
+        productId: "2"
+      }));
+    });
+
+    await act(async () => {
+      await result.current.handlePurchaseSubmit();
+    });
+
+    expect(createMembership).not.toHaveBeenCalled();
+    expect(result.current.membershipPanelError).toBe("PT 상품은 담당 트레이너를 선택해야 합니다.");
   });
 
   it("runs hold, resume, and refund mutations through the async action layer", async () => {

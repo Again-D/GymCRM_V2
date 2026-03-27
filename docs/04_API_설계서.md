@@ -791,40 +791,25 @@ GET /api/v1/members?keyword=홍길동&status=ACTIVE&sort=name&order=asc&page=1&s
 
 ```json
 {
-  "productId": "PRD-GYM-001",
+  "productId": 101,
+  "assignedTrainerId": 41,
   "startDate": "2026-02-20",
-  "payment": {
-    "method": "CARD",
-    "amount": 330000,
-    "discountAmount": 30000,
-    "finalAmount": 300000,
-    "discountReason": "신규 회원 할인",
-    "cardInfo": {
-      "approvalNumber": "12345678",
-      "cardCompany": "삼성카드",
-      "installmentMonths": 3
-    },
-    "memo": ""
-  },
-  "assignedTrainerId": "TRN-001",
-  "memo": "주 3회 운동 목표"
+  "paidAmount": 300000,
+  "paymentMethod": "CARD",
+  "membershipMemo": "주 3회 운동 목표",
+  "paymentMemo": ""
 }
 ```
 
 | 필드 | 타입 | 필수 | 설명 |
 |------|------|------|------|
-| `productId` | String | O | 구매할 상품 ID |
+| `productId` | Long | O | 구매할 상품 ID |
+| `assignedTrainerId` | Long | X | 담당 트레이너 사용자 ID (PT 상품 시 필수) |
 | `startDate` | String | O | 시작일 (yyyy-MM-dd) |
-| `payment` | Object | O | 결제 정보 |
-| `payment.method` | Enum | O | 결제 수단 (`CARD`, `CASH`, `TRANSFER`, `MIXED`) |
-| `payment.amount` | Long | O | 상품 금액 (원) |
-| `payment.discountAmount` | Long | X | 할인 금액 (원, 기본값: 0) |
-| `payment.finalAmount` | Long | O | 최종 결제 금액 (원) |
-| `payment.discountReason` | String | X | 할인 사유 |
-| `payment.cardInfo` | Object | X | 카드 결제 시 카드 정보 |
-| `payment.memo` | String | X | 결제 메모 |
-| `assignedTrainerId` | String | X | 담당 트레이너 ID (PT 상품 시 필수) |
-| `memo` | String | X | 회원권 메모 |
+| `paidAmount` | Long | X | 결제 금액 (비워두면 상품 정가 사용) |
+| `paymentMethod` | Enum | X | 결제 수단 (`CARD`, `CASH`, `TRANSFER`, `ETC`) |
+| `membershipMemo` | String | X | 회원권 메모 |
+| `paymentMemo` | String | X | 결제 메모 |
 
 **Response Body (성공 - 201):**
 
@@ -889,7 +874,7 @@ GET /api/v1/members?keyword=홍길동&status=ACTIVE&sort=name&order=asc&page=1&s
 - 기간제 상품: `startDate` + 상품의 `durationDays`로 `endDate`를 자동 계산한다.
 - 횟수제 상품: 상품에 설정된 `totalCount`가 잔여 횟수로 자동 설정된다.
 - PT 상품 구매 시 `assignedTrainerId`는 필수이다.
-- `payment.amount - payment.discountAmount`는 `payment.finalAmount`와 일치해야 한다.
+- 동일 회원에게 비종결 PT 회원권(`ACTIVE`, `HOLDING`)이 이미 있으면 새 PT 회원권 생성은 차단된다.
 - 결제 완료와 회원권 등록은 하나의 트랜잭션으로 처리한다.
 
 ---

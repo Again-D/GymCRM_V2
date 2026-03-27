@@ -160,6 +160,21 @@ public class MemberMembershipRepository {
                 .toList();
     }
 
+    public boolean existsNonTerminalPtMembership(Long centerId, Long memberId) {
+        Integer fetched = queryFactory
+                .selectOne()
+                .from(memberMembershipEntity)
+                .where(
+                        memberMembershipEntity.centerId.eq(centerId),
+                        memberMembershipEntity.memberId.eq(memberId),
+                        memberMembershipEntity.productCategorySnapshot.eq("PT"),
+                        memberMembershipEntity.membershipStatus.in("ACTIVE", "HOLDING"),
+                        memberMembershipEntity.isDeleted.isFalse()
+                )
+                .fetchFirst();
+        return fetched != null;
+    }
+
     private MemberMembership toDomain(MemberMembershipEntity entity) {
         return new MemberMembership(
                 entity.getMembershipId(),

@@ -24,6 +24,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
@@ -135,10 +136,126 @@ class MembershipPurchaseServiceIntegrationTest {
         assertEquals("담당 트레이너는 ROLE_TRAINER 사용자여야 합니다.", exception.getMessage());
     }
 
+    @Test
+    void rejectsPtPurchaseWithoutAssignedTrainer() {
+        Member member = createActiveMember();
+        Product product = createCountProduct();
+
+        ApiException exception = assertThrows(ApiException.class, () -> purchaseService.purchase(new MembershipPurchaseService.PurchaseRequest(
+                member.memberId(),
+                product.productId(),
+                null,
+                LocalDate.of(2026, 3, 5),
+                null,
+                "CARD",
+                null,
+                null
+        )));
+
+        assertEquals("PT 상품 구매 시 담당 트레이너를 선택해야 합니다.", exception.getMessage());
+    }
+
+    @Test
+    void rejectsPtPurchaseWhenActivePtMembershipAlreadyExists() {
+        Member member = createActiveMember();
+        Product product = createCountProduct();
+        createExistingMembership(member.memberId(), product.productId(), "ACTIVE");
+        long trainerUserId = createTrainerUser();
+
+        ApiException exception = assertThrows(ApiException.class, () -> purchaseService.purchase(new MembershipPurchaseService.PurchaseRequest(
+                member.memberId(),
+                product.productId(),
+                trainerUserId,
+                LocalDate.of(2026, 3, 6),
+                null,
+                "CARD",
+                null,
+                null
+        )));
+
+        assertEquals("회원은 활성 또는 홀딩 중인 PT 회원권을 동시에 두 개 가질 수 없습니다.", exception.getMessage());
+    }
+
+    @Test
+    void rejectsPtPurchaseWhenHoldingPtMembershipAlreadyExists() {
+        Member member = createActiveMember();
+        Product product = createCountProduct();
+        createExistingMembership(member.memberId(), product.productId(), "HOLDING");
+        long trainerUserId = createTrainerUser();
+
+        ApiException exception = assertThrows(ApiException.class, () -> purchaseService.purchase(new MembershipPurchaseService.PurchaseRequest(
+                member.memberId(),
+                product.productId(),
+                trainerUserId,
+                LocalDate.of(2026, 3, 7),
+                null,
+                "CARD",
+                null,
+                null
+        )));
+
+        assertEquals("회원은 활성 또는 홀딩 중인 PT 회원권을 동시에 두 개 가질 수 없습니다.", exception.getMessage());
+    }
+
+    @Test
+    @Transactional
+    void allowsNonPtPurchaseWithoutAssignedTrainer() {
+        Member member = createActiveMember();
+        Product product = createDurationProduct();
+
+        MembershipPurchaseService.PurchaseResult result = purchaseService.purchase(new MembershipPurchaseService.PurchaseRequest(
+                member.memberId(),
+                product.productId(),
+                null,
+                LocalDate.of(2026, 3, 8),
+                null,
+                "CARD",
+                null,
+                null
+        ));
+
+        assertNotNull(result.membership().membershipId());
+        assertNull(result.membership().assignedTrainerId());
+    }
+
+    @Test
+    @Transactional
+    void uniqueIndexBlocksSecondNonTerminalPtMembership() {
+        Member member = createActiveMember();
+        Product firstProduct = createCountProduct();
+        Product secondProduct = createCountProduct();
+        createExistingMembership(member.memberId(), firstProduct.productId(), "ACTIVE");
+
+        assertThrows(org.springframework.dao.DataIntegrityViolationException.class, () ->
+                createExistingMembership(member.memberId(), secondProduct.productId(), "HOLDING"));
+    }
+
     private long countRows(String tableName) {
         return jdbcClient.sql("SELECT COUNT(*) FROM " + tableName)
                 .query(Long.class)
                 .single();
+    }
+
+    private void createExistingMembership(Long memberId, Long productId, String membershipStatus) {
+        jdbcClient.sql("""
+                INSERT INTO member_memberships (
+                    center_id, member_id, product_id, membership_status,
+                    product_name_snapshot, product_category_snapshot, product_type_snapshot,
+                    price_amount_snapshot, purchased_at, start_date, end_date,
+                    total_count, remaining_count, used_count, hold_days_used, hold_count_used,
+                    memo, is_deleted, created_at, created_by, updated_at, updated_by
+                ) VALUES (
+                    1, :memberId, :productId, :membershipStatus,
+                    '테스트 PT 10회권', 'PT', 'COUNT',
+                    550000, CURRENT_TIMESTAMP, DATE '2026-03-01', NULL,
+                    10, 10, 0, 0, 0,
+                    NULL, FALSE, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 1
+                )
+                """)
+                .param("memberId", memberId)
+                .param("productId", productId)
+                .param("membershipStatus", membershipStatus)
+                .update();
     }
 
     private Member createActiveMember() {
