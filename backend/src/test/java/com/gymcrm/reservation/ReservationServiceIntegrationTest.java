@@ -352,6 +352,7 @@ class ReservationServiceIntegrationTest {
         OffsetDateTime endAt = startAt.plusMinutes("PT".equals(type) ? 50 : 60);
         return trainerScheduleRepository.insert(new TrainerScheduleRepository.TrainerScheduleCreateCommand(
                 CENTER_ID,
+                null,
                 type,
                 "P7트레이너-" + suffix,
                 "P7슬롯-" + suffix,

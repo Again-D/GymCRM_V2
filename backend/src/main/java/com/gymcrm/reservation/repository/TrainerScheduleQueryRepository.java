@@ -82,6 +82,7 @@ public class TrainerScheduleQueryRepository {
         return new TrainerSchedule(
                 entity.getScheduleId(),
                 entity.getCenterId(),
+                entity.getTrainerUserId(),
                 entity.getScheduleType(),
                 entity.getTrainerName(),
                 entity.getSlotTitle(),
@@ -95,5 +96,39 @@ public class TrainerScheduleQueryRepository {
                 entity.getUpdatedAt(),
                 entity.getUpdatedBy()
         );
+    }
+
+    public List<TimeBlock> findTimeBlocksByTrainerAndRange(
+            Long centerId,
+            Long trainerUserId,
+            OffsetDateTime rangeStart,
+            OffsetDateTime rangeEnd
+    ) {
+        return queryFactory
+                .select(
+                        trainerScheduleEntity.startAt,
+                        trainerScheduleEntity.endAt
+                )
+                .from(trainerScheduleEntity)
+                .where(
+                        trainerScheduleEntity.centerId.eq(centerId),
+                        trainerScheduleEntity.trainerUserId.eq(trainerUserId),
+                        trainerScheduleEntity.isDeleted.isFalse(),
+                        trainerScheduleEntity.startAt.lt(rangeEnd),
+                        trainerScheduleEntity.endAt.gt(rangeStart)
+                )
+                .fetch()
+                .stream()
+                .map(tuple -> new TimeBlock(
+                        tuple.get(trainerScheduleEntity.startAt),
+                        tuple.get(trainerScheduleEntity.endAt)
+                ))
+                .toList();
+    }
+
+    public record TimeBlock(
+            OffsetDateTime startAt,
+            OffsetDateTime endAt
+    ) {
     }
 }

@@ -7,6 +7,7 @@ import com.gymcrm.reservation.entity.TrainerSchedule;
 public record ReservationScheduleResponse(
             Long scheduleId,
             Long centerId,
+            Long trainerUserId,
             String scheduleType,
             String trainerName,
             String slotTitle,
@@ -20,6 +21,7 @@ public record ReservationScheduleResponse(
             return new ReservationScheduleResponse(
                     schedule.scheduleId(),
                     schedule.centerId(),
+                    schedule.trainerUserId(),
                     schedule.scheduleType(),
                     schedule.trainerName(),
                     schedule.slotTitle(),

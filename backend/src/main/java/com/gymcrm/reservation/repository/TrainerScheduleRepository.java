@@ -50,6 +50,7 @@ public class TrainerScheduleRepository {
     public TrainerSchedule insert(TrainerScheduleCreateCommand command) {
         TrainerScheduleEntity entity = new TrainerScheduleEntity();
         entity.setCenterId(command.centerId());
+        entity.setTrainerUserId(command.trainerUserId());
         entity.setScheduleType(command.scheduleType());
         entity.setTrainerName(command.trainerName());
         entity.setSlotTitle(command.slotTitle());
@@ -72,6 +73,7 @@ public class TrainerScheduleRepository {
         return new TrainerSchedule(
                 entity.getScheduleId(),
                 entity.getCenterId(),
+                entity.getTrainerUserId(),
                 entity.getScheduleType(),
                 entity.getTrainerName(),
                 entity.getSlotTitle(),
@@ -89,6 +91,7 @@ public class TrainerScheduleRepository {
 
     public record TrainerScheduleCreateCommand(
             Long centerId,
+            Long trainerUserId,
             String scheduleType,
             String trainerName,
             String slotTitle,
