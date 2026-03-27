@@ -54,6 +54,7 @@ class GxScheduleApiIntegrationTest {
 
     @BeforeEach
     void setUpUsers() {
+        clearGxScheduleData();
         ensureUser(CENTER_ID, "manager-gx", "manager-pass-1234!", "Manager GX", "ROLE_MANAGER");
         ensureUser(CENTER_ID, "desk-gx", "desk-pass-1234!", "Desk GX", "ROLE_DESK");
         ensureUser(CENTER_ID, "trainer-gx", "trainer-pass-1234!", "Trainer GX", "ROLE_TRAINER");
@@ -153,6 +154,22 @@ class GxScheduleApiIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.exceptions[*].exceptionType", hasItem("OFF")))
                 .andExpect(jsonPath("$.data.exceptions[*].memo", hasItem("개인 사정")));
+
+        mockMvc.perform(put("/api/v1/reservations/gx/rules/{ruleId}/exceptions/{date}", ruleId, exceptionDate)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + trainerToken)
+                        .param("month", month)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "exceptionType": "OVERRIDE",
+                                  "overrideStartTime": "07:30",
+                                  "overrideEndTime": "08:30",
+                                  "overrideCapacity": 20,
+                                  "memo": "임의 변경"
+                                }
+                                """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("ACCESS_DENIED"));
     }
 
     @Test
@@ -357,6 +374,47 @@ class GxScheduleApiIntegrationTest {
                 .param("userId", userId)
                 .update();
         replaceUserRole(userId, roleCode);
+    }
+
+    private void clearGxScheduleData() {
+        jdbcClient.sql("""
+                UPDATE trainer_schedules
+                SET is_deleted = TRUE,
+                    deleted_at = CURRENT_TIMESTAMP,
+                    deleted_by = 0,
+                    updated_at = CURRENT_TIMESTAMP,
+                    updated_by = 0
+                WHERE center_id = :centerId
+                  AND source_rule_id IS NOT NULL
+                  AND is_deleted = FALSE
+                """)
+                .param("centerId", CENTER_ID)
+                .update();
+        jdbcClient.sql("""
+                UPDATE gx_schedule_exceptions
+                SET is_deleted = TRUE,
+                    deleted_at = CURRENT_TIMESTAMP,
+                    deleted_by = 0,
+                    updated_at = CURRENT_TIMESTAMP,
+                    updated_by = 0
+                WHERE center_id = :centerId
+                  AND is_deleted = FALSE
+                """)
+                .param("centerId", CENTER_ID)
+                .update();
+        jdbcClient.sql("""
+                UPDATE gx_schedule_rules
+                SET is_active = FALSE,
+                    is_deleted = TRUE,
+                    deleted_at = CURRENT_TIMESTAMP,
+                    deleted_by = 0,
+                    updated_at = CURRENT_TIMESTAMP,
+                    updated_by = 0
+                WHERE center_id = :centerId
+                  AND is_deleted = FALSE
+                """)
+                .param("centerId", CENTER_ID)
+                .update();
     }
 
     private void replaceUserRole(Long userId, String roleCode) {

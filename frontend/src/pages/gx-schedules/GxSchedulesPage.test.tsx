@@ -146,4 +146,31 @@ describe("GxSchedulesPage", () => {
 
     expect(screen.getByText("종료 시간은 시작 시간보다 늦어야 합니다.")).toBeTruthy();
   });
+
+  it("limits trainer exception UI to off and memo only", async () => {
+    render(
+      <AuthStateProvider
+        value={{
+          securityMode: "jwt",
+          authBootstrapping: false,
+          authUser: {
+            userId: 41,
+            centerId: 1,
+            username: "trainer-gx",
+            primaryRole: "ROLE_TRAINER",
+            roles: ["ROLE_TRAINER"],
+          },
+        }}
+      >
+        <GxSchedulesPage />
+      </AuthStateProvider>,
+    );
+
+    await screen.findByRole("heading", { name: "GX 스케줄" });
+    fireEvent.click(screen.getAllByRole("button", { name: "회차 예외" })[0]);
+
+    await screen.findByRole("heading", { name: "GX 회차 예외" });
+    expect(screen.getByText("트레이너는 본인 회차의 휴강과 메모만 처리할 수 있습니다.")).toBeTruthy();
+    expect(screen.queryByRole("option", { name: "변경" })).toBeNull();
+  });
 });

@@ -53,6 +53,7 @@ export default function GxSchedulesPage() {
     hasRole(authUser, "ROLE_SUPER_ADMIN") ||
     hasRole(authUser, "ROLE_CENTER_ADMIN") ||
     hasRole(authUser, "ROLE_MANAGER");
+  const isTrainer = hasRole(authUser, "ROLE_TRAINER");
   const canManageExceptions = canManageRules || hasRole(authUser, "ROLE_TRAINER");
 
   const { snapshot, loading, error, loadSnapshot, applySnapshot } =
@@ -94,14 +95,14 @@ export default function GxSchedulesPage() {
     if (!authUser) {
       return [];
     }
-    if (hasRole(authUser, "ROLE_TRAINER")) {
+    if (isTrainer) {
       return [{ userId: authUser.userId, displayName: authUser.username }];
     }
     return trainers.map((trainer) => ({
       userId: trainer.userId,
       displayName: trainer.displayName,
     }));
-  }, [authUser, trainers]);
+  }, [authUser, isTrainer, trainers]);
   const trainerNameByUserId = useMemo(
     () =>
       new Map(
@@ -782,9 +783,14 @@ export default function GxSchedulesPage() {
                 }
               >
                 <option value="OFF">휴강</option>
-                <option value="OVERRIDE">변경</option>
+                {!isTrainer ? <option value="OVERRIDE">변경</option> : null}
               </select>
             </label>
+            {isTrainer ? (
+              <div className="pill info full-span">
+                트레이너는 본인 회차의 휴강과 메모만 처리할 수 있습니다.
+              </div>
+            ) : null}
             {exceptionForm.exceptionType === "OVERRIDE" ? (
               <>
                 <label className="stack-xs">
@@ -799,7 +805,7 @@ export default function GxSchedulesPage() {
                           : current,
                       )
                     }
-                    disabled={hasRole(authUser, "ROLE_TRAINER")}
+                    disabled={isTrainer}
                   >
                     <option value="">담당 트레이너</option>
                     {trainerOptions.map((trainer) => (

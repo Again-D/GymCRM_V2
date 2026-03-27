@@ -174,6 +174,7 @@ public class GxScheduleService {
         ensureExceptionMutationAccess(actor, rule);
 
         GxScheduleExceptionType type = parseExceptionType(request.exceptionType());
+        validateTrainerExceptionScope(actor, type, request.overrideTrainerUserId(), request.overrideStartTime(), request.overrideEndTime(), request.overrideCapacity());
         validateExceptionInput(type, request.overrideStartTime(), request.overrideEndTime(), request.overrideCapacity());
         Long overrideTrainerUserId = request.overrideTrainerUserId();
         if (overrideTrainerUserId != null) {
@@ -443,6 +444,26 @@ public class GxScheduleService {
         }
         if (overrideCapacity != null && overrideCapacity <= 0) {
             throw new ApiException(ErrorCode.VALIDATION_ERROR, "overrideCapacity must be positive");
+        }
+    }
+
+    private void validateTrainerExceptionScope(
+            AuthUser actor,
+            GxScheduleExceptionType type,
+            Long overrideTrainerUserId,
+            LocalTime overrideStartTime,
+            LocalTime overrideEndTime,
+            Integer overrideCapacity
+    ) {
+        if (!ROLE_TRAINER.equals(actor.roleCode())) {
+            return;
+        }
+        if (type != GxScheduleExceptionType.OFF
+                || overrideTrainerUserId != null
+                || overrideStartTime != null
+                || overrideEndTime != null
+                || overrideCapacity != null) {
+            throw new ApiException(ErrorCode.ACCESS_DENIED, "트레이너는 휴강과 메모만 처리할 수 있습니다.");
         }
     }
 
