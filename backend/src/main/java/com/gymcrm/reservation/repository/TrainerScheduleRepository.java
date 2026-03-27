@@ -66,6 +66,8 @@ public class TrainerScheduleRepository {
         entity.setCreatedBy(command.actorUserId());
         entity.setUpdatedAt(now);
         entity.setUpdatedBy(command.actorUserId());
+        entity.setSourceRuleId(command.sourceRuleId());
+        entity.setSourceExceptionId(command.sourceExceptionId());
         TrainerScheduleEntity saved = trainerScheduleJpaRepository.saveAndFlush(entity);
         entityManager.refresh(saved);
         return toDomain(saved);
@@ -87,7 +89,9 @@ public class TrainerScheduleRepository {
                 entity.getCreatedAt(),
                 entity.getCreatedBy(),
                 entity.getUpdatedAt(),
-                entity.getUpdatedBy()
+                entity.getUpdatedBy(),
+                entity.getSourceRuleId(),
+                entity.getSourceExceptionId()
         );
     }
 
@@ -102,6 +106,8 @@ public class TrainerScheduleRepository {
             Integer capacity,
             Integer currentCount,
             String memo,
-            Long actorUserId
+            Long actorUserId,
+            Long sourceRuleId,
+            Long sourceExceptionId
     ) {}
 }

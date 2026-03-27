@@ -5,6 +5,7 @@ export type NavSectionKey =
   | "dashboard"
   | "members"
   | "mySchedule"
+  | "gxSchedules"
   | "trainers"
   | "memberships"
   | "reservations"
@@ -55,6 +56,17 @@ export const shellRoutes: ShellRoute[] = [
     showInDashboard: true,
     visibleRoles: ["ROLE_TRAINER"],
     allowedRoles: ["ROLE_TRAINER"],
+  },
+  {
+    key: "gxSchedules",
+    path: "/gx-schedules",
+    label: "GX 스케줄",
+    description: "반복 규칙 / 회차 예외 / 월별 생성 슬롯",
+    protected: true,
+    showInSidebar: true,
+    showInDashboard: true,
+    visibleRoles: ["ROLE_SUPER_ADMIN", "ROLE_CENTER_ADMIN", "ROLE_MANAGER", "ROLE_DESK", "ROLE_TRAINER"],
+    allowedRoles: ["ROLE_SUPER_ADMIN", "ROLE_CENTER_ADMIN", "ROLE_MANAGER", "ROLE_DESK", "ROLE_TRAINER"],
   },
   {
     key: "trainers",

@@ -68,6 +68,12 @@ public class TrainerScheduleEntity {
     @Column(name = "updated_by", nullable = false)
     private Long updatedBy;
 
+    @Column(name = "source_rule_id")
+    private Long sourceRuleId;
+
+    @Column(name = "source_exception_id")
+    private Long sourceExceptionId;
+
     public TrainerScheduleEntity() {
     }
 
@@ -201,5 +207,21 @@ public class TrainerScheduleEntity {
 
     public void setUpdatedBy(Long updatedBy) {
         this.updatedBy = updatedBy;
+    }
+
+    public Long getSourceRuleId() {
+        return sourceRuleId;
+    }
+
+    public void setSourceRuleId(Long sourceRuleId) {
+        this.sourceRuleId = sourceRuleId;
+    }
+
+    public Long getSourceExceptionId() {
+        return sourceExceptionId;
+    }
+
+    public void setSourceExceptionId(Long sourceExceptionId) {
+        this.sourceExceptionId = sourceExceptionId;
     }
 }

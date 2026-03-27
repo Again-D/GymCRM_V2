@@ -59,6 +59,9 @@ If this file conflicts with [AGENTS.md](/Users/abc/projects/GymCRM_V2/AGENTS.md)
 - Do not leave plan files or execution checklists partially unchecked when the work is already done.
 - If a documentation gap is found while the scoped work is otherwise complete, close it in the same PR or turn instead of deferring it.
 - When validation is performed, record where the evidence lives.
+- If API endpoints, request/response shapes, error surfaces, status codes, or API-facing business rules change, update [docs/04_API_설계서.md](/Users/abc/projects/GymCRM_V2/docs/04_API_%EC%84%A4%EA%B3%84%EC%84%9C.md) in the same delivery unit.
+- Keep the main spec sections of [docs/04_API_설계서.md](/Users/abc/projects/GymCRM_V2/docs/04_API_%EC%84%A4%EA%B3%84%EC%84%9C.md) as the current effective contract. Do not preserve outdated API contract text in the main body once the new contract is accepted.
+- Add a summary row for API contract changes to Appendix C (`부록 C: API 변경 이력`) in [docs/04_API_설계서.md](/Users/abc/projects/GymCRM_V2/docs/04_API_%EC%84%A4%EA%B3%84%EC%84%9C.md).
 - Typical evidence locations:
   - PR description
   - `docs/notes/`

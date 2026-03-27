@@ -176,7 +176,9 @@ public class PtReservationService {
                 1,
                 1,
                 memo,
-                actor.userId()
+                actor.userId(),
+                null,
+                null
         ));
         return reservationRepository.insert(new ReservationRepository.ReservationCreateCommand(
                 actor.centerId(),

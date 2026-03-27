@@ -819,7 +819,9 @@ class ReservationApiIntegrationTest {
                 capacity,
                 0,
                 "api fixture",
-                1L
+                1L,
+                null,
+                null
         ));
     }
 
@@ -847,7 +849,9 @@ class ReservationApiIntegrationTest {
                 capacity,
                 0,
                 "fixed fixture",
-                1L
+                1L,
+                null,
+                null
         ));
     }
 
@@ -866,7 +870,9 @@ class ReservationApiIntegrationTest {
                 capacity,
                 0,
                 "past api fixture",
-                1L
+                1L,
+                null,
+                null
         ));
     }
 
