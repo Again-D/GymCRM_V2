@@ -182,6 +182,27 @@ origin: docs/brainstorms/2026-03-27-member-trainer-assignment-brainstorm.md
 - trainer picker는 기존 endpoint를 그대로 쓰기보다 최소 계약 adapter 또는 전용 lightweight DTO로 좁힌다.
 - 계획 범위에 API 문서 정렬을 포함한다.
 
+## Deployment Safety
+
+`V28__enforce_single_non_terminal_pt_membership_per_member.sql` 배포 전에는 아래 preflight query가 반드시 0건을 반환해야 한다.
+
+```sql
+SELECT center_id, member_id, COUNT(*) AS non_terminal_pt_count
+FROM member_memberships
+WHERE product_category_snapshot = 'PT'
+  AND membership_status IN ('ACTIVE', 'HOLDING')
+  AND is_deleted = FALSE
+GROUP BY center_id, member_id
+HAVING COUNT(*) > 1
+ORDER BY non_terminal_pt_count DESC, center_id, member_id;
+```
+
+배포 원칙:
+
+- 결과가 1건 이상이면 `V28` 배포를 진행하지 않는다.
+- 먼저 중복 PT 회원권 데이터를 정리한 뒤 migration을 적용한다.
+- 운영 검증 결과가 0건이라는 확인 없이는 merge/deploy safe로 간주하지 않는다.
+
 ## Implementation Notes
 
 ### Backend
