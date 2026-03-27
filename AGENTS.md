@@ -45,6 +45,10 @@ Read this first when deciding branch strategy, file placement, validation, and d
 ## Backend Structure Defaults
 - Prefer feature-first packages for new or edited backend modules.
 - Default feature shape: `controller`, `dto/request`, `dto/response`, `service`, `repository`, `entity`, `enums`.
+- Repository는 JPA와 QueryDSL 역할을 분리해 작성한다.
+- 기본 패턴은 feature별 `XxxRepository` + `XxxQueryRepository` 조합이다.
+- 예: member 모듈이면 JPA 기반 persistence entry는 `MemberRepository`, QueryDSL 기반 커스텀 조회/검색 쿼리는 `MemberQueryRepository`에 둔다.
+- 필요하면 Spring Data interface는 `XxxJpaRepository`로 두고, feature-facing repository는 `XxxRepository`가 감싼다.
 - Preserve surrounding legacy layout unless the task explicitly includes structure realignment.
 - The repo is still mixed. Do not assume every backend package already matches the preferred template.
 - `common` is the primary home for shared platform capabilities, cross-cutting infra, security, error handling, and stable utilities.
@@ -65,14 +69,22 @@ Read this first when deciding branch strategy, file placement, validation, and d
 - Prefer at least one real integration path when changing callbacks, middleware, persistence flow, or error handling.
 - Fix failing tests or lint issues before concluding the task.
 
+## API Contract Defaults
+- `docs/04_API_설계서.md` is the canonical API contract reference when adding or changing external API request/response shapes, endpoints, status codes, or API-facing business rules.
+- API implementation should follow `docs/04_API_설계서.md` by default. If a requested change conflicts with the document, update the document first or as part of the same delivery unit before treating the new contract as canonical.
+- When updating `docs/04_API_설계서.md`, keep the main API spec body current instead of leaving old contract text in place.
+- Record API contract changes in Appendix C (`부록 C: API 변경 이력`) with version, date, changed API summary, and author.
+
 ## When To Open Supporting Docs
 - Open the branch/work rules doc when branch choice, validation scope, or documentation sync is ambiguous.
 - Open the backend structure rules doc when deciding whether code belongs in `common`, a feature package, or a legacy module boundary.
+- Open `docs/04_API_설계서.md` when API contract, payload shape, response envelope, status code, or API-facing business rule changes are in scope.
 - Use the architecture document as explanatory context, not as a stronger rule source than this file.
 
 ## Supporting References
 - Branch/work rules: [docs/agent-branch-and-work-rules.md](/Users/abc/projects/GymCRM_V2/docs/agent-branch-and-work-rules.md)
 - Backend structure rules: [docs/backend-structure-rules.md](/Users/abc/projects/GymCRM_V2/docs/backend-structure-rules.md)
+- API reference: [docs/04_API_설계서.md](/Users/abc/projects/GymCRM_V2/docs/04_API_%EC%84%A4%EA%B3%84%EC%84%9C.md)
 - Architecture reference: [docs/02_시스템_아키텍처_설계서.md](/Users/abc/projects/GymCRM_V2/docs/02_%EC%8B%9C%EC%8A%A4%ED%85%9C_%EC%95%84%ED%82%A4%ED%85%8D%EC%B2%98_%EC%84%A4%EA%B3%84%EC%84%9C.md)
 
 Use the supporting docs for explanation and examples. If they conflict with this file about agent behavior, follow this file.

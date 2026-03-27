@@ -11,6 +11,7 @@ If this file conflicts with [AGENTS.md](/Users/abc/projects/GymCRM_V2/AGENTS.md)
 ## Current Enforced Backend Conventions
 - Controllers stay thin and focus on request/response mapping plus authorization.
 - Business logic lives in services.
+- Repositories split JPA persistence responsibilities and QueryDSL custom query responsibilities.
 - Use `ApiResponse<T>` for successful and error responses.
 - Use Java `record` for backend request/response DTOs.
 - Use `@PreAuthorize(AccessPolicies.XXX)` where the module already follows that pattern.
@@ -29,6 +30,13 @@ If this file conflicts with [AGENTS.md](/Users/abc/projects/GymCRM_V2/AGENTS.md)
 - `entity`
 - `enums`
 - optional feature-local `config` only when the module genuinely needs it
+
+## Repository Pattern
+- Default repository pattern is `XxxRepository` + `XxxQueryRepository`.
+- `XxxRepository` is the feature-facing repository that owns standard persistence entry points.
+- `XxxQueryRepository` owns QueryDSL-based custom reads, searches, aggregations, and list queries.
+- If Spring Data JPA is used directly, keep the interface as `XxxJpaRepository` and let `XxxRepository` wrap it.
+- Example: member module uses `MemberRepository`, `MemberJpaRepository`, and `MemberQueryRepository`.
 
 ## Legacy Reality
 - More aligned layered feature packages: `member`, `membership`, `product`, `reservation`, `settlement`
@@ -126,6 +134,7 @@ backend/src/main/java/com/gymcrm/member/
 ## Template Notes
 - `dto/request` and `dto/response` are preferred for aligned modules, but some legacy modules still keep request/response records closer to controllers.
 - `Entity` suffix is preferred only where the module already uses it. The repo still contains mixed naming patterns.
+- Repository naming should keep JPA and QueryDSL roles explicit rather than mixing all queries into a single class.
 - Match the module you are editing before applying a new structure.
 
 ## References
