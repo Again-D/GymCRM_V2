@@ -155,7 +155,11 @@ public class ReservationService {
 
     @Transactional(readOnly = true)
     public List<TrainerSchedule> listSchedules() {
-        return trainerScheduleRepository.findAll(currentUserProvider.currentCenterId());
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        return trainerScheduleRepository.findAll(currentUserProvider.currentCenterId()).stream()
+                .filter(schedule -> schedule.startAt().atZoneSameInstant(BUSINESS_ZONE)
+                        .isAfter(now.atZoneSameInstant(BUSINESS_ZONE)))
+                .toList();
     }
 
     @Transactional

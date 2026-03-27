@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { ApiClientError } from "../../api/client";
 import { formatDate } from "../../shared/format";
 import { useDebouncedValue } from "../../shared/hooks/useDebouncedValue";
 import { usePagination } from "../../shared/hooks/usePagination";
@@ -23,6 +24,16 @@ type ReservationCreateForm = {
   scheduleId: string;
   memo: string;
 };
+
+export function getReservationPanelErrorMessage(error: unknown, fallbackMessage: string) {
+  if (error instanceof ApiClientError && error.detail) {
+    return error.detail;
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return fallbackMessage;
+}
 
 function formatDateTime(value: string | null) {
   if (!value) {
@@ -196,7 +207,7 @@ export default function ReservationsPage() {
       setIsNewModalOpen(false);
       setIsWorkbenchOpen(true);
     } catch (error) {
-      setReservationPanelError(error instanceof Error ? error.message : "예약 생성에 실패했습니다.");
+      setReservationPanelError(getReservationPanelErrorMessage(error, "예약 생성에 실패했습니다."));
     }
   };
 
@@ -223,7 +234,7 @@ export default function ReservationsPage() {
       ]);
       setReservationPanelMessage(`완료: ${actionLabel}`);
     } catch (error) {
-      setReservationPanelError(error instanceof Error ? error.message : `${actionLabel} 처리 실패.`);
+      setReservationPanelError(getReservationPanelErrorMessage(error, `${actionLabel} 처리 실패.`));
     }
   }, [
     clearPanelFeedback,

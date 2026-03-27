@@ -222,6 +222,19 @@ class ReservationApiIntegrationTest {
     }
 
     @Test
+    void reservationSchedulesOnlyIncludeFutureSlots() throws Exception {
+        String adminToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
+        TrainerSchedule futureSchedule = createFutureSchedule("PT", 2);
+        TrainerSchedule pastSchedule = createPastSchedule("GX", 10);
+
+        mockMvc.perform(get("/api/v1/reservations/schedules")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[*].scheduleId", hasItem(futureSchedule.scheduleId().intValue())))
+                .andExpect(jsonPath("$.data[*].scheduleId", not(hasItem(pastSchedule.scheduleId().intValue()))));
+    }
+
+    @Test
     void trainerRoleOnlySeesAssignedReservationTargetsAndCannotCreateForOthers() throws Exception {
         ensureTrainerUser();
         String trainerToken = loginAndGetAccessToken(TRAINER_LOGIN_ID, TRAINER_PASSWORD);
@@ -498,6 +511,24 @@ class ReservationApiIntegrationTest {
                 capacity,
                 0,
                 "api fixture",
+                1L
+        ));
+    }
+
+    private TrainerSchedule createPastSchedule(String type, int capacity) {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        OffsetDateTime endAt = OffsetDateTime.now().minusHours(1).withNano(0);
+        OffsetDateTime startAt = endAt.minusMinutes("PT".equals(type) ? 50 : 60);
+        return trainerScheduleRepository.insert(new TrainerScheduleRepository.TrainerScheduleCreateCommand(
+                CENTER_ID,
+                type,
+                "P7API과거트레이너-" + suffix,
+                "P7API과거슬롯-" + suffix,
+                startAt,
+                endAt,
+                capacity,
+                0,
+                "past api fixture",
                 1L
         ));
     }

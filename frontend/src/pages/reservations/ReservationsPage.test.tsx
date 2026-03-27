@@ -2,10 +2,10 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AuthStateProvider } from "../../app/auth";
+import { ApiClientError, setMockApiModeForTests } from "../../api/client";
 import { resetMockData } from "../../api/mockData";
-import { setMockApiModeForTests } from "../../api/client";
 import { SelectedMemberProvider } from "../members/modules/SelectedMemberContext";
-import ReservationsPage from "./ReservationsPage";
+import ReservationsPage, { getReservationPanelErrorMessage } from "./ReservationsPage";
 
 describe("ReservationsPage", () => {
   beforeEach(() => {
@@ -28,7 +28,31 @@ describe("ReservationsPage", () => {
     vi.unstubAllGlobals();
   });
 
+  it("prefers api error detail for reservation panel errors", () => {
+    const error = new ApiClientError("비즈니스 규칙 위반입니다.", {
+      status: 422,
+      code: "BUSINESS_RULE",
+      detail: "과거 슬롯은 예약할 수 없습니다.",
+      traceId: "trace-422",
+    });
+
+    expect(getReservationPanelErrorMessage(error, "예약 생성에 실패했습니다.")).toBe(
+      "과거 슬롯은 예약할 수 없습니다.",
+    );
+  });
+
+  it("falls back to generic error message when api detail is absent", () => {
+    expect(
+      getReservationPanelErrorMessage(
+        new Error("네트워크 오류"),
+        "예약 생성에 실패했습니다.",
+      ),
+    ).toBe("네트워크 오류");
+  });
+
   it("opens the new reservation modal from the workbench and creates a reservation", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(new Date("2026-03-12T09:00:00+09:00").getTime());
+
     render(
       <AuthStateProvider>
         <SelectedMemberProvider>
