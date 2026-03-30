@@ -1,15 +1,35 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { setMockApiModeForTests } from "../../../api/client";
 import { AuthStateProvider } from "../../../app/auth";
 import { useMembersQuery } from "./useMembersQuery";
 
+function createTestQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
+}
+
 describe("useMembersQuery", () => {
+  let queryClient: QueryClient;
+
   beforeEach(() => {
     vi.restoreAllMocks();
     setMockApiModeForTests(false);
+    queryClient = createTestQueryClient();
   });
+
+  const wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>
+      <AuthStateProvider>{children}</AuthStateProvider>
+    </QueryClientProvider>
+  );
 
   it("includes member status, summary status, and date filters in the request", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
@@ -34,24 +54,29 @@ describe("useMembersQuery", () => {
           dateFrom: "",
           dateTo: ""
         })
-      })
+      }),
+      { wrapper }
     );
 
-    await result.current.loadMembers({
-      name: "김회원",
-      memberStatus: "INACTIVE",
-      membershipOperationalStatus: "홀딩중",
-      dateFrom: "2026-03-12",
-      dateTo: "2026-04-12"
+    act(() => {
+      void result.current.loadMembers({
+        name: "김회원",
+        memberStatus: "INACTIVE",
+        membershipOperationalStatus: "홀딩중",
+        dateFrom: "2026-03-12",
+        dateTo: "2026-04-12"
+      });
     });
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/v1/members?name=%EA%B9%80%ED%9A%8C%EC%9B%90&memberStatus=INACTIVE&membershipOperationalStatus=%ED%99%80%EB%94%A9%EC%A4%91&dateFrom=2026-03-12&dateTo=2026-04-12",
-      expect.objectContaining({
-        credentials: "include",
-        method: "GET"
-      })
-    );
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/v1/members?name=%EA%B9%80%ED%9A%8C%EC%9B%90&memberStatus=INACTIVE&membershipOperationalStatus=%ED%99%80%EB%94%A9%EC%A4%91&dateFrom=2026-03-12&dateTo=2026-04-12",
+        expect.objectContaining({
+          credentials: "include",
+          method: "GET"
+        })
+      );
+    });
   });
 
   it("filters members to trainer-scoped rows in mock mode", async () => {
@@ -105,17 +130,22 @@ describe("useMembersQuery", () => {
         }),
       {
         wrapper: ({ children }) => (
-          <AuthStateProvider value={{ authUser: { userId: 41, username: "trainer-a", primaryRole: "ROLE_TRAINER", roles: ["ROLE_TRAINER"] } }}>
-            {children}
-          </AuthStateProvider>
+          <QueryClientProvider client={queryClient}>
+            <AuthStateProvider value={{ authUser: { userId: 41, username: "trainer-a", primaryRole: "ROLE_TRAINER", roles: ["ROLE_TRAINER"] } }}>
+              {children}
+            </AuthStateProvider>
+          </QueryClientProvider>
         )
       }
     );
 
-    await act(async () => {
-      await result.current.loadMembers();
+    act(() => {
+      void result.current.loadMembers();
     });
 
+    await waitFor(() => {
+      expect(result.current.members).length(1);
+    });
     expect(result.current.members.map((member) => member.memberId)).toEqual([101]);
   });
 
@@ -156,18 +186,25 @@ describe("useMembersQuery", () => {
             dateTo: ""
           })
         }),
-      {
-        wrapper: ({ children }) => <AuthStateProvider>{children}</AuthStateProvider>
-      }
+      { wrapper }
     );
 
-    await act(async () => {
-      await result.current.loadMembers({ name: "김민수" });
-      await result.current.loadMembers({ name: "김민수" });
+    act(() => {
+      void result.current.loadMembers({ name: "김민수" });
     });
 
-    expect(
-      fetchMock.mock.calls.filter(([url]) => url === "/api/v1/members?name=%EA%B9%80%EB%AF%BC%EC%88%98").length
-    ).toBe(1);
+    await waitFor(() => {
+      expect(result.current.members.length).toBeGreaterThan(0);
+    });
+
+    act(() => {
+      void result.current.loadMembers({ name: "김민수" });
+    });
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.filter(([url]) => url === "/api/v1/members?name=%EA%B9%80%EB%AF%BC%EC%88%98").length
+      ).toBe(1);
+    });
   });
 });

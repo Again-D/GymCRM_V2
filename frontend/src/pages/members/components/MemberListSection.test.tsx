@@ -80,6 +80,14 @@ vi.mock("../modules/useMembersQuery", () => ({
   })
 }));
 
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { retry: false }
+  }
+});
+
 describe("MemberListSection", () => {
   function renderWithAuth(
     authUser: { userId: number; username: string; primaryRole: string; roles: string[] } = {
@@ -90,15 +98,17 @@ describe("MemberListSection", () => {
     }
   ) {
     return render(
-      <AuthStateProvider
-        value={{
-          securityMode: "jwt",
-          authBootstrapping: false,
-          authUser
-        }}
-      >
-        <MemberListSection />
-      </AuthStateProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthStateProvider
+          value={{
+            securityMode: "jwt",
+            authBootstrapping: false,
+            authUser
+          }}
+        >
+          <MemberListSection />
+        </AuthStateProvider>
+      </QueryClientProvider>
     );
   }
 
@@ -144,15 +154,17 @@ describe("MemberListSection", () => {
     const secondLoadMembers = vi.fn();
     currentLoadMembers = secondLoadMembers;
     rerender(
-      <AuthStateProvider
-        value={{
-          securityMode: "jwt",
-          authBootstrapping: false,
-          authUser: { userId: 11, username: "jwt-admin", primaryRole: "ROLE_CENTER_ADMIN", roles: ["ROLE_CENTER_ADMIN"] }
-        }}
-      >
-        <MemberListSection />
-      </AuthStateProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthStateProvider
+          value={{
+            securityMode: "jwt",
+            authBootstrapping: false,
+            authUser: { userId: 11, username: "jwt-admin", primaryRole: "ROLE_CENTER_ADMIN", roles: ["ROLE_CENTER_ADMIN"] }
+          }}
+        >
+          <MemberListSection />
+        </AuthStateProvider>
+      </QueryClientProvider>
     );
 
     expect(secondLoadMembers).toHaveBeenCalledTimes(1);
@@ -224,15 +236,17 @@ describe("MemberListSection", () => {
     expect(screen.getByRole("button", { name: /회원 등록/ })).toBeTruthy();
 
     rerender(
-      <AuthStateProvider
-        value={{
-          securityMode: "jwt",
-          authBootstrapping: false,
-          authUser: { userId: 41, username: "jwt-trainer", primaryRole: "ROLE_TRAINER", roles: ["ROLE_TRAINER"] }
-        }}
-      >
-        <MemberListSection />
-      </AuthStateProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthStateProvider
+          value={{
+            securityMode: "jwt",
+            authBootstrapping: false,
+            authUser: { userId: 41, username: "jwt-trainer", primaryRole: "ROLE_TRAINER", roles: ["ROLE_TRAINER"] }
+          }}
+        >
+          <MemberListSection />
+        </AuthStateProvider>
+      </QueryClientProvider>
     );
 
     expect(screen.queryByRole("button", { name: /회원 등록/ })).toBeNull();

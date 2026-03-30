@@ -1,18 +1,12 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 import { apiGet } from "../../../api/client";
-import { useQueryInvalidationVersion } from "../../../api/queryInvalidation";
 import { useAuthState } from "../../../app/auth";
-import { createAuthIdentityKey } from "../../../app/roles";
+import { queryKeys, queryPolicies } from "../../../app/queryHelpers";
 import { toUserFacingErrorMessage } from "../../../app/uiError";
 import { filterMemberIdsForAuth } from "../../member-context/modules/trainerScope";
 import type { MemberQueryFilters, MemberSummary } from "./types";
-
-function useLatestRef<T>(value: T) {
-  const ref = useRef(value);
-  ref.current = value;
-  return ref;
-}
 
 export function useMembersQuery({
   getDefaultFilters,
@@ -20,94 +14,46 @@ export function useMembersQuery({
   getDefaultFilters: () => MemberQueryFilters;
 }) {
   const { authUser } = useAuthState();
-  const [members, setMembers] = useState<MemberSummary[]>([]);
-  const [membersLoading, setMembersLoading] = useState(false);
-  const [membersQueryError, setMembersQueryError] = useState<string | null>(
-    null,
-  );
-  const getDefaultFiltersRef = useLatestRef(getDefaultFilters);
-  const requestIdRef = useRef(0);
-  const cacheRef = useRef(new Map<string, MemberSummary[]>());
-  const inflightRef = useRef(new Map<string, Promise<MemberSummary[]>>());
-  const membersVersion = useQueryInvalidationVersion("members");
+  const [activeFilters, setActiveFilters] = useState<MemberQueryFilters | null>(null);
+
+  const currentFilters = activeFilters ?? getDefaultFilters();
+
+  const query = useQuery({
+    queryKey: queryKeys.members.list(currentFilters as Record<string, unknown>),
+    queryFn: async () => {
+      const { name, phone, memberStatus, membershipOperationalStatus, dateFrom, dateTo } = currentFilters;
+      const params = new URLSearchParams();
+      if (name?.trim()) params.set("name", name.trim());
+      if (phone?.trim()) params.set("phone", phone.trim());
+      if (memberStatus?.trim()) params.set("memberStatus", memberStatus.trim());
+      if (membershipOperationalStatus?.trim())
+        params.set("membershipOperationalStatus", membershipOperationalStatus.trim());
+      if (dateFrom?.trim()) params.set("dateFrom", dateFrom.trim());
+      if (dateTo?.trim()) params.set("dateTo", dateTo.trim());
+      
+      const qString = params.toString();
+      const response = await apiGet<MemberSummary[]>(`/api/v1/members${qString ? `?${qString}` : ""}`);
+      return filterMemberIdsForAuth(response.data, authUser);
+    },
+    staleTime: queryPolicies.list.staleTime,
+  });
 
   const loadMembers = useCallback(
-    async (filters?: Partial<MemberQueryFilters>) => {
-      const requestId = requestIdRef.current + 1;
-      requestIdRef.current = requestId;
-      setMembersLoading(true);
-      setMembersQueryError(null);
-
-      try {
-        const defaults = getDefaultFiltersRef.current();
-        const name = filters?.name ?? defaults.name;
-        const phone = filters?.phone ?? defaults.phone;
-        const memberStatus = filters?.memberStatus ?? defaults.memberStatus;
-        const membershipOperationalStatus =
-          filters?.membershipOperationalStatus ??
-          defaults.membershipOperationalStatus;
-        const dateFrom = filters?.dateFrom ?? defaults.dateFrom;
-        const dateTo = filters?.dateTo ?? defaults.dateTo;
-        const params = new URLSearchParams();
-        if (name.trim()) params.set("name", name.trim());
-        if (phone.trim()) params.set("phone", phone.trim());
-        if (memberStatus.trim()) params.set("memberStatus", memberStatus.trim());
-        if (membershipOperationalStatus.trim())
-          params.set(
-            "membershipOperationalStatus",
-            membershipOperationalStatus.trim(),
-          );
-        if (dateFrom.trim()) params.set("dateFrom", dateFrom.trim());
-        if (dateTo.trim()) params.set("dateTo", dateTo.trim());
-        const query = params.toString();
-        const cacheKey = `${createAuthIdentityKey(authUser)}:${membersVersion}:${query}`;
-        if (cacheRef.current.has(cacheKey)) {
-          if (requestIdRef.current !== requestId) return;
-          setMembers(cacheRef.current.get(cacheKey) ?? []);
-          return;
-        }
-
-        let responsePromise = inflightRef.current.get(cacheKey);
-        if (!responsePromise) {
-          responsePromise = apiGet<MemberSummary[]>(
-            `/api/v1/members${query ? `?${query}` : ""}`,
-          )
-            .then((response) => filterMemberIdsForAuth(response.data, authUser))
-            .finally(() => {
-              inflightRef.current.delete(cacheKey);
-            });
-          inflightRef.current.set(cacheKey, responsePromise);
-        }
-
-        const scopedMembers = await responsePromise;
-        if (requestIdRef.current !== requestId) return;
-        cacheRef.current.set(cacheKey, scopedMembers);
-        setMembers(scopedMembers);
-      } catch (error) {
-        if (requestIdRef.current !== requestId) return;
-        setMembersQueryError(toUserFacingErrorMessage(error, "회원 목록을 불러오지 못했습니다."));
-      } finally {
-        if (requestIdRef.current === requestId) {
-          setMembersLoading(false);
-        }
-      }
+    async (overrideFilters?: Partial<MemberQueryFilters>) => {
+      setActiveFilters({ ...getDefaultFilters(), ...overrideFilters });
     },
-    [authUser, membersVersion, getDefaultFiltersRef],
+    [getDefaultFilters]
   );
 
   const resetMembersQuery = useCallback(() => {
-    requestIdRef.current += 1;
-    setMembers((prev) => (prev.length === 0 ? prev : []));
-    setMembersLoading(false);
-    setMembersQueryError(null);
+    setActiveFilters(null);
   }, []);
 
   return {
-    members,
-    membersLoading,
-    membersQueryError,
+    members: query.data ?? [],
+    membersLoading: query.isPending || query.isFetching,
+    membersQueryError: query.error ? toUserFacingErrorMessage(query.error, "회원 목록을 불러오지 못했습니다.") : null,
     loadMembers,
     resetMembersQuery,
-    setMembers,
   } as const;
 }
