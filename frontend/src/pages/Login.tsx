@@ -20,13 +20,18 @@ import { useAuthState } from "../app/auth";
 const { Title, Paragraph, Text } = Typography;
 const { Content } = Layout;
 
+type LoginFormValues = {
+  loginId: string;
+  password: string;
+};
+
 export default function Login() {
   const { token } = theme.useToken();
   const { authError, authStatusMessage, isMockMode, login, loginSubmitting, setRuntimeAuthPreset } = useAuthState();
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleSubmit = (values: any) => {
+  const handleSubmit = (values: LoginFormValues) => {
     void login(values.loginId, values.password);
   };
 
@@ -101,7 +106,7 @@ export default function Login() {
                       </Paragraph>
                     </div>
 
-                    <Form layout="vertical" onFinish={handleSubmit} requiredMark={false}>
+                    <Form<LoginFormValues> layout="vertical" onFinish={handleSubmit} requiredMark={false}>
                       <Form.Item 
                         label={<Text strong style={{ fontSize: "0.8rem" }}>로그인 ID</Text>}
                         name="loginId"

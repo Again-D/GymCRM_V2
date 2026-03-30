@@ -4,7 +4,6 @@ import type { ColumnsType } from "antd/es/table";
 
 import { useDebouncedValue } from "../../shared/hooks/useDebouncedValue";
 import { usePagination } from "../../shared/hooks/usePagination";
-import { PaginationControls } from "../../shared/ui/PaginationControls";
 import { useMembersQuery } from "../members/modules/useMembersQuery";
 import { useSelectedMemberStore } from "../members/modules/SelectedMemberContext";
 import type { MemberSummary } from "../members/modules/types";
@@ -114,23 +113,21 @@ export function MemberContextFallback({ title, description, submitLabel }: Membe
         rowKey={(member) => member.memberId}
         columns={columns}
         dataSource={pagination.pagedItems}
-        pagination={false}
+        pagination={{
+          current: pagination.page,
+          pageSize: pagination.pageSize,
+          total: pagination.totalItems,
+          showSizeChanger: true,
+          pageSizeOptions: ["10", "20", "50"],
+          onChange: (page, pageSize) => {
+            pagination.setPage(page);
+            pagination.setPageSize(pageSize);
+          }
+        }}
         scroll={{ x: 720 }}
         locale={{
           emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="선택 가능한 회원이 없습니다." />
         }}
-      />
-
-      <PaginationControls
-        page={pagination.page}
-        totalPages={pagination.totalPages}
-        pageSize={pagination.pageSize}
-        pageSizeOptions={[10, 20]}
-        totalItems={pagination.totalItems}
-        startItemIndex={pagination.startItemIndex}
-        endItemIndex={pagination.endItemIndex}
-        onPageChange={pagination.setPage}
-        onPageSizeChange={pagination.setPageSize}
       />
       </Flex>
     </Card>

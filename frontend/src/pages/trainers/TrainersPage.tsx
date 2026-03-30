@@ -10,7 +10,6 @@ import {
   Input,
   List,
   Modal,
-  Pagination,
   Select,
   Space,
   Statistic,
@@ -22,12 +21,8 @@ import {
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import {
-  UserOutlined,
   SolutionOutlined,
-  CalendarOutlined,
-  TeamOutlined,
-  SettingOutlined,
-  ReloadOutlined
+  TeamOutlined
 } from "@ant-design/icons";
 
 import { apiGet, apiPatch, apiPost, isMockApiMode } from "../../api/client";

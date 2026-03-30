@@ -9,7 +9,6 @@ import {
   Form,
   Input,
   Modal,
-  Pagination,
   Row,
   Select,
   Space,
