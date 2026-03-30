@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 
+import { toUserFacingErrorMessage } from "../../../app/uiError";
 import { apiGet } from "../../../api/client";
 import type { PtReservationCandidatesPayload } from "../../members/modules/types";
 
@@ -39,9 +40,7 @@ export function usePtReservationCandidatesQuery() {
         return;
       }
       setPtReservationCandidates(null);
-      setPtReservationCandidatesError(
-        error instanceof Error ? error.message : "PT 예약 가능 시각을 불러오지 못했습니다.",
-      );
+      setPtReservationCandidatesError(toUserFacingErrorMessage(error, "PT 예약 가능 시각을 불러오지 못했습니다."));
     } finally {
       if (requestIdRef.current === requestId) {
         setPtReservationCandidatesLoading(false);
