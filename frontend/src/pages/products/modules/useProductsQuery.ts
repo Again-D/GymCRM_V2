@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 
 import { apiGet } from "../../../api/client";
 import { useQueryInvalidationVersion } from "../../../api/queryInvalidation";
+import { toUserFacingErrorMessage } from "../../../app/uiError";
 import type { ProductFilters, ProductRecord } from "./types";
 
 type UseProductsQueryOptions = {
@@ -69,11 +70,7 @@ export function useProductsQuery({
       } catch (error) {
         if (requestIdRef.current !== requestId) return;
         setProducts([]);
-        setProductsQueryError(
-          error instanceof Error
-            ? error.message
-            : "상품 목록을 불러오지 못했습니다.",
-        );
+        setProductsQueryError(toUserFacingErrorMessage(error, "상품 목록을 불러오지 못했습니다."));
       } finally {
         if (requestIdRef.current === requestId) {
           setProductsLoading(false);

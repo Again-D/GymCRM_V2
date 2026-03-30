@@ -1,30 +1,85 @@
+.eyebrow {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #1677ff;
+}
+
+.heroTitle {
+  margin: 0;
+}
+
+.heroDescription {
+  margin: 0;
+  max-width: 640px;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.filtersGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+  gap: 16px;
+  align-items: end;
+}
+
+.filterItem {
+  margin-bottom: 0;
+}
+
+.filterActions {
+  justify-self: end;
+}
+
+.metaText {
+  font-size: 0.75rem;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.policyCard {
+  margin-bottom: 16px;
+}
+
+.fullWidth {
+  width: 100%;
+}
+
 .memoArea {
   min-height: 100px;
   resize: vertical;
 }
 
-.filterHeader {
-  margin-bottom: 24px;
+.descriptionField {
+  margin-bottom: 0;
 }
 
-.filterActions {
-  align-items: flex-end;
-  margin-left: auto;
+@media (max-width: 960px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .filtersGrid,
+  .formGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .filterActions {
+    justify-self: stretch;
+  }
 }
 
-.toolbarActions {
-  justify-content: flex-end;
-  margin-bottom: 8px;
-}
-
-.statusButton {
-  font-size: 11px;
-}
-
-.statusDanger {
-  color: var(--status-danger);
-}
-
-.statusOk {
-  color: var(--status-ok);
+@media (max-width: 640px) {
+  .statsGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

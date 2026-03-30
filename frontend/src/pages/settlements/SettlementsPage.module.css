@@ -1,7 +1,72 @@
-.negative {
-  color: var(--status-danger);
+.eyebrow {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #1677ff;
+}
+
+.heroTitle {
+  margin: 0;
+}
+
+.heroDescription {
+  margin: 0;
+  max-width: 640px;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.surfaceGrid {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  gap: 24px;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.formItem {
+  margin-bottom: 0;
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.metaText {
+  font-size: 0.75rem;
 }
 
 .positive {
   color: var(--status-ok);
+}
+
+@media (max-width: 1100px) {
+  .surfaceGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 960px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .formGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .statsGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

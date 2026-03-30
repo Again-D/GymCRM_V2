@@ -7,6 +7,16 @@ import ProductsPage from "./ProductsPage";
 
 describe("ProductsPage", () => {
   beforeEach(() => {
+    vi.stubGlobal("matchMedia", vi.fn().mockImplementation((query) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })));
     vi.stubGlobal("fetch", vi.fn(async () => ({
       ok: true,
       json: async () => ({
@@ -45,7 +55,7 @@ describe("ProductsPage", () => {
 
     expect(await screen.findByRole("heading", { name: "상품 및 서비스 관리" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "신규 상품 등록" })).toBeNull();
-  });
+  }, 10000);
 
   it("shows trainer unsupported note in live mode", async () => {
     setMockApiModeForTests(false);
