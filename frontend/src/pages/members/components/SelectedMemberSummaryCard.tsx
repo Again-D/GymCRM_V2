@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Alert, Card, Descriptions, Empty, Flex, Spin, Typography } from "antd";
 
 import { useSelectedMemberStore } from "../modules/SelectedMemberContext";
 
@@ -13,49 +14,77 @@ export function SelectedMemberSummaryCard({ surface = "panel", action }: Selecte
   const { selectedMember, selectedMemberError, selectedMemberLoading } = useSelectedMemberStore();
 
   const memberStatusLabel = selectedMember?.memberStatus === "ACTIVE" ? "활성" : "비활성";
+  const selectedMemberErrorDescription = selectedMemberError
+    ? "회원 정보를 다시 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
+    : null;
   const summaryContent = (
-    <>
-      {selectedMemberLoading ? <p className="text-muted">회원 정보를 불러오는 중...</p> : null}
-      {selectedMemberError ? <p className="error-text">{selectedMemberError}</p> : null}
+    <Flex vertical gap={16}>
+      {selectedMemberLoading ? (
+        <Flex align="center" gap={8}>
+          <Spin size="small" />
+          <Typography.Text type="secondary">회원 정보를 불러오는 중...</Typography.Text>
+        </Flex>
+      ) : null}
+      {selectedMemberError ? (
+        <Alert
+          type="error"
+          showIcon
+          message="선택 회원 정보를 불러오지 못했습니다."
+          description={selectedMemberErrorDescription}
+        />
+      ) : null}
       {selectedMember ? (
         <>
-          <div className="ops-stat-strip">
-            <div className="ops-stat-card">
-              <span className="ops-stat-card__label">회원 번호</span>
-              <span className="ops-stat-card__value">#{selectedMember.memberId}</span>
-              <span className="ops-stat-card__hint">{selectedMember.memberName}</span>
-            </div>
-            <div className="ops-stat-card">
-              <span className="ops-stat-card__label">상세 상태</span>
-              <span className="ops-stat-card__value">{memberStatusLabel}</span>
-              <span className="ops-stat-card__hint">{selectedMember.phone}</span>
-            </div>
+          <div className={styles.statsGrid}>
+            <Card size="small">
+              <Typography.Text type="secondary">회원 번호</Typography.Text>
+              <Typography.Title level={4} className={styles.statValue}>
+                #{selectedMember.memberId}
+              </Typography.Title>
+              <Typography.Text>{selectedMember.memberName}</Typography.Text>
+            </Card>
+            <Card size="small">
+              <Typography.Text type="secondary">상세 상태</Typography.Text>
+              <Typography.Title level={4} className={styles.statValue}>
+                {memberStatusLabel}
+              </Typography.Title>
+              <Typography.Text>{selectedMember.phone}</Typography.Text>
+            </Card>
           </div>
-          <dl className={styles.detailGrid}>
-            <div className={styles.detailItem}>
-              <dt className={styles.detailTerm}>회원명</dt>
-              <dd className={styles.detailValue}>#{selectedMember.memberId} {selectedMember.memberName}</dd>
-            </div>
-            <div className={styles.detailItem}>
-              <dt className={styles.detailTerm}>연락처</dt>
-              <dd className={styles.detailValue}>{selectedMember.phone}</dd>
-            </div>
-            <div className={styles.detailItem}>
-              <dt className={styles.detailTerm}>회원 상태</dt>
-              <dd className={styles.detailValue}>{memberStatusLabel}</dd>
-            </div>
-            <div className={styles.detailItem}>
-              <dt className={styles.detailTerm}>가입일</dt>
-              <dd className={styles.detailValue}>{selectedMember.joinDate ?? "-"}</dd>
-            </div>
-          </dl>
+          <Descriptions
+            className={styles.detailDescriptions}
+            column={2}
+            items={[
+              {
+                key: "name",
+                label: "회원명",
+                children: `#${selectedMember.memberId} ${selectedMember.memberName}`
+              },
+              {
+                key: "phone",
+                label: "연락처",
+                children: selectedMember.phone
+              },
+              {
+                key: "status",
+                label: "회원 상태",
+                children: memberStatusLabel
+              },
+              {
+                key: "joinDate",
+                label: "가입일",
+                children: selectedMember.joinDate ?? "-"
+              }
+            ]}
+          />
         </>
       ) : (
-        <div className="ops-empty">
-          선택된 회원이 없습니다. 명단에서 회원을 선택하여 업무를 시작하세요.
-        </div>
+        <Empty
+          image={Empty.PRESENTED_IMAGE_SIMPLE}
+          description="선택된 회원이 없습니다. 명단에서 회원을 선택하여 업무를 시작하세요."
+        />
       )}
-    </>
+    </Flex>
   );
 
   if (surface === "plain") {
@@ -63,15 +92,15 @@ export function SelectedMemberSummaryCard({ surface = "panel", action }: Selecte
   }
 
   return (
-    <aside className="panel-card">
-      <div className="ops-section__header">
-        <div>
-          <h2 className="ops-section__title">선택된 회원 정보</h2>
-          <p className="ops-section__subtitle">선택된 회원 정보는 회원권 및 예약 관리 화면에서도 계속 유지됩니다.</p>
-        </div>
-        {action}
-      </div>
+    <Card
+      title="선택된 회원 정보"
+      extra={action}
+      className={styles.panelSurface}
+    >
+      <Typography.Paragraph type="secondary" className={styles.panelDescription}>
+        선택된 회원 정보는 회원권 및 예약 관리 화면에서도 계속 유지됩니다.
+      </Typography.Paragraph>
       {summaryContent}
-    </aside>
+    </Card>
   );
 }

@@ -4,6 +4,7 @@ import { apiGet } from "../../../api/client";
 import { useQueryInvalidationVersion } from "../../../api/queryInvalidation";
 import { useAuthState } from "../../../app/auth";
 import { createAuthIdentityKey } from "../../../app/roles";
+import { toUserFacingErrorMessage } from "../../../app/uiError";
 import { filterMemberIdsForAuth } from "../../member-context/modules/trainerScope";
 import type { MemberQueryFilters, MemberSummary } from "./types";
 
@@ -84,11 +85,7 @@ export function useMembersQuery({
         setMembers(scopedMembers);
       } catch (error) {
         if (requestIdRef.current !== requestId) return;
-        setMembersQueryError(
-          error instanceof Error
-            ? error.message
-            : "회원 목록을 불러오지 못했습니다.",
-        );
+        setMembersQueryError(toUserFacingErrorMessage(error, "회원 목록을 불러오지 못했습니다."));
       } finally {
         if (requestIdRef.current === requestId) {
           setMembersLoading(false);

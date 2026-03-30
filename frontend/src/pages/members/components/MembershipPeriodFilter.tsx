@@ -1,6 +1,8 @@
+import { Button, DatePicker, Flex, Space, Typography } from "antd";
 import type { MembershipDateFilterState, MembershipPeriodPreset } from "../modules/useMembershipDateFilter";
+import dayjs from "dayjs";
 
-import styles from "../MemberList.module.css";
+const { Text } = Typography;
 
 type MembershipPeriodFilterProps = {
   value: MembershipDateFilterState;
@@ -23,30 +25,36 @@ export function MembershipPeriodFilter({
   onDateToChange
 }: MembershipPeriodFilterProps) {
   return (
-    <div className="period-filter">
-      <span className={`text-sm ${styles.bold}`}>만료 기간</span>
-      <div className="period-preset-row">
-        {PRESETS.map((preset) => (
-          <button
-            key={preset.value}
-            type="button"
-            className={value.presetRange === preset.value ? `period-chip is-active ${styles.chip}` : `period-chip ${styles.chip}`}
-            onClick={() => onPresetChange(preset.value)}
-          >
-            {preset.label}
-          </button>
-        ))}
-      </div>
-      <div className="period-date-row">
-        <label>
-          <span className="text-xs text-muted">시작일</span>
-          <input type="date" value={value.dateFrom} onChange={(event) => onDateFromChange(event.target.value)} />
-        </label>
-        <label>
-          <span className="text-xs text-muted">종료일</span>
-          <input type="date" value={value.dateTo} onChange={(event) => onDateToChange(event.target.value)} />
-        </label>
-      </div>
-    </div>
+    <Flex vertical gap={8}>
+      <Text strong style={{ fontSize: "0.84rem" }}>만료 기간</Text>
+      <Space wrap>
+        <Button.Group size="small">
+          {PRESETS.map((preset) => (
+            <Button
+              key={preset.value}
+              type={value.presetRange === preset.value ? "primary" : "default"}
+              onClick={() => onPresetChange(preset.value)}
+            >
+              {preset.label}
+            </Button>
+          ))}
+        </Button.Group>
+        <Space>
+          <DatePicker
+            size="small"
+            placeholder="시작일"
+            value={value.dateFrom ? dayjs(value.dateFrom) : null}
+            onChange={(date) => onDateFromChange(date ? date.format("YYYY-MM-DD") : "")}
+          />
+          <Text type="secondary">~</Text>
+          <DatePicker
+            size="small"
+            placeholder="종료일"
+            value={value.dateTo ? dayjs(value.dateTo) : null}
+            onChange={(date) => onDateToChange(date ? date.format("YYYY-MM-DD") : "")}
+          />
+        </Space>
+      </Space>
+    </Flex>
   );
 }

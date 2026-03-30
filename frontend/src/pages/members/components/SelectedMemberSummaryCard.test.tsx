@@ -12,10 +12,21 @@ vi.mock("../modules/SelectedMemberContext", () => ({
 describe("SelectedMemberSummaryCard", () => {
   beforeEach(() => {
     useSelectedMemberStoreMock.mockReset();
+    vi.stubGlobal("matchMedia", vi.fn().mockImplementation((query) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })));
   });
 
   afterEach(() => {
     cleanup();
+    vi.unstubAllGlobals();
   });
 
   it("renders member state with a correct label", () => {
@@ -67,9 +78,9 @@ describe("SelectedMemberSummaryCard", () => {
       clearSelectedMember: vi.fn()
     });
 
-    const { container } = render(<SelectedMemberSummaryCard surface="plain" />);
+    render(<SelectedMemberSummaryCard surface="plain" />);
 
-    expect(container.querySelector("aside.panel-card")).toBeNull();
+    expect(screen.queryByText("선택된 회원 정보")).toBeNull();
     expect(screen.getByText("회원 상태")).toBeTruthy();
   });
 });
