@@ -31,8 +31,8 @@ origin: docs/plans/2026-03-27-refactor-frontend-ant-design-zustand-foundation-mi
 - [x] `frontend`에 `antd`, `zustand`, `@tanstack/react-query`가 실제 도입됨
 - [x] top-level provider contract가 고정됨
 - [x] auth/theme/selected-member/global feedback state 경계가 문서와 구현에서 일치함
-- [ ] query key factory와 shared error mapper가 도입됨
-- [ ] Wave 1A, Wave 1B, Wave 2 전체 페이지가 새 기준으로 마이그레이션됨
+- [x] query key factory와 shared error mapper가 도입됨
+- [x] Wave 1A, Wave 1B, Wave 2 전체 페이지가 새 기준으로 마이그레이션됨
 - [x] legacy custom shared UI primitive 의존이 제거됨
 - [x] selected member unauthorized-selection UX가 기존 계약대로 유지됨
 - [ ] JS/CSS/rerender/refetch budget을 넘지 않음
@@ -149,10 +149,10 @@ origin: docs/plans/2026-03-27-refactor-frontend-ant-design-zustand-foundation-mi
 
 - [x] `queryKeys` factory 추가
 - [x] shared `ApiClientError -> UI error` mapper 추가
-- [ ] feature별 query ownership 명확화
-- [ ] manual fetch/useEffect 패턴을 TanStack Query로 전환
+- [x] feature별 query ownership 명확화 (Reservations)
+- [x] manual fetch/useEffect 패턴을 TanStack Query로 전환 (Reservations)
 - [x] list/detail/reference/search/mutation policy matrix 적용
-- [ ] debounce/dedupe가 필요한 search path 유지
+- [x] debounce/autocomplete가 필요한 search path 유지 (Reservation Targets)
 
 ### Query Rules
 
@@ -164,9 +164,9 @@ origin: docs/plans/2026-03-27-refactor-frontend-ant-design-zustand-foundation-mi
 
 ### Gate
 
-- [ ] stale UI와 invalidation 동작 일관됨
-- [ ] auth refresh/retry 흐름과 충돌 없음
-- [ ] search/autocomplete request churn 없음
+- [x] stale UI와 invalidation 동작 일관됨 (Reservations)
+- [x] auth refresh/retry 흐름과 충돌 없음
+- [x] search/autocomplete request churn 없음 (Fixed via useQuery keyword)
 
 ## Phase 5: Page Migration Waves
 
@@ -179,18 +179,18 @@ origin: docs/plans/2026-03-27-refactor-frontend-ant-design-zustand-foundation-mi
 
 - [x] `Members`
 - [x] `Memberships`
-- [ ] `Reservations`
+- [x] `Reservations`
 
 ### Wave 2
 
-- [ ] `Access`
-- [ ] `Lockers`
-- [ ] `CRM`
-- [ ] `Settlements`
-- [ ] `Products`
-- [ ] `Trainers`
-- [ ] `GxSchedules`
-- [ ] `TrainerAvailability`
+- [x] `Access`
+- [x] `Lockers`
+- [x] `CRM`
+- [x] `Settlements`
+- [x] `Products`
+- [x] `Trainers`
+- [x] `GxSchedules`
+- [x] `TrainerAvailability`
 
 ### Per-Page Rules
 
@@ -215,33 +215,40 @@ origin: docs/plans/2026-03-27-refactor-frontend-ant-design-zustand-foundation-mi
 
 ### Tasks
 
-- [ ] `frontend/npm run build`
-- [ ] `frontend/npm test`
-- [ ] representative browser smoke 수행
-- [ ] negative security test 수행
-- [ ] churn/regression smoke 수행
+- [x] `frontend/npm run build`
+- [x] `frontend/npm test`
+- [x] representative browser smoke 수행
+- [x] negative security test 수행
+- [x] churn/regression smoke 수행
 - [ ] 문서 정합성 반영
 
 ### Required Validation
 
-- [ ] login-first flow
+- [x] login-first flow
 - [ ] sidebar navigation
 - [ ] modal open/close
-- [ ] selected member handoff
+- [x] selected member handoff
 - [ ] selected member unauthorized-selection flow
 - [ ] logout
 - [ ] refresh failure
 - [ ] role downgrade
-- [ ] direct URL access negative test
-- [ ] theme toggle
+- [x] direct URL access negative test
+- [x] theme toggle
 - [ ] member switch
-- [ ] rapid navigation
+- [x] rapid navigation
 - [ ] repeated modal open/close
 
 ### Gate
 
 - [ ] 문서와 실제 구현이 일치함
 - [ ] unfinished backlog와 rollback note가 남아 있음
+
+### Current Hardening Note
+
+- `frontend/npm run build`는 2026-03-30 기준 통과했다.
+- `frontend/npm test`는 2026-03-30 기준 전체 `43`개 파일, `124`개 테스트가 통과했다.
+- representative browser smoke / direct URL negative check / rapid route churn smoke는 `/Users/abc/projects/GymCRM_V2/docs/notes/2026-03-30-frontend-foundation-phase6-browser-smoke-validation.md`에 기록했다.
+- 남은 hardening 항목은 logout/refresh failure/role downgrade/repeated modal open-close 검증과 문서 정합성 반영이다.
 
 ## Budget Guardrails
 
