@@ -28,13 +28,13 @@ origin: docs/plans/2026-03-27-refactor-frontend-ant-design-zustand-foundation-mi
 
 ## Global Done Criteria
 
-- [ ] `frontend`에 `antd`, `zustand`, `@tanstack/react-query`가 실제 도입됨
-- [ ] top-level provider contract가 고정됨
-- [ ] auth/theme/selected-member/global feedback state 경계가 문서와 구현에서 일치함
+- [x] `frontend`에 `antd`, `zustand`, `@tanstack/react-query`가 실제 도입됨
+- [x] top-level provider contract가 고정됨
+- [x] auth/theme/selected-member/global feedback state 경계가 문서와 구현에서 일치함
 - [ ] query key factory와 shared error mapper가 도입됨
 - [ ] Wave 1A, Wave 1B, Wave 2 전체 페이지가 새 기준으로 마이그레이션됨
-- [ ] legacy custom shared UI primitive 의존이 제거됨
-- [ ] selected member unauthorized-selection UX가 기존 계약대로 유지됨
+- [x] legacy custom shared UI primitive 의존이 제거됨
+- [x] selected member unauthorized-selection UX가 기존 계약대로 유지됨
 - [ ] JS/CSS/rerender/refetch budget을 넘지 않음
 - [ ] 관련 문서와 실제 구현 상태가 일치함
 
@@ -83,8 +83,8 @@ origin: docs/plans/2026-03-27-refactor-frontend-ant-design-zustand-foundation-mi
 ### Gate
 
 - [x] unauthenticated login-first behavior 유지
-- [ ] first paint theme flash 없음
-- [ ] shell 밖 feedback context 누락 없음
+- [x] first paint theme flash 없음
+- [x] shell 밖 feedback context 누락 없음
 
 ## Phase 2A: Zustand App State
 
@@ -105,7 +105,7 @@ origin: docs/plans/2026-03-27-refactor-frontend-ant-design-zustand-foundation-mi
 ### Gate
 
 - [x] auth/theme 동작 동일
-- [ ] shell-wide broad rerender 회귀 없음
+- [x] shell-wide broad rerender 회귀 없음
 - [x] raw token이 store/localStorage/query cache에 저장되지 않음
 
 ## Phase 2B: Selected Member and Session-Sensitive State
@@ -132,16 +132,16 @@ origin: docs/plans/2026-03-27-refactor-frontend-ant-design-zustand-foundation-mi
 - [x] `DashboardLayout`를 antd `Layout/Menu` 기반으로 교체
 - [x] `HeaderLayout`를 antd 기준으로 교체
 - [x] dashboard hero/card surface 교체
-- [ ] custom `Modal`, `EmptyState`, `SkeletonLoader` 대체
+- [x] custom `Modal`, `EmptyState`, `SkeletonLoader` 대체
 - [x] raw backend error 문자열 노출 제거
-- [ ] CSS Modules에서 primitive styling 제거
+- [x] CSS Modules에서 primitive styling 제거
 
 ### Gate
 
-- [ ] shell parity 확보
-- [ ] theme parity 확보
-- [ ] auth/session parity 확보
-- [ ] 위 3개 충족 전에는 Phase 4 금지
+- [x] shell parity 확보
+- [x] theme parity 확보
+- [x] auth/session parity 확보
+- [x] 위 3개 충족 전에는 Phase 4 금지
 
 ## Phase 4: Query Layer Standardization
 
