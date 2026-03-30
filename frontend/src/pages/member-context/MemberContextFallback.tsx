@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
+import { Alert, Button, Card, Empty, Flex, Input, Table, Typography } from "antd";
+import type { ColumnsType } from "antd/es/table";
 
 import { useDebouncedValue } from "../../shared/hooks/useDebouncedValue";
 import { usePagination } from "../../shared/hooks/usePagination";
 import { PaginationControls } from "../../shared/ui/PaginationControls";
 import { useMembersQuery } from "../members/modules/useMembersQuery";
 import { useSelectedMemberStore } from "../members/modules/SelectedMemberContext";
+import type { MemberSummary } from "../members/modules/types";
 
 type MemberContextFallbackProps = {
   title: string;
@@ -36,76 +39,87 @@ export function MemberContextFallback({ title, description, submitLabel }: Membe
     void loadMembers({ name: debouncedKeyword, phone: debouncedKeyword });
   }, [debouncedKeyword]);
 
-  return (
-    <article className="panel-card">
-      <div className="panel-card-header">
-        <div>
-          <h1>{title}</h1>
-          <p>{description}</p>
-        </div>
-      </div>
+  const columns: ColumnsType<MemberSummary> = [
+    {
+      title: "ID",
+      dataIndex: "memberId",
+      key: "memberId",
+      width: 96
+    },
+    {
+      title: "이름",
+      dataIndex: "memberName",
+      key: "memberName"
+    },
+    {
+      title: "연락처",
+      dataIndex: "phone",
+      key: "phone"
+    },
+    {
+      title: "회원권 상태",
+      dataIndex: "membershipOperationalStatus",
+      key: "membershipOperationalStatus"
+    },
+    {
+      title: "액션",
+      key: "action",
+      align: "right",
+      render: (_, member) => (
+        <Button type="default" disabled={selectedMemberLoading} onClick={() => void selectMember(member.memberId)}>
+          {submitLabel}
+        </Button>
+      )
+    }
+  ];
 
+  return (
+    <Card>
+      <Flex vertical gap={24}>
+        <div>
+          <Typography.Title level={3}>{title}</Typography.Title>
+          <Typography.Paragraph type="secondary">{description}</Typography.Paragraph>
+        </div>
       <form
-        className="context-fallback-toolbar"
         onSubmit={(event) => {
           event.preventDefault();
           void loadMembers({ name: keyword, phone: keyword });
         }}
       >
-        <label>
-          회원 검색
-          <input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="예: 김민수, 010-1234" />
-        </label>
-        <div className="toolbar-actions">
-          <button type="submit" className="primary-button" disabled={membersLoading}>
+        <Flex gap={12} align="end" wrap>
+          <Flex vertical gap={8} flex="1 1 280px">
+            <Typography.Text strong>회원 검색</Typography.Text>
+            <Input
+              value={keyword}
+              onChange={(event) => setKeyword(event.target.value)}
+              placeholder="예: 김민수, 010-1234"
+            />
+          </Flex>
+          <Button type="primary" htmlType="submit" loading={membersLoading}>
             {membersLoading ? "조회 중..." : "조회"}
-          </button>
-        </div>
+          </Button>
+        </Flex>
       </form>
 
-      {membersQueryError ? <p className="error-text">{membersQueryError}</p> : null}
+      {membersQueryError ? (
+        <Alert
+          type="error"
+          showIcon
+          message="회원 목록을 불러오지 못했습니다."
+          description={membersQueryError}
+        />
+      ) : null}
 
-      <div className="table-shell">
-        <table className="members-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>이름</th>
-              <th>연락처</th>
-              <th>회원권 상태</th>
-              <th>액션</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pagination.pagedItems.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="empty-cell">
-                  선택 가능한 회원이 없습니다.
-                </td>
-              </tr>
-            ) : (
-              pagination.pagedItems.map((member) => (
-                <tr key={member.memberId}>
-                  <td>{member.memberId}</td>
-                  <td>{member.memberName}</td>
-                  <td>{member.phone}</td>
-                  <td>{member.membershipOperationalStatus}</td>
-                  <td>
-                    <button
-                      type="button"
-                      className="secondary-button"
-                      disabled={selectedMemberLoading}
-                      onClick={() => void selectMember(member.memberId)}
-                    >
-                      {submitLabel}
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      <Table<MemberSummary>
+        rowKey={(member) => member.memberId}
+        columns={columns}
+        dataSource={pagination.pagedItems}
+        pagination={false}
+        scroll={{ x: 720 }}
+        locale={{
+          emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="선택 가능한 회원이 없습니다." />
+        }}
+      />
 
       <PaginationControls
         page={pagination.page}
@@ -118,6 +132,7 @@ export function MemberContextFallback({ title, description, submitLabel }: Membe
         onPageChange={pagination.setPage}
         onPageSizeChange={pagination.setPageSize}
       />
-    </article>
+      </Flex>
+    </Card>
   );
 }

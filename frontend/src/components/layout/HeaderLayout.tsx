@@ -1,115 +1,85 @@
-import { PropsWithChildren } from "react";
+import { App, Button, Card, Segmented, Space, Tag, Typography } from "antd";
+
 import { useAuthState } from "../../app/auth";
-import { useThemeStore } from "../../app/theme";
+import { useThemeStore, type ThemePreference } from "../../app/theme";
+
 import styles from "./HeaderLayout.module.css";
 
-const HeaderLayout = ({ children }: PropsWithChildren) => {
-  const consts = useAuthState();
-  const { authUser, isMockMode, securityMode, logout, setRuntimeAuthPreset, clearRuntimeSession } = consts;
+const { Text } = Typography;
+
+export default function HeaderLayout() {
+  const feedback = App.useApp();
+  const {
+    authError,
+    authStatusMessage,
+    authUser,
+    clearRuntimeSession,
+    isMockMode,
+    logout,
+    securityMode,
+    setRuntimeAuthPreset
+  } = useAuthState();
   const { themePreference, setThemePreference } = useThemeStore();
 
-  return (
-    <header className={styles.header}>
-      <div className={styles.left}>
-        {children}
-      </div>
-      
-      <div className={styles.right}>
-        {/* Auth Section */}
-        <div className={styles.authPanel}>
-          <div className={styles.authInfo}>
-            <div className={styles.userProfile}>
-              <span className={styles.authLabel}>
-                {isMockMode ? "런타임 프로필" : "라이브 세션"}
-              </span>
-              <span className={styles.authUser}>
-                {securityMode === "prototype" ? "시스템 프로토타입" : authUser?.username ?? "익명 운영자"}
-              </span>
-            </div>
+  async function handleLogout() {
+    await logout();
+    feedback.message.success("세션을 정리하고 로그인 화면으로 이동합니다.");
+  }
 
-            <div className={styles.authActions}>
-              {isMockMode ? (
-                <>
-                  <button 
-                    type="button" 
-                    className={styles.sessionButton}
-                    onClick={() => setRuntimeAuthPreset("prototype-admin")}
-                  >
-                    데모
-                  </button>
-                  <button 
-                    type="button" 
-                    className={styles.sessionButton}
-                    onClick={() => setRuntimeAuthPreset("jwt-admin")}
-                  >
-                    관리자
-                  </button>
-                  <button 
-                    type="button" 
-                    className={styles.sessionButton}
-                    onClick={clearRuntimeSession}
-                  >
-                    초기화
-                  </button>
-                </>
-              ) : (
-                <button 
-                  type="button" 
-                  className={styles.logoutButton}
-                  onClick={() => void logout()}
-                >
-                  로그아웃
-                </button>
-              )}
-            </div>
+  return (
+    <Card variant="borderless" className={styles.headerCard}>
+      <div className={styles.headerContent}>
+        <div className={styles.identityBlock}>
+          <Text className={styles.eyebrow}>Operations shell</Text>
+          <div className={styles.identityRow}>
+            <Text className={styles.identityName}>
+              {securityMode === "prototype" ? "시스템 프로토타입" : authUser?.username ?? "익명 운영자"}
+            </Text>
+            <Tag color={isMockMode ? "processing" : "default"}>
+              {isMockMode ? "런타임 프로필" : "라이브 세션"}
+            </Tag>
+            <Tag color={securityMode === "prototype" ? "gold" : "geekblue"}>
+              {securityMode === "prototype" ? "프로토타입 데모" : "JWT 세션"}
+            </Tag>
           </div>
-          
-          {(authUser || isMockMode) && (
-            <div className={styles.authFeedback}>
-              {consts.authStatusMessage && <span className="text-success text-xs">{consts.authStatusMessage}</span>}
-              {consts.authError && <span className="text-danger text-xs">{consts.authError}</span>}
+          {(authStatusMessage || authError) && (
+            <div className={styles.feedbackRow}>
+              {authStatusMessage ? <Text type="success">{authStatusMessage}</Text> : null}
+              {authError ? <Text type="danger">{authError}</Text> : null}
             </div>
           )}
         </div>
 
-        {/* Theme Control */}
-        <div className={styles.themeControl}>
-          <span className={styles.themeLabel}>화면 모드</span>
-          <div className={styles.themeGroup}>
-            <button
-              type="button"
-              className={`${styles.themeButton} ${themePreference === "light" ? styles.themeButtonActive : ""}`}
-              onClick={() => setThemePreference("light")}
-            >
-              라이트
-            </button>
-            <button
-              type="button"
-              className={`${styles.themeButton} ${themePreference === "dark" ? styles.themeButtonActive : ""}`}
-              onClick={() => setThemePreference("dark")}
-            >
-              다크
-            </button>
-            <button
-              type="button"
-              className={`${styles.themeButton} ${themePreference === "system" ? styles.themeButtonActive : ""}`}
-              onClick={() => setThemePreference("system")}
-            >
-              자동
-            </button>
+        <div className={styles.controls}>
+          <div className={styles.controlGroup}>
+            <Text className={styles.controlLabel}>화면 모드</Text>
+            <Segmented
+              options={[
+                { label: "라이트", value: "light" },
+                { label: "다크", value: "dark" },
+                { label: "자동", value: "system" }
+              ]}
+              value={themePreference}
+              onChange={(value) => setThemePreference(value as ThemePreference)}
+            />
+          </div>
+
+          <div className={styles.controlGroup}>
+            <Text className={styles.controlLabel}>{isMockMode ? "런타임 전환" : "세션 제어"}</Text>
+            <Space wrap>
+              {isMockMode ? (
+                <>
+                  <Button size="small" onClick={() => setRuntimeAuthPreset("prototype-admin")}>데모</Button>
+                  <Button size="small" onClick={() => setRuntimeAuthPreset("jwt-admin")}>관리자</Button>
+                  <Button size="small" onClick={clearRuntimeSession}>초기화</Button>
+                </>
+              ) : (
+                <Button danger size="small" onClick={() => void handleLogout()}>로그아웃</Button>
+              )}
+            </Space>
           </div>
         </div>
-
-        {/* System Info (from DashboardLayout footer) */}
-        <div className={styles.systemInfo}>
-          <span className={styles.systemLabel}>운영 쉘 인터페이스</span>
-          <span className={styles.systemMode}>
-            모드: {securityMode === "prototype" ? "프로토타입 데모" : "JWT 세션"}
-          </span>
-        </div>
       </div>
-    </header>
+    </Card>
   );
 }
-
-export default HeaderLayout;

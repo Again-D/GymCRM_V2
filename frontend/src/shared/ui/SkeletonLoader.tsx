@@ -1,19 +1,27 @@
-import React from "react";
-import styles from "./SkeletonLoader.module.css";
+import { Skeleton } from "antd";
+import type { CSSProperties } from "react";
 
 interface SkeletonLoaderProps {
   type?: "text" | "rectangular" | "circular";
   width?: string | number;
   height?: string | number;
-  style?: React.CSSProperties;
+  style?: CSSProperties;
 }
 
 export function SkeletonLoader({ type = "text", width, height, style }: SkeletonLoaderProps) {
-  const inlineStyle: React.CSSProperties = {
-    ...style,
+  const mergedStyle: CSSProperties = {
     width,
-    height
+    height,
+    ...style
   };
-  
-  return <div className={`${styles.skeleton} ${styles[type]}`} style={inlineStyle} />;
+
+  if (type === "circular") {
+    return <Skeleton.Avatar active shape="circle" style={mergedStyle} />;
+  }
+
+  if (type === "rectangular") {
+    return <Skeleton.Node active style={mergedStyle} />;
+  }
+
+  return <Skeleton.Input active block style={mergedStyle} />;
 }

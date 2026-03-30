@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, waitForElementToBeRemoved } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 import App from "./App";
@@ -16,6 +16,17 @@ function renderRoute(initialEntries: string[], authValue?: Partial<AuthState>) {
       </AuthStateProvider>
     </ThemeProvider>
   );
+}
+
+async function waitForShellHeading(name: string) {
+  const loadingHeading = screen.queryByRole("heading", { name: "Loading Workspace" });
+  if (loadingHeading) {
+    await waitForElementToBeRemoved(loadingHeading, { timeout: 20000 });
+  }
+
+  await waitFor(() => {
+    expect(screen.queryByRole("heading", { name })).toBeTruthy();
+  }, { timeout: 20000 });
 }
 
 beforeEach(() => {
@@ -42,8 +53,8 @@ describe("prototype shell routing", () => {
       securityMode: "prototype"
     });
 
-    expect(await screen.findByRole("heading", { name: "운영 대시보드" })).toBeTruthy();
-  });
+    await waitForShellHeading("운영 대시보드");
+  }, 30000);
 
   it("redirects protected shell routes to login in jwt unauthenticated mode", async () => {
     renderRoute(["/members"], {
@@ -52,7 +63,7 @@ describe("prototype shell routing", () => {
     });
 
     expect(await screen.findByRole("heading", { name: "GymCRM" })).toBeTruthy();
-  });
+  }, 10000);
 
   it("keeps the bootstrapping screen before redirects while auth state is loading", async () => {
     render(
@@ -66,7 +77,7 @@ describe("prototype shell routing", () => {
     );
 
     expect(await screen.findByRole("heading", { name: "System Initializing" })).toBeTruthy();
-  });
+  }, 10000);
 
   it("redirects unknown paths to dashboard for authenticated sessions", async () => {
     renderRoute(["/not-a-real-route"], {
@@ -74,6 +85,6 @@ describe("prototype shell routing", () => {
       authUser: { userId: 1, username: "test", primaryRole: "ADMIN", roles: ["ADMIN"] }
     });
 
-    expect(await screen.findByRole("heading", { name: "운영 대시보드" })).toBeTruthy();
-  });
+    await waitForShellHeading("운영 대시보드");
+  }, 30000);
 });

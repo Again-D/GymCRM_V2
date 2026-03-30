@@ -1,16 +1,11 @@
-import React from "react";
-import styles from "./EmptyState.module.css";
+import { Empty } from "antd";
+import type { ReactNode } from "react";
 
 interface EmptyStateProps {
   message: string;
-  icon?: React.ReactNode;
+  icon?: ReactNode;
 }
 
 export function EmptyState({ message, icon }: EmptyStateProps) {
-  return (
-    <div className={styles.container}>
-      {icon && <div className={styles.icon}>{icon}</div>}
-      <p className={styles.message}>{message}</p>
-    </div>
-  );
+  return <Empty image={icon ?? Empty.PRESENTED_IMAGE_SIMPLE} description={message} />;
 }
