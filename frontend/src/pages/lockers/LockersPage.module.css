@@ -1,20 +1,84 @@
-.ok {
-  color: var(--status-ok);
+.eyebrow {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #1677ff;
 }
 
-.info {
-  color: var(--status-info);
+.heroTitle {
+  margin: 0;
 }
 
-.danger {
-  color: var(--status-danger);
+.heroDescription {
+  margin: 0;
+  max-width: 640px;
 }
 
-.filterHeader {
-  margin-bottom: 24px;
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.surfaceGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 1fr);
+  gap: 24px;
+}
+
+.filtersGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.filterItem {
+  margin-bottom: 0;
+}
+
+.metaText {
+  font-size: 0.75rem;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
 }
 
 .memoArea {
   min-height: 80px;
   resize: vertical;
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.descriptionField {
+  margin-bottom: 0;
+}
+
+@media (max-width: 1100px) {
+  .surfaceGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 960px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .filtersGrid,
+  .formGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .statsGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

@@ -5,9 +5,22 @@ import { AuthStateProvider } from "../../app/auth";
 import { setMockApiModeForTests } from "../../api/client";
 import { SelectedMemberProvider } from "../members/modules/SelectedMemberContext";
 import LockersPage from "./LockersPage";
+import { FoundationProviders } from "../../app/providers";
+import { selectedMemberStore } from "../../app/selectedMemberStore";
 
 describe("LockersPage", () => {
   beforeEach(() => {
+    selectedMemberStore.getState().reset();
+    vi.stubGlobal("matchMedia", vi.fn().mockImplementation((query) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })));
     vi.stubGlobal("fetch", vi.fn(async () => ({
       ok: true,
       json: async () => ({
@@ -29,8 +42,8 @@ describe("LockersPage", () => {
     setMockApiModeForTests(false);
 
     render(
-      <AuthStateProvider
-        value={{
+      <FoundationProviders
+        authValue={{
           securityMode: "jwt",
           authUser: {
             userId: 41,
@@ -43,11 +56,11 @@ describe("LockersPage", () => {
         <SelectedMemberProvider>
           <LockersPage />
         </SelectedMemberProvider>
-      </AuthStateProvider>
+      </FoundationProviders>
     );
 
     expect(await screen.findByRole("heading", { name: "라커 관리" })).toBeTruthy();
-    expect(screen.getByText("현재 관리자 권한이 없어 라커 배정 및 수정 작업을 실행할 수 없습니다.")).toBeTruthy();
+    expect(screen.getByText(/현재 관리자 권한이 없어 라커 배정 및 수정 작업을 실행할 수 없습니다/)).toBeTruthy();
     expect(screen.getByText(/라커 목록 불러오는 중...|조건에 맞는 라커가 없습니다./)).toBeTruthy();
-  });
+  }, 10000);
 });

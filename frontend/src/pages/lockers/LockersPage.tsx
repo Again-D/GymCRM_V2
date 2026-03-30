@@ -1,35 +1,55 @@
 import { useEffect, useMemo, useState } from "react";
+import {
+  Alert,
+  Button,
+  Card,
+  Col,
+  DatePicker,
+  Empty,
+  Flex,
+  Form,
+  Input,
+  Modal,
+  Row,
+  Select,
+  Space,
+  Statistic,
+  Table,
+  Tag,
+  Typography
+} from "antd";
+import type { ColumnsType } from "antd/es/table";
+import { LockOutlined, ContactsOutlined, SolutionOutlined, HistoryOutlined } from "@ant-design/icons";
+import dayjs from "dayjs";
 
 import { useAuthState } from "../../app/auth";
 import { hasAnyRole } from "../../app/roles";
 import { usePagination } from "../../shared/hooks/usePagination";
-import { PaginationControls } from "../../shared/ui/PaginationControls";
 import { SelectedMemberContextBadge } from "../members/components/SelectedMemberContextBadge";
 import { useMembersQuery } from "../members/modules/useMembersQuery";
 import { useSelectedMemberStore } from "../members/modules/SelectedMemberContext";
+import type { MemberSummary } from "../members/modules/types";
 import { useLockerPrototypeState } from "./modules/useLockerPrototypeState";
 import { useLockerQueries } from "./modules/useLockerQueries";
-import { Modal } from "../../shared/ui/Modal";
 
-import styles from "./LockersPage.module.css";
+const { Paragraph, Text, Title } = Typography;
 
-const statusMap: Record<string, { label: string; class: string }> = {
-  "AVAILABLE": { label: "사용 가능", class: "pill ok" },
-  "ASSIGNED": { label: "배정됨", class: "pill info" },
-  "MAINTENANCE": { label: "점검 중", class: "pill danger" },
-  "ACTIVE": { label: "사용 중", class: "pill ok" },
-  "RETURNED": { label: "반납됨", class: "pill muted" }
-};
+function buildStatusTag(status: string) {
+  if (status === "AVAILABLE") return <Tag color="success">사용 가능</Tag>;
+  if (status === "ASSIGNED") return <Tag color="processing">배정됨</Tag>;
+  if (status === "MAINTENANCE") return <Tag color="error">점검 중</Tag>;
+  if (status === "ACTIVE") return <Tag color="success">사용 중</Tag>;
+  if (status === "RETURNED") return <Tag>반납됨</Tag>;
+  return <Tag>{status}</Tag>;
+}
 
 export default function LockersPage() {
   const { authUser, isMockMode } = useAuthState();
-  const { selectedMember, selectedMemberId } = useSelectedMemberStore();
+  const { selectedMemberId } = useSelectedMemberStore();
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
 
   const {
     members,
-    membersLoading,
-    membersQueryError,
     loadMembers,
     resetMembersQuery
   } = useMembersQuery({
@@ -117,316 +137,360 @@ export default function LockersPage() {
     }
   }
 
+  const slotColumns: ColumnsType<(typeof lockerSlots)[number]> = [
+    {
+      title: "라커",
+      key: "locker",
+      render: (_, slot) => (
+        <Space direction="vertical" size={2}>
+          <Text strong>{slot.lockerCode}</Text>
+          <Text type="secondary" style={{ fontSize: "0.75rem" }}>
+            구역: {slot.lockerZone ?? "-"}
+          </Text>
+        </Space>
+      )
+    },
+    {
+      title: "등급",
+      dataIndex: "lockerGrade",
+      key: "lockerGrade",
+      render: (lockerGrade) => lockerGrade ?? "-"
+    },
+    {
+      title: "상태",
+      dataIndex: "lockerStatus",
+      key: "lockerStatus",
+      render: (lockerStatus) => buildStatusTag(lockerStatus)
+    },
+    {
+      title: "메모",
+      dataIndex: "memo",
+      key: "memo",
+      align: "right",
+      render: (memo) => <Text type="secondary" style={{ fontSize: "0.75rem" }}>{memo ?? "-"}</Text>
+    }
+  ];
+
+  const assignmentColumns: ColumnsType<(typeof lockerAssignments)[number]> = [
+    {
+      title: "라커 / 회원",
+      key: "lockerMember",
+      render: (_, assignment) => (
+        <Space direction="vertical" size={2}>
+          <Text strong>{assignment.lockerCode}</Text>
+          <Text type="secondary" style={{ fontSize: "0.75rem" }}>
+            {assignment.memberName} (#{assignment.memberId})
+          </Text>
+        </Space>
+      )
+    },
+    {
+      title: "사용 기간",
+      key: "period",
+      render: (_, assignment) => (
+        <Space direction="vertical" size={2}>
+          <Text style={{ fontSize: "0.84rem" }}>{assignment.startDate}</Text>
+          <Text type="secondary" style={{ fontSize: "0.75rem" }}>
+            to {assignment.endDate}
+          </Text>
+        </Space>
+      )
+    },
+    {
+      title: "액션",
+      key: "actions",
+      align: "right",
+      render: (_, assignment) =>
+        assignment.assignmentStatus === "ACTIVE" ? (
+          <Button
+            danger
+            size="small"
+            disabled={lockerReturnSubmittingId === assignment.lockerAssignmentId || !isLiveLockerRoleSupported}
+            onClick={() => void runLockerReturn(assignment.lockerAssignmentId)}
+          >
+            {lockerReturnSubmittingId === assignment.lockerAssignmentId ? "처리 중..." : "반납"}
+          </Button>
+        ) : (
+          buildStatusTag(assignment.assignmentStatus)
+        )
+    }
+  ];
+
+  const memberOptions = members.map((member: MemberSummary) => ({
+    label: `${member.memberName} (#${member.memberId})`,
+    value: String(member.memberId)
+  }));
+
+  const slotOptions = availableSlots.map((slot) => ({
+    label: `${slot.lockerCode} (${slot.lockerZone ?? "-"})`,
+    value: String(slot.lockerSlotId)
+  }));
+
+  const activeAssignmentCount = lockerAssignments.filter((assignment) => assignment.assignmentStatus === "ACTIVE").length;
+
   return (
-    <section className="ops-shell">
-      <div className="ops-hero">
-        <div className="ops-hero__copy">
-          <span className="ops-eyebrow">보관함 관리</span>
-          <h1 className="ops-title">라커 관리</h1>
-          <p className="ops-subtitle">라커 재고를 확인하고 현재 배정 현황을 점검하며 신규 배정을 처리할 수 있습니다.</p>
-          <div className="ops-meta">
-            <span className="ops-meta__pill">라커 재고</span>
-            <span className="ops-meta__pill">배정 현황</span>
-            <span className="ops-meta__pill">회원 연동 모달</span>
-          </div>
-        </div>
-        <button 
-          type="button" 
-          className="primary-button" 
-          onClick={() => setIsAssignModalOpen(true)}
-          disabled={!isLiveLockerRoleSupported}
-        >
-          신규 배정
-        </button>
-      </div>
+    <Flex vertical gap={24}>
+      <Card>
+        <Flex justify="space-between" align="start" wrap="wrap" gap={16}>
+          <Space direction="vertical" size={4}>
+            <Text type="secondary" style={{ fontSize: "0.72rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "#1677ff" }}>
+              보관함 관리
+            </Text>
+            <Title level={2} style={{ margin: 0 }}>
+              라커 관리
+            </Title>
+            <Paragraph type="secondary" style={{ margin: 0, maxWidth: 640 }}>
+              라커 재고를 확인하고 현재 배정 현황을 점검하며 신규 배정을 처리할 수 있습니다.
+            </Paragraph>
+            <Space wrap>
+              <Tag color="blue">라커 재고</Tag>
+              <Tag color="cyan">배정 현황</Tag>
+              <Tag color="purple">회원 연동 모달</Tag>
+            </Space>
+          </Space>
+          <Button type="primary" size="large" icon={<LockOutlined />} onClick={() => setIsAssignModalOpen(true)} disabled={!isLiveLockerRoleSupported}>
+            신규 배정
+          </Button>
+        </Flex>
+      </Card>
 
-      <div className="ops-stat-strip">
-        <div className="ops-stat-card">
-          <span className="ops-stat-card__label">전체 라커</span>
-          <span className="ops-stat-card__value">{lockerSlots.length}</span>
-          <span className="ops-stat-card__hint">시스템에 등록된 전체 라커 수</span>
-        </div>
-        <div className="ops-stat-card">
-          <span className="ops-stat-card__label">사용 가능</span>
-          <span className={`ops-stat-card__value ${styles.ok}`}>{availableSlots.length}</span>
-          <span className="ops-stat-card__hint">즉시 배정 가능한 공여 라커 수</span>
-        </div>
-        <div className="ops-stat-card">
-          <span className="ops-stat-card__label">현재 배정</span>
-          <span className={`ops-stat-card__value ${styles.info}`}>
-            {lockerAssignments.filter(a => a.assignmentStatus === 'ACTIVE').length}
-          </span>
-          <span className="ops-stat-card__hint">실제 사용 중인 활성 배정 건수</span>
-        </div>
-        <div className="ops-stat-card">
-          <span className="ops-stat-card__label">시스템 권한</span>
-          <span className="ops-stat-card__value">{isLiveLockerRoleSupported ? "풀 액서스" : "조회 전용"}</span>
-          <span className="ops-stat-card__hint">{isLiveLockerRoleSupported ? "배정 및 반납 처리가 가능합니다." : "작업 권한이 제한된 상태입니다."}</span>
-        </div>
-      </div>
-      
-      <section className="ops-surface-grid">
-      <article className="panel-card">
-        <div className="ops-section__header">
-          <div>
-            <h2 className="ops-section__title">라커 목록</h2>
-            <p className="ops-section__subtitle">가용 라커와 구역 정보를 확인하고 배정 작업을 준비합니다.</p>
-          </div>
-        </div>
+      <Row gutter={[16, 16]}>
+        {[
+          { label: "전체 라커", value: lockerSlots.length, hint: "시스템 등록 라커" },
+          { label: "사용 가능", value: availableSlots.length, hint: "즉시 배정 가능", color: "#52c41a" },
+          { label: "현재 배정", value: activeAssignmentCount, hint: "활성 사용 건수", color: "#1677ff" },
+          { label: "시스템 권한", value: isLiveLockerRoleSupported ? "풀 액세스" : "조회 전용", hint: isLiveLockerRoleSupported ? "운영 가능" : "작업 제한" }
+        ].map((stat) => (
+          <Col xs={12} sm={6} key={stat.label}>
+            <Card>
+              <Statistic
+                title={<Text type="secondary" style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase" }}>{stat.label}</Text>}
+                value={stat.value}
+                valueStyle={{ fontWeight: 800, color: stat.color }}
+                suffix={<Text type="secondary" style={{ fontSize: "0.75rem", display: "block" }}>{stat.hint}</Text>}
+              />
+            </Card>
+          </Col>
+        ))}
+      </Row>
 
-        <div className={`members-filter-grid ${styles.filterHeader}`}>
-          <label className="stack-sm">
-            <span className="text-xs text-muted brand-title">상태 필터</span>
-            <select
-              className="input"
-              value={lockerFilters.lockerStatus}
-              disabled={!isLiveLockerRoleSupported}
-              onChange={(event) =>
-                setLockerFilters((prev) => ({ ...prev, lockerStatus: event.target.value as typeof prev.lockerStatus }))
+      <Row gutter={[24, 24]}>
+        <Col xs={24} lg={14}>
+          <Card
+            title={
+              <Space direction="vertical" size={2}>
+                <Title level={5} style={{ margin: 0 }}><SolutionOutlined /> 라커 목록</Title>
+                <Text type="secondary" style={{ fontSize: "0.84rem" }}>가용 라커와 구역 정보를 확인하고 배정 작업을 준비합니다.</Text>
+              </Space>
+            }
+          >
+            <Flex vertical gap={16}>
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item label="상태 필터" style={{ marginBottom: 0 }}>
+                    <Select
+                      value={lockerFilters.lockerStatus}
+                      disabled={!isLiveLockerRoleSupported}
+                      onChange={(value) =>
+                        setLockerFilters((prev) => ({ ...prev, lockerStatus: value as typeof prev.lockerStatus }))
+                      }
+                      options={[
+                        { label: "전체 상태", value: "" },
+                        { label: "사용 가능", value: "AVAILABLE" },
+                        { label: "배정됨", value: "ASSIGNED" },
+                        { label: "점검 중", value: "MAINTENANCE" }
+                      ]}
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item label="구역 검색" style={{ marginBottom: 0 }}>
+                    <Input
+                      value={lockerFilters.lockerZone}
+                      disabled={!isLiveLockerRoleSupported}
+                      onChange={(event) => setLockerFilters((prev) => ({ ...prev, lockerZone: event.target.value }))}
+                      placeholder="예: A구역"
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              {!isLiveLockerRoleSupported && (
+                <Alert
+                  type="warning"
+                  showIcon
+                  message="운영 권한 제한"
+                  description="현재 관리자 권한이 없어 라커 배정 및 수정 작업을 실행할 수 없습니다."
+                />
+              )}
+
+              {lockerPanelMessage && <Alert type="success" showIcon message={lockerPanelMessage} closable />}
+              {(lockerPanelError || lockerQueryError) && (
+                <Alert type="error" showIcon message={lockerPanelError ?? lockerQueryError} closable />
+              )}
+
+              <Table
+                rowKey="lockerSlotId"
+                loading={lockerSlotsLoading}
+                columns={slotColumns}
+                dataSource={slotsPagination.pagedItems}
+                pagination={{
+                  current: slotsPagination.page,
+                  pageSize: slotsPagination.pageSize,
+                  total: slotsPagination.totalItems,
+                  showSizeChanger: true,
+                  pageSizeOptions: ["10", "20"],
+                  onChange: (page, pageSize) => {
+                    slotsPagination.setPage(page);
+                    slotsPagination.setPageSize(pageSize);
+                  }
+                }}
+                locale={{
+                  emptyText: lockerSlotsLoading
+                    ? "라커 목록 불러오는 중..."
+                    : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="조건에 맞는 라커가 없습니다." />
+                }}
+                scroll={{ x: 400 }}
+              />
+            </Flex>
+          </Card>
+        </Col>
+
+        <Col xs={24} lg={10}>
+          <Flex vertical gap={24}>
+            <Card
+              title={
+                <Space direction="vertical" size={2}>
+                  <Title level={5} style={{ margin: 0 }}><HistoryOutlined /> 현재 배정 현황</Title>
+                  <Text type="secondary" style={{ fontSize: "0.84rem" }}>사용 중인 라커와 기간을 확인합니다.</Text>
+                </Space>
               }
             >
-              <option value="">전체 상태</option>
-              <option value="AVAILABLE">사용 가능</option>
-              <option value="ASSIGNED">배정됨</option>
-              <option value="MAINTENANCE">점검 중</option>
-            </select>
-          </label>
-          <label className="stack-sm">
-            <span className="text-xs text-muted brand-title">구역 검색</span>
-            <input
-              className="input"
-              value={lockerFilters.lockerZone}
-              disabled={!isLiveLockerRoleSupported}
-              onChange={(event) => setLockerFilters((prev) => ({ ...prev, lockerZone: event.target.value }))}
-              placeholder="예: A구역"
-            />
-          </label>
-        </div>
+              <Table
+                rowKey="lockerAssignmentId"
+                loading={lockerAssignmentsLoading}
+                columns={assignmentColumns}
+                dataSource={assignmentsPagination.pagedItems}
+                pagination={{
+                  current: assignmentsPagination.page,
+                  pageSize: assignmentsPagination.pageSize,
+                  total: assignmentsPagination.totalItems,
+                  showSizeChanger: true,
+                  pageSizeOptions: ["10", "20"],
+                  onChange: (page, pageSize) => {
+                    assignmentsPagination.setPage(page);
+                    assignmentsPagination.setPageSize(pageSize);
+                  }
+                }}
+                locale={{
+                  emptyText: lockerAssignmentsLoading
+                    ? "배정 내역 불러오는 중..."
+                    : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="현재 배정 내역이 없습니다." />
+                }}
+                scroll={{ x: 300 }}
+              />
+            </Card>
 
-        {!isLiveLockerRoleSupported && (
-          <div className="field-ops-note field-ops-note--restricted mb-md">
-            <span className="field-ops-note__label">운영 권한 제한</span>
-            <div className="text-sm brand-title mt-xs">현재 관리자 권한이 없어 라커 배정 및 수정 작업을 실행할 수 없습니다.</div>
-            <div className="mt-xs text-sm">데모 세션 또는 실제 관리자 세션으로의 전환이 필요합니다.</div>
-          </div>
-        )}
+            {!isLiveLockerRoleSupported && (
+              <Alert
+                type="warning"
+                showIcon
+                message="정보 접근 제한"
+                description="배정 및 반납 변경 기능이 잠겨 있습니다. 운영 로그 조회는 가능합니다."
+              />
+            )}
+          </Flex>
+        </Col>
+      </Row>
 
-        {(lockerPanelMessage || lockerPanelError || lockerQueryError) && (
-          <div className="ops-feedback-stack mb-md">
-            {lockerPanelMessage && <div className="pill ok full-span">{lockerPanelMessage}</div>}
-            {(lockerPanelError || lockerQueryError) && <div className="pill danger full-span">{lockerPanelError ?? lockerQueryError}</div>}
-          </div>
-        )}
-
-        <div className="table-shell">
-          <table className="members-table">
-            <thead>
-              <tr>
-                <th>라커</th>
-                <th>등급</th>
-                <th>상태</th>
-                <th className="ops-right">메모</th>
-              </tr>
-            </thead>
-            <tbody>
-              {slotsPagination.pagedItems.map((slot: any) => {
-                const status = statusMap[slot.lockerStatus] || { label: slot.lockerStatus, class: 'pill muted' };
-                return (
-                  <tr key={slot.lockerSlotId}>
-                    <td>
-                      <div className="stack-sm">
-                        <span className="text-sm brand-title">{slot.lockerCode}</span>
-                        <span className="text-xs text-muted">구역: {slot.lockerZone ?? "-"}</span>
-                      </div>
-                    </td>
-                    <td><span className="text-xs">{slot.lockerGrade ?? "-"}</span></td>
-                    <td><span className={status.class}>{status.label}</span></td>
-                    <td className="ops-right"><span className="text-xs text-muted">{slot.memo ?? "-"}</span></td>
-                  </tr>
-                );
-              })}
-              {slotsPagination.pagedItems.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="empty-cell">
-                    {lockerSlotsLoading ? "라커 목록 불러오는 중..." : "조건에 맞는 라커가 없습니다."}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="mt-md">
-          <PaginationControls {...slotsPagination} pageSizeOptions={[10, 20]} onPageChange={slotsPagination.setPage} onPageSizeChange={slotsPagination.setPageSize} />
-        </div>
-      </article>
-
-      {/* ASSIGNMENTS PANEL */}
-      <article className="stack-lg">
-        
-        <section className="panel-card">
-          <div className="ops-section__header">
-            <div>
-              <h2 className="ops-section__title">현재 배정 현황</h2>
-              <p className="ops-section__subtitle">사용 중인 라커와 기간, 반납 처리 가능 상태를 확인합니다.</p>
-            </div>
-          </div>
-
-          <div className="table-shell">
-            <table className="members-table">
-              <thead>
-                <tr>
-                  <th>라커 / 회원</th>
-                  <th>사용 기간</th>
-                  <th className="ops-right">액션</th>
-                </tr>
-              </thead>
-              <tbody>
-                {assignmentsPagination.pagedItems.map((assignment: any) => {
-                   const status = statusMap[assignment.assignmentStatus] || { label: assignment.assignmentStatus, class: 'pill muted' };
-                   const isActive = assignment.assignmentStatus === "ACTIVE";
-                   return (
-                    <tr key={assignment.lockerAssignmentId}>
-                      <td>
-                        <div className="stack-sm">
-                          <span className="text-sm brand-title">{assignment.lockerCode}</span>
-                          <span className="text-xs text-muted">{assignment.memberName} (#{assignment.memberId})</span>
-                        </div>
-                      </td>
-                      <td>
-                        <div className="stack-sm">
-                          <span className="text-xs brand-title">{assignment.startDate}</span>
-                          <span className="text-xs text-muted">to {assignment.endDate}</span>
-                        </div>
-                      </td>
-                      <td className="ops-right">
-                        {isActive ? (
-                           <button
-                             type="button"
-                             className={`secondary-button ops-action-button ${styles.danger}`}
-                             disabled={lockerReturnSubmittingId === assignment.lockerAssignmentId || !isLiveLockerRoleSupported}
-                             onClick={() => void runLockerReturn(assignment.lockerAssignmentId)}
-                           >
-                             {lockerReturnSubmittingId === assignment.lockerAssignmentId ? "반납 처리 중..." : "반납"}
-                           </button>
-                        ) : (
-                          <span className={status.class}>{status.label}</span>
-                        )}
-                      </td>
-                    </tr>
-                   );
-                })}
-                {assignmentsPagination.pagedItems.length === 0 && (
-                  <tr>
-                    <td colSpan={3} className="empty-cell">
-                      {lockerAssignmentsLoading ? "배정 내역 불러오는 중..." : "현재 배정 내역이 없습니다."}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          <div className="mt-md">
-            <PaginationControls {...assignmentsPagination} pageSizeOptions={[10, 20]} onPageChange={assignmentsPagination.setPage} onPageSizeChange={assignmentsPagination.setPageSize} />
-          </div>
-        </section>
-
-        {!isLiveLockerRoleSupported && (
-          <div className="field-ops-note field-ops-note--restricted">
-            <span className="field-ops-note__label">정보 접근 제한</span>
-            <div className="text-sm brand-title mt-xs">배정 및 반납 변경 기능이 잠겨 있습니다.</div>
-            <div className="mt-xs text-sm">운영 로그 조회는 가능하나 실제 데이터 변경은 상위 권한이 필요합니다.</div>
-          </div>
-        )}
-      </article>
-
-      {/* ASSIGNMENT MODAL */}
       <Modal
-        isOpen={isAssignModalOpen}
-        onClose={() => setIsAssignModalOpen(false)}
-        title="라커 배정 등록"
-        footer={
-          <>
-            <button className="secondary-button" onClick={() => setIsAssignModalOpen(false)}>취소</button>
-            <button 
-              className="primary-button" 
-              onClick={() => void runLockerAssign()}
-              disabled={lockerAssignSubmitting || !lockerAssignForm.lockerSlotId || !lockerAssignForm.memberId}
-            >
-              {lockerAssignSubmitting ? "처리 중..." : "배정 확정"}
-            </button>
-          </>
+        open={isAssignModalOpen}
+        onCancel={() => setIsAssignModalOpen(false)}
+        title={
+          <Space>
+            <LockOutlined />
+            <Text strong style={{ fontSize: "1.1rem" }}>라커 배정 등록</Text>
+          </Space>
         }
+        footer={[
+          <Button key="cancel" onClick={() => setIsAssignModalOpen(false)}>취소</Button>,
+          <Button
+            key="submit"
+            type="primary"
+            onClick={() => void runLockerAssign()}
+            loading={lockerAssignSubmitting}
+            disabled={!lockerAssignForm.lockerSlotId || !lockerAssignForm.memberId}
+          >
+            배정 확정
+          </Button>
+        ]}
+        width={600}
       >
-        <div className="stack-md">
+        <Flex vertical gap={16} style={{ marginTop: 16 }}>
           <SelectedMemberContextBadge />
-          
-          <div className="ops-field-grid-2">
-            <label className="stack-sm">
-              <span className="text-sm">대상 라커</span>
-              <select
-                className="input"
-                name="lockerSlotId"
-                value={lockerAssignForm.lockerSlotId}
-                onChange={(event) => setLockerAssignForm(prev => ({ ...prev, lockerSlotId: event.target.value }))}
-              >
-                <option value="">-- 사용 가능한 라커 선택 --</option>
-                {availableSlots.map(slot => (
-                  <option key={slot.lockerSlotId} value={slot.lockerSlotId}>{slot.lockerCode} ({slot.lockerZone})</option>
-                ))}
-              </select>
-            </label>
 
-            <label className="stack-sm">
-              <span className="text-sm">회원 선택</span>
-              <select
-                className="input"
-                name="memberId"
-                value={lockerAssignForm.memberId}
-                onChange={(event) => setLockerAssignForm(prev => ({ ...prev, memberId: event.target.value }))}
-              >
-                <option value="">-- 회원 선택 --</option>
-                {members.map(m => (
-                  <option key={m.memberId} value={m.memberId}>{m.memberName} (#{m.memberId})</option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <div className="ops-field-grid-2">
-            <label className="stack-sm">
-              <span className="text-sm">시작일</span>
-              <input
-                className="input"
-                type="date"
-                value={lockerAssignForm.startDate}
-                onChange={(event) => setLockerAssignForm(prev => ({ ...prev, startDate: event.target.value }))}
+          <Form layout="vertical">
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item label="대상 라커" required>
+                  <Select
+                    value={lockerAssignForm.lockerSlotId || undefined}
+                    onChange={(value) => setLockerAssignForm((prev) => ({ ...prev, lockerSlotId: value }))}
+                    placeholder="라커 선택"
+                    options={slotOptions}
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label="회원 선택" required>
+                  <Select
+                    showSearch
+                    optionFilterProp="label"
+                    value={lockerAssignForm.memberId || undefined}
+                    onChange={(value) => setLockerAssignForm((prev) => ({ ...prev, memberId: value }))}
+                    placeholder="회원 선택"
+                    options={memberOptions}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+            
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item label="시작일" required>
+                  <DatePicker
+                    style={{ width: "100%" }}
+                    value={lockerAssignForm.startDate ? dayjs(lockerAssignForm.startDate) : null}
+                    onChange={(date) =>
+                      setLockerAssignForm((prev) => ({ ...prev, startDate: date ? date.format("YYYY-MM-DD") : "" }))
+                    }
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label="종료일" required>
+                  <DatePicker
+                    style={{ width: "100%" }}
+                    value={lockerAssignForm.endDate ? dayjs(lockerAssignForm.endDate) : null}
+                    onChange={(date) =>
+                      setLockerAssignForm((prev) => ({ ...prev, endDate: date ? date.format("YYYY-MM-DD") : "" }))
+                    }
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+            
+            <Form.Item label="운영 메모" style={{ marginBottom: 0 }}>
+              <Input.TextArea
+                rows={4}
+                value={lockerAssignForm.memo}
+                onChange={(e) => setLockerAssignForm((prev) => ({ ...prev, memo: e.target.value }))}
+                placeholder="배정 관련 메모를 입력하세요"
               />
-            </label>
-            <label className="stack-sm">
-              <span className="text-sm">종료일</span>
-              <input
-                className="input"
-                type="date"
-                value={lockerAssignForm.endDate}
-                onChange={(event) => setLockerAssignForm(prev => ({ ...prev, endDate: event.target.value }))}
-              />
-            </label>
-          </div>
-
-          <label className="stack-sm">
-            <span className="text-sm">운영 메모</span>
-            <textarea
-              className={`input ${styles.memoArea}`}
-              value={lockerAssignForm.memo}
-              onChange={(event) => setLockerAssignForm(prev => ({ ...prev, memo: event.target.value }))}
-              placeholder="배정 관련 메모를 입력하세요"
-            />
-          </label>
-        </div>
+            </Form.Item>
+          </Form>
+        </Flex>
       </Modal>
-
-      </section>
-    </section>
+    </Flex>
   );
 }

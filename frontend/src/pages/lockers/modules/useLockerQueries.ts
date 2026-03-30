@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 
 import { apiGet } from "../../../api/client";
 import { useQueryInvalidationVersion } from "../../../api/queryInvalidation";
+import { toUserFacingErrorMessage } from "../../../app/uiError";
 import type { LockerAssignment, LockerFilters, LockerSlot } from "./types";
 
 export function useLockerQueries() {
@@ -69,11 +70,7 @@ export function useLockerQueries() {
       } catch (error) {
         if (lockerSlotsRequestIdRef.current !== requestId) return;
         setLockerSlots([]);
-        setLockerQueryError(
-          error instanceof Error
-            ? error.message
-            : "라커 슬롯을 불러오지 못했습니다.",
-        );
+        setLockerQueryError(toUserFacingErrorMessage(error, "라커 슬롯을 불러오지 못했습니다."));
       } finally {
         if (lockerSlotsRequestIdRef.current === requestId) {
           setLockerSlotsLoading(false);
@@ -121,11 +118,7 @@ export function useLockerQueries() {
       } catch (error) {
         if (lockerAssignmentsRequestIdRef.current !== requestId) return;
         setLockerAssignments([]);
-        setLockerQueryError(
-          error instanceof Error
-            ? error.message
-            : "라커 배정 목록을 불러오지 못했습니다.",
-        );
+        setLockerQueryError(toUserFacingErrorMessage(error, "라커 배정 목록을 불러오지 못했습니다."));
       } finally {
         if (lockerAssignmentsRequestIdRef.current === requestId) {
           setLockerAssignmentsLoading(false);
