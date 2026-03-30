@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 
+import { toUserFacingErrorMessage } from "../../../app/uiError";
 import { apiGet } from "../../../api/client";
 import { useQueryInvalidationVersion } from "../../../api/queryInvalidation";
 
@@ -47,9 +48,7 @@ export function useTrainerOptionsQuery() {
     } catch (error) {
       if (requestIdRef.current !== requestId) return;
       setTrainerOptions([]);
-      setTrainerOptionsError(
-        error instanceof Error ? error.message : "트레이너 목록을 불러오지 못했습니다.",
-      );
+      setTrainerOptionsError(toUserFacingErrorMessage(error, "트레이너 목록을 불러오지 못했습니다."));
     } finally {
       if (requestIdRef.current === requestId) {
         setTrainerOptionsLoading(false);
