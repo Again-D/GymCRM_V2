@@ -91,9 +91,12 @@ export default function ProductsPage() {
     handleProductStatusToggle
   } = useProductPrototypeState();
 
-  const { products, productsLoading, productsQueryError, loadProducts, resetProductsQuery } = useProductsQuery({
-    getDefaultFilters: createDefaultProductFilters
-  });
+  const {
+    products,
+    productsLoading,
+    productsQueryError,
+    refetchProducts
+  } = useProductsQuery(productFilters);
 
   const canReadLiveProducts = isMockMode || hasAnyRole(authUser, ["ROLE_CENTER_ADMIN", "ROLE_DESK"]);
   const canMutateProducts = isMockMode || hasRole(authUser, "ROLE_CENTER_ADMIN");
@@ -104,34 +107,17 @@ export default function ProductsPage() {
   });
 
   useEffect(() => {
-    if (!canReadLiveProducts) {
-      resetProductsQuery();
-      return;
-    }
-    void loadProducts(productFilters);
-    return () => {
-      resetProductsQuery();
-    };
-  }, [canReadLiveProducts, loadProducts, productFilters, resetProductsQuery]);
-
-  useEffect(() => {
     if (!canMutateProducts && productFormOpen) {
       closeProductForm();
     }
   }, [canMutateProducts, closeProductForm, productFormOpen]);
 
   async function runSubmit() {
-    const product = await handleProductSubmit();
-    if (product) {
-      await loadProducts(productFilters);
-    }
+    await handleProductSubmit();
   }
 
   async function runStatusToggle() {
-    const product = await handleProductStatusToggle();
-    if (product) {
-      await loadProducts(productFilters);
-    }
+    await handleProductStatusToggle();
   }
 
   const productColumns: ColumnsType<ProductRecord> = [
@@ -271,14 +257,14 @@ export default function ProductsPage() {
                       clearProductFeedback();
                       const nextFilters = createDefaultProductFilters();
                       setProductFilters(nextFilters);
-                      void loadProducts(nextFilters);
+                      void refetchProducts();
                     }}
                   >
                     필터 초기화
                   </Button>
                   <Button
                     type="primary"
-                    onClick={() => void loadProducts(productFilters)}
+                    onClick={() => void refetchProducts()}
                     loading={productsLoading}
                     disabled={!canReadLiveProducts}
                   >

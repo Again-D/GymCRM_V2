@@ -1,33 +1,56 @@
 import { act, renderHook } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { setMockApiModeForTests } from "../../../api/client";
 import { resetMockData } from "../../../api/mockData";
-import { getQueryInvalidationVersion, resetQueryInvalidationStateForTests } from "../../../api/queryInvalidation";
 import { useCrmPrototypeState } from "./useCrmPrototypeState";
+
+function createTestQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+      mutations: {
+        retry: false,
+      },
+    },
+  });
+}
+
+function TestWrapper({ client, children }: { client: QueryClient; children: ReactNode }) {
+  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+}
 
 describe("useCrmPrototypeState", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     setMockApiModeForTests(true);
     resetMockData();
-    resetQueryInvalidationStateForTests();
   });
 
   it("invalidates crm domains after trigger action", async () => {
-    const { result } = renderHook(() => useCrmPrototypeState());
+    const queryClient = createTestQueryClient();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    const { result } = renderHook(() => useCrmPrototypeState(), {
+      wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper>,
+    });
 
     await act(async () => {
       await result.current.triggerCrmExpiryReminder();
     });
 
     expect(result.current.crmPanelMessage).toContain("큐에 적재");
-    expect(getQueryInvalidationVersion("crmHistory")).toBe(1);
-    expect(getQueryInvalidationVersion("crmQueue")).toBe(1);
+    expect(invalidateSpy).toHaveBeenCalled();
   });
 
   it("rejects invalid daysAhead input", async () => {
-    const { result } = renderHook(() => useCrmPrototypeState());
+    const queryClient = createTestQueryClient();
+    const { result } = renderHook(() => useCrmPrototypeState(), {
+      wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper>,
+    });
 
     act(() => {
       result.current.setCrmTriggerDaysAhead("-1");
@@ -60,7 +83,10 @@ describe("useCrmPrototypeState", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    const { result } = renderHook(() => useCrmPrototypeState());
+    const queryClient = createTestQueryClient();
+    const { result } = renderHook(() => useCrmPrototypeState(), {
+      wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper>,
+    });
 
     await act(async () => {
       await result.current.triggerCrmExpiryReminder();

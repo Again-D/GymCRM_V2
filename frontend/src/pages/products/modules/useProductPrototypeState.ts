@@ -1,7 +1,8 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { apiPatch, apiPost, isMockApiMode } from "../../../api/client";
-import { invalidateQueryDomains } from "../../../api/queryInvalidation";
+import { queryKeys } from "../../../app/queryHelpers";
 import {
   createDefaultProductFilters,
   createEmptyProductForm,
@@ -71,6 +72,7 @@ function buildProductInput(productForm: ProductFormState) {
 }
 
 export function useProductPrototypeState() {
+  const queryClient = useQueryClient();
   const [productFilters, setProductFilters] = useState<ProductFilters>(
     createDefaultProductFilters(),
   );
@@ -106,6 +108,10 @@ export function useProductPrototypeState() {
     setProductFormMessage(null);
     setProductFormError(null);
   }
+
+  const invalidateProducts = async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.products.all });
+  };
 
   function startCreateProduct() {
     clearProductFeedback();
@@ -195,7 +201,7 @@ export function useProductPrototypeState() {
         return null;
       }
 
-      invalidateQueryDomains(["products"]);
+      await invalidateProducts();
       setSelectedProductId(nextProduct.productId);
       setSelectedProduct(nextProduct);
       setProductFormMode("edit");
@@ -240,7 +246,7 @@ export function useProductPrototypeState() {
         nextProduct = response.data;
         setProductPanelMessage(response.message);
       }
-      invalidateQueryDomains(["products"]);
+      await invalidateProducts();
       setSelectedProduct(nextProduct);
       setProductForm(createProductFormFromRecord(nextProduct));
       return nextProduct;

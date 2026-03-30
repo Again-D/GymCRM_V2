@@ -24,6 +24,7 @@ import {
   apiPut,
   isMockApiMode,
 } from "../../api/client";
+import { invalidateQueryDomains } from "../../api/queryInvalidation";
 import { useAuthState } from "../../app/auth";
 import { toUserFacingErrorMessage } from "../../app/uiError";
 import { TrainerAvailabilityMonthView } from "./TrainerAvailabilityMonthView";
@@ -62,35 +63,17 @@ export default function TrainerAvailabilityPage() {
   const [panelError, setPanelError] = useState<string | null>(null);
   const [savingWeekly, setSavingWeekly] = useState(false);
   const [savingException, setSavingException] = useState(false);
-  const { snapshot, loading, error, loadSnapshot, applySnapshot } =
-    useTrainerAvailabilityQuery();
+  const { snapshot, loading, error, refetch } =
+    useTrainerAvailabilityQuery({ type: "me", userId: authUser?.userId ?? 0 }, selectedMonth);
 
   useEffect(() => {
-    if (!authUser) {
-      return;
+    if (snapshot) {
+      setWeeklyDrafts(createWeeklyRuleDraftsFromSnapshot(snapshot));
     }
-    void loadCurrentSnapshot(selectedMonth);
-  }, [authUser, selectedMonth]);
+  }, [snapshot]);
 
-  async function loadCurrentSnapshot(month: string) {
-    if (!authUser) {
-      return null;
-    }
-
-    try {
-      setPanelError(null);
-      const nextSnapshot = isMockApiMode()
-        ? await loadMockSnapshot(authUser.userId, month)
-        : await loadSnapshot({ type: "me", userId: authUser.userId }, month);
-      if (nextSnapshot) {
-        applySnapshot(nextSnapshot);
-        setWeeklyDrafts(createWeeklyRuleDraftsFromSnapshot(nextSnapshot));
-      }
-      return nextSnapshot;
-    } catch (caught) {
-      setPanelError(getErrorMessage(caught, "내 스케줄을 불러오지 못했습니다."));
-      return null;
-    }
+  async function loadCurrentSnapshot() {
+    await refetch();
   }
 
   async function loadMockSnapshot(userId: number, month: string) {
@@ -125,7 +108,7 @@ export default function TrainerAvailabilityPage() {
         );
         nextSnapshot = response.data;
       }
-      setWeeklyDrafts(createWeeklyRuleDraftsFromSnapshot(nextSnapshot));
+      invalidateQueryDomains(["trainerAvailability"]);
       setPanelMessage("기본 주간 스케줄을 저장했습니다.");
       setSelectedDate(null);
       setExceptionDraft(null);
@@ -133,7 +116,7 @@ export default function TrainerAvailabilityPage() {
       setPanelError(getErrorMessage(caught, "기본 주간 스케줄을 저장하지 못했습니다."));
     } finally {
       setSavingWeekly(false);
-      await loadCurrentSnapshot(selectedMonth);
+      await refetch();
     }
   }
 
@@ -214,7 +197,8 @@ export default function TrainerAvailabilityPage() {
       setPanelError(getErrorMessage(caught, "예외 스케줄을 저장하지 못했습니다."));
     } finally {
       setSavingException(false);
-      await loadCurrentSnapshot(selectedMonth);
+      invalidateQueryDomains(["trainerAvailability"]);
+      await refetch();
     }
   }
 
@@ -356,7 +340,7 @@ export default function TrainerAvailabilityPage() {
             aria-label="새로고침"
             icon={<ReloadOutlined />}
             loading={loading}
-            onClick={() => void loadCurrentSnapshot(selectedMonth)}
+            onClick={() => void refetch()}
           >
             새로고침
           </Button>

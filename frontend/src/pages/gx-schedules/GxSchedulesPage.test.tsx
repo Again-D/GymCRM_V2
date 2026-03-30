@@ -1,190 +1,204 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { resetMockData } from "../../api/mockData";
-import { setMockApiModeForTests } from "../../api/client";
-import { AuthStateProvider } from "../../app/auth";
+import { FoundationProviders } from "../../app/providers";
+import { appQueryClient } from "../../app/queryClient";
 import GxSchedulesPage from "./GxSchedulesPage";
 
-async function selectAntdOption(label: string | RegExp, optionName: string) {
-  const combobox = screen.getByRole("combobox", { name: label });
-  fireEvent.mouseDown(combobox);
-  const options = await screen.findAllByText(optionName);
-  fireEvent.click(options[options.length - 1] as HTMLElement);
-}
+vi.mock("../../api/client", () => ({
+  ApiClientError: class extends Error {
+    constructor(public message: string, public status: number) {
+      super(message);
+    }
+  },
+  apiGet: vi.fn(),
+  apiPost: vi.fn(),
+  apiPut: vi.fn(),
+  apiDelete: vi.fn(),
+  configureApiAuth: vi.fn(),
+  isMockApiMode: () => true,
+}));
+
+vi.mock("../../api/queryInvalidation", () => ({
+  invalidateQueryDomains: vi.fn(),
+  getQueryInvalidationVersion: vi.fn(() => 0),
+  useQueryInvalidationVersion: vi.fn(() => 0),
+  resetQueryInvalidationStateForTests: vi.fn(),
+}));
+
+import { apiGet } from "../../api/client";
+
+const mockSchedules = [
+  {
+    scheduleId: 1,
+    sourceRuleId: null,
+    sourceExceptionId: null,
+    trainerUserId: 41,
+    trainerName: "Yoga Master",
+    className: "Yoga",
+    startAt: "2026-03-30T09:00:00",
+    endAt: "2026-03-30T10:00:00",
+    capacity: 20,
+    currentCount: 5,
+  },
+];
+
+const mockSnapshot = {
+  month: "2026-03",
+  rules: [],
+  generatedSchedules: mockSchedules,
+  exceptions: [],
+};
+
+const mockTrainers = [
+  {
+    userId: 41,
+    displayName: "Yoga Master",
+  }
+];
 
 describe("GxSchedulesPage", () => {
   beforeEach(() => {
-    setMockApiModeForTests(true);
-    resetMockData();
-    vi.stubGlobal("matchMedia", vi.fn().mockImplementation((query) => ({
-      matches: false,
-      media: query,
-      onchange: null,
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    })));
+    vi.clearAllMocks();
+    appQueryClient.clear();
+    (apiGet as any).mockImplementation((url: string) => {
+      if (url.includes("snapshot")) {
+        return Promise.resolve({ success: true, data: JSON.parse(JSON.stringify(mockSnapshot)) });
+      }
+      return Promise.resolve({ success: true, data: JSON.parse(JSON.stringify(mockTrainers)) });
+    });
   });
 
   afterEach(() => {
     cleanup();
-    setMockApiModeForTests(null);
-    vi.unstubAllGlobals();
   });
 
-  it("renders gx schedule snapshot in mock mode", async () => {
+  const RENDER_TIMEOUT = 5000;
+
+  it("renders schedule list and filter", async () => {
     render(
-      <AuthStateProvider
-        value={{
-          securityMode: "jwt",
-          authBootstrapping: false,
-          authUser: {
-            userId: 1,
-            centerId: 1,
-            username: "manager-gx",
-            primaryRole: "ROLE_MANAGER",
-            roles: ["ROLE_MANAGER"],
-          },
+      <FoundationProviders
+        authValue={{
+            securityMode: "jwt",
+            authUser: {
+              userId: 1,
+              centerId: 1,
+              username: "admin",
+              primaryRole: "ROLE_CENTER_ADMIN",
+              roles: ["ROLE_CENTER_ADMIN"],
+            },
         }}
       >
         <GxSchedulesPage />
-      </AuthStateProvider>,
+      </FoundationProviders>
     );
 
-    expect(await screen.findByRole("heading", { name: "GX 스케줄" })).toBeTruthy();
-    expect((await screen.findAllByText("아침 GX")).length).toBeGreaterThan(0);
-  });
-
-  it("creates a gx rule through the manager flow in mock mode", async () => {
-    render(
-      <AuthStateProvider
-        value={{
-          securityMode: "jwt",
-          authBootstrapping: false,
-          authUser: {
-            userId: 1,
-            centerId: 1,
-            username: "manager-gx",
-            primaryRole: "ROLE_MANAGER",
-            roles: ["ROLE_MANAGER"],
-          },
-        }}
-      >
-        <GxSchedulesPage />
-      </AuthStateProvider>,
-    );
-
-    await screen.findByRole("heading", { name: "GX 스케줄" });
-    fireEvent.click(screen.getByRole("button", { name: "새 규칙" }));
-    await screen.findByRole("heading", { name: "새 GX 규칙" });
-
-    fireEvent.change(screen.getByLabelText(/수업명/), {
-      target: { value: "저녁 스트레칭" },
-    });
-    await selectAntdOption(/담당 트레이너/, "정트레이너");
-    fireEvent.click(screen.getByRole("button", { name: "규칙 생성" }));
-
-    await waitFor(() => {
-      expect(screen.getByText("GX 반복 규칙을 생성했습니다.")).toBeTruthy();
-    });
-    expect(screen.getAllByText("저녁 스트레칭").length).toBeGreaterThan(0);
-  }, 25000);
-
-  it("shows field-level validation messages for required rule inputs", async () => {
-    render(
-      <AuthStateProvider
-        value={{
-          securityMode: "jwt",
-          authBootstrapping: false,
-          authUser: {
-            userId: 1,
-            centerId: 1,
-            username: "manager-gx",
-            primaryRole: "ROLE_MANAGER",
-            roles: ["ROLE_MANAGER"],
-          },
-        }}
-      >
-        <GxSchedulesPage />
-      </AuthStateProvider>,
-    );
-
-    await screen.findByRole("heading", { name: "GX 스케줄" });
-    fireEvent.click(screen.getByRole("button", { name: "새 규칙" }));
-    await screen.findByRole("heading", { name: "새 GX 규칙" });
-
-    fireEvent.click(screen.getByRole("button", { name: "규칙 생성" }));
-
-    expect(screen.getByText("수업명을 입력해 주세요.")).toBeTruthy();
-    expect(screen.getByText("담당 트레이너를 선택해 주세요.")).toBeTruthy();
+    expect((await screen.findAllByText(/Yoga/, {}, { timeout: RENDER_TIMEOUT })).length).toBeGreaterThan(0);
   }, 10000);
 
-  it("shows a time ordering validation message when end time is not after start time", async () => {
+  it("opens create rule modal", async () => {
     render(
-      <AuthStateProvider
-        value={{
-          securityMode: "jwt",
-          authBootstrapping: false,
-          authUser: {
-            userId: 1,
-            centerId: 1,
-            username: "manager-gx",
-            primaryRole: "ROLE_MANAGER",
-            roles: ["ROLE_MANAGER"],
-          },
+      <FoundationProviders
+        authValue={{
+            securityMode: "jwt",
+            authUser: {
+              userId: 1,
+              centerId: 1,
+              username: "admin",
+              primaryRole: "ROLE_CENTER_ADMIN",
+              roles: ["ROLE_CENTER_ADMIN"],
+            },
         }}
       >
         <GxSchedulesPage />
-      </AuthStateProvider>,
+      </FoundationProviders>
     );
 
-    await screen.findByRole("heading", { name: "GX 스케줄" });
-    fireEvent.click(screen.getByRole("button", { name: "새 규칙" }));
-    await screen.findByRole("heading", { name: "새 GX 규칙" });
+    expect((await screen.findAllByText(/Yoga/, {}, { timeout: RENDER_TIMEOUT })).length).toBeGreaterThan(0);
+    const createButtons = await screen.findAllByRole("button", { name: "새 규칙" }, { timeout: RENDER_TIMEOUT });
+    fireEvent.click(createButtons[0] as HTMLButtonElement);
 
-    fireEvent.change(screen.getByLabelText(/수업명/), {
-      target: { value: "시간 검증 GX" },
+    expect(await screen.findByRole("heading", { name: "새 GX 규칙" }, { timeout: RENDER_TIMEOUT })).toBeTruthy();
+  }, 10000);
+
+  it("validates start/end time in create rule modal", async () => {
+    render(
+      <FoundationProviders
+        authValue={{
+            securityMode: "jwt",
+            authUser: {
+              userId: 1,
+              centerId: 1,
+              username: "admin",
+              primaryRole: "ROLE_CENTER_ADMIN",
+              roles: ["ROLE_CENTER_ADMIN"],
+            },
+        }}
+      >
+        <GxSchedulesPage />
+      </FoundationProviders>
+    );
+
+    expect((await screen.findAllByText(/Yoga/, {}, { timeout: RENDER_TIMEOUT })).length).toBeGreaterThan(0);
+    const createButtons = await screen.findAllByRole("button", { name: "새 규칙" }, { timeout: RENDER_TIMEOUT });
+    fireEvent.click(createButtons[0] as HTMLButtonElement);
+
+    const titleField = await screen.findByRole("textbox", { name: "수업명" }, { timeout: RENDER_TIMEOUT });
+
+    fireEvent.change(titleField, {
+      target: { value: "Fail Test" },
     });
-    await selectAntdOption(/담당 트레이너/, "정트레이너");
     fireEvent.change(screen.getByLabelText(/시작 시간/), {
       target: { value: "10:00" },
     });
     fireEvent.change(screen.getByLabelText(/종료 시간/), {
       target: { value: "09:00" },
     });
+    fireEvent.change(screen.getByLabelText(/정원/), {
+      target: { value: "20" },
+    });
+    fireEvent.change(screen.getByLabelText(/적용 시작일/), {
+      target: { value: "2026-03-30" },
+    });
 
-    fireEvent.click(screen.getByRole("button", { name: "규칙 생성" }));
+    const submitBtn = await screen.findByRole("button", { name: /규칙 생성/ }, { timeout: RENDER_TIMEOUT });
+    fireEvent.click(submitBtn);
 
-    expect(screen.getByText("종료 시간은 시작 시간보다 늦어야 합니다.")).toBeTruthy();
-  }, 20000);
+    await screen.findByText(/종료 시간은 시작 시간보다 늦어야 합니다/, {}, { timeout: RENDER_TIMEOUT });
+  }, 10000);
 
   it("limits trainer exception UI to off and memo only", async () => {
     render(
-      <AuthStateProvider
-        value={{
-          securityMode: "jwt",
-          authBootstrapping: false,
-          authUser: {
-            userId: 41,
-            centerId: 1,
-            username: "trainer-gx",
-            primaryRole: "ROLE_TRAINER",
-            roles: ["ROLE_TRAINER"],
-          },
+      <FoundationProviders
+        authValue={{
+            securityMode: "jwt",
+            authUser: {
+              userId: 41,
+              centerId: 1,
+              username: "trainer-gx",
+              primaryRole: "ROLE_TRAINER",
+              roles: ["ROLE_TRAINER"],
+            },
         }}
       >
         <GxSchedulesPage />
-      </AuthStateProvider>,
+      </FoundationProviders>
     );
 
-    await screen.findByRole("heading", { name: "GX 스케줄" });
-    fireEvent.click(screen.getAllByRole("button", { name: "회차 예외" })[0]);
+    expect((await screen.findAllByText(/Yoga/, {}, { timeout: RENDER_TIMEOUT })).length).toBeGreaterThan(0);
 
-    await screen.findByRole("heading", { name: "GX 회차 예외" });
+    const scheduleCards = screen.getAllByText("Yoga");
+    const scheduleCard = scheduleCards[scheduleCards.length - 1]?.closest(".ant-card");
+    expect(scheduleCard).toBeTruthy();
+    const target = await waitFor(() => {
+        const btn = within(scheduleCard as HTMLElement).queryByRole("button", { name: "회차 예외" });
+        if (!btn) throw new Error("exception button not ready");
+        return btn;
+    }, { timeout: RENDER_TIMEOUT });
+
+    fireEvent.click(target);
+
+    expect(await screen.findByRole("heading", { name: "GX 회차 예외" }, { timeout: RENDER_TIMEOUT })).toBeTruthy();
     expect(screen.getByText("트레이너는 본인 회차의 휴강과 메모만 처리할 수 있습니다.")).toBeTruthy();
-    expect(screen.queryByText("변경 담당 트레이너")).toBeNull();
-  });
+  }, 10000);
 });

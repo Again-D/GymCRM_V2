@@ -1,8 +1,25 @@
-import { act, renderHook } from "@testing-library/react";
+import { renderHook } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { setMockApiModeForTests } from "../../../api/client";
 import { useProductsQuery } from "./useProductsQuery";
+import type { ProductFilters } from "./types";
+
+function createTestQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
+}
+
+function TestWrapper({ client, children }: { client: QueryClient; children: ReactNode }) {
+  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+}
 
 describe("useProductsQuery", () => {
   beforeEach(() => {
@@ -23,23 +40,21 @@ describe("useProductsQuery", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    const { result } = renderHook(() =>
-      useProductsQuery({
-        getDefaultFilters: () => ({ category: "", status: "" })
-      })
-    );
-
-    await act(async () => {
-      await result.current.loadProducts({ category: "PT", status: "ACTIVE" });
+    const queryClient = createTestQueryClient();
+    const filters: ProductFilters = { category: "PT" as any, status: "ACTIVE" as any };
+    const { result } = renderHook(() => useProductsQuery(filters), {
+      wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper>,
     });
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/v1/products?category=PT&status=ACTIVE",
-      expect.objectContaining({
-        credentials: "include",
-        method: "GET"
-      })
-    );
+    await vi.waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/v1/products?category=PT&status=ACTIVE",
+        expect.objectContaining({
+          credentials: "include",
+          method: "GET"
+        })
+      );
+    });
   });
 
   it("reuses cached results for the same query", async () => {
@@ -72,33 +87,39 @@ describe("useProductsQuery", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    const { result } = renderHook(() =>
-      useProductsQuery({
-        getDefaultFilters: () => ({ category: "", status: "" })
-      })
-    );
+    const queryClient = createTestQueryClient();
+    const filters: ProductFilters = { category: "PT" as any, status: "ACTIVE" as any };
 
-    await act(async () => {
-      await result.current.loadProducts({ category: "PT", status: "ACTIVE" });
-      await result.current.loadProducts({ category: "PT", status: "ACTIVE" });
+    const { rerender, result } = renderHook(({ f }) => useProductsQuery(f), {
+      initialProps: { f: filters },
+      wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper>,
+    });
+
+    await vi.waitFor(() => {
+      expect(result.current.products).toHaveLength(1);
+    });
+
+    rerender({ f: { ...filters } });
+
+    await vi.waitFor(() => {
+      expect(result.current.products).toHaveLength(1);
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("keeps public query actions stable across rerenders", () => {
-    const { result, rerender } = renderHook(() =>
-      useProductsQuery({
-        getDefaultFilters: () => ({ category: "", status: "" })
-      })
-    );
+    const queryClient = createTestQueryClient();
+    const filters: ProductFilters = { category: "", status: "" };
+    const { result, rerender } = renderHook(({ f }) => useProductsQuery(f), {
+      initialProps: { f: filters },
+      wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper>,
+    });
 
-    const firstLoadProducts = result.current.loadProducts;
-    const firstResetProductsQuery = result.current.resetProductsQuery;
+    const firstRefetch = result.current.refetchProducts;
 
-    rerender();
+    rerender({ f: { category: "PT" as any, status: "ACTIVE" as any } });
 
-    expect(result.current.loadProducts).toBe(firstLoadProducts);
-    expect(result.current.resetProductsQuery).toBe(firstResetProductsQuery);
+    expect(result.current.refetchProducts).toBe(firstRefetch);
   });
 });

@@ -139,13 +139,10 @@ export default function ReservationsPage() {
     trainers,
     trainersLoading,
     trainersQueryError,
-    loadTrainers,
-    resetTrainersQuery,
+    refetchTrainers,
   } = useTrainersQuery({
-    getDefaultFilters: () => ({
-      ...createDefaultTrainerFilters(authUser?.centerId ?? 1),
-      status: "ACTIVE",
-    }),
+    ...createDefaultTrainerFilters(authUser?.centerId ?? 1),
+    status: "ACTIVE",
   });
   
   const {
@@ -399,13 +396,10 @@ export default function ReservationsPage() {
 
   useEffect(() => {
     if (!isNewModalOpen || selectedCreateMode !== "PT" || isTrainerActor) {
-      if (!isNewModalOpen) {
-        resetTrainersQuery();
-      }
       return;
     }
-    void loadTrainers();
-  }, [isNewModalOpen, isTrainerActor, loadTrainers, resetTrainersQuery, selectedCreateMode]);
+    void refetchTrainers();
+  }, [isNewModalOpen, isTrainerActor, refetchTrainers, selectedCreateMode]);
 
   useEffect(() => {
     if (!selectedCreateMembership) {

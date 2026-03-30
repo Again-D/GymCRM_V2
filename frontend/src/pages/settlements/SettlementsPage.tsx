@@ -68,11 +68,8 @@ export default function SettlementsPage() {
     settlementReportLoading,
     settlementReportError,
     settlementReportMessage,
-    loadSettlementReport,
-    resetSettlementReportQuery
-  } = useSettlementReportQuery({
-    getDefaultFilters: createDefaultSettlementFilters
-  });
+    refetchSettlementReport
+  } = useSettlementReportQuery(settlementFilters);
 
   const rowsPagination = usePagination(settlementReport?.rows ?? [], {
     initialPageSize: 10,
@@ -86,13 +83,6 @@ export default function SettlementsPage() {
   });
 
   useEffect(() => {
-    void loadSettlementReport(settlementFilters);
-    return () => {
-      resetSettlementReportQuery();
-    };
-  }, [loadSettlementReport, resetSettlementReportQuery, settlementFilters]);
-
-  useEffect(() => {
     if (settlementReportMessage) {
       setSettlementPanelMessage(settlementReportMessage);
     }
@@ -102,10 +92,10 @@ export default function SettlementsPage() {
     setSettlementPanelError(settlementReportError);
   }, [setSettlementPanelError, settlementReportError]);
 
-  const reloadReport = useCallback(async (filters = settlementFilters) => {
+  const reloadReport = useCallback(async () => {
     clearSettlementFeedback();
-    await loadSettlementReport(filters);
-  }, [clearSettlementFeedback, loadSettlementReport, settlementFilters]);
+    await refetchSettlementReport();
+  }, [clearSettlementFeedback, refetchSettlementReport]);
 
   const rows = settlementReport?.rows ?? [];
   const totalTransactionCount = rows.reduce((acc, row) => acc + row.transactionCount, 0);
@@ -184,8 +174,7 @@ export default function SettlementsPage() {
             size="large"
             onClick={() => {
               resetSettlementWorkspace();
-              const nextFilters = createDefaultSettlementFilters();
-              void loadSettlementReport(nextFilters);
+              void refetchSettlementReport();
             }}
           >
             필터 초기화

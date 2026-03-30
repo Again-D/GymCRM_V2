@@ -1,8 +1,9 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { AuthStateProvider } from "../../app/auth";
 import { setMockApiModeForTests } from "../../api/client";
+import { FoundationProviders } from "../../app/providers";
+import { appQueryClient } from "../../app/queryClient";
 import TrainersPage from "./TrainersPage";
 
 describe("TrainersPage", () => {
@@ -123,6 +124,7 @@ describe("TrainersPage", () => {
   });
 
   beforeEach(() => {
+    appQueryClient.clear();
     fetchMock.mockClear();
     vi.stubGlobal("fetch", fetchMock);
     vi.stubGlobal("matchMedia", vi.fn().mockImplementation((query) => ({
@@ -146,8 +148,8 @@ describe("TrainersPage", () => {
     setMockApiModeForTests(false);
 
     render(
-      <AuthStateProvider
-        value={{
+      <FoundationProviders
+        authValue={{
           securityMode: "jwt",
           authUser: {
             userId: 21,
@@ -159,7 +161,7 @@ describe("TrainersPage", () => {
         }}
       >
         <TrainersPage />
-      </AuthStateProvider>,
+      </FoundationProviders>,
     );
 
     expect(await screen.findByRole("heading", { name: "트레이너 관리" })).toBeTruthy();
@@ -171,8 +173,8 @@ describe("TrainersPage", () => {
     setMockApiModeForTests(false);
 
     render(
-      <AuthStateProvider
-        value={{
+      <FoundationProviders
+        authValue={{
           securityMode: "jwt",
           authUser: {
             userId: 21,
@@ -184,7 +186,7 @@ describe("TrainersPage", () => {
         }}
       >
         <TrainersPage />
-      </AuthStateProvider>,
+      </FoundationProviders>,
     );
 
     fireEvent.click(await screen.findByRole("button", { name: "상세" }));
@@ -197,8 +199,8 @@ describe("TrainersPage", () => {
     setMockApiModeForTests(false);
 
     render(
-      <AuthStateProvider
-        value={{
+      <FoundationProviders
+        authValue={{
           securityMode: "jwt",
           authUser: {
             userId: 41,
@@ -210,7 +212,7 @@ describe("TrainersPage", () => {
         }}
       >
         <TrainersPage />
-      </AuthStateProvider>,
+      </FoundationProviders>,
     );
 
     expect(await screen.findByRole("heading", { name: "트레이너 관리" })).toBeTruthy();
@@ -223,8 +225,8 @@ describe("TrainersPage", () => {
     setMockApiModeForTests(false);
 
     render(
-      <AuthStateProvider
-        value={{
+      <FoundationProviders
+        authValue={{
           securityMode: "jwt",
           authUser: {
             userId: 11,
@@ -236,7 +238,7 @@ describe("TrainersPage", () => {
         }}
       >
         <TrainersPage />
-      </AuthStateProvider>,
+      </FoundationProviders>,
     );
 
     expect(await screen.findByRole("heading", { name: "트레이너 관리" })).toBeTruthy();

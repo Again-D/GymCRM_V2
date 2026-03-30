@@ -1,33 +1,56 @@
 import { act, renderHook } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { setMockApiModeForTests } from "../../../api/client";
 import { resetMockData } from "../../../api/mockData";
-import { getQueryInvalidationVersion, resetQueryInvalidationStateForTests } from "../../../api/queryInvalidation";
 import { useAccessPrototypeState } from "./useAccessPrototypeState";
+
+function createTestQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+      mutations: {
+        retry: false,
+      },
+    },
+  });
+}
+
+function TestWrapper({ client, children }: { client: QueryClient; children: ReactNode }) {
+  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+}
 
 describe("useAccessPrototypeState", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     setMockApiModeForTests(true);
     resetMockData();
-    resetQueryInvalidationStateForTests();
   });
 
   it("invalidates access queries after entry", async () => {
-    const { result } = renderHook(() => useAccessPrototypeState());
+    const queryClient = createTestQueryClient();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    const { result } = renderHook(() => useAccessPrototypeState(), {
+      wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper>,
+    });
 
     await act(async () => {
       await result.current.handleAccessEntry(102);
     });
 
     expect(result.current.accessPanelMessage).toContain("입장을 처리했습니다.");
-    expect(getQueryInvalidationVersion("accessPresence")).toBe(1);
-    expect(getQueryInvalidationVersion("accessEvents")).toBe(1);
+    expect(invalidateSpy).toHaveBeenCalled();
   });
 
   it("reports an error when exit is attempted without an open session", async () => {
-    const { result } = renderHook(() => useAccessPrototypeState());
+    const queryClient = createTestQueryClient();
+    const { result } = renderHook(() => useAccessPrototypeState(), {
+      wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper>,
+    });
 
     await act(async () => {
       await result.current.handleAccessExit(102);
@@ -58,7 +81,10 @@ describe("useAccessPrototypeState", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    const { result } = renderHook(() => useAccessPrototypeState());
+    const queryClient = createTestQueryClient();
+    const { result } = renderHook(() => useAccessPrototypeState(), {
+      wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper>,
+    });
 
     await act(async () => {
       await result.current.handleAccessEntry(102);

@@ -50,17 +50,14 @@ export default function LockersPage() {
 
   const {
     members,
-    loadMembers,
-    resetMembersQuery
+    refetch: refetchMembers
   } = useMembersQuery({
-    getDefaultFilters: () => ({
-      name: "",
-      phone: "",
-      memberStatus: "",
-      membershipOperationalStatus: "",
-      dateFrom: "",
-      dateTo: ""
-    })
+    name: "",
+    phone: "",
+    memberStatus: "",
+    membershipOperationalStatus: "",
+    dateFrom: "",
+    dateTo: ""
   });
 
   const {
@@ -82,9 +79,7 @@ export default function LockersPage() {
     lockerAssignments,
     lockerAssignmentsLoading,
     lockerQueryError,
-    reloadLockerData,
-    resetLockerQueries
-  } = useLockerQueries();
+  } = useLockerQueries(lockerFilters);
 
   const isLiveLockerRoleSupported =
     isMockMode || hasAnyRole(authUser, ["ROLE_CENTER_ADMIN", "ROLE_DESK"]);
@@ -105,36 +100,19 @@ export default function LockersPage() {
 
   useEffect(() => {
     if (!isLiveLockerRoleSupported) {
-      resetMembersQuery();
       return;
     }
-    void loadMembers();
-  }, [isLiveLockerRoleSupported, loadMembers, resetMembersQuery]);
-
-  useEffect(() => {
-    if (!isLiveLockerRoleSupported) {
-      resetLockerQueries();
-      return;
-    }
-    void reloadLockerData(lockerFilters);
-    return () => {
-      resetLockerQueries();
-    };
-  }, [isLiveLockerRoleSupported, lockerFilters, reloadLockerData, resetLockerQueries]);
+  }, [isLiveLockerRoleSupported]);
 
   async function runLockerAssign() {
     const ok = await handleLockerAssign();
     if (ok) {
-      await reloadLockerData(lockerFilters);
       setIsAssignModalOpen(false);
     }
   }
 
   async function runLockerReturn(lockerAssignmentId: number) {
-    const ok = await handleLockerReturn(lockerAssignmentId);
-    if (ok) {
-      await reloadLockerData(lockerFilters);
-    }
+    await handleLockerReturn(lockerAssignmentId);
   }
 
   const slotColumns: ColumnsType<(typeof lockerSlots)[number]> = [

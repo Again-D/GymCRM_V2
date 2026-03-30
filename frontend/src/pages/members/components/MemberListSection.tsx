@@ -73,25 +73,19 @@ export function MemberListSection() {
     selectMember
   });
 
-  const { members, membersLoading, membersQueryError, loadMembers } = useMembersQuery({
-    getDefaultFilters: () => ({
-      name,
-      phone,
-      memberStatus,
-      membershipOperationalStatus,
-      dateFrom: dateFilter.dateFrom,
-      dateTo: dateFilter.dateTo
-    })
+  const { members, membersLoading, membersQueryError } = useMembersQuery({
+    name,
+    phone,
+    memberStatus,
+    membershipOperationalStatus,
+    dateFrom: dateFilter.dateFrom,
+    dateTo: dateFilter.dateTo
   });
 
   const pagination = usePagination(members, {
     initialPageSize: 20,
     resetDeps: [name, phone, memberStatus, membershipOperationalStatus, dateFilter.presetRange, dateFilter.dateFrom, dateFilter.dateTo, members.length]
   });
-
-  useEffect(() => {
-    void loadMembers();
-  }, [loadMembers]);
 
   useEffect(() => {
     if (!selectedMemberId && !selectedMemberLoading && modalState.kind === "detail") {
@@ -287,7 +281,6 @@ export function MemberListSection() {
       <Card title="검색 및 필터">
         <Form
           layout="vertical"
-          onFinish={() => void loadMembers()}
         >
           <Row gutter={[16, 0]}>
             <Col xs={24} sm={12} lg={4}>
@@ -357,14 +350,6 @@ export function MemberListSection() {
                 setMemberStatus("");
                 setMembershipOperationalStatus("");
                 reset();
-                void loadMembers({
-                  name: "",
-                  phone: "",
-                  memberStatus: "",
-                  membershipOperationalStatus: "",
-                  dateFrom: "",
-                  dateTo: ""
-                });
               }}
             >
               초기화

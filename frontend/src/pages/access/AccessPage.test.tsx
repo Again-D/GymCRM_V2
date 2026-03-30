@@ -7,10 +7,12 @@ import { resetMockData } from "../../api/mockData";
 import { SelectedMemberProvider } from "../members/modules/SelectedMemberContext";
 import AccessPage from "./AccessPage";
 import { FoundationProviders } from "../../app/providers";
+import { appQueryClient } from "../../app/queryClient";
 import { selectedMemberStore } from "../../app/selectedMemberStore";
 
 describe("AccessPage", () => {
   beforeEach(() => {
+    appQueryClient.clear();
     setMockApiModeForTests(true);
     resetMockData();
     selectedMemberStore.getState().reset();

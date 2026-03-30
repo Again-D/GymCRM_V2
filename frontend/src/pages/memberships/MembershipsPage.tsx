@@ -73,11 +73,9 @@ export default function MembershipsPage() {
     refundMembership,
   } = useSelectedMemberMembershipsQuery();
   
-  const { products, productsLoading, productsQueryError, loadProducts, resetProductsQuery } = useProductsQuery({
-    getDefaultFilters: () => ({
-      ...createDefaultProductFilters(),
-      status: "ACTIVE"
-    })
+  const { products, productsLoading, productsQueryError, refetchProducts } = useProductsQuery({
+    ...createDefaultProductFilters(),
+    status: "ACTIVE"
   });
   const {
     trainerOptions,
@@ -127,16 +125,12 @@ export default function MembershipsPage() {
   }, [selectedMemberId, loadSelectedMemberMemberships, resetSelectedMemberMembershipsQuery]);
 
   useEffect(() => {
-    void loadProducts({
-      ...createDefaultProductFilters(),
-      status: "ACTIVE"
-    });
+    void refetchProducts();
     void loadTrainerOptions();
     return () => {
-      resetProductsQuery();
       resetTrainerOptions();
     };
-  }, [loadProducts, loadTrainerOptions, resetProductsQuery, resetTrainerOptions]);
+  }, [refetchProducts, loadTrainerOptions, resetTrainerOptions]);
 
   const handleCloseModal = () => {
     setActiveModal(null);

@@ -57,17 +57,14 @@ export default function AccessPage() {
   
   const {
     members,
-    loadMembers,
-    resetMembersQuery
+    refetch: refetchMembers
   } = useMembersQuery({
-    getDefaultFilters: () => ({
-      name: accessMemberQuery,
-      phone: accessMemberQuery,
-      memberStatus: "",
-      membershipOperationalStatus: "",
-      dateFrom: "",
-      dateTo: ""
-    })
+    name: debouncedAccessMemberQuery,
+    phone: debouncedAccessMemberQuery,
+    memberStatus: "",
+    membershipOperationalStatus: "",
+    dateFrom: "",
+    dateTo: ""
   });
   
   const {
@@ -75,11 +72,9 @@ export default function AccessPage() {
     accessPresence,
     accessPresenceLoading,
     accessQueryError,
-    loadAccessEvents,
-    loadAccessPresence,
-    reloadAccessData,
-    resetAccessQueries
-  } = useAccessQueries();
+    refetchAccessPresence,
+    refetchAccessEvents,
+  } = useAccessQueries(selectedMemberId);
   
   const {
     accessActionSubmitting,
@@ -94,9 +89,11 @@ export default function AccessPage() {
   const isLiveAccessRoleSupported =
     isMockMode || hasAnyRole(authUser, ["ROLE_CENTER_ADMIN", "ROLE_DESK"]);
 
-  const memberResultsPagination = usePagination(members, {
+  const visibleMembers = isLiveAccessRoleSupported ? members : [];
+
+  const memberResultsPagination = usePagination(visibleMembers, {
     initialPageSize: 10,
-    resetDeps: [accessMemberQuery, members.length]
+    resetDeps: [accessMemberQuery, visibleMembers.length, isLiveAccessRoleSupported]
   });
   const openSessionsPagination = usePagination(accessPresence?.openSessions ?? [], {
     initialPageSize: 10,
@@ -109,31 +106,12 @@ export default function AccessPage() {
 
   useEffect(() => {
     if (!isLiveAccessRoleSupported) {
-      resetMembersQuery();
       return;
     }
-  }, [isLiveAccessRoleSupported, resetMembersQuery]);
-
-  useEffect(() => {
-    if (!isLiveAccessRoleSupported) return;
-    void loadMembers({ name: debouncedAccessMemberQuery, phone: debouncedAccessMemberQuery });
-  }, [debouncedAccessMemberQuery, isLiveAccessRoleSupported, loadMembers]);
-
-  useEffect(() => {
-    if (!isLiveAccessRoleSupported) {
-      resetAccessQueries();
-      return;
-    }
-    void loadAccessPresence();
-    void loadAccessEvents(selectedMemberId);
-    return () => {
-      resetAccessQueries();
-    };
-  }, [isLiveAccessRoleSupported, loadAccessEvents, loadAccessPresence, resetAccessQueries, selectedMemberId]);
+  }, [isLiveAccessRoleSupported]);
 
   async function runAccessAction(action: () => Promise<boolean>) {
     await action();
-    await reloadAccessData(selectedMemberId);
   }
 
   const memberColumns: ColumnsType<MemberSummary> = [
@@ -193,7 +171,10 @@ export default function AccessPage() {
             </Space>
           </Space>
           <Button
-            onClick={() => void reloadAccessData(selectedMemberId)}
+            onClick={() => {
+              void refetchAccessPresence();
+              void refetchAccessEvents();
+            }}
             loading={accessPresenceLoading}
           >
             {accessPresenceLoading ? "동기화 중..." : "수동 동기화"}

@@ -73,7 +73,12 @@ export default function CrmPage() {
     processCrmQueue
   } = useCrmPrototypeState();
   
-  const { crmHistoryRows, crmHistoryLoading, crmHistoryError, loadCrmHistory, resetCrmHistoryQuery } = useCrmHistoryQuery();
+  const {
+    crmHistoryRows,
+    crmHistoryLoading,
+    crmHistoryError,
+    refetchCrmHistory
+  } = useCrmHistoryQuery(crmFilters);
   
   const isLiveCrmRoleSupported =
     isMockMode || hasAnyRole(authUser, ["ROLE_CENTER_ADMIN", "ROLE_DESK"]);
@@ -90,25 +95,16 @@ export default function CrmPage() {
   useEffect(() => {
     if (!isLiveCrmRoleSupported) {
       clearCrmFeedback();
-      resetCrmHistoryQuery();
       return;
     }
-    void loadCrmHistory(crmFilters);
-  }, [clearCrmFeedback, crmFilters, isLiveCrmRoleSupported, loadCrmHistory, resetCrmHistoryQuery]);
-
-  async function reloadHistory(filters = crmFilters) {
-    if (!isLiveCrmRoleSupported) return;
-    await loadCrmHistory(filters);
-  }
+  }, [clearCrmFeedback, isLiveCrmRoleSupported]);
 
   async function runTrigger() {
-    const ok = await triggerCrmExpiryReminder();
-    if (ok) await reloadHistory();
+    await triggerCrmExpiryReminder();
   }
 
   async function runProcess() {
-    const ok = await processCrmQueue();
-    if (ok) await reloadHistory();
+    await processCrmQueue();
   }
 
   const columns: ColumnsType<CrmHistoryRow> = [
@@ -183,7 +179,7 @@ export default function CrmPage() {
               clearCrmFeedback();
               const nextFilters = createDefaultCrmFilters();
               setCrmFilters(nextFilters);
-              void reloadHistory(nextFilters);
+              void refetchCrmHistory();
             }}
           >
             로그 새로고침

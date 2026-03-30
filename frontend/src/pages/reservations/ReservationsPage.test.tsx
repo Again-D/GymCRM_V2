@@ -8,6 +8,7 @@ import { SelectedMemberProvider } from "../members/modules/SelectedMemberContext
 import { getReservationPanelErrorMessage } from "./modules/getReservationPanelErrorMessage";
 import ReservationsPage from "./ReservationsPage";
 import { FoundationProviders } from "../../app/providers";
+import { appQueryClient } from "../../app/queryClient";
 import { selectedMemberStore } from "../../app/selectedMemberStore";
 
 function getTopmostDialog() {
@@ -28,6 +29,7 @@ async function selectAntdOptionIn(container: HTMLElement, index: number, optionN
 
 describe("ReservationsPage", () => {
   beforeEach(() => {
+    appQueryClient.clear();
     setMockApiModeForTests(true);
     resetMockData();
     selectedMemberStore.getState().reset();
@@ -83,7 +85,7 @@ describe("ReservationsPage", () => {
 
     expect(await screen.findByRole("heading", { name: "예약 관리" })).toBeTruthy();
 
-    const memberRow = screen.getByText("김민수").closest("tr");
+    const memberRow = (await screen.findByText("김민수")).closest("tr");
     expect(memberRow).toBeTruthy();
     fireEvent.click(within(memberRow as HTMLTableRowElement).getByRole("button", { name: "선택 후 조회" }));
 
@@ -130,6 +132,7 @@ describe("ReservationsPage", () => {
 
     const memberRow = await screen.findByText("김민수");
     fireEvent.click(within(memberRow.closest("tr") as HTMLTableRowElement).getByRole("button", { name: "선택 후 조회" }));
+    expect(await screen.findByRole("dialog", { name: /예약 워크벤치: 김민수/ })).toBeTruthy();
     fireEvent.click(await screen.findByRole("button", { name: "신규 예약 등록" }));
 
     const submitButton = await screen.findByRole("button", { name: "예약 등록" });

@@ -1,22 +1,44 @@
 import { act, renderHook } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { setMockApiModeForTests } from "../../../api/client";
 import { resetMockData } from "../../../api/mockData";
-import { getQueryInvalidationVersion, resetQueryInvalidationStateForTests } from "../../../api/queryInvalidation";
 import { useLockerPrototypeState } from "./useLockerPrototypeState";
+
+function createTestQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+      mutations: {
+        retry: false,
+      },
+    },
+  });
+}
+
+function TestWrapper({ client, children }: { client: QueryClient; children: ReactNode }) {
+  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+}
 
 describe("useLockerPrototypeState", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     setMockApiModeForTests(true);
     resetMockData();
-    resetQueryInvalidationStateForTests();
   });
 
-  it("prefills selected member and invalidates both locker domains after assign", async () => {
-    const { result } = renderHook(() => useLockerPrototypeState(102));
+  it("prefills selected member and invalidates lockers after assign", async () => {
+    const queryClient = createTestQueryClient();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    const { result } = renderHook(() => useLockerPrototypeState(102), {
+      wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper>,
+    });
 
+    // LockerAssignForm uses string for memberId
     expect(result.current.lockerAssignForm.memberId).toBe("102");
 
     await act(async () => {
@@ -31,12 +53,14 @@ describe("useLockerPrototypeState", () => {
     });
 
     expect(result.current.lockerPanelMessage).toContain("배정");
-    expect(getQueryInvalidationVersion("lockerSlots")).toBe(1);
-    expect(getQueryInvalidationVersion("lockerAssignments")).toBe(1);
+    expect(invalidateSpy).toHaveBeenCalled();
   });
 
   it("returns an active locker assignment", async () => {
-    const { result } = renderHook(() => useLockerPrototypeState());
+    const queryClient = createTestQueryClient();
+    const { result } = renderHook(() => useLockerPrototypeState(), {
+      wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper>,
+    });
 
     await act(async () => {
       await result.current.handleLockerReturn(6001);
@@ -61,7 +85,10 @@ describe("useLockerPrototypeState", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    const { result } = renderHook(() => useLockerPrototypeState(102));
+    const queryClient = createTestQueryClient();
+    const { result } = renderHook(() => useLockerPrototypeState(102), {
+      wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper>,
+    });
 
     await act(async () => {
       result.current.setLockerAssignForm((prev) => ({

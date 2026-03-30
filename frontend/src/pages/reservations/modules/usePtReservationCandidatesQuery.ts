@@ -1,7 +1,9 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 import { toUserFacingErrorMessage } from "../../../app/uiError";
 import { apiGet } from "../../../api/client";
+import { queryKeys, queryPolicies } from "../../../app/queryHelpers";
 import type { PtReservationCandidatesPayload } from "../../members/modules/types";
 
 type LoadPtReservationCandidatesInput = {
@@ -11,54 +13,44 @@ type LoadPtReservationCandidatesInput = {
 };
 
 export function usePtReservationCandidatesQuery() {
-  const [ptReservationCandidates, setPtReservationCandidates] = useState<PtReservationCandidatesPayload | null>(null);
-  const [ptReservationCandidatesLoading, setPtReservationCandidatesLoading] = useState(false);
-  const [ptReservationCandidatesError, setPtReservationCandidatesError] = useState<string | null>(null);
-  const requestIdRef = useRef(0);
+  const [params, setParams] = useState<LoadPtReservationCandidatesInput | null>(null);
 
-  const loadPtReservationCandidates = useCallback(async (input: LoadPtReservationCandidatesInput) => {
-    const requestId = requestIdRef.current + 1;
-    requestIdRef.current = requestId;
-    setPtReservationCandidatesLoading(true);
-    setPtReservationCandidatesError(null);
-
-    try {
-      const params = new URLSearchParams({
-        membershipId: String(input.membershipId),
-        trainerUserId: String(input.trainerUserId),
-        date: input.date,
+  const query = useQuery({
+    queryKey: queryKeys.reservations.list({ 
+      scope: "pt-candidates", 
+      membershipId: params?.membershipId,
+      trainerUserId: params?.trainerUserId,
+      date: params?.date 
+    }),
+    queryFn: async () => {
+      if (!params) return null;
+      const searchParams = new URLSearchParams({
+        membershipId: String(params.membershipId),
+        trainerUserId: String(params.trainerUserId),
+        date: params.date,
       });
       const response = await apiGet<PtReservationCandidatesPayload>(
-        `/api/v1/reservations/pt-candidates?${params.toString()}`,
+        `/api/v1/reservations/pt-candidates?${searchParams.toString()}`,
       );
-      if (requestIdRef.current !== requestId) {
-        return;
-      }
-      setPtReservationCandidates(response.data);
-    } catch (error) {
-      if (requestIdRef.current !== requestId) {
-        return;
-      }
-      setPtReservationCandidates(null);
-      setPtReservationCandidatesError(toUserFacingErrorMessage(error, "PT 예약 가능 시각을 불러오지 못했습니다."));
-    } finally {
-      if (requestIdRef.current === requestId) {
-        setPtReservationCandidatesLoading(false);
-      }
-    }
+      return response.data;
+    },
+    enabled: params !== null,
+    staleTime: queryPolicies.search.staleTime,
+    gcTime: queryPolicies.search.gcTime,
+  });
+
+  const loadPtReservationCandidates = useCallback(async (input: LoadPtReservationCandidatesInput) => {
+    setParams(input);
   }, []);
 
   const resetPtReservationCandidatesQuery = useCallback(() => {
-    requestIdRef.current += 1;
-    setPtReservationCandidates(null);
-    setPtReservationCandidatesLoading(false);
-    setPtReservationCandidatesError(null);
+    setParams(null);
   }, []);
 
   return {
-    ptReservationCandidates,
-    ptReservationCandidatesLoading,
-    ptReservationCandidatesError,
+    ptReservationCandidates: query.data ?? null,
+    ptReservationCandidatesLoading: query.isFetching || query.isPending,
+    ptReservationCandidatesError: query.error ? toUserFacingErrorMessage(query.error, "PT 예약 가능 시각을 불러오지 못했습니다.") : null,
     loadPtReservationCandidates,
     resetPtReservationCandidatesQuery,
   } as const;

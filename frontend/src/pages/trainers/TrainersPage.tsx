@@ -36,6 +36,7 @@ import {
   formatAvailabilityTimeRange,
   getAvailabilityStatusLabel,
   getCurrentMonthValue,
+  type TrainerAvailabilityScope
 } from "../trainer-availability/modules/types";
 import { useTrainerAvailabilityQuery } from "../trainer-availability/modules/useTrainerAvailabilityQuery";
 import {
@@ -83,33 +84,29 @@ export default function TrainersPage() {
   const [trainerPanelError, setTrainerPanelError] = useState<string | null>(null);
   const [trainerFormError, setTrainerFormError] = useState<string | null>(null);
 
-  const { trainers, trainersLoading, trainersQueryError, loadTrainers, resetTrainersQuery } =
-    useTrainersQuery({
-      getDefaultFilters: () => trainerFilters,
-    });
+  const availabilityScope = useMemo<TrainerAvailabilityScope | null>(() => {
+    if (!detailOpen || !selectedTrainer) return null;
+    return { type: "trainer", trainerUserId: selectedTrainer.userId };
+  }, [detailOpen, selectedTrainer]);
+
+  const {
+    trainers,
+    trainersLoading,
+    trainersQueryError,
+    refetchTrainers
+  } = useTrainersQuery(trainerFilters);
+
   const {
     snapshot: trainerAvailabilitySnapshot,
     loading: trainerAvailabilityLoading,
     error: trainerAvailabilityError,
-    loadSnapshot: loadTrainerAvailability,
-    reset: resetTrainerAvailability,
-  } = useTrainerAvailabilityQuery();
+    refetch: refetchTrainerAvailability
+  } = useTrainerAvailabilityQuery(availabilityScope, availabilityMonth);
 
   const pagination = usePagination(trainers, {
     initialPageSize: 10,
     resetDeps: [trainers.length, trainerFilters.centerId, trainerFilters.keyword, trainerFilters.status],
   });
-
-  useEffect(() => {
-    if (!canReadLiveTrainers) {
-      resetTrainersQuery();
-      return;
-    }
-    void loadTrainers(trainerFilters);
-    return () => {
-      resetTrainersQuery();
-    };
-  }, [canReadLiveTrainers, loadTrainers, resetTrainersQuery, trainerFilters]);
 
   useEffect(() => {
     if (!canMutateTrainers && trainerFormOpen) {
@@ -133,28 +130,10 @@ export default function TrainersPage() {
     );
   }, [defaultCenterId, isSuperAdmin]);
 
-  useEffect(() => {
-    if (!detailOpen || !selectedTrainer) {
-      resetTrainerAvailability();
-      return;
-    }
-    void loadTrainerAvailabilitySnapshot(selectedTrainer.userId, availabilityMonth);
-  }, [
-    availabilityMonth,
-    detailOpen,
-    loadTrainerAvailability,
-    resetTrainerAvailability,
-    selectedTrainer,
-  ]);
-
   function clearFeedback() {
     setTrainerPanelMessage(null);
     setTrainerPanelError(null);
     setTrainerFormError(null);
-  }
-
-  async function loadTrainerAvailabilitySnapshot(userId: number, month: string) {
-    return loadTrainerAvailability({ type: "trainer", trainerUserId: userId }, month);
   }
 
   async function loadTrainerDetail(userId: number) {
@@ -287,7 +266,7 @@ export default function TrainersPage() {
       setTrainerForm(createTrainerFormFromDetail(detail));
       setTrainerFormOpen(false);
       invalidateQueryDomains(["trainers"]);
-      await loadTrainers(trainerFilters);
+      await refetchTrainers();
     } catch (error) {
       setTrainerFormError(toUserFacingErrorMessage(error, "트레이너 정보를 저장하지 못했습니다."));
     } finally {
@@ -324,7 +303,7 @@ export default function TrainersPage() {
         );
       }
       invalidateQueryDomains(["trainers"]);
-      await loadTrainers(trainerFilters);
+      await refetchTrainers();
     } catch (error) {
       setTrainerPanelError(toUserFacingErrorMessage(error, "트레이너 상태를 변경하지 못했습니다."));
     }
@@ -552,7 +531,7 @@ export default function TrainersPage() {
                     onClick={() => {
                       const nextFilters = createDefaultTrainerFilters(defaultCenterId);
                       setTrainerFilters(nextFilters);
-                      void loadTrainers(nextFilters);
+                      void refetchTrainers();
                     }}
                   >
                     초기화
@@ -561,7 +540,7 @@ export default function TrainersPage() {
                     type="primary"
                     loading={trainersLoading}
                     disabled={!canReadLiveTrainers}
-                    onClick={() => void loadTrainers(trainerFilters)}
+                    onClick={() => void refetchTrainers()}
                   >
                     조회 적용
                   </Button>

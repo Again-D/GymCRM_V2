@@ -8,20 +8,13 @@ import { toUserFacingErrorMessage } from "../../../app/uiError";
 import { filterMemberIdsForAuth } from "../../member-context/modules/trainerScope";
 import type { MemberQueryFilters, MemberSummary } from "./types";
 
-export function useMembersQuery({
-  getDefaultFilters,
-}: {
-  getDefaultFilters: () => MemberQueryFilters;
-}) {
+export function useMembersQuery(filters: MemberQueryFilters) {
   const { authUser } = useAuthState();
-  const [activeFilters, setActiveFilters] = useState<MemberQueryFilters | null>(null);
-
-  const currentFilters = activeFilters ?? getDefaultFilters();
 
   const query = useQuery({
-    queryKey: queryKeys.members.list(currentFilters as Record<string, unknown>),
+    queryKey: queryKeys.members.list(filters as Record<string, unknown>),
     queryFn: async () => {
-      const { name, phone, memberStatus, membershipOperationalStatus, dateFrom, dateTo } = currentFilters;
+      const { name, phone, memberStatus, membershipOperationalStatus, dateFrom, dateTo } = filters;
       const params = new URLSearchParams();
       if (name?.trim()) params.set("name", name.trim());
       if (phone?.trim()) params.set("phone", phone.trim());
@@ -38,22 +31,10 @@ export function useMembersQuery({
     staleTime: queryPolicies.list.staleTime,
   });
 
-  const loadMembers = useCallback(
-    async (overrideFilters?: Partial<MemberQueryFilters>) => {
-      setActiveFilters({ ...getDefaultFilters(), ...overrideFilters });
-    },
-    [getDefaultFilters]
-  );
-
-  const resetMembersQuery = useCallback(() => {
-    setActiveFilters(null);
-  }, []);
-
   return {
     members: query.data ?? [],
     membersLoading: query.isPending || query.isFetching,
     membersQueryError: query.error ? toUserFacingErrorMessage(query.error, "회원 목록을 불러오지 못했습니다.") : null,
-    loadMembers,
-    resetMembersQuery,
+    refetch: query.refetch,
   } as const;
 }

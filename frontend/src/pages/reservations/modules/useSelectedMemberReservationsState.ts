@@ -1,10 +1,9 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiGet, apiPost, isMockApiMode } from "../../../api/client";
-import {
-  invalidateQueryDomains,
-  useQueryInvalidationVersion,
-} from "../../../api/queryInvalidation";
+import { queryKeys, queryPolicies } from "../../../app/queryHelpers";
+import { toUserFacingErrorMessage } from "../../../app/uiError";
 import type { ReservationRow } from "../../members/modules/types";
 
 type CreateReservationInput = {
@@ -23,80 +22,57 @@ type CreatePtReservationInput = {
 };
 
 export function useSelectedMemberReservationsState() {
-  const [selectedMemberReservations, setSelectedMemberReservations] = useState<
-    ReservationRow[]
-  >([]);
-  const [
-    selectedMemberReservationsLoading,
-    setSelectedMemberReservationsLoading,
-  ] = useState(false);
-  const [selectedMemberReservationsError, setSelectedMemberReservationsError] =
-    useState<string | null>(null);
-  const requestIdRef = useRef(0);
+  const queryClient = useQueryClient();
+  const [activeMemberId, setActiveMemberId] = useState<number | null>(null);
   const useMockMutations = isMockApiMode();
-  const selectedMemberReservationsVersion = useQueryInvalidationVersion(
-    "selectedMemberReservations",
-  );
+
+  const queryKey = queryKeys.reservations.list({ memberId: activeMemberId });
+
+  const query = useQuery({
+    queryKey,
+    queryFn: async () => {
+      if (activeMemberId == null) return [];
+      const response = await apiGet<ReservationRow[]>(
+        `/api/v1/reservations?memberId=${activeMemberId}`,
+      );
+      return Array.isArray(response.data) ? response.data : [];
+    },
+    enabled: activeMemberId !== null,
+    staleTime: queryPolicies.list.staleTime,
+    gcTime: queryPolicies.list.gcTime,
+  });
 
   const loadSelectedMemberReservations = useCallback(
     async (memberId: number) => {
-      const requestId = requestIdRef.current + 1;
-      requestIdRef.current = requestId;
-      setSelectedMemberReservationsLoading(true);
-      setSelectedMemberReservationsError(null);
-
-      try {
-        const params = new URLSearchParams({
-          memberId: String(memberId),
-          version: String(selectedMemberReservationsVersion),
-        });
-        const response = await apiGet<ReservationRow[]>(
-          `/api/v1/reservations?${params.toString()}`,
-        );
-        if (requestIdRef.current !== requestId) {
-          return;
-        }
-        setSelectedMemberReservations(response.data);
-      } catch (error) {
-        if (requestIdRef.current !== requestId) {
-          return;
-        }
-        setSelectedMemberReservations((prev) =>
-          prev.length === 0 ? prev : [],
-        );
-        setSelectedMemberReservationsError(
-          error instanceof Error
-            ? error.message
-            : "예약 이력을 불러오지 못했습니다.",
-        );
-      } finally {
-        if (requestIdRef.current === requestId) {
-          setSelectedMemberReservationsLoading(false);
-        }
-      }
+      setActiveMemberId(memberId);
     },
-    [selectedMemberReservationsVersion],
+    [],
   );
 
   const resetSelectedMemberReservationsState = useCallback(() => {
-    requestIdRef.current += 1;
-    setSelectedMemberReservations((prev) => (prev.length === 0 ? prev : []));
-    setSelectedMemberReservationsLoading(false);
-    setSelectedMemberReservationsError(null);
+    setActiveMemberId(null);
   }, []);
 
-  function replaceReservation(nextReservation: ReservationRow) {
-    setSelectedMemberReservations((prev) =>
-      prev.map((reservation) =>
+  const invalidateRelated = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.trainers.all });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.reservations.all });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.memberships.all });
+  }, [queryClient]);
+
+  const replaceReservation = useCallback((nextReservation: ReservationRow) => {
+    queryClient.setQueryData<ReservationRow[]>(queryKey, (prev) => {
+      const arr = Array.isArray(prev) ? prev : [];
+      return arr.map((reservation) =>
         reservation.reservationId === nextReservation.reservationId
           ? nextReservation
           : reservation,
-      ),
-    );
-  }
+      );
+    });
+  }, [queryClient, queryKey]);
 
   const createReservation = useCallback(
     async (input: CreateReservationInput) => {
+      const targetQueryKey = queryKeys.reservations.list({ memberId: input.memberId });
       if (!useMockMutations) {
         const response = await apiPost<ReservationRow>("/api/v1/reservations", {
           memberId: input.memberId,
@@ -104,30 +80,29 @@ export function useSelectedMemberReservationsState() {
           scheduleId: input.scheduleId,
           memo: input.memo ?? null,
         });
-        setSelectedMemberReservations((prev) => [response.data, ...prev]);
-        invalidateQueryDomains([
-          "trainers",
-          "reservationTargets",
-          "selectedMemberReservations",
-        ]);
+        queryClient.setQueryData<ReservationRow[]>(targetQueryKey, (prev) => {
+          const arr = Array.isArray(prev) ? prev : [];
+          return [response.data, ...arr];
+        });
+        invalidateRelated();
         return response.data;
       }
 
       const { createMockReservation } = await import("../../../api/mockData");
       const reservation = createMockReservation(input);
-      setSelectedMemberReservations((prev) => [reservation, ...prev]);
-      invalidateQueryDomains([
-        "trainers",
-        "reservationTargets",
-        "selectedMemberReservations",
-      ]);
+      queryClient.setQueryData<ReservationRow[]>(targetQueryKey, (prev) => {
+        const arr = Array.isArray(prev) ? prev : [];
+        return [reservation, ...arr];
+      });
+      invalidateRelated();
       return reservation;
     },
-    [useMockMutations],
+    [useMockMutations, queryClient, invalidateRelated],
   );
 
   const createPtReservation = useCallback(
     async (input: CreatePtReservationInput) => {
+      const targetQueryKey = queryKeys.reservations.list({ memberId: input.memberId });
       if (!useMockMutations) {
         const response = await apiPost<ReservationRow>("/api/v1/reservations/pt", {
           memberId: input.memberId,
@@ -136,28 +111,24 @@ export function useSelectedMemberReservationsState() {
           startAt: input.startAt,
           memo: input.memo ?? null,
         });
-        setSelectedMemberReservations((prev) => [response.data, ...prev]);
-        invalidateQueryDomains([
-          "trainers",
-          "reservationTargets",
-          "selectedMemberReservations",
-          "selectedMemberMemberships",
-        ]);
+        queryClient.setQueryData<ReservationRow[]>(targetQueryKey, (prev) => {
+          const arr = Array.isArray(prev) ? prev : [];
+          return [response.data, ...arr];
+        });
+        invalidateRelated();
         return response.data;
       }
 
       const { createMockPtReservation } = await import("../../../api/mockData");
       const reservation = createMockPtReservation(input);
-      setSelectedMemberReservations((prev) => [reservation, ...prev]);
-      invalidateQueryDomains([
-        "trainers",
-        "reservationTargets",
-        "selectedMemberReservations",
-        "selectedMemberMemberships",
-      ]);
+      queryClient.setQueryData<ReservationRow[]>(targetQueryKey, (prev) => {
+        const arr = Array.isArray(prev) ? prev : [];
+        return [reservation, ...arr];
+      });
+      invalidateRelated();
       return reservation;
     },
-    [useMockMutations],
+    [useMockMutations, queryClient, invalidateRelated],
   );
 
   const checkInReservation = useCallback(
@@ -167,7 +138,7 @@ export function useSelectedMemberReservationsState() {
           `/api/v1/reservations/${reservationId}/check-in`,
         );
         replaceReservation(response.data);
-        invalidateQueryDomains(["selectedMemberReservations"]);
+        invalidateRelated();
         return response.data;
       }
 
@@ -184,10 +155,10 @@ export function useSelectedMemberReservationsState() {
         throw new Error("예약을 찾을 수 없습니다.");
       }
       replaceReservation(nextReservation);
-      invalidateQueryDomains(["selectedMemberReservations"]);
+      invalidateRelated();
       return nextReservation;
     },
-    [useMockMutations],
+    [useMockMutations, replaceReservation, invalidateRelated],
   );
 
   const completeReservation = useCallback(
@@ -197,12 +168,7 @@ export function useSelectedMemberReservationsState() {
           `/api/v1/reservations/${reservationId}/complete`,
         );
         replaceReservation(response.data.reservation);
-        invalidateQueryDomains([
-          "trainers",
-          "reservationTargets",
-          "selectedMemberReservations",
-          "selectedMemberMemberships",
-        ]);
+        invalidateRelated();
         return response.data.reservation;
       }
 
@@ -220,15 +186,10 @@ export function useSelectedMemberReservationsState() {
         throw new Error("예약을 찾을 수 없습니다.");
       }
       replaceReservation(nextReservation);
-      invalidateQueryDomains([
-        "trainers",
-        "reservationTargets",
-        "selectedMemberReservations",
-        "selectedMemberMemberships",
-      ]);
+      invalidateRelated();
       return nextReservation;
     },
-    [useMockMutations],
+    [useMockMutations, replaceReservation, invalidateRelated],
   );
 
   const cancelReservation = useCallback(
@@ -241,11 +202,7 @@ export function useSelectedMemberReservationsState() {
           },
         );
         replaceReservation(response.data);
-        invalidateQueryDomains([
-          "trainers",
-          "reservationTargets",
-          "selectedMemberReservations",
-        ]);
+        invalidateRelated();
         return response.data;
       }
 
@@ -263,14 +220,10 @@ export function useSelectedMemberReservationsState() {
         throw new Error("예약을 찾을 수 없습니다.");
       }
       replaceReservation(nextReservation);
-      invalidateQueryDomains([
-        "trainers",
-        "reservationTargets",
-        "selectedMemberReservations",
-      ]);
+      invalidateRelated();
       return nextReservation;
     },
-    [useMockMutations],
+    [useMockMutations, replaceReservation, invalidateRelated],
   );
 
   const noShowReservation = useCallback(
@@ -280,12 +233,7 @@ export function useSelectedMemberReservationsState() {
           `/api/v1/reservations/${reservationId}/no-show`,
         );
         replaceReservation(response.data);
-        invalidateQueryDomains([
-          "trainers",
-          "reservationTargets",
-          "selectedMemberReservations",
-          "selectedMemberMemberships",
-        ]);
+        invalidateRelated();
         return response.data;
       }
 
@@ -303,21 +251,16 @@ export function useSelectedMemberReservationsState() {
         throw new Error("예약을 찾을 수 없습니다.");
       }
       replaceReservation(nextReservation);
-      invalidateQueryDomains([
-        "trainers",
-        "reservationTargets",
-        "selectedMemberReservations",
-        "selectedMemberMemberships",
-      ]);
+      invalidateRelated();
       return nextReservation;
     },
-    [useMockMutations],
+    [useMockMutations, replaceReservation, invalidateRelated],
   );
 
   return {
-    selectedMemberReservations,
-    selectedMemberReservationsLoading,
-    selectedMemberReservationsError,
+    selectedMemberReservations: Array.isArray(query.data) ? query.data : [],
+    selectedMemberReservationsLoading: query.isFetching || query.isPending,
+    selectedMemberReservationsError: query.error ? toUserFacingErrorMessage(query.error, "예약 이력을 불러오지 못했습니다.") : null,
     loadSelectedMemberReservations,
     resetSelectedMemberReservationsState,
     createReservation,

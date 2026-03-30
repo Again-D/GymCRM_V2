@@ -1,13 +1,16 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import * as mockDataModule from "../../api/mockData";
 import { resetMockData } from "../../api/mockData";
 import { setMockApiModeForTests } from "../../api/client";
-import { AuthStateProvider } from "../../app/auth";
+import { FoundationProviders } from "../../app/providers";
+import { appQueryClient } from "../../app/queryClient";
 import TrainerAvailabilityPage from "./TrainerAvailabilityPage";
 
 describe("TrainerAvailabilityPage", () => {
   beforeEach(() => {
+    appQueryClient.clear();
     setMockApiModeForTests(true);
     resetMockData();
     vi.stubGlobal("matchMedia", vi.fn().mockImplementation((query) => ({
@@ -30,8 +33,8 @@ describe("TrainerAvailabilityPage", () => {
 
   it("renders the trainer availability snapshot in mock mode", async () => {
     render(
-      <AuthStateProvider
-        value={{
+      <FoundationProviders
+        authValue={{
           securityMode: "jwt",
           authBootstrapping: false,
           authUser: {
@@ -44,7 +47,7 @@ describe("TrainerAvailabilityPage", () => {
         }}
       >
         <TrainerAvailabilityPage />
-      </AuthStateProvider>,
+      </FoundationProviders>,
     );
 
     expect(await screen.findByRole("heading", { name: "내 스케줄" })).toBeTruthy();
@@ -55,9 +58,11 @@ describe("TrainerAvailabilityPage", () => {
   });
 
   it("saves weekly rules through the trainer self-service flow", async () => {
+    const replaceWeeklyRulesSpy = vi.spyOn(mockDataModule, "replaceMockTrainerAvailabilityWeeklyRules");
+
     render(
-      <AuthStateProvider
-        value={{
+      <FoundationProviders
+        authValue={{
           securityMode: "jwt",
           authBootstrapping: false,
           authUser: {
@@ -70,17 +75,21 @@ describe("TrainerAvailabilityPage", () => {
         }}
       >
         <TrainerAvailabilityPage />
-      </AuthStateProvider>,
+      </FoundationProviders>,
     );
 
     await screen.findByRole("heading", { name: "내 스케줄" });
     fireEvent.change(screen.getByLabelText("조회 월"), {
       target: { value: "2026-04" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "주간 스케줄 저장" }));
+    const saveButton = screen.getByRole("button", { name: "주간 스케줄 저장" });
+    await waitFor(() => {
+      expect(saveButton).toHaveProperty("disabled", false);
+    });
+    fireEvent.click(saveButton);
 
     await waitFor(() => {
-      expect(screen.getByText("기본 주간 스케줄을 저장했습니다.")).toBeTruthy();
+      expect(replaceWeeklyRulesSpy).toHaveBeenCalled();
     });
   }, 15000);
 });

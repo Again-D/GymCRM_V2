@@ -1,14 +1,28 @@
 import { act, renderHook } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { setMockApiModeForTests } from "../../../api/client";
-import { invalidateQueryDomains, resetQueryInvalidationStateForTests } from "../../../api/queryInvalidation";
 import { useAccessQueries } from "./useAccessQueries";
+
+function createTestQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
+}
+
+function TestWrapper({ client, children }: { client: QueryClient; children: ReactNode }) {
+  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+}
 
 describe("useAccessQueries", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    resetQueryInvalidationStateForTests();
     setMockApiModeForTests(false);
   });
 
@@ -59,25 +73,29 @@ describe("useAccessQueries", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    const { result } = renderHook(() => useAccessQueries());
-
-    await act(async () => {
-      await result.current.reloadAccessData(101);
+    const queryClient = createTestQueryClient();
+    const { result } = renderHook(() => useAccessQueries(101), {
+      wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper>,
     });
 
-    expect(result.current.accessPresence?.openSessionCount).toBe(1);
-    expect(result.current.accessEvents).toHaveLength(1);
+    await vi.waitFor(() => {
+      expect(result.current.accessPresence?.openSessionCount).toBe(1);
+      expect(result.current.accessEvents).toHaveLength(1);
+    });
+    expect(result.current.accessEvents[0]?.accessEventId).toBe(8101);
   });
 
   it("reloads from a new cache key after invalidation", async () => {
+    let presenceCount = 0;
     const fetchMock = vi.fn(async (input: string) => {
       if (input === "/api/v1/access/presence") {
+        presenceCount++;
         return {
           ok: true,
           json: async () => ({
             success: true,
             data: {
-              openSessionCount: fetchMock.mock.calls.filter(([url]) => url === "/api/v1/access/presence").length,
+              openSessionCount: presenceCount,
               todayEntryGrantedCount: 0,
               todayExitCount: 0,
               todayEntryDeniedCount: 0,
@@ -97,40 +115,40 @@ describe("useAccessQueries", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    const { result } = renderHook(() => useAccessQueries());
-
-    await act(async () => {
-      await result.current.loadAccessPresence();
-      await result.current.loadAccessPresence();
+    const queryClient = createTestQueryClient();
+    const { result } = renderHook(() => useAccessQueries(), {
+      wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper>,
     });
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-
-    await act(async () => {
-      invalidateQueryDomains(["accessPresence"]);
+    await vi.waitFor(() => {
+      expect(result.current.accessPresence?.openSessionCount).toBe(1);
     });
 
+    expect(fetchMock).toHaveBeenCalledTimes(2); // presence + events
+
     await act(async () => {
-      await result.current.loadAccessPresence();
+      await queryClient.invalidateQueries();
     });
 
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(result.current.accessPresence?.openSessionCount).toBe(2);
+    await vi.waitFor(() => {
+      expect(result.current.accessPresence?.openSessionCount).toBe(2);
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(4); // another 2 calls after invalidation
   });
 
   it("keeps access query actions stable across rerenders", () => {
-    const { result, rerender } = renderHook(() => useAccessQueries());
+    const queryClient = createTestQueryClient();
+    const { result, rerender } = renderHook(() => useAccessQueries(), {
+      wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper>,
+    });
 
-    const firstLoadEvents = result.current.loadAccessEvents;
-    const firstLoadPresence = result.current.loadAccessPresence;
-    const firstReload = result.current.reloadAccessData;
-    const firstReset = result.current.resetAccessQueries;
+    const firstRefetchPresence = result.current.refetchAccessPresence;
+    const firstRefetchEvents = result.current.refetchAccessEvents;
 
     rerender();
 
-    expect(result.current.loadAccessEvents).toBe(firstLoadEvents);
-    expect(result.current.loadAccessPresence).toBe(firstLoadPresence);
-    expect(result.current.reloadAccessData).toBe(firstReload);
-    expect(result.current.resetAccessQueries).toBe(firstReset);
+    expect(result.current.refetchAccessPresence).toBe(firstRefetchPresence);
+    expect(result.current.refetchAccessEvents).toBe(firstRefetchEvents);
   });
 });

@@ -22,12 +22,8 @@ import {
 import { PlusOutlined, EditOutlined, DeleteOutlined, InfoCircleOutlined, CalendarOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 
-import {
-  apiDelete,
-  apiPost,
-  apiPut,
-  isMockApiMode,
-} from "../../api/client";
+import { apiDelete, apiPost, apiPut, isMockApiMode } from "../../api/client";
+import { invalidateQueryDomains } from "../../api/queryInvalidation";
 import { useAuthState } from "../../app/auth";
 import { hasRole } from "../../app/roles";
 import { toUserFacingErrorMessage } from "../../app/uiError";
@@ -75,39 +71,26 @@ export default function GxSchedulesPage() {
   const isTrainer = hasRole(authUser, "ROLE_TRAINER");
   const canManageExceptions = canManageRules || hasRole(authUser, "ROLE_TRAINER");
 
-  const { snapshot, loading, error, loadSnapshot, applySnapshot } =
-    useGxScheduleSnapshotQuery();
-  const { trainers, loadTrainers, trainersLoading } = useTrainersQuery({
-    getDefaultFilters: () => ({
-      ...createDefaultTrainerFilters(authUser?.centerId ?? 1),
-      status: "ACTIVE",
-    }),
+  const {
+    snapshot,
+    loading,
+    error,
+    refetch: refetchSnapshot
+  } = useGxScheduleSnapshotQuery(selectedMonth);
+
+  const { trainers, refetchTrainers, trainersLoading } = useTrainersQuery({
+    ...createDefaultTrainerFilters(authUser?.centerId ?? 1),
+    status: "ACTIVE",
   });
 
   useEffect(() => {
-    void loadCurrentSnapshot(selectedMonth);
-  }, [loadSnapshot, selectedMonth, authUser]);
-
-  useEffect(() => {
     if (canManageRules) {
-      void loadTrainers();
+      void refetchTrainers();
     }
-  }, [canManageRules, loadTrainers]);
+  }, [canManageRules, refetchTrainers]);
 
-  async function loadCurrentSnapshot(month: string) {
-    if (!authUser) {
-      return null;
-    }
-    if (isMockApiMode()) {
-      const { getMockGxScheduleSnapshot } = await import("../../api/mockData");
-      const nextSnapshot = getMockGxScheduleSnapshot(month, {
-        userId: authUser.userId,
-        roles: authUser.roles,
-      });
-      applySnapshot(nextSnapshot);
-      return nextSnapshot;
-    }
-    return loadSnapshot(month);
+  async function loadCurrentSnapshot() {
+    await refetchSnapshot();
   }
 
   const trainerOptions = useMemo(() => {
@@ -329,7 +312,8 @@ export default function GxSchedulesPage() {
               ? await apiPut<GxScheduleSnapshot>(path, payload)
               : await apiPost<GxScheduleSnapshot>(path, payload)
           ).data;
-      applySnapshot(nextSnapshot);
+      invalidateQueryDomains(["gxSchedules"]);
+      await refetchSnapshot();
       setPanelMessage(
         editingRule ? "GX 반복 규칙을 저장했습니다." : "GX 반복 규칙을 생성했습니다.",
       );
@@ -356,7 +340,8 @@ export default function GxSchedulesPage() {
               `/api/v1/reservations/gx/rules/${ruleId}?month=${selectedMonth}`,
             )
           ).data;
-      applySnapshot(nextSnapshot);
+      invalidateQueryDomains(["gxSchedules"]);
+      await refetchSnapshot();
       if (editingRule?.ruleId === ruleId) {
         setEditingRule(null);
         setRuleForm(createEmptyRuleForm());
@@ -400,16 +385,20 @@ export default function GxSchedulesPage() {
                 : null,
               memo: exceptionForm.memo.trim() || null,
             };
-      const nextSnapshot = isMockApiMode()
-        ? (await import("../../api/mockData")).upsertMockGxScheduleException(
-            Number(selectedSchedule.sourceRuleId),
-            date,
-            selectedMonth,
-            payload,
-            authUser ? { userId: authUser.userId, roles: authUser.roles } : undefined,
-          )
-        : (await apiPut<GxScheduleSnapshot>(path, payload)).data;
-      applySnapshot(nextSnapshot);
+
+      if (isMockApiMode()) {
+        await (await import("../../api/mockData")).upsertMockGxScheduleException(
+          Number(selectedSchedule.sourceRuleId),
+          date,
+          selectedMonth,
+          payload,
+          authUser ? { userId: authUser.userId, roles: authUser.roles } : undefined,
+        );
+      } else {
+        await apiPut<GxScheduleSnapshot>(path, payload);
+      }
+      invalidateQueryDomains(["gxSchedules"]);
+      await refetchSnapshot();
       setPanelMessage("GX 회차 예외를 저장했습니다.");
       setSelectedSchedule(null);
       setExceptionForm(null);
@@ -441,7 +430,8 @@ export default function GxSchedulesPage() {
               `/api/v1/reservations/gx/rules/${selectedSchedule.sourceRuleId}/exceptions/${date}?month=${selectedMonth}`,
             )
           ).data;
-      applySnapshot(nextSnapshot);
+      invalidateQueryDomains(["gxSchedules"]);
+      await refetchSnapshot();
       setPanelMessage("GX 회차 예외를 삭제했습니다.");
       setSelectedSchedule(null);
       setExceptionForm(null);
