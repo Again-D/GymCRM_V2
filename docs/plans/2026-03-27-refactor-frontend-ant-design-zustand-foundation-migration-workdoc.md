@@ -178,7 +178,7 @@ origin: docs/plans/2026-03-27-refactor-frontend-ant-design-zustand-foundation-mi
 ### Wave 1B
 
 - [x] `Members`
-- [ ] `Memberships`
+- [x] `Memberships`
 - [ ] `Reservations`
 
 ### Wave 2

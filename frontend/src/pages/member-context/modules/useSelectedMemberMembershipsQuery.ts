@@ -1,15 +1,15 @@
 import { useCallback, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiGet, apiPost, isMockApiMode } from "../../../api/client";
-import {
-  invalidateQueryDomains,
-  useQueryInvalidationVersion,
-} from "../../../api/queryInvalidation";
+import { queryKeys, queryPolicies } from "../../../app/queryHelpers";
+import { toUserFacingErrorMessage } from "../../../app/uiError";
 import type {
   MembershipPaymentRecord,
   PurchasedMembership,
 } from "../../members/modules/types";
 
+// ... omitted types for brevity, keep your original type definitions above this line if I can't overwrite them fully, wait I'll rewrite the whole start of file if it spans from 1 to 168. Actually yes, I need to include the types.
 type CreateMembershipInput = {
   memberId: number;
   productId: number;
@@ -108,77 +108,69 @@ type RefundMembershipResponse = {
   calculation: RefundPreviewCalculation;
 };
 
-export function useSelectedMemberMembershipsQuery() {
-  const [selectedMemberMemberships, setSelectedMemberMemberships] = useState<
-    PurchasedMembership[]
-  >([]);
-  const [
-    selectedMemberMembershipsLoading,
-    setSelectedMemberMembershipsLoading,
-  ] = useState(false);
-  const [selectedMemberMembershipsError, setSelectedMemberMembershipsError] =
-    useState<string | null>(null);
-  const requestIdRef = useRef(0);
+export function useSelectedMemberMembershipsQuery(hookMemberId?: number | null) {
+  const [overrideMemberId, setOverrideMemberId] = useState<number | null>(null);
+  const activeMemberId = hookMemberId ?? overrideMemberId ?? null;
+  const queryClient = useQueryClient();
+
   const membershipIdSeedRef = useRef(99000);
   const useMockMutations = isMockApiMode();
-  const selectedMemberMembershipsVersion = useQueryInvalidationVersion(
-    "selectedMemberMemberships",
-  );
+
+  const queryKey = queryKeys.memberships.list({ memberId: activeMemberId });
+
+  const query = useQuery({
+    queryKey,
+    queryFn: async () => {
+      const response = await apiGet<PurchasedMembership[]>(
+        `/api/v1/members/${activeMemberId}/memberships`
+      );
+      return response.data;
+    },
+    enabled: activeMemberId != null,
+    staleTime: queryPolicies.list.staleTime,
+  });
 
   const loadSelectedMemberMemberships = useCallback(
     async (memberId: number) => {
-      const requestId = requestIdRef.current + 1;
-      requestIdRef.current = requestId;
-      setSelectedMemberMembershipsLoading(true);
-      setSelectedMemberMembershipsError(null);
-
-      try {
-        const response = await apiGet<PurchasedMembership[]>(
-          `/api/v1/members/${memberId}/memberships?version=${selectedMemberMembershipsVersion}`,
-        );
-        if (requestIdRef.current !== requestId) {
-          return;
-        }
-        setSelectedMemberMemberships(response.data);
-      } catch (error) {
-        if (requestIdRef.current !== requestId) {
-          return;
-        }
-        setSelectedMemberMemberships((prev) => (prev.length === 0 ? prev : []));
-        setSelectedMemberMembershipsError(
-          error instanceof Error
-            ? error.message
-            : "회원권 목록을 불러오지 못했습니다.",
-        );
-      } finally {
-        if (requestIdRef.current === requestId) {
-          setSelectedMemberMembershipsLoading(false);
-        }
-      }
+      setOverrideMemberId(memberId);
     },
-    [selectedMemberMembershipsVersion],
+    []
   );
 
   const resetSelectedMemberMembershipsQuery = useCallback(() => {
-    requestIdRef.current += 1;
-    setSelectedMemberMemberships((prev) => (prev.length === 0 ? prev : []));
-    setSelectedMemberMembershipsLoading(false);
-    setSelectedMemberMembershipsError(null);
+    setOverrideMemberId(null);
   }, []);
 
-  function appendMembership(membership: PurchasedMembership) {
-    setSelectedMemberMemberships((prev) => [membership, ...prev]);
-  }
+  const invalidateRelated = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.trainers.all });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.members.all });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.reservations.all });
+    if (activeMemberId != null) {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.memberships.list({ memberId: activeMemberId }) });
+    }
+  }, [queryClient, activeMemberId]);
 
-  function replaceMembership(nextMembership: PurchasedMembership) {
-    setSelectedMemberMemberships((prev) =>
-      prev.map((membership) =>
-        membership.membershipId === nextMembership.membershipId
-          ? nextMembership
-          : membership,
-      ),
-    );
-  }
+  const appendMembership = useCallback(
+    (membership: PurchasedMembership) => {
+      queryClient.setQueryData<PurchasedMembership[]>(queryKey, (prev) =>
+        prev ? [membership, ...prev] : [membership]
+      );
+    },
+    [queryClient, queryKey]
+  );
+
+  const replaceMembership = useCallback(
+    (nextMembership: PurchasedMembership) => {
+      queryClient.setQueryData<PurchasedMembership[]>(queryKey, (prev) =>
+        prev
+          ? prev.map((m) =>
+              m.membershipId === nextMembership.membershipId ? nextMembership : m
+            )
+          : []
+      );
+    },
+    [queryClient, queryKey]
+  );
 
   const createMembership = useCallback(
     async (input: CreateMembershipInput) => {
@@ -196,12 +188,7 @@ export function useSelectedMemberMembershipsQuery() {
           },
         );
         appendMembership(response.data.membership);
-        invalidateQueryDomains([
-          "trainers",
-          "members",
-          "reservationTargets",
-          "selectedMemberMemberships",
-        ]);
+        invalidateRelated();
         return response.data;
       }
 
@@ -212,12 +199,7 @@ export function useSelectedMemberMembershipsQuery() {
         membership.membershipId,
       );
       appendMembership(membership);
-      invalidateQueryDomains([
-        "trainers",
-        "members",
-        "reservationTargets",
-        "selectedMemberMemberships",
-      ]);
+      invalidateRelated();
 
       const payment: MembershipPaymentRecord = {
         paymentId: membership.membershipId + 100000,
@@ -242,7 +224,7 @@ export function useSelectedMemberMembershipsQuery() {
         },
       };
     },
-    [useMockMutations],
+    [useMockMutations, appendMembership, invalidateRelated],
   );
 
   const holdMembership = useCallback(
@@ -266,11 +248,7 @@ export function useSelectedMemberMembershipsQuery() {
           },
         );
         replaceMembership(response.data.membership);
-        invalidateQueryDomains([
-          "members",
-          "reservationTargets",
-          "selectedMemberMemberships",
-        ]);
+        invalidateRelated();
         return response.data;
       }
 
@@ -286,11 +264,7 @@ export function useSelectedMemberMembershipsQuery() {
           }),
         ) ?? membership;
       replaceMembership(nextMembership);
-      invalidateQueryDomains([
-        "members",
-        "reservationTargets",
-        "selectedMemberMemberships",
-      ]);
+      invalidateRelated();
 
       return {
         membership: nextMembership,
@@ -312,7 +286,7 @@ export function useSelectedMemberMembershipsQuery() {
         },
       };
     },
-    [useMockMutations],
+    [useMockMutations, replaceMembership, invalidateRelated],
   );
 
   const resumeMembership = useCallback(
@@ -325,11 +299,7 @@ export function useSelectedMemberMembershipsQuery() {
           },
         );
         replaceMembership(response.data.membership);
-        invalidateQueryDomains([
-          "members",
-          "reservationTargets",
-          "selectedMemberMemberships",
-        ]);
+        invalidateRelated();
         return response.data;
       }
 
@@ -345,11 +315,7 @@ export function useSelectedMemberMembershipsQuery() {
           }),
         ) ?? membership;
       replaceMembership(nextMembership);
-      invalidateQueryDomains([
-        "members",
-        "reservationTargets",
-        "selectedMemberMemberships",
-      ]);
+      invalidateRelated();
 
       return {
         membership: nextMembership,
@@ -371,7 +337,7 @@ export function useSelectedMemberMembershipsQuery() {
         },
       };
     },
-    [useMockMutations],
+    [useMockMutations, replaceMembership, invalidateRelated],
   );
 
   const previewMembershipRefund = useCallback(
@@ -425,11 +391,7 @@ export function useSelectedMemberMembershipsQuery() {
           },
         );
         replaceMembership(response.data.membership);
-        invalidateQueryDomains([
-          "members",
-          "reservationTargets",
-          "selectedMemberMemberships",
-        ]);
+        invalidateRelated();
         return response.data;
       }
 
@@ -448,11 +410,7 @@ export function useSelectedMemberMembershipsQuery() {
           }),
         ) ?? membership;
       replaceMembership(nextMembership);
-      invalidateQueryDomains([
-        "members",
-        "reservationTargets",
-        "selectedMemberMemberships",
-      ]);
+      invalidateRelated();
 
       const payment: MembershipPaymentRecord = {
         paymentId: membership.membershipId + 200000,
@@ -484,13 +442,13 @@ export function useSelectedMemberMembershipsQuery() {
         calculation: calculation.calculation,
       };
     },
-    [previewMembershipRefund, useMockMutations],
+    [previewMembershipRefund, useMockMutations, replaceMembership, invalidateRelated],
   );
 
   return {
-    selectedMemberMemberships,
-    selectedMemberMembershipsLoading,
-    selectedMemberMembershipsError,
+    selectedMemberMemberships: query.data ?? [],
+    selectedMemberMembershipsLoading: query.isFetching || query.isPending,
+    selectedMemberMembershipsError: query.error ? toUserFacingErrorMessage(query.error, "회원권 목록을 불러오지 못했습니다.") : null,
     loadSelectedMemberMemberships,
     resetSelectedMemberMembershipsQuery,
     createMembership,
