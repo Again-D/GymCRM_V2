@@ -8,6 +8,8 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     test: {
       environment: "jsdom",
+      minWorkers: 1,
+      maxWorkers: 4,
     },
     server: {
       port: 5173,

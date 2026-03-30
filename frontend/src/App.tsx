@@ -1,28 +1,37 @@
+import { Suspense, lazy } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 
 import styles from "./App.module.css";
 
 import { useAuthState } from "./app/auth";
+import { RouteProfiler } from "./app/reactProfiler";
 import {
   canAccessShellRoute,
   getShellRouteByPath,
   getSidebarRoutes,
 } from "./app/routes";
-import DashboardLayout from "./components/layout/DashboardLayout";
-import Dashboard from "./pages/Dashboard";
-import Login from "./pages/Login";
-import AccessPage from "./pages/access/AccessPage";
-import CrmPage from "./pages/crm/CrmPage";
-import LockersPage from "./pages/lockers/LockersPage";
-import MembershipsPage from "./pages/memberships/MembershipsPage";
-import ProductsPage from "./pages/products/ProductsPage";
-import ReservationsPage from "./pages/reservations/ReservationsPage";
-import SettlementsPage from "./pages/settlements/SettlementsPage";
-import GxSchedulesPage from "./pages/gx-schedules/GxSchedulesPage";
-import TrainerAvailabilityPage from "./pages/trainer-availability/TrainerAvailabilityPage";
-import TrainersPage from "./pages/trainers/TrainersPage";
-import MemberList from "./pages/members/MemberList";
 import { SelectedMemberProvider } from "./pages/members/modules/SelectedMemberContext";
+
+const loadDashboardLayout = () => import("./components/layout/DashboardLayout");
+const DashboardLayout = lazy(loadDashboardLayout);
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Login = lazy(() => import("./pages/Login"));
+const AccessPage = lazy(() => import("./pages/access/AccessPage"));
+const CrmPage = lazy(() => import("./pages/crm/CrmPage"));
+const LockersPage = lazy(() => import("./pages/lockers/LockersPage"));
+const MembershipsPage = lazy(() => import("./pages/memberships/MembershipsPage"));
+const ProductsPage = lazy(() => import("./pages/products/ProductsPage"));
+const ReservationsPage = lazy(() => import("./pages/reservations/ReservationsPage"));
+const SettlementsPage = lazy(() => import("./pages/settlements/SettlementsPage"));
+const GxSchedulesPage = lazy(() => import("./pages/gx-schedules/GxSchedulesPage"));
+const TrainerAvailabilityPage = lazy(() => import("./pages/trainer-availability/TrainerAvailabilityPage"));
+const TrainersPage = lazy(() => import("./pages/trainers/TrainersPage"));
+const MemberList = lazy(() => import("./pages/members/MemberList"));
+
+if (import.meta.env.MODE === "test") {
+  void loadDashboardLayout();
+  void import("./pages/Dashboard");
+}
 
 export default function App() {
   const location = useLocation();
@@ -45,9 +54,18 @@ export default function App() {
     }
 
     return (
-      <Routes>
-        <Route path="/login" element={<Login />} />
-      </Routes>
+      <Suspense fallback={<RouteLoadingScreen />}>
+        <Routes>
+          <Route
+            path="/login"
+            element={
+              <RouteProfiler id="Login">
+                <Login />
+              </RouteProfiler>
+            }
+          />
+        </Routes>
+      </Suspense>
     );
   }
 
@@ -65,22 +83,108 @@ export default function App() {
 
   return (
     <SelectedMemberProvider>
-      <Routes>
-        <Route element={<DashboardLayout routes={sidebarRoutes} />}>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/members" element={<MemberList />} />
-          <Route path="/my-schedule" element={<TrainerAvailabilityPage />} />
-          <Route path="/gx-schedules" element={<GxSchedulesPage />} />
-          <Route path="/trainers" element={<TrainersPage />} />
-          <Route path="/memberships" element={<MembershipsPage />} />
-          <Route path="/reservations" element={<ReservationsPage />} />
-          <Route path="/access" element={<AccessPage />} />
-          <Route path="/lockers" element={<LockersPage />} />
-          <Route path="/crm" element={<CrmPage />} />
-          <Route path="/settlements" element={<SettlementsPage />} />
-          <Route path="/products" element={<ProductsPage />} />
-        </Route>
-      </Routes>
+      <Suspense fallback={<RouteLoadingScreen />}>
+        <Routes>
+          <Route element={<DashboardLayout routes={sidebarRoutes} />}>
+            <Route
+              path="/dashboard"
+              element={
+                <RouteProfiler id="Dashboard">
+                  <Dashboard />
+                </RouteProfiler>
+              }
+            />
+            <Route
+              path="/members"
+              element={
+                <RouteProfiler id="Members">
+                  <MemberList />
+                </RouteProfiler>
+              }
+            />
+            <Route
+              path="/my-schedule"
+              element={
+                <RouteProfiler id="TrainerAvailability">
+                  <TrainerAvailabilityPage />
+                </RouteProfiler>
+              }
+            />
+            <Route
+              path="/gx-schedules"
+              element={
+                <RouteProfiler id="GxSchedules">
+                  <GxSchedulesPage />
+                </RouteProfiler>
+              }
+            />
+            <Route
+              path="/trainers"
+              element={
+                <RouteProfiler id="Trainers">
+                  <TrainersPage />
+                </RouteProfiler>
+              }
+            />
+            <Route
+              path="/memberships"
+              element={
+                <RouteProfiler id="Memberships">
+                  <MembershipsPage />
+                </RouteProfiler>
+              }
+            />
+            <Route
+              path="/reservations"
+              element={
+                <RouteProfiler id="Reservations">
+                  <ReservationsPage />
+                </RouteProfiler>
+              }
+            />
+            <Route
+              path="/access"
+              element={
+                <RouteProfiler id="Access">
+                  <AccessPage />
+                </RouteProfiler>
+              }
+            />
+            <Route
+              path="/lockers"
+              element={
+                <RouteProfiler id="Lockers">
+                  <LockersPage />
+                </RouteProfiler>
+              }
+            />
+            <Route
+              path="/crm"
+              element={
+                <RouteProfiler id="CRM">
+                  <CrmPage />
+                </RouteProfiler>
+              }
+            />
+            <Route
+              path="/settlements"
+              element={
+                <RouteProfiler id="Settlements">
+                  <SettlementsPage />
+                </RouteProfiler>
+              }
+            />
+            <Route
+              path="/products"
+              element={
+                <RouteProfiler id="Products">
+                  <ProductsPage />
+                </RouteProfiler>
+              }
+            />
+          </Route>
+        </Routes>
+      </Suspense>
     </SelectedMemberProvider>
   );
 }
@@ -91,6 +195,19 @@ function BootstrappingScreen() {
       <div className={`panel-card ${styles.loadingCard}`}>
         <h1 className={`brand-title ${styles.loadingTitle}`}>System Initializing</h1>
         <p className={`text-muted text-sm ${styles.loadingText}`}>Establishing secure session and operation parameters...</p>
+      </div>
+    </main>
+  );
+}
+
+function RouteLoadingScreen() {
+  return (
+    <main className={`centered-screen ${styles.bootstrappingScreen}`}>
+      <div className={`panel-card ${styles.loadingCard}`}>
+        <h1 className={`brand-title ${styles.loadingTitle}`}>Loading Workspace</h1>
+        <p className={`text-muted text-sm ${styles.loadingText}`}>
+          Preparing the selected operation module...
+        </p>
       </div>
     </main>
   );
