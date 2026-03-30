@@ -147,20 +147,20 @@ origin: docs/plans/2026-03-27-refactor-frontend-ant-design-zustand-foundation-mi
 
 ### Tasks
 
-- [ ] `queryKeys` factory 추가
-- [ ] shared `ApiClientError -> UI error` mapper 추가
+- [x] `queryKeys` factory 추가
+- [x] shared `ApiClientError -> UI error` mapper 추가
 - [ ] feature별 query ownership 명확화
 - [ ] manual fetch/useEffect 패턴을 TanStack Query로 전환
-- [ ] list/detail/reference/search/mutation policy matrix 적용
+- [x] list/detail/reference/search/mutation policy matrix 적용
 - [ ] debounce/dedupe가 필요한 search path 유지
 
 ### Query Rules
 
-- [ ] raw string key 금지
-- [ ] ad hoc array literal key 금지
-- [ ] `401/403` 및 auth endpoint retry 제외
-- [ ] query state를 Zustand에 넣지 않음
-- [ ] per-query error surface에서 raw backend detail/traceId 노출 금지
+- [x] raw string key 금지
+- [x] ad hoc array literal key 금지
+- [x] `401/403` 및 auth endpoint retry 제외
+- [x] query state를 Zustand에 넣지 않음
+- [x] per-query error surface에서 raw backend detail/traceId 노출 금지
 
 ### Gate
 
@@ -172,8 +172,8 @@ origin: docs/plans/2026-03-27-refactor-frontend-ant-design-zustand-foundation-mi
 
 ### Wave 1A
 
-- [ ] `Dashboard`
-- [ ] `Login`
+- [x] `Dashboard`
+- [x] `Login`
 
 ### Wave 1B
 
@@ -207,7 +207,7 @@ origin: docs/plans/2026-03-27-refactor-frontend-ant-design-zustand-foundation-mi
 
 ### Gate
 
-- [ ] Wave 1A 완료 후 shell-level 회귀 없음
+- [x] Wave 1A 완료 후 shell-level 회귀 없음
 - [ ] Wave 1B 완료 후 representative flows 회귀 없음
 - [ ] Wave 2 완료 후 전체 shell route legacy primitive 제거
 

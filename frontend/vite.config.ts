@@ -10,6 +10,7 @@ export default defineConfig(({ mode }) => {
       environment: "jsdom",
       minWorkers: 1,
       maxWorkers: 4,
+      setupFiles: ["./src/setupTests.ts"],
     },
     server: {
       port: 5173,
