@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useStore } from "zustand";
 
 import { apiGet } from "../api/client";
+import { queryKeys, queryPolicies } from "./queryHelpers";
 import { canAuthUserAccessMember } from "../pages/member-context/modules/trainerScope";
 import type { MemberDetail } from "../pages/members/modules/types";
 import { useAuthState } from "./auth";
@@ -21,14 +22,14 @@ export function useSelectedMemberStore() {
     isLoading: isQueryLoading,
     error: queryError
   } = useQuery({
-    queryKey: ["members", selectedMemberId],
+    queryKey: queryKeys.members.detail(selectedMemberId!),
     queryFn: async () => {
       if (selectedMemberId === null) return null;
       const response = await apiGet<MemberDetail>(`/api/v1/members/${selectedMemberId}`);
       return response.data;
     },
     enabled: selectedMemberId !== null,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: queryPolicies.detail.staleTime,
   });
 
   return {
