@@ -12,10 +12,12 @@ export const queryPolicies = {
   // Frequently changing lists, search results
   list: {
     staleTime: 1000 * 30, // 30 seconds
+    gcTime: 1000 * 60 * 5, // 5 minutes
   },
   // Specific entity details, moderately stable
   detail: {
     staleTime: 1000 * 60 * 5, // 5 minutes
+    gcTime: 1000 * 60 * 30, // 30 minutes
   },
   // Interactive search with dedupe requirements
   search: {
@@ -36,4 +38,9 @@ export const queryKeys = {
   products: createQueryKeys("products"),
   trainers: createQueryKeys("trainers"),
   access: createQueryKeys("access"),
+  lockers: createQueryKeys("lockers"),
+  crm: createQueryKeys("crm"),
+  settlements: createQueryKeys("settlements"),
+  trainerAvailability: createQueryKeys("trainerAvailability"),
+  gxSchedules: createQueryKeys("gxSchedules"),
 };

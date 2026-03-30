@@ -1,8 +1,12 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, act } from "@testing-library/react";
 import { type ReactNode, useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { setMockApiModeForTests } from "../../../api/client";
+import { appQueryClient } from "../../../app/queryClient";
+import { AuthStateProvider } from "../../../app/auth";
+import { ThemeProvider } from "../../../app/theme";
 import { SelectedMemberProvider, useSelectedMemberStore } from "./SelectedMemberContext";
 import { FoundationProviders } from "../../../app/providers";
 import { selectedMemberStore } from "../../../app/selectedMemberStore";
@@ -12,6 +16,7 @@ describe("SelectedMemberContext", () => {
     vi.restoreAllMocks();
     setMockApiModeForTests(false);
     selectedMemberStore.getState().reset();
+    appQueryClient.clear();
   });
 
   it("loads member detail into the members-domain owner store", async () => {
@@ -83,6 +88,67 @@ describe("SelectedMemberContext", () => {
     expect(result.current.selectedMember).toBeNull();
     expect(result.current.selectedMemberError).toContain("회원 선택 화면");
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("clears a previously selected member when a later selection fails the access precheck", async () => {
+    setMockApiModeForTests(true);
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+    queryClient.setQueryData(["members", "detail", "101"], {
+      memberId: 101,
+      centerId: 1,
+      memberName: "김민수",
+      phone: "010-1234-5678",
+      email: null,
+      gender: null,
+      birthDate: null,
+      memberStatus: "ACTIVE",
+      joinDate: "2026-01-04",
+      consentSms: true,
+      consentMarketing: false,
+      memo: null,
+    });
+
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <ThemeProvider>
+        <AuthStateProvider
+          value={{
+            authUser: {
+              userId: 41,
+              username: "trainer-a",
+              primaryRole: "ROLE_TRAINER",
+              roles: ["ROLE_TRAINER"],
+            },
+          }}
+        >
+          <QueryClientProvider client={queryClient}>
+            <SelectedMemberProvider>{children}</SelectedMemberProvider>
+          </QueryClientProvider>
+        </AuthStateProvider>
+      </ThemeProvider>
+    );
+
+    const { result } = renderHook(() => useSelectedMemberStore(), { wrapper });
+
+    await act(async () => {
+      await result.current.selectMember(101);
+    });
+
+    expect(result.current.selectedMemberId).toBe(101);
+    expect(result.current.selectedMember?.memberName).toBe("김민수");
+
+    await act(async () => {
+      await result.current.selectMember(102);
+    });
+
+    expect(result.current.selectedMemberId).toBeNull();
+    expect(result.current.selectedMember).toBeNull();
+    expect(result.current.selectedMemberError).toContain("회원 선택 화면");
   });
 
   it("clears selected member when auth identity changes", async () => {

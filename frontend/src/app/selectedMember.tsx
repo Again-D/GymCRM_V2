@@ -54,12 +54,14 @@ export function useSelectedMemberActions() {
     try {
       const canAccess = await canAuthUserAccessMember(memberId, authUser);
       if (!canAccess) {
+        setSelectedMemberId(null);
         setSelectionError("선택한 회원을 불러올 수 없어 회원 선택 화면을 유지합니다.");
         return false;
       }
       setSelectedMemberId(memberId);
       return true;
     } catch (error) {
+      setSelectedMemberId(null);
       setSelectionError(error instanceof Error ? error.message : "회원 선택 중 오류가 발생했습니다.");
       return false;
     } finally {

@@ -13,7 +13,9 @@ export type QueryDomain =
   | "accessPresence"
   | "accessEvents"
   | "lockerSlots"
-  | "lockerAssignments";
+  | "lockerAssignments"
+  | "gxSchedules"
+  | "trainerAvailability";
 
 const versions = new Map<QueryDomain, number>();
 const listeners = new Set<() => void>();

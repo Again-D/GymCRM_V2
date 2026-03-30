@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Alert, Button, Card, Empty, Flex, Input, Table, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 
-import { useDebouncedValue } from "../../shared/hooks/useDebouncedValue";
 import { usePagination } from "../../shared/hooks/usePagination";
 import { useMembersQuery } from "../members/modules/useMembersQuery";
 import { useSelectedMemberStore } from "../members/modules/SelectedMemberContext";
@@ -16,27 +15,21 @@ type MemberContextFallbackProps = {
 
 export function MemberContextFallback({ title, description, submitLabel }: MemberContextFallbackProps) {
   const [keyword, setKeyword] = useState("");
-  const debouncedKeyword = useDebouncedValue(keyword, 250);
+  const [submittedKeyword, setSubmittedKeyword] = useState("");
   const { selectMember, selectedMemberLoading } = useSelectedMemberStore();
-  const { members, membersLoading, membersQueryError, loadMembers } = useMembersQuery({
-    getDefaultFilters: () => ({
-      name: keyword,
-      phone: keyword,
-      memberStatus: "",
-      membershipOperationalStatus: "",
-      dateFrom: "",
-      dateTo: ""
-    })
+  const { members, membersLoading, membersQueryError } = useMembersQuery({
+    name: submittedKeyword,
+    phone: submittedKeyword,
+    memberStatus: "",
+    membershipOperationalStatus: "",
+    dateFrom: "",
+    dateTo: ""
   });
 
   const pagination = usePagination(members, {
     initialPageSize: 10,
     resetDeps: [keyword, members.length]
   });
-
-  useEffect(() => {
-    void loadMembers({ name: debouncedKeyword, phone: debouncedKeyword });
-  }, [debouncedKeyword]);
 
   const columns: ColumnsType<MemberSummary> = [
     {
@@ -82,7 +75,7 @@ export function MemberContextFallback({ title, description, submitLabel }: Membe
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          void loadMembers({ name: keyword, phone: keyword });
+          setSubmittedKeyword(keyword);
         }}
       >
         <Flex gap={12} align="end" wrap>
