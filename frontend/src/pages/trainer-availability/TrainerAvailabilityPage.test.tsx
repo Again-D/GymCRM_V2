@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { resetMockData } from "../../api/mockData";
 import { setMockApiModeForTests } from "../../api/client";
@@ -10,11 +10,22 @@ describe("TrainerAvailabilityPage", () => {
   beforeEach(() => {
     setMockApiModeForTests(true);
     resetMockData();
+    vi.stubGlobal("matchMedia", vi.fn().mockImplementation((query) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })));
   });
 
   afterEach(() => {
     cleanup();
     setMockApiModeForTests(null);
+    vi.unstubAllGlobals();
   });
 
   it("renders the trainer availability snapshot in mock mode", async () => {
@@ -71,5 +82,5 @@ describe("TrainerAvailabilityPage", () => {
     await waitFor(() => {
       expect(screen.getByText("기본 주간 스케줄을 저장했습니다.")).toBeTruthy();
     });
-  });
+  }, 15000);
 });

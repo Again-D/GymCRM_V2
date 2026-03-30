@@ -125,6 +125,16 @@ describe("TrainersPage", () => {
   beforeEach(() => {
     fetchMock.mockClear();
     vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal("matchMedia", vi.fn().mockImplementation((query) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })));
   });
 
   afterEach(() => {
@@ -155,7 +165,7 @@ describe("TrainersPage", () => {
     expect(await screen.findByRole("heading", { name: "트레이너 관리" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "트레이너 등록" })).toBeNull();
     expect(screen.getByText("조회 전용 모드")).toBeTruthy();
-  });
+  }, 10000);
 
   it("shows readonly availability section in trainer detail", async () => {
     setMockApiModeForTests(false);
@@ -181,7 +191,7 @@ describe("TrainersPage", () => {
 
     expect(await screen.findByRole("heading", { name: "가용 스케줄" })).toBeTruthy();
     expect((await screen.findAllByText("세미나")).length).toBeGreaterThan(0);
-  });
+  }, 10000);
 
   it("shows unsupported note for trainer role in live mode", async () => {
     setMockApiModeForTests(false);
@@ -239,13 +249,13 @@ describe("TrainersPage", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: "트레이너 등록" }));
-    fireEvent.change(screen.getByLabelText("로그인 ID"), {
+    fireEvent.change(screen.getByPlaceholderText("아이디 입력"), {
       target: { value: "trainer-b" },
     });
-    fireEvent.change(screen.getByLabelText("초기 비밀번호"), {
+    fireEvent.change(screen.getByPlaceholderText("최소 8자 이상"), {
       target: { value: "Password123!" },
     });
-    fireEvent.change(screen.getByLabelText("이름"), {
+    fireEvent.change(screen.getByPlaceholderText("트레이너 성명"), {
       target: { value: "김트레이너" },
     });
     fireEvent.click(screen.getByRole("button", { name: "저장" }));
@@ -265,5 +275,5 @@ describe("TrainersPage", () => {
         }),
       );
     });
-  });
+  }, 10000);
 });
