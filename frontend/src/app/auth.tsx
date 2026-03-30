@@ -7,8 +7,15 @@ import {
   useRef,
   useState
 } from "react";
+import { useStore } from "zustand";
 
 import { ApiClientError, apiGet, apiPost, configureApiAuth, isMockApiMode } from "../api/client";
+import {
+  createAuthStore,
+  initialAuthStoreState,
+  type AuthStoreApi,
+  type AuthStoreState
+} from "./authStore";
 
 export type SecurityMode = "prototype" | "jwt";
 
@@ -26,6 +33,12 @@ export type AuthState = {
   authBootstrapping: boolean;
   authUser: PrototypeAuthUser | null;
 };
+
+type AuthStateOverride = Readonly<{
+  securityMode?: SecurityMode;
+  authBootstrapping?: boolean;
+  authUser?: PrototypeAuthUser | null;
+}>;
 
 export type RuntimeAuthPreset = "prototype-admin" | "jwt-anon" | "jwt-admin" | "jwt-trainer";
 
@@ -48,7 +61,7 @@ type AuthTokenResponse = {
   };
 };
 
-type AuthStateContextValue = AuthState & {
+export type AuthStateContextValue = AuthState & {
   isMockMode: boolean;
   authError: string | null;
   authStatusMessage: string | null;
@@ -58,6 +71,11 @@ type AuthStateContextValue = AuthState & {
   login: (loginId: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 };
+
+type AuthActions = Pick<
+  AuthStateContextValue,
+  "setRuntimeAuthPreset" | "clearRuntimeSession" | "login" | "logout"
+>;
 
 const STORAGE_KEY = "gymcrm-rebuild-auth-state";
 let memoryPreset: RuntimeAuthPreset | null = null;
@@ -95,19 +113,15 @@ const defaultAuthState: AuthState = {
   authUser: prototypeAdminUser
 };
 
-const defaultContextValue: AuthStateContextValue = {
-  ...defaultAuthState,
-  isMockMode: true,
-  authError: null,
-  authStatusMessage: null,
-  loginSubmitting: false,
+const defaultActions: AuthActions = {
   setRuntimeAuthPreset: () => undefined,
   clearRuntimeSession: () => undefined,
   login: async () => undefined,
   logout: async () => undefined
 };
 
-const AuthStateContext = createContext<AuthStateContextValue>(defaultContextValue);
+const AuthStoreContext = createContext<AuthStoreApi | null>(null);
+const AuthActionsContext = createContext<AuthActions>(defaultActions);
 
 function useLatestRef<T>(value: T) {
   const ref = useRef(value);
@@ -234,6 +248,41 @@ function normalizeLiveUser(user: AuthTokenResponse["user"] | null): PrototypeAut
   };
 }
 
+function toAuthMessage(error: unknown, fallbackMessage: string) {
+  return error instanceof Error ? error.message : fallbackMessage;
+}
+
+function createInitialAuthStoreState({
+  isMockMode,
+  value
+}: {
+  isMockMode: boolean;
+  value?: AuthStateOverride;
+}): AuthStoreState {
+  const runtimeState = value != null
+    ? {
+        ...defaultAuthState,
+        ...value
+      }
+    : isMockMode
+      ? {
+          securityMode: "prototype" as const,
+          authBootstrapping: true,
+          authUser: null
+        }
+      : {
+          securityMode: "jwt" as const,
+          authBootstrapping: true,
+          authUser: null
+        };
+
+  return {
+    ...initialAuthStoreState,
+    ...runtimeState,
+    isMockMode
+  };
+}
+
 export function resetRuntimeAuthStorageForTests() {
   memoryPreset = null;
 }
@@ -241,40 +290,36 @@ export function resetRuntimeAuthStorageForTests() {
 export function AuthStateProvider({
   children,
   value
-}: PropsWithChildren<{ value?: Partial<AuthState> }>) {
+}: PropsWithChildren<{ value?: AuthStateOverride }>) {
   const isMockMode = isMockApiMode();
   const hasRuntimeOverride = value != null;
-  const [runtimeState, setRuntimeState] = useState<AuthState>(() =>
-    hasRuntimeOverride
-      ? {
-          ...defaultAuthState,
-          ...value
-        }
-      : isMockMode
-        ? {
-            securityMode: "prototype",
-            authBootstrapping: true,
-            authUser: null
-          }
-        : {
-            securityMode: "jwt",
-            authBootstrapping: true,
-            authUser: null
-          }
-  );
+  const storeRef = useRef<AuthStoreApi | null>(null);
+
+  if (!storeRef.current) {
+    storeRef.current = createAuthStore(createInitialAuthStoreState({ isMockMode, value }));
+  }
+
+  const store = storeRef.current;
   const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [authStatusMessage, setAuthStatusMessage] = useState<string | null>(null);
-  const [loginSubmitting, setLoginSubmitting] = useState(false);
-  const setRuntimeStateRef = useLatestRef(setRuntimeState);
+  const updateRuntimeStateRef = useLatestRef(store.getState().updateRuntimeState);
 
   useEffect(() => {
-    if (hasRuntimeOverride) {
-      configureApiAuth(null);
-      return;
-    }
+    store.getState().hydrate(createInitialAuthStoreState({ isMockMode, value }));
+  }, [isMockMode, store, value]);
 
-    if (isMockMode) {
+  function clearJwtSession(statusMessage: string | null) {
+    setAccessToken(null);
+    store.getState().setAuthError(null);
+    updateRuntimeStateRef.current((current) => ({
+      ...current,
+      securityMode: "jwt",
+      authUser: null
+    }));
+    store.getState().setAuthStatusMessage(statusMessage);
+  }
+
+  useEffect(() => {
+    if (hasRuntimeOverride || isMockMode) {
       configureApiAuth(null);
       return;
     }
@@ -284,7 +329,7 @@ export function AuthStateProvider({
       refreshAccessToken: async () => {
         const response = await apiPost<AuthTokenResponse>("/api/v1/auth/refresh");
         setAccessToken(response.data.accessToken);
-        setRuntimeStateRef.current((current) => ({
+        updateRuntimeStateRef.current((current) => ({
           ...current,
           securityMode: "jwt",
           authUser: normalizeLiveUser(response.data.user)
@@ -292,49 +337,38 @@ export function AuthStateProvider({
         return response.data.accessToken;
       },
       onUnauthorized: () => {
-        setAccessToken(null);
-        setAuthStatusMessage("세션이 만료되어 다시 로그인해야 합니다.");
-        setRuntimeStateRef.current((current) => ({
-          ...current,
-          securityMode: "jwt",
-          authUser: null
-        }));
+        clearJwtSession("세션이 만료되어 다시 로그인해야 합니다.");
       }
     });
 
     return () => configureApiAuth(null);
-  }, [accessToken, hasRuntimeOverride, isMockMode, setRuntimeStateRef]);
+  }, [accessToken, hasRuntimeOverride, isMockMode, updateRuntimeStateRef]);
 
   useEffect(() => {
-    if (hasRuntimeOverride) {
-      return;
-    }
-
-    if (!isMockMode) {
+    if (hasRuntimeOverride || !isMockMode) {
       return;
     }
 
     const preset = resolveRuntimePreset();
-    setRuntimeState({
+    store.getState().setRuntimeState({
       ...stateFromPreset(preset),
       authBootstrapping: false
     });
-  }, [hasRuntimeOverride, isMockMode]);
+  }, [hasRuntimeOverride, isMockMode, store]);
 
   useEffect(() => {
-    if (hasRuntimeOverride) {
-      return;
-    }
-
-    if (isMockMode) {
+    if (hasRuntimeOverride || isMockMode) {
       return;
     }
 
     let cancelled = false;
 
     async function bootstrapLiveAuth() {
-      setRuntimeState((current) => ({ ...current, authBootstrapping: true }));
-      setAuthError(null);
+      store.getState().updateRuntimeState((current) => ({
+        ...current,
+        authBootstrapping: true
+      }));
+      store.getState().setAuthError(null);
 
       try {
         const health = await apiGet<HealthPayload>("/api/v1/health");
@@ -343,14 +377,14 @@ export function AuthStateProvider({
         }
 
         const securityMode = health.data.securityMode === "prototype" ? "prototype" : "jwt";
-        setRuntimeState((current) => ({
+        store.getState().updateRuntimeState((current) => ({
           ...current,
           securityMode,
           authUser: securityMode === "prototype" && health.data.prototypeNoAuth ? prototypeAdminUser : null
         }));
 
         if (securityMode === "prototype" && health.data.prototypeNoAuth) {
-          setAuthStatusMessage(null);
+          store.getState().setAuthStatusMessage(null);
           setAccessToken(null);
           return;
         }
@@ -361,34 +395,32 @@ export function AuthStateProvider({
             return;
           }
           setAccessToken(response.data.accessToken);
-          setRuntimeState((current) => ({
+          store.getState().updateRuntimeState((current) => ({
             ...current,
             securityMode: "jwt",
             authUser: normalizeLiveUser(response.data.user)
           }));
-          setAuthStatusMessage("기존 세션을 복구했습니다.");
+          store.getState().setAuthStatusMessage("기존 세션을 복구했습니다.");
         } catch (error) {
           if (cancelled) {
             return;
           }
-          setAccessToken(null);
-          setRuntimeState((current) => ({
-            ...current,
-            securityMode: "jwt",
-            authUser: null
-          }));
+          clearJwtSession(null);
           if (!(error instanceof ApiClientError && error.status === 401)) {
-            setAuthError(error instanceof Error ? error.message : "인증 상태를 확인하지 못했습니다.");
+            store.getState().setAuthError(toAuthMessage(error, "인증 상태를 확인하지 못했습니다."));
           }
         }
       } catch (error) {
         if (cancelled) {
           return;
         }
-        setAuthError(error instanceof Error ? error.message : "인증 상태를 확인하지 못했습니다.");
+        store.getState().setAuthError(toAuthMessage(error, "인증 상태를 확인하지 못했습니다."));
       } finally {
         if (!cancelled) {
-          setRuntimeState((current) => ({ ...current, authBootstrapping: false }));
+          store.getState().updateRuntimeState((current) => ({
+            ...current,
+            authBootstrapping: false
+          }));
         }
       }
     }
@@ -397,110 +429,124 @@ export function AuthStateProvider({
     return () => {
       cancelled = true;
     };
-  }, [hasRuntimeOverride, isMockMode]);
+  }, [hasRuntimeOverride, isMockMode, store]);
+
+  const securityMode = useStore(store, (state) => state.securityMode);
+  const authBootstrapping = useStore(store, (state) => state.authBootstrapping);
+  const authUser = useStore(store, (state) => state.authUser);
 
   useEffect(() => {
-    if (!hasRuntimeOverride) {
+    if (hasRuntimeOverride || !isMockMode || authBootstrapping || typeof window === "undefined") {
       return;
     }
 
-    configureApiAuth(null);
-    setRuntimeState({
-      ...defaultAuthState,
-      ...value
-    });
-  }, [hasRuntimeOverride, value]);
+    writeStoredPreset(presetFromState({ securityMode, authBootstrapping, authUser }));
+  }, [authBootstrapping, authUser, hasRuntimeOverride, isMockMode, securityMode]);
 
-  useEffect(() => {
-    if (hasRuntimeOverride || !isMockMode || runtimeState.authBootstrapping || typeof window === "undefined") {
-      return;
+  const actions = useMemo<AuthActions>(() => {
+    async function login(loginId: string, password: string) {
+      if (hasRuntimeOverride || isMockMode) {
+        return;
+      }
+
+      store.getState().setLoginSubmitting(true);
+      store.getState().setAuthError(null);
+      store.getState().setAuthStatusMessage(null);
+      try {
+        const response = await apiPost<AuthTokenResponse>("/api/v1/auth/login", { loginId, password });
+        setAccessToken(response.data.accessToken);
+        store.getState().updateRuntimeState((current) => ({
+          ...current,
+          securityMode: "jwt",
+          authUser: normalizeLiveUser(response.data.user)
+        }));
+        store.getState().setAuthStatusMessage(response.message);
+      } catch (error) {
+        store.getState().setAuthError(toAuthMessage(error, "로그인에 실패했습니다."));
+      } finally {
+        store.getState().setLoginSubmitting(false);
+      }
     }
 
-    writeStoredPreset(presetFromState(runtimeState));
-  }, [hasRuntimeOverride, isMockMode, runtimeState]);
+    async function logout() {
+      if (hasRuntimeOverride) {
+        return;
+      }
 
-  async function login(loginId: string, password: string) {
-    if (hasRuntimeOverride || isMockMode) {
-      return;
+      if (isMockMode) {
+        store.getState().setRuntimeState(stateFromPreset("jwt-anon"));
+        return;
+      }
+
+      store.getState().setAuthError(null);
+      try {
+        await apiPost<void>("/api/v1/auth/logout");
+      } catch {
+        // best effort
+      } finally {
+        clearJwtSession("로그아웃되었습니다.");
+      }
     }
 
-    setLoginSubmitting(true);
-    setAuthError(null);
-    setAuthStatusMessage(null);
-    try {
-      const response = await apiPost<AuthTokenResponse>("/api/v1/auth/login", { loginId, password });
-      setAccessToken(response.data.accessToken);
-      setRuntimeState((current) => ({
-        ...current,
-        securityMode: "jwt",
-        authUser: normalizeLiveUser(response.data.user)
-      }));
-      setAuthStatusMessage(response.message);
-    } catch (error) {
-      setAuthError(error instanceof Error ? error.message : "로그인에 실패했습니다.");
-    } finally {
-      setLoginSubmitting(false);
-    }
-  }
-
-  async function logout() {
-    if (hasRuntimeOverride) {
-      return;
-    }
-
-    if (isMockMode) {
-      setRuntimeState(stateFromPreset("jwt-anon"));
-      return;
-    }
-
-    setAuthError(null);
-    try {
-      await apiPost<void>("/api/v1/auth/logout");
-    } catch {
-      // best effort
-    } finally {
-      setAccessToken(null);
-      setRuntimeState((current) => ({
-        ...current,
-        securityMode: "jwt",
-        authUser: null
-      }));
-      setAuthStatusMessage("로그아웃되었습니다.");
-    }
-  }
-
-  const contextValue = useMemo<AuthStateContextValue>(
-    () => ({
-      ...runtimeState,
-      isMockMode,
-      authError,
-      authStatusMessage,
-      loginSubmitting,
+    return {
       setRuntimeAuthPreset: (preset) => {
         if (hasRuntimeOverride || !isMockMode) {
           return;
         }
-        setRuntimeState(stateFromPreset(preset));
+        store.getState().setRuntimeState(stateFromPreset(preset));
       },
       clearRuntimeSession: () => {
         if (hasRuntimeOverride) {
           return;
         }
         if (isMockMode) {
-          setRuntimeState(stateFromPreset("jwt-anon"));
+          store.getState().setRuntimeState(stateFromPreset("jwt-anon"));
           return;
         }
         void logout();
       },
       login,
       logout
-    }),
-    [authError, authStatusMessage, hasRuntimeOverride, isMockMode, loginSubmitting, runtimeState]
-  );
+    };
+  }, [hasRuntimeOverride, isMockMode, store]);
 
-  return <AuthStateContext.Provider value={contextValue}>{children}</AuthStateContext.Provider>;
+  return (
+    <AuthStoreContext.Provider value={store}>
+      <AuthActionsContext.Provider value={actions}>{children}</AuthActionsContext.Provider>
+    </AuthStoreContext.Provider>
+  );
 }
 
 export function useAuthState() {
-  return useContext(AuthStateContext);
+  const store = useContext(AuthStoreContext);
+  const actions = useContext(AuthActionsContext);
+  if (!store) {
+    return {
+      ...defaultAuthState,
+      isMockMode: isMockApiMode(),
+      authError: null,
+      authStatusMessage: null,
+      loginSubmitting: false,
+      ...actions
+    } satisfies AuthStateContextValue;
+  }
+
+  const securityMode = useStore(store, (state) => state.securityMode);
+  const authBootstrapping = useStore(store, (state) => state.authBootstrapping);
+  const authUser = useStore(store, (state) => state.authUser);
+  const isMockMode = useStore(store, (state) => state.isMockMode);
+  const authError = useStore(store, (state) => state.authError);
+  const authStatusMessage = useStore(store, (state) => state.authStatusMessage);
+  const loginSubmitting = useStore(store, (state) => state.loginSubmitting);
+
+  return {
+    securityMode,
+    authBootstrapping,
+    authUser,
+    isMockMode,
+    authError,
+    authStatusMessage,
+    loginSubmitting,
+    ...actions
+  } satisfies AuthStateContextValue;
 }

@@ -3,13 +3,15 @@ import { type ReactNode, useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { setMockApiModeForTests } from "../../../api/client";
-import { AuthStateProvider } from "../../../app/auth";
 import { SelectedMemberProvider, useSelectedMemberStore } from "./SelectedMemberContext";
+import { FoundationProviders } from "../../../app/providers";
+import { selectedMemberStore } from "../../../app/selectedMemberStore";
 
 describe("SelectedMemberContext", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     setMockApiModeForTests(false);
+    selectedMemberStore.getState().reset();
   });
 
   it("loads member detail into the members-domain owner store", async () => {
@@ -39,7 +41,11 @@ describe("SelectedMemberContext", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const { result } = renderHook(() => useSelectedMemberStore(), {
-      wrapper: ({ children }) => <SelectedMemberProvider>{children}</SelectedMemberProvider>
+      wrapper: ({ children }) => (
+        <FoundationProviders>
+          <SelectedMemberProvider>{children}</SelectedMemberProvider>
+        </FoundationProviders>
+      )
     });
 
     let loaded = false;
@@ -49,6 +55,8 @@ describe("SelectedMemberContext", () => {
 
     expect(loaded).toBe(true);
     expect(result.current.selectedMemberId).toBe(17);
+    // Note: Since we use TanStack Query, the second expect might need act or wait if it's async-heavy,
+    // but foundation store's integration should ideally show state after selectMember resolves.
     expect(result.current.selectedMember?.memberName).toBe("김회원");
   });
 
@@ -59,9 +67,9 @@ describe("SelectedMemberContext", () => {
 
     const { result } = renderHook(() => useSelectedMemberStore(), {
       wrapper: ({ children }) => (
-        <AuthStateProvider value={{ authUser: { userId: 41, username: "trainer-a", primaryRole: "ROLE_TRAINER", roles: ["ROLE_TRAINER"] } }}>
+        <FoundationProviders authValue={{ authUser: { userId: 41, username: "trainer-a", primaryRole: "ROLE_TRAINER", roles: ["ROLE_TRAINER"] } }}>
           <SelectedMemberProvider>{children}</SelectedMemberProvider>
-        </AuthStateProvider>
+        </FoundationProviders>
       )
     });
 
@@ -115,9 +123,9 @@ describe("SelectedMemberContext", () => {
       } | null>({ userId: 11, username: "jwt-admin", primaryRole: "ROLE_CENTER_ADMIN", roles: ["ROLE_CENTER_ADMIN"] });
       setAuthUser = setAuthUserState;
       return (
-        <AuthStateProvider value={{ authUser }}>
+        <FoundationProviders authValue={{ authUser }}>
           <SelectedMemberProvider>{children}</SelectedMemberProvider>
-        </AuthStateProvider>
+        </FoundationProviders>
       );
     };
 

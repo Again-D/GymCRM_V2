@@ -1,12 +1,11 @@
-import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { QueryClientContext, QueryClientProvider } from "@tanstack/react-query";
+import { createContext, type PropsWithChildren, useContext, useMemo } from "react";
 
-import { apiGet } from "../../../api/client";
-import { useAuthState } from "../../../app/auth";
-import { createAuthIdentityKey } from "../../../app/roles";
-import { canAuthUserAccessMember } from "../../member-context/modules/trainerScope";
+import { appQueryClient } from "../../../app/queryClient";
+import { useSelectedMemberActions, useSelectedMemberSessionManagement, useSelectedMemberStore as useSelectedMemberFoundationStore } from "../../../app/selectedMember";
 import type { MemberDetail } from "./types";
 
-type SelectedMemberStore = {
+type SelectedMemberValue = {
   selectedMemberId: number | null;
   selectedMember: MemberDetail | null;
   selectedMemberLoading: boolean;
@@ -15,93 +14,36 @@ type SelectedMemberStore = {
   clearSelectedMember: () => void;
 };
 
-const SelectedMemberContext = createContext<SelectedMemberStore | null>(null);
+const SelectedMemberContext = createContext<SelectedMemberValue | null>(null);
 
 export function SelectedMemberProvider({ children }: PropsWithChildren) {
-  const { authUser } = useAuthState();
-  const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
-  const [selectedMember, setSelectedMember] = useState<MemberDetail | null>(null);
-  const [selectedMemberLoading, setSelectedMemberLoading] = useState(false);
-  const [selectedMemberError, setSelectedMemberError] = useState<string | null>(null);
-  const requestIdRef = useRef(0);
-  const authIdentityKeyRef = useRef<string | null>(null);
+  const queryClient = useContext(QueryClientContext);
 
-  const selectMember = useCallback(async (memberId: number) => {
-    const requestId = requestIdRef.current + 1;
-    requestIdRef.current = requestId;
-    setSelectedMemberLoading(true);
-    setSelectedMemberError(null);
+  if (queryClient == null) {
+    return (
+      <QueryClientProvider client={appQueryClient}>
+        <SelectedMemberProviderInner>{children}</SelectedMemberProviderInner>
+      </QueryClientProvider>
+    );
+  }
 
-    try {
-      const canAccess = await canAuthUserAccessMember(memberId, authUser);
-      if (!canAccess) {
-        if (requestIdRef.current !== requestId) {
-          return false;
-        }
-        setSelectedMemberId(null);
-        setSelectedMember(null);
-        setSelectedMemberError("선택한 회원을 불러올 수 없어 회원 선택 화면을 유지합니다.");
-        return false;
-      }
-      const response = await apiGet<MemberDetail>(`/api/v1/members/${memberId}`);
-      if (requestIdRef.current !== requestId) {
-        return false;
-      }
-      setSelectedMemberId(response.data.memberId);
-      setSelectedMember(response.data);
-      return true;
-    } catch (error) {
-      if (requestIdRef.current !== requestId) {
-        return false;
-      }
-      setSelectedMemberId(null);
-      setSelectedMember(null);
-      setSelectedMemberError(error instanceof Error ? error.message : "회원을 불러오지 못했습니다.");
-      return false;
-    } finally {
-      if (requestIdRef.current === requestId) {
-        setSelectedMemberLoading(false);
-      }
-    }
-  }, [authUser]);
+  return <SelectedMemberProviderInner>{children}</SelectedMemberProviderInner>;
+}
 
-  const clearSelectedMember = useCallback(() => {
-    requestIdRef.current += 1;
-    setSelectedMemberId(null);
-    setSelectedMember(null);
-    setSelectedMemberLoading(false);
-    setSelectedMemberError(null);
-  }, []);
+function SelectedMemberProviderInner({ children }: PropsWithChildren) {
+  // Handle session-sensitive resets (logout, auth identity change, etc.)
+  useSelectedMemberSessionManagement();
 
-  useEffect(() => {
-    const nextAuthIdentityKey = createAuthIdentityKey(authUser);
-    if (authIdentityKeyRef.current === null) {
-      authIdentityKeyRef.current = nextAuthIdentityKey;
-      return;
-    }
+  const store = useSelectedMemberFoundationStore();
+  const { selectMember, clearSelectedMember } = useSelectedMemberActions();
 
-    if (authIdentityKeyRef.current === nextAuthIdentityKey) {
-      return;
-    }
-
-    authIdentityKeyRef.current = nextAuthIdentityKey;
-    requestIdRef.current += 1;
-    setSelectedMemberId(null);
-    setSelectedMember(null);
-    setSelectedMemberLoading(false);
-    setSelectedMemberError(null);
-  }, [authUser]);
-
-  const value = useMemo<SelectedMemberStore>(
+  const value = useMemo<SelectedMemberValue>(
     () => ({
-      selectedMemberId,
-      selectedMember,
-      selectedMemberLoading,
-      selectedMemberError,
+      ...store,
       selectMember,
       clearSelectedMember
     }),
-    [selectedMemberId, selectedMember, selectedMemberLoading, selectedMemberError, selectMember, clearSelectedMember]
+    [store, selectMember, clearSelectedMember]
   );
 
   return <SelectedMemberContext.Provider value={value}>{children}</SelectedMemberContext.Provider>;
