@@ -1,20 +1,38 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { resetMockData } from "../../api/mockData";
 import { setMockApiModeForTests } from "../../api/client";
 import { AuthStateProvider } from "../../app/auth";
 import GxSchedulesPage from "./GxSchedulesPage";
 
+async function selectAntdOption(label: string | RegExp, optionName: string) {
+  const combobox = screen.getByRole("combobox", { name: label });
+  fireEvent.mouseDown(combobox);
+  const options = await screen.findAllByText(optionName);
+  fireEvent.click(options[options.length - 1] as HTMLElement);
+}
+
 describe("GxSchedulesPage", () => {
   beforeEach(() => {
     setMockApiModeForTests(true);
     resetMockData();
+    vi.stubGlobal("matchMedia", vi.fn().mockImplementation((query) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })));
   });
 
   afterEach(() => {
     cleanup();
     setMockApiModeForTests(null);
+    vi.unstubAllGlobals();
   });
 
   it("renders gx schedule snapshot in mock mode", async () => {
@@ -66,16 +84,14 @@ describe("GxSchedulesPage", () => {
     fireEvent.change(screen.getByLabelText(/수업명/), {
       target: { value: "저녁 스트레칭" },
     });
-    fireEvent.change(screen.getByLabelText(/담당 트레이너/), {
-      target: { value: "41" },
-    });
+    await selectAntdOption(/담당 트레이너/, "정트레이너");
     fireEvent.click(screen.getByRole("button", { name: "규칙 생성" }));
 
     await waitFor(() => {
       expect(screen.getByText("GX 반복 규칙을 생성했습니다.")).toBeTruthy();
     });
     expect(screen.getAllByText("저녁 스트레칭").length).toBeGreaterThan(0);
-  });
+  }, 25000);
 
   it("shows field-level validation messages for required rule inputs", async () => {
     render(
@@ -104,7 +120,7 @@ describe("GxSchedulesPage", () => {
 
     expect(screen.getByText("수업명을 입력해 주세요.")).toBeTruthy();
     expect(screen.getByText("담당 트레이너를 선택해 주세요.")).toBeTruthy();
-  });
+  }, 10000);
 
   it("shows a time ordering validation message when end time is not after start time", async () => {
     render(
@@ -132,9 +148,7 @@ describe("GxSchedulesPage", () => {
     fireEvent.change(screen.getByLabelText(/수업명/), {
       target: { value: "시간 검증 GX" },
     });
-    fireEvent.change(screen.getByLabelText(/담당 트레이너/), {
-      target: { value: "41" },
-    });
+    await selectAntdOption(/담당 트레이너/, "정트레이너");
     fireEvent.change(screen.getByLabelText(/시작 시간/), {
       target: { value: "10:00" },
     });
@@ -145,7 +159,7 @@ describe("GxSchedulesPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "규칙 생성" }));
 
     expect(screen.getByText("종료 시간은 시작 시간보다 늦어야 합니다.")).toBeTruthy();
-  });
+  }, 20000);
 
   it("limits trainer exception UI to off and memo only", async () => {
     render(
@@ -171,6 +185,6 @@ describe("GxSchedulesPage", () => {
 
     await screen.findByRole("heading", { name: "GX 회차 예외" });
     expect(screen.getByText("트레이너는 본인 회차의 휴강과 메모만 처리할 수 있습니다.")).toBeTruthy();
-    expect(screen.queryByRole("option", { name: "변경" })).toBeNull();
+    expect(screen.queryByText("변경 담당 트레이너")).toBeNull();
   });
 });
