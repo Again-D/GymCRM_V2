@@ -96,7 +96,7 @@ export default function MetricsSummaryWidget({ title = "회원 지표 요약" }:
               title={<Text type="secondary">금월 신당 신규</Text>}
               value={metrics.newThisMonth}
               suffix="명"
-              valueStyle={{ color: "#3f8600", fontWeight: 700 }}
+              valueStyle={{ color: "#52c41a", fontWeight: 700 }}
             />
           )}
         </Col>
