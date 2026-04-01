@@ -46,39 +46,6 @@ function operationalStatusColor(status: "정상" | "홀딩중" | "만료임박" 
 }
 
 export function MemberListSection() {
-  const { resolvedTheme } = useThemeStore();
-  const isDark = resolvedTheme === "dark";
-
-  const getTagStyle = (status: string, defaultColor?: string) => {
-    const statusColors: Record<string, string> = {
-      "ACTIVE": "#52c41a",
-      "INACTIVE": "#d9d9d9",
-      "정상": "#52c41a",
-      "만료임박": "#faad14",
-      "홀딩중": "#1677ff",
-      "기간만료": "#ff4d4f"
-    };
-    const baseColor = statusColors[status] || defaultColor || "#d9d9d9";
-
-    if (isDark) {
-      const isNeutral = status === "INACTIVE" || baseColor === "#d9d9d9";
-      return {
-        backgroundColor: isNeutral ? "rgba(255, 255, 255, 0.08)" : `${baseColor}26`,
-        color: isNeutral ? "rgba(255, 255, 255, 0.45)" : baseColor,
-        border: `1px solid ${isNeutral ? "rgba(255, 255, 255, 0.12)" : `${baseColor}4D`}`,
-        fontWeight: 600
-      };
-    }
-
-    const isNeutral = status === "INACTIVE" || baseColor === "#d9d9d9";
-    return {
-      backgroundColor: baseColor,
-      color: isNeutral ? "rgba(0, 0, 0, 0.45)" : "#fff",
-      border: "none",
-      fontWeight: 700
-    };
-  };
-
   const navigate = useNavigate();
   const { dateFilter, applyPreset, setDateFrom, setDateTo, reset } = useMembershipDateFilter();
   const [name, setName] = useState("");
@@ -181,7 +148,7 @@ export function MemberListSection() {
       dataIndex: "memberStatus",
       key: "memberStatus",
       render: (status) => (
-        <Tag bordered={false} style={getTagStyle(status)}>
+        <Tag bordered={true} color={status == "ACTIVE"? "success" : "default"}>
           {status === "ACTIVE" ? "활성" : "비활성"}
         </Tag>
       )
@@ -191,7 +158,7 @@ export function MemberListSection() {
       dataIndex: "membershipOperationalStatus",
       key: "membershipOperationalStatus",
       render: (status) => (
-        <Tag bordered={false} style={getTagStyle(status)}>
+        <Tag bordered={true} color={operationalStatusColor(status)} >
           {status}
         </Tag>
       )
@@ -450,7 +417,7 @@ export function MemberListSection() {
             <Button key="edit" onClick={() => openMemberEdit(selectedMember)}>수정</Button>
           ),
           canManageMembers && selectedMemberId && (
-            <Button key="deactivate" danger onClick={() => openMemberDeactivate(selectedMemberId)}>비활성화</Button>
+            <Button key="deactivate" danger type="primary" onClick={() => openMemberDeactivate(selectedMemberId)}>비활성화</Button>
           ),
           <Button key="membership" onClick={() => goToSelectedMemberContext("/memberships")}>회원권</Button>,
           <Button key="reservation" type="primary" onClick={() => goToSelectedMemberContext("/reservations")}>예약</Button>
