@@ -258,16 +258,14 @@ origin: docs/plans/2026-03-27-refactor-frontend-ant-design-zustand-foundation-mi
 - [x] focus/route transition 기반 불필요 refetch: baseline 대비 증가 금지 (TanStack Query `staleTime` 통일성 확보 및 불필요한 Mount 시 fetch 억제)
 - [x] representative query-heavy flow interaction latency: baseline 대비 악화 금지 (Ant Design 기본 Table Pagination 등을 활용해 대용량 DOM 렌더링 부하 억제 확인)
 
-## Work Log Template
+## Work Log (Phase 6 Final Closure)
 
-각 phase 또는 wave 완료 시 아래를 남긴다.
-
-- [ ] changed files
-- [ ] validation run
-- [ ] browser smoke result
-- [ ] regression 여부
-- [ ] next rollback point
-- [ ] 남은 blockers
+- [x] changed files: `docs/notes/*`, `docs/plans/*`, `frontend/src/app/routes.ts` 등 문서 및 사소한 회귀 결함 복구
+- [x] validation run: `npm test`를 통해 124개 테스트 통과, `npm run build` 성공 확인
+- [x] browser smoke result: logout, role downgrade, modal stress tests 등 남은 Phase 6 스모크 검증 완료 및 안전 동작 확인
+- [x] regression 여부: 없음 (Dashboard 라우팅 관련 누락 결함 즉각 수정됨)
+- [x] next rollback point: 프론트엔드 파운데이션 안정화 완료 (Merge PR 대기 지점)
+- [x] 남은 blockers: 없음
 
 ## Suggested Execution Order
 
