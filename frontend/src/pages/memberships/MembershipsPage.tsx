@@ -48,10 +48,16 @@ function buildStatusTag(membership: PurchasedMembership) {
     const text = membership.activeHoldStatus === "ACTIVE" ? "홀딩 중" : "홀딩";
     return <Tag color="warning">{text}</Tag>;
   }
-  if (membership.membershipStatus === "ACTIVE") return <Tag color="success">활성</Tag>;
-  if (membership.membershipStatus === "REFUNDED") return <Tag color="error">환불됨</Tag>;
-  if (membership.membershipStatus === "EXPIRED") return <Tag color="default">만료</Tag>;
-  return <Tag>{membership.membershipStatus}</Tag>;
+  switch (membership.membershipStatus) {
+    case "ACTIVE":
+      return <Tag color="success">활성</Tag>;
+    case "REFUNDED":
+      return <Tag color="error">환불됨</Tag>;
+    case "EXPIRED":
+      return <Tag color="default">만료</Tag>;
+    default:
+      return <Tag>{membership.membershipStatus}</Tag>;
+  }
 }
 
 function paymentLabel(payment: MembershipPaymentRecord) {

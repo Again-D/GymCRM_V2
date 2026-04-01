@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, Button, Card, Empty, Flex, Input, Table, Typography } from "antd";
+import { Alert, Button, Card, Empty, Flex, Input, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 
 import { usePagination } from "../../shared/hooks/usePagination";
@@ -51,7 +51,14 @@ export function MemberContextFallback({ title, description, submitLabel }: Membe
     {
       title: "회원권 상태",
       dataIndex: "membershipOperationalStatus",
-      key: "membershipOperationalStatus"
+      render: (status: string) => {
+        let color = "default";
+        if (status === "정상") color = "success";
+        if (status === "홀딩중") color = "processing";
+        if (status === "만료임박") color = "warning";
+        if (status === "만료") color = "error";
+        return <Tag color={color}>{status || "없음"}</Tag>;
+      },
     },
     {
       title: "액션",
