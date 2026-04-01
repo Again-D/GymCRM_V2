@@ -2399,6 +2399,11 @@ export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
     );
   }
 
+  if (url.pathname === "/api/v1/reservations/gx/snapshot") {
+    const month = url.searchParams.get("month") ?? "2026-04";
+    return envelope(getMockGxScheduleSnapshot(month));
+  }
+
   if (url.pathname === "/api/v1/lockers/slots") {
     return envelope(filterLockerSlots(url).map((slot) => ({ ...slot })));
   }
