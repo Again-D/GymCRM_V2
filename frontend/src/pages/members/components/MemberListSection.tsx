@@ -147,7 +147,7 @@ export function MemberListSection() {
       dataIndex: "memberStatus",
       key: "memberStatus",
       render: (status) => (
-        <Tag color={status === "ACTIVE" ? "success" : "default"}>
+        <Tag color={status === "ACTIVE" ? "success" : "default"} bordered={false} style={{ fontWeight: 600 }}>
           {status === "ACTIVE" ? "활성" : "비활성"}
         </Tag>
       )
@@ -157,7 +157,7 @@ export function MemberListSection() {
       dataIndex: "membershipOperationalStatus",
       key: "membershipOperationalStatus",
       render: (status) => (
-        <Tag color={operationalStatusColor(status)}>
+        <Tag color={operationalStatusColor(status)} bordered={false} style={{ fontWeight: 600 }}>
           {status}
         </Tag>
       )

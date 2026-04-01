@@ -69,12 +69,12 @@ export default function HeaderLayout() {
             <Space wrap>
               {isMockMode ? (
                 <>
-                  <Button size="small" onClick={() => setRuntimeAuthPreset("prototype-admin")}>데모</Button>
-                  <Button size="small" onClick={() => setRuntimeAuthPreset("jwt-admin")}>관리자</Button>
-                  <Button size="small" onClick={clearRuntimeSession}>초기화</Button>
+                  <Button size="small" type="default" onClick={() => setRuntimeAuthPreset("prototype-admin")}>데모</Button>
+                  <Button size="small" type="default" onClick={() => setRuntimeAuthPreset("jwt-admin")}>관리자</Button>
+                  <Button size="small" type="default" onClick={clearRuntimeSession}>초기화</Button>
                 </>
               ) : (
-                <Button danger size="small" onClick={() => void handleLogout()}>로그아웃</Button>
+                <Button danger type="primary" size="small" onClick={() => void handleLogout()}>로그아웃</Button>
               )}
             </Space>
           </div>
