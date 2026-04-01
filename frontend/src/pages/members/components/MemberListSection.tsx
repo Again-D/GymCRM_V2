@@ -146,21 +146,47 @@ export function MemberListSection() {
       title: "상태",
       dataIndex: "memberStatus",
       key: "memberStatus",
-      render: (status) => (
-        <Tag color={status === "ACTIVE" ? "success" : "default"} bordered={false} style={{ fontWeight: 600 }}>
-          {status === "ACTIVE" ? "활성" : "비활성"}
-        </Tag>
-      )
+      render: (status) => {
+        const isActive = status === "ACTIVE";
+        return (
+          <Tag 
+            bordered={false} 
+            style={{ 
+              backgroundColor: isActive ? "#52c41a" : "#d9d9d9", 
+              color: isActive ? "#fff" : "rgba(0, 0, 0, 0.45)",
+              fontWeight: 700 
+            }}
+          >
+            {isActive ? "활성" : "비활성"}
+          </Tag>
+        );
+      }
     },
     {
-      title: "운영 상태",
+      title: "회원권 상태",
       dataIndex: "membershipOperationalStatus",
       key: "membershipOperationalStatus",
-      render: (status) => (
-        <Tag color={operationalStatusColor(status)} bordered={false} style={{ fontWeight: 600 }}>
-          {status}
-        </Tag>
-      )
+      render: (status) => {
+        const colors: Record<string, string> = {
+          "정상": "#52c41a",
+          "만료임박": "#faad14",
+          "홀딩중": "#1677ff",
+          "기간만료": "#ff4d4f"
+        };
+        const bgColor = colors[status] || "#d9d9d9";
+        return (
+          <Tag 
+            bordered={false} 
+            style={{ 
+              backgroundColor: bgColor, 
+              color: "#fff",
+              fontWeight: 700 
+            }}
+          >
+            {status}
+          </Tag>
+        );
+      }
     },
     {
       title: "만료일",
