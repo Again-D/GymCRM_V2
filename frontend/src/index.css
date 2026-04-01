@@ -741,6 +741,32 @@ textarea.input:focus {
   letter-spacing: -0.03em;
 }
 
+/* --- High Contrast Selection & Accessibility Improvements --- */
+.ant-table-wrapper .ant-table-tbody > tr.ant-table-row-selected > td {
+  background: var(--status-info-bg) !important;
+}
+
+[data-theme='dark'] .ant-table-wrapper .ant-table-tbody > tr.ant-table-row-selected > td {
+  background: rgba(22, 119, 255, 0.22) !important; /* Slightly more opaque blue in dark mode */
+}
+
+/* Distinct left-edge indicator for selected rows */
+.ant-table-wrapper .ant-table-tbody > tr.ant-table-row-selected > td:first-child {
+  position: relative;
+}
+
+.ant-table-wrapper .ant-table-tbody > tr.ant-table-row-selected > td:first-child::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background-color: #1677ff;
+  border-radius: 0 4px 4px 0;
+  transition: all 0.2s;
+}
+
 .stack-md {
   display: grid;
   gap: 16px;
