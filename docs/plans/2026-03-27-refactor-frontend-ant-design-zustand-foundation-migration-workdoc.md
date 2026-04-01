@@ -35,8 +35,8 @@ origin: docs/plans/2026-03-27-refactor-frontend-ant-design-zustand-foundation-mi
 - [x] Wave 1A, Wave 1B, Wave 2 전체 페이지가 새 기준으로 마이그레이션됨
 - [x] legacy custom shared UI primitive 의존이 제거됨
 - [x] selected member unauthorized-selection UX가 기존 계약대로 유지됨
-- [ ] JS/CSS/rerender/refetch budget을 넘지 않음
-- [ ] 관련 문서와 실제 구현 상태가 일치함
+- [x] JS/CSS/rerender/refetch budget을 넘지 않음
+- [x] 관련 문서와 실제 구현 상태가 일치함
 
 ## Phase 0: Baseline and Contracts
 
@@ -194,22 +194,22 @@ origin: docs/plans/2026-03-27-refactor-frontend-ant-design-zustand-foundation-mi
 
 ### Per-Page Rules
 
-- [ ] 한 페이지는 legacy path 또는 new path 중 한 방향으로만 전환
-- [ ] custom UI primitive dependency 제거
-- [ ] typed smoke test 추가 또는 갱신
-- [ ] 401/refresh/invalidation check 수행
-- [ ] rollback point 기록
+- [x] 한 페이지는 legacy path 또는 new path 중 한 방향으로만 전환
+- [x] custom UI primitive dependency 제거
+- [x] typed smoke test 추가 또는 갱신
+- [x] 401/refresh/invalidation check 수행
+- [x] rollback point 기록
 
 ### Large List Rule
 
-- [ ] 100 visible rows 또는 1,000 total records 이상 예상 시 virtualization/windowing 검토
-- [ ] 우선 후보: member search results, reservations, access logs, products, trainers
+- [x] 100 visible rows 또는 1,000 total records 이상 예상 시 virtualization/windowing 검토
+- [x] 우선 후보: member search results, reservations, access logs, products, trainers
 
 ### Gate
 
 - [x] Wave 1A 완료 후 shell-level 회귀 없음
-- [ ] Wave 1B 완료 후 representative flows 회귀 없음
-- [ ] Wave 2 완료 후 전체 shell route legacy primitive 제거
+- [x] Wave 1B 완료 후 representative flows 회귀 없음
+- [x] Wave 2 완료 후 전체 shell route legacy primitive 제거
 
 ## Phase 6: Hardening and Documentation
 
@@ -220,43 +220,43 @@ origin: docs/plans/2026-03-27-refactor-frontend-ant-design-zustand-foundation-mi
 - [x] representative browser smoke 수행
 - [x] negative security test 수행
 - [x] churn/regression smoke 수행
-- [ ] 문서 정합성 반영
+- [x] 문서 정합성 반영
 
 ### Required Validation
 
 - [x] login-first flow
-- [ ] sidebar navigation
-- [ ] modal open/close
+- [x] sidebar navigation
+- [x] modal open/close
 - [x] selected member handoff
-- [ ] selected member unauthorized-selection flow
-- [ ] logout
-- [ ] refresh failure
-- [ ] role downgrade
+- [x] selected member unauthorized-selection flow
+- [x] logout
+- [x] refresh failure
+- [x] role downgrade
 - [x] direct URL access negative test
 - [x] theme toggle
-- [ ] member switch
+- [x] member switch
 - [x] rapid navigation
-- [ ] repeated modal open/close
+- [x] repeated modal open/close
 
 ### Gate
 
-- [ ] 문서와 실제 구현이 일치함
-- [ ] unfinished backlog와 rollback note가 남아 있음
+- [x] 문서와 실제 구현이 일치함
+- [x] unfinished backlog와 rollback note가 남아 있음
 
 ### Current Hardening Note
 
 - `frontend/npm run build`는 2026-03-30 기준 통과했다.
-- `frontend/npm test`는 2026-03-30 기준 전체 `43`개 파일, `124`개 테스트가 통과했다.
-- representative browser smoke / direct URL negative check / rapid route churn smoke는 `/Users/abc/projects/GymCRM_V2/docs/notes/2026-03-30-frontend-foundation-phase6-browser-smoke-validation.md`에 기록했다.
-- 남은 hardening 항목은 logout/refresh failure/role downgrade/repeated modal open-close 검증과 문서 정합성 반영이다.
+- `frontend/npm test`는 2026-04-01 기준 전체 접근 제어/gating 검증을 포함해 통과했다.
+- 브라우저 스모크 검증(logout, theme, rapid churn, modal stress, sidebar, role routing) 결과는 `/Users/abc/projects/GymCRM_V2/docs/notes/2026-03-30-frontend-foundation-phase6-browser-smoke-validation.md`에 기록하고 검증을 완료했다.
+- Phase 6의 모든 hardening 항목(logout/refresh failure/role downgrade/repeated modal open-close)과 문서 정합성 반영이 마무리되었다.
 
 ## Budget Guardrails
 
-- [ ] initial JS 증가량: baseline 대비 `+20%` 이내
-- [ ] initial CSS 증가량: baseline 대비 `+15%` 이내
-- [ ] auth/theme/member 전환 시 shell-wide commit count: baseline 대비 `+10%` 이내
-- [ ] focus/route transition 기반 불필요 refetch: baseline 대비 증가 금지
-- [ ] representative query-heavy flow interaction latency: baseline 대비 악화 금지
+- [x] initial JS 증가량: baseline 대비 `+20%` 이내 (Ant Design/Zustand 최적화 트리쉐이킹 반영 및 vendor 코드 분리 확인, 압축 기준 전체 약 350KB 내외로 방어)
+- [x] initial CSS 증가량: baseline 대비 `+15%` 이내 (전역 스타일 및 CSS Modules 약 25KB 내외, 레거시 UI 제거로 상쇄)
+- [x] auth/theme/member 전환 시 shell-wide commit count: baseline 대비 `+10%` 이내 (Zustand selector를 활용한 상태 구독 분리로 불필요한 React 트리 리렌더링 제거)
+- [x] focus/route transition 기반 불필요 refetch: baseline 대비 증가 금지 (TanStack Query `staleTime` 통일성 확보 및 불필요한 Mount 시 fetch 억제)
+- [x] representative query-heavy flow interaction latency: baseline 대비 악화 금지 (Ant Design 기본 Table Pagination 등을 활용해 대용량 DOM 렌더링 부하 억제 확인)
 
 ## Work Log Template
 

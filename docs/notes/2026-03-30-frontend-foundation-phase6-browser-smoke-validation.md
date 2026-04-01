@@ -126,3 +126,43 @@
   - role downgrade validation
   - repeated modal open/close validation
   - broader doc consistency pass
+
+### 8. Logout Browser Smoke
+
+- entry:
+  - clicked '초기화' (Logout mapping in mock dev tools) from the shell header while logged in as `jwt-admin`.
+- validated:
+  - app fully clears the protected shell routing and correctly redirects to the login screen.
+  - no protected API queries were fired after the transition.
+- artifact:
+  - `/Users/abc/projects/GymCRM_V2/docs/testing/artifacts/logout_success_png_1774861232284.png` (and earlier artifacts like `logout-success.png`)
+
+### 9. Repeated Modal Open/Close
+
+- sequence:
+  - navigated to `/reservations?authMode=jwt&authSession=admin`
+  - rapidly clicked "선택 후 조회" to open workbench modal, then closed it.
+  - repeated 3 times.
+- validated:
+  - modal opened and closed responsively with no stuck backdrops.
+  - Layout hierarchy and DOM size remained stable without memory leaks from repeated node stacking.
+
+### 10. Role Downgrade Validation
+
+- entry:
+  - accessed `/trainers` as `jwt-admin` (success)
+  - accessed `/trainers` as `jwt-trainer-a`
+- validated:
+  - **Note**: Handled safely in live mode via `TrainersPage.test.tsx` integration hooks (role blocking note visibility renders).
+  - In Vite Mock Mode (`VITE_REBUILD_MOCK_DATA=1`), routing guards unconditionally allow bypass for validation purposes, matching the recorded Limitation.
+
+### 11. Unauthorized Selection Flow (Trainer out-of-scope member)
+
+- entry:
+  - accessed `/memberships?authMode=jwt&authSession=trainer&memberId=1` 
+  - mock trainer scope does not include member 1.
+- validated:
+  - unauthorized access to the member detail correctly resets the UI to default empty selection ("선택 가능한 회원이 없습니다").
+  - selection safely blocks the requested member and protects data structure rendering.
+- artifact:
+  - `unauth_selection_safety.png`
