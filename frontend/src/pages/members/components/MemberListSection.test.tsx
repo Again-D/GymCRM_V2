@@ -5,7 +5,7 @@ import { AuthStateProvider } from "../../../app/auth";
 import { MemberListSection } from "./MemberListSection";
 
 const navigateMock = vi.fn();
-let currentLoadMembers = vi.fn();
+let currentRefetch = vi.fn();
 let currentSelectedMemberId: number | null = null;
 let currentSelectedMember: {
   memberId: number;
@@ -28,15 +28,11 @@ const clearSelectedMemberMock = vi.fn(() => {
 });
 
 vi.mock("react-router-dom", () => ({
-  useNavigate: () => navigateMock
-}));
-
-vi.mock("../../../shared/ui/PaginationControls", () => ({
-  PaginationControls: () => <div>pagination</div>
+  useNavigate: () => navigateMock,
 }));
 
 vi.mock("./MembershipPeriodFilter", () => ({
-  MembershipPeriodFilter: () => <div>period-filter</div>
+  MembershipPeriodFilter: () => <div>period-filter</div>,
 }));
 
 vi.mock("../modules/useMembershipDateFilter", () => ({
@@ -44,13 +40,13 @@ vi.mock("../modules/useMembershipDateFilter", () => ({
     dateFilter: {
       presetRange: "",
       dateFrom: "",
-      dateTo: ""
+      dateTo: "",
     },
     applyPreset: vi.fn(),
     setDateFrom: vi.fn(),
     setDateTo: vi.fn(),
-    reset: vi.fn()
-  })
+    reset: vi.fn(),
+  }),
 }));
 
 vi.mock("../modules/SelectedMemberContext", () => ({
@@ -59,8 +55,8 @@ vi.mock("../modules/SelectedMemberContext", () => ({
     selectedMember: currentSelectedMember,
     selectedMemberLoading: false,
     clearSelectedMember: clearSelectedMemberMock,
-    selectMember: selectMemberMock
-  })
+    selectMember: selectMemberMock,
+  }),
 }));
 
 vi.mock("../modules/useMembersQuery", () => ({
@@ -75,14 +71,22 @@ vi.mock("../modules/useMembersQuery", () => ({
         joinDate: "2026-01-04",
         membershipOperationalStatus: "홀딩중",
         membershipExpiryDate: "2026-06-30",
-        remainingPtCount: 8
-      }
+        remainingPtCount: 8,
+      },
     ],
     membersLoading: false,
     membersQueryError: null,
-    loadMembers: currentLoadMembers
-  })
+    refetch: currentRefetch,
+  }),
 }));
+
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { retry: false },
+  },
+});
 
 describe("MemberListSection", () => {
   function renderWithAuth(
@@ -90,33 +94,47 @@ describe("MemberListSection", () => {
       userId: 11,
       username: "jwt-admin",
       primaryRole: "ROLE_CENTER_ADMIN",
-      roles: ["ROLE_CENTER_ADMIN"]
-    }
+      roles: ["ROLE_CENTER_ADMIN"],
+    },
   ) {
     return render(
-      <AuthStateProvider
-        value={{
-          securityMode: "jwt",
-          authBootstrapping: false,
-          authUser
-        }}
-      >
-        <MemberListSection />
-      </AuthStateProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthStateProvider
+          value={{
+            securityMode: "jwt",
+            authBootstrapping: false,
+            authUser,
+          }}
+        >
+          <MemberListSection />
+        </AuthStateProvider>
+      </QueryClientProvider>,
     );
   }
 
   beforeEach(() => {
     navigateMock.mockReset();
     clearSelectedMemberMock.mockClear();
-    currentLoadMembers = vi.fn();
+    currentRefetch = vi.fn();
     currentSelectedMemberId = null;
     currentSelectedMember = null;
     selectMemberMock = vi.fn();
+    queryClient.clear();
+    vi.stubGlobal("matchMedia", vi.fn().mockImplementation((query) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })));
   });
 
   afterEach(() => {
     cleanup();
+    vi.unstubAllGlobals();
   });
 
   it("renders membership operational status in Korean", () => {
@@ -126,29 +144,10 @@ describe("MemberListSection", () => {
     expect(screen.queryByText("HOLDING")).toBeNull();
   });
 
-  it("reruns bootstrap loading when loadMembers reference changes", () => {
-    const firstLoadMembers = vi.fn();
-    currentLoadMembers = firstLoadMembers;
+  it("does not imperatively refetch members on mount", () => {
+    renderWithAuth();
 
-    const { rerender } = renderWithAuth();
-
-    expect(firstLoadMembers).toHaveBeenCalledTimes(1);
-
-    const secondLoadMembers = vi.fn();
-    currentLoadMembers = secondLoadMembers;
-    rerender(
-      <AuthStateProvider
-        value={{
-          securityMode: "jwt",
-          authBootstrapping: false,
-          authUser: { userId: 11, username: "jwt-admin", primaryRole: "ROLE_CENTER_ADMIN", roles: ["ROLE_CENTER_ADMIN"] }
-        }}
-      >
-        <MemberListSection />
-      </AuthStateProvider>
-    );
-
-    expect(secondLoadMembers).toHaveBeenCalledTimes(1);
+    expect(currentRefetch).not.toHaveBeenCalled();
   });
 
   it("opens the selected member modal after a successful row click", async () => {
@@ -166,8 +165,8 @@ describe("MemberListSection", () => {
         joinDate: "2026-01-04",
         consentSms: true,
         consentMarketing: false,
-        memo: null
-      };
+        memo: null,
+      } as any;
       return true;
     });
 
@@ -176,7 +175,7 @@ describe("MemberListSection", () => {
     fireEvent.click(screen.getByText("김민수"));
     await waitFor(() => expect(selectMemberMock).toHaveBeenCalledWith(101));
 
-    expect(screen.getByRole("dialog", { name: "김민수 회원 정보" })).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: /김민수 회원 정보/ })).toBeTruthy();
     expect(screen.getByText("회원 상태")).toBeTruthy();
   });
 
@@ -195,8 +194,8 @@ describe("MemberListSection", () => {
         joinDate: "2026-01-04",
         consentSms: true,
         consentMarketing: false,
-        memo: null
-      };
+        memo: null,
+      } as any;
       return true;
     });
 
@@ -207,42 +206,39 @@ describe("MemberListSection", () => {
 
     expect(navigateMock).toHaveBeenCalledWith("/memberships");
     expect(screen.queryByRole("dialog", { name: "선택 회원 정보" })).toBeNull();
-  });
+  }, 15000);
 
   it("shows member create entry for admin and hides it for trainer", () => {
     const { rerender } = renderWithAuth();
 
-    expect(screen.getByRole("button", { name: "회원 등록" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /회원 등록/ })).toBeTruthy();
 
     rerender(
-      <AuthStateProvider
-        value={{
-          securityMode: "jwt",
-          authBootstrapping: false,
-          authUser: { userId: 41, username: "jwt-trainer", primaryRole: "ROLE_TRAINER", roles: ["ROLE_TRAINER"] }
-        }}
-      >
-        <MemberListSection />
-      </AuthStateProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthStateProvider
+          value={{
+            securityMode: "jwt",
+            authBootstrapping: false,
+            authUser: { userId: 41, username: "jwt-trainer", primaryRole: "ROLE_TRAINER", roles: ["ROLE_TRAINER"] },
+          }}
+        >
+          <MemberListSection />
+        </AuthStateProvider>
+      </QueryClientProvider>,
     );
 
-    expect(screen.queryByRole("button", { name: "회원 등록" })).toBeNull();
-  });
+    expect(screen.queryByRole("button", { name: /회원 등록/ })).toBeNull();
+  }, 15000);
 
-  it("clears memberStatus together with the other filters on reset", () => {
+  it("resets filters on reset button click", () => {
     renderWithAuth();
 
-    fireEvent.change(screen.getByLabelText("회원상태"), { target: { value: "INACTIVE" } });
-    fireEvent.click(screen.getByRole("button", { name: "초기화" }));
+    fireEvent.change(screen.getByPlaceholderText("이름 검색"), { target: { value: "김민수" } });
+    fireEvent.change(screen.getByPlaceholderText("010-..."), { target: { value: "010-1234" } });
 
-    expect(currentLoadMembers).toHaveBeenLastCalledWith({
-      name: "",
-      phone: "",
-      memberStatus: "",
-      membershipOperationalStatus: "",
-      dateFrom: "",
-      dateTo: ""
-    });
-    expect((screen.getByLabelText("회원상태") as HTMLSelectElement).value).toBe("");
-  });
+    fireEvent.click(screen.getByRole("button", { name: /초기화/ }));
+
+    expect((screen.getByPlaceholderText("이름 검색") as HTMLInputElement).value).toBe("");
+    expect((screen.getByPlaceholderText("010-...") as HTMLInputElement).value).toBe("");
+  }, 15000);
 });

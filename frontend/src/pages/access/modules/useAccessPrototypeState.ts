@@ -1,14 +1,14 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { apiPost, isMockApiMode } from "../../../api/client";
-import { invalidateQueryDomains } from "../../../api/queryInvalidation";
+import { queryKeys } from "../../../app/queryHelpers";
 import type { AccessEventRow } from "./types";
 
 export function useAccessPrototypeState() {
+  const queryClient = useQueryClient();
   const [accessActionSubmitting, setAccessActionSubmitting] = useState(false);
-  const [accessPanelMessage, setAccessPanelMessage] = useState<string | null>(
-    null,
-  );
+  const [accessPanelMessage, setAccessPanelMessage] = useState<string | null>(null);
   const [accessPanelError, setAccessPanelError] = useState<string | null>(null);
   const useMockMutations = isMockApiMode();
 
@@ -16,6 +16,10 @@ export function useAccessPrototypeState() {
     setAccessPanelMessage(null);
     setAccessPanelError(null);
   }
+
+  const invalidateAccess = async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.access.all });
+  };
 
   async function handleAccessEntry(memberId: number) {
     clearAccessFeedback();
@@ -27,14 +31,14 @@ export function useAccessPrototypeState() {
           membershipId: null,
           reservationId: null,
         });
-        invalidateQueryDomains(["accessPresence", "accessEvents"]);
+        await invalidateAccess();
         setAccessPanelMessage("입장 처리되었습니다.");
         return true;
       }
 
       const { createMockAccessEntry } = await import("../../../api/mockData");
       const result = createMockAccessEntry(memberId);
-      invalidateQueryDomains(["accessPresence", "accessEvents"]);
+      await invalidateAccess();
       if (!result.ok) {
         setAccessPanelError(result.message);
         return false;
@@ -54,14 +58,14 @@ export function useAccessPrototypeState() {
         await apiPost<AccessEventRow>("/api/v1/access/exit", {
           memberId,
         });
-        invalidateQueryDomains(["accessPresence", "accessEvents"]);
+        await invalidateAccess();
         setAccessPanelMessage("퇴장 처리되었습니다.");
         return true;
       }
 
       const { createMockAccessExit } = await import("../../../api/mockData");
       const result = createMockAccessExit(memberId);
-      invalidateQueryDomains(["accessPresence", "accessEvents"]);
+      await invalidateAccess();
       if (!result.ok) {
         setAccessPanelError(result.message);
         return false;

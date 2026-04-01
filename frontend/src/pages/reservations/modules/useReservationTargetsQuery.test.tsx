@@ -1,10 +1,25 @@
 import { act, renderHook } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { setMockApiModeForTests } from "../../../api/client";
 import { AuthStateProvider } from "../../../app/auth";
 import { useReservationTargetsQuery } from "./useReservationTargetsQuery";
+
+function createTestQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
+}
+
+function TestWrapper({ children, client }: { children: ReactNode; client: QueryClient }) {
+  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+}
 
 describe("useReservationTargetsQuery", () => {
   beforeEach(() => {
@@ -13,6 +28,7 @@ describe("useReservationTargetsQuery", () => {
   });
 
   it("includes keyword when loading reservation targets", async () => {
+    const queryClient = createTestQueryClient();
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -25,17 +41,23 @@ describe("useReservationTargetsQuery", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    const { result } = renderHook(() => useReservationTargetsQuery());
+    const { result } = renderHook(() => useReservationTargetsQuery(), {
+      wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper>,
+    });
 
-    await result.current.loadReservationTargets("김민수");
+    await act(async () => {
+      await result.current.loadReservationTargets("김민수");
+    });
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/v1/reservations/targets?keyword=%EA%B9%80%EB%AF%BC%EC%88%98",
-      expect.objectContaining({
-        credentials: "include",
-        method: "GET"
-      })
-    );
+    await vi.waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/v1/reservations/targets?keyword=%EA%B9%80%EB%AF%BC%EC%88%98",
+        expect.objectContaining({
+          credentials: "include",
+          method: "GET"
+        })
+      );
+    });
   });
 
   it("filters reservation targets to trainer-scoped rows in mock mode", async () => {
@@ -71,11 +93,14 @@ describe("useReservationTargetsQuery", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
+    const queryClient = createTestQueryClient();
     const { result } = renderHook(() => useReservationTargetsQuery(), {
       wrapper: ({ children }) => (
-        <AuthStateProvider value={{ authUser: { userId: 41, username: "trainer-a", primaryRole: "ROLE_TRAINER", roles: ["ROLE_TRAINER"] } }}>
-          {children}
-        </AuthStateProvider>
+        <QueryClientProvider client={queryClient}>
+          <AuthStateProvider value={{ authUser: { userId: 41, username: "trainer-a", primaryRole: "ROLE_TRAINER", roles: ["ROLE_TRAINER"] } }}>
+            {children}
+          </AuthStateProvider>
+        </QueryClientProvider>
       )
     });
 
@@ -83,7 +108,9 @@ describe("useReservationTargetsQuery", () => {
       await result.current.loadReservationTargets();
     });
 
-    expect(result.current.reservationTargets.map((target) => target.memberId)).toEqual([101]);
+    await vi.waitFor(() => {
+      expect(result.current.reservationTargets.map((target) => target.memberId)).toEqual([101]);
+    });
   });
 
   it("reuses cached target results for the same query", async () => {
@@ -109,8 +136,13 @@ describe("useReservationTargetsQuery", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
+    const queryClient = createTestQueryClient();
     const { result } = renderHook(() => useReservationTargetsQuery(), {
-      wrapper: ({ children }) => <AuthStateProvider>{children}</AuthStateProvider>
+      wrapper: ({ children }) => (
+        <QueryClientProvider client={queryClient}>
+          <AuthStateProvider>{children}</AuthStateProvider>
+        </QueryClientProvider>
+      )
     });
 
     await act(async () => {
@@ -124,7 +156,12 @@ describe("useReservationTargetsQuery", () => {
   });
 
   it("keeps reservation target actions stable across rerenders", () => {
-    const wrapper = ({ children }: { children: ReactNode }) => <AuthStateProvider>{children}</AuthStateProvider>;
+    const queryClient = createTestQueryClient();
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>
+        <AuthStateProvider>{children}</AuthStateProvider>
+      </QueryClientProvider>
+    );
     const { result, rerender } = renderHook(() => useReservationTargetsQuery(), { wrapper });
 
     const firstLoad = result.current.loadReservationTargets;

@@ -1,15 +1,33 @@
 import { useEffect } from "react";
+import {
+  Alert,
+  Button,
+  Card,
+  Col,
+  Empty,
+  Flex,
+  Form,
+  InputNumber,
+  Pagination,
+  Row,
+  Select,
+  Space,
+  Statistic,
+  Table,
+  Tag,
+  Typography
+} from "antd";
+import type { ColumnsType } from "antd/es/table";
+import { ReloadOutlined, NotificationOutlined, PlayCircleOutlined } from "@ant-design/icons";
 
 import { useAuthState } from "../../app/auth";
 import { hasAnyRole } from "../../app/roles";
-import { formatDate } from "../../shared/format";
 import { usePagination } from "../../shared/hooks/usePagination";
-import { PaginationControls } from "../../shared/ui/PaginationControls";
 import { createDefaultCrmFilters } from "./modules/types";
 import { useCrmHistoryQuery } from "./modules/useCrmHistoryQuery";
 import { useCrmPrototypeState } from "./modules/useCrmPrototypeState";
 
-import styles from "./CrmPage.module.css";
+const { Title, Text, Paragraph } = Typography;
 
 function formatDateTime(value: string | null) {
   if (!value) {
@@ -22,11 +40,21 @@ function formatDateTime(value: string | null) {
   });
 }
 
-const statusMap: Record<string, { label: string; class: string }> = {
-  "SENT": { label: "발송 완료", class: "pill ok" },
-  "PENDING": { label: "대기 중", class: "pill info" },
-  "RETRY_WAIT": { label: "재시도 예정", class: "pill warn" },
-  "DEAD": { label: "실패", class: "pill danger" }
+const statusMap: Record<string, { label: string; color: string }> = {
+  "SENT": { label: "발송 완료", color: "success" },
+  "PENDING": { label: "대기 중", color: "processing" },
+  "RETRY_WAIT": { label: "재시도 예정", color: "warning" },
+  "DEAD": { label: "실패", color: "error" }
+};
+
+type CrmHistoryRow = {
+  crmMessageEventId: number;
+  memberId: number;
+  eventType: string;
+  sendStatus: string;
+  attemptCount: number;
+  lastErrorMessage: string | null;
+  createdAt: string;
 };
 
 export default function CrmPage() {
@@ -45,7 +73,12 @@ export default function CrmPage() {
     processCrmQueue
   } = useCrmPrototypeState();
   
-  const { crmHistoryRows, crmHistoryLoading, crmHistoryError, loadCrmHistory, resetCrmHistoryQuery } = useCrmHistoryQuery();
+  const {
+    crmHistoryRows,
+    crmHistoryLoading,
+    crmHistoryError,
+    refetchCrmHistory
+  } = useCrmHistoryQuery(crmFilters);
   
   const isLiveCrmRoleSupported =
     isMockMode || hasAnyRole(authUser, ["ROLE_CENTER_ADMIN", "ROLE_DESK"]);
@@ -54,6 +87,7 @@ export default function CrmPage() {
     initialPageSize: 10,
     resetDeps: [crmHistoryRows.length, crmFilters.sendStatus, crmFilters.limit]
   });
+
   const pendingCount = crmHistoryRows.filter((row) => row.sendStatus === "PENDING" || row.sendStatus === "RETRY_WAIT").length;
   const failedCount = crmHistoryRows.filter((row) => row.sendStatus === "DEAD").length;
   const sentCount = crmHistoryRows.filter((row) => row.sendStatus === "SENT").length;
@@ -61,220 +95,246 @@ export default function CrmPage() {
   useEffect(() => {
     if (!isLiveCrmRoleSupported) {
       clearCrmFeedback();
-      resetCrmHistoryQuery();
       return;
     }
-    void loadCrmHistory(crmFilters);
-  }, [clearCrmFeedback, crmFilters, isLiveCrmRoleSupported, loadCrmHistory, resetCrmHistoryQuery]);
-
-  async function reloadHistory(filters = crmFilters) {
-    if (!isLiveCrmRoleSupported) return;
-    await loadCrmHistory(filters);
-  }
+  }, [clearCrmFeedback, isLiveCrmRoleSupported]);
 
   async function runTrigger() {
-    const ok = await triggerCrmExpiryReminder();
-    if (ok) await reloadHistory();
+    await triggerCrmExpiryReminder();
   }
 
   async function runProcess() {
-    const ok = await processCrmQueue();
-    if (ok) await reloadHistory();
+    await processCrmQueue();
   }
 
+  const columns: ColumnsType<CrmHistoryRow> = [
+    {
+      title: "대상 / 로그",
+      key: "target",
+      render: (_, record) => (
+        <Space direction="vertical" size={2}>
+          <Text strong style={{ fontSize: "0.84rem" }}>회원 #{record.memberId}</Text>
+          <Text type="secondary" style={{ fontSize: "0.75rem" }}>로그 #{record.crmMessageEventId}</Text>
+        </Space>
+      )
+    },
+    {
+      title: "이벤트",
+      dataIndex: "eventType",
+      key: "eventType",
+      render: (type) => <Text strong style={{ fontSize: "0.84rem" }}>{type}</Text>
+    },
+    {
+      title: "상태",
+      dataIndex: "sendStatus",
+      key: "sendStatus",
+      render: (status) => {
+        const config = statusMap[status as string] || { label: status as string, color: "default" };
+        return <Tag color={config.color}>{config.label}</Tag>;
+      }
+    },
+    {
+      title: "시도 횟수",
+      key: "attempt",
+      render: (_, record) => (
+        <Space direction="vertical" size={2}>
+          <Text style={{ fontSize: "0.84rem" }}>{record.attemptCount} / 3 시도</Text>
+          {record.lastErrorMessage && (
+            <Text type="danger" style={{ fontSize: "0.75rem" }}>실패 사유는 운영 로그 확인</Text>
+          )}
+        </Space>
+      )
+    },
+    {
+      title: "기록 시각",
+      dataIndex: "createdAt",
+      key: "createdAt",
+      align: "right",
+      render: (time) => <Text type="secondary" style={{ fontSize: "0.84rem" }}>{formatDateTime(time)}</Text>
+    }
+  ];
+
   return (
-    <section className="ops-shell">
-      <div className="ops-hero">
-        <div className="ops-hero__copy">
-          <span className="ops-eyebrow">메시지 큐</span>
-          <h1 className="ops-title">CRM 운영</h1>
-          <p className="ops-subtitle">만료 안내 대상자를 적재하고 메시지 발송 상태를 한 화면에서 점검할 수 있습니다.</p>
-          <div className="ops-meta">
-            <span className="ops-meta__pill">큐 자동화</span>
-            <span className="ops-meta__pill">발송 감사</span>
-            <span className="ops-meta__pill">권한 기반 제한</span>
-          </div>
-        </div>
-        <button
-          type="button"
-          className="secondary-button ops-action-button"
-          disabled={!isLiveCrmRoleSupported}
-          onClick={() => {
-            clearCrmFeedback();
-            const nextFilters = createDefaultCrmFilters();
-            setCrmFilters(nextFilters);
-            void reloadHistory(nextFilters);
-          }}
-        >
-          로그 새로고침
-        </button>
-      </div>
+    <Flex vertical gap={24}>
+      <Card>
+        <Flex justify="space-between" align="center" wrap="wrap" gap={16}>
+          <Space direction="vertical" size={4}>
+            <Text type="secondary" style={{ fontSize: "0.72rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "#1677ff" }}>
+              메시지 큐
+            </Text>
+            <Title level={2} style={{ margin: 0 }}>CRM 운영</Title>
+            <Paragraph type="secondary" style={{ margin: 0, maxWidth: 640 }}>
+              만료 안내 대상자를 적재하고 메시지 발송 상태를 한 화면에서 점검할 수 있습니다.
+            </Paragraph>
+            <Space wrap>
+              <Tag color="blue">큐 자동화</Tag>
+              <Tag color="cyan">발송 감사</Tag>
+              <Tag color="purple">권한 기반 제한</Tag>
+            </Space>
+          </Space>
+          <Button
+            icon={<ReloadOutlined />}
+            disabled={!isLiveCrmRoleSupported}
+            onClick={() => {
+              clearCrmFeedback();
+              const nextFilters = createDefaultCrmFilters();
+              setCrmFilters(nextFilters);
+              void refetchCrmHistory();
+            }}
+          >
+            로그 새로고침
+          </Button>
+        </Flex>
+      </Card>
 
-      <div className="ops-stat-strip">
-        <div className="ops-stat-card">
-          <span className="ops-stat-card__label">전체 로그</span>
-          <span className="ops-stat-card__value">{crmHistoryRows.length}</span>
-          <span className="ops-stat-card__hint">조회 조건 내의 전체 발송 이력</span>
-        </div>
-        <div className="ops-stat-card">
-          <span className="ops-stat-card__label">대기 중인 큐</span>
-          <span className={`ops-stat-card__value ${styles.info}`}>{pendingCount}</span>
-          <span className="ops-stat-card__hint">발송 대기 및 재시도 예정 건수</span>
-        </div>
-        <div className="ops-stat-card">
-          <span className="ops-stat-card__label">발송 성공</span>
-          <span className={`ops-stat-card__value ${styles.ok}`}>{sentCount}</span>
-          <span className="ops-stat-card__hint">최종 발송 완료 처리된 이벤트</span>
-        </div>
-        <div className="ops-stat-card">
-          <span className="ops-stat-card__label">최종 실패</span>
-          <span className={`ops-stat-card__value ${styles.danger}`}>{failedCount}</span>
-          <span className="ops-stat-card__hint">수동 확인이 필요한 DEAD 상태 건수</span>
-        </div>
-      </div>
+      <Row gutter={[16, 16]}>
+        {[
+          { label: "전체 로그", value: crmHistoryRows.length, hint: "조회 조건 내 전체 이력" },
+          { label: "대기 중인 큐", value: pendingCount, hint: "발송 대기 및 재시도", color: "#1677ff" },
+          { label: "발송 성공", value: sentCount, hint: "최종 발송 완료", color: "#52c41a" },
+          { label: "최종 실패", value: failedCount, hint: "DEAD 상태(수동 확인 필요)", color: "#ff4d4f" }
+        ].map((stat) => (
+          <Col xs={12} sm={6} key={stat.label}>
+            <Card>
+              <Statistic
+                title={<Text type="secondary" style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase" }}>{stat.label}</Text>}
+                value={stat.value}
+                valueStyle={{ fontWeight: 800, color: stat.color }}
+                suffix={<Text type="secondary" style={{ fontSize: "0.75rem", display: "block" }}>{stat.hint}</Text>}
+              />
+            </Card>
+          </Col>
+        ))}
+      </Row>
 
-      <article className="panel-card">
-        <div className="ops-surface-grid">
-          <div className="ops-block">
-            <span className="ops-focus-card__eyebrow">큐 자동화 제어</span>
-            <div className="stack-md mt-sm">
-               <label className="stack-sm">
-                 <span className="text-xs brand-title">만료 안내 기준 (D-Day)</span>
-                 <input
-                   className="input"
-                   type="number"
-                   min={0}
-                   max={30}
-                   value={crmTriggerDaysAhead}
-                   disabled={!isLiveCrmRoleSupported}
-                   onChange={(event) => setCrmTriggerDaysAhead(event.target.value)}
-                   placeholder="일수 입력"
-                 />
-                 <span className="text-xs text-muted">입력한 일수만큼 만료가 남은 회원을 추출합니다.</span>
-               </label>
-               <div className="ops-table-actions mt-sm">
-                  <button
-                    type="button"
-                    className="primary-button ops-action-button"
+      <Row gutter={[24, 24]}>
+        <Col xs={24} lg={8}>
+          <Card
+            title={
+              <Space direction="vertical" size={2}>
+                <Title level={5} style={{ margin: 0 }}>큐 자동화 제어</Title>
+                <Text type="secondary" style={{ fontSize: "0.84rem" }}>만료 안내 기준 및 메시지 큐 실행</Text>
+              </Space>
+            }
+          >
+            <Flex vertical gap={16}>
+              <Form layout="vertical">
+                <Form.Item label={<Text strong style={{ fontSize: "0.84rem" }}>만료 안내 기준 (D-Day)</Text>}>
+                  <Flex vertical gap={8}>
+                    <InputNumber
+                      min={0}
+                      max={30}
+                      style={{ width: "100%" }}
+                      value={Number(crmTriggerDaysAhead)}
+                      disabled={!isLiveCrmRoleSupported}
+                      onChange={(val) => setCrmTriggerDaysAhead(String(val || 0))}
+                      placeholder="일수 입력"
+                    />
+                    <Text type="secondary" style={{ fontSize: "0.75rem" }}>
+                      입력한 일수만큼 만료가 남은 회원을 추출합니다.
+                    </Text>
+                  </Flex>
+                </Form.Item>
+                <Flex vertical gap={8}>
+                  <Button
+                    type="primary"
+                    block
+                    icon={<NotificationOutlined />}
                     onClick={() => void runTrigger()}
+                    loading={crmTriggerSubmitting}
                     disabled={crmTriggerSubmitting || !isLiveCrmRoleSupported}
                   >
-                    {crmTriggerSubmitting ? "적재 중..." : "안내 대상 적재"}
-                  </button>
-                  <button
-                    type="button"
-                    className="secondary-button ops-action-button"
+                    안내 대상 적재
+                  </Button>
+                  <Button
+                    block
+                    icon={<PlayCircleOutlined />}
                     onClick={() => void runProcess()}
+                    loading={crmProcessSubmitting}
                     disabled={crmProcessSubmitting || !isLiveCrmRoleSupported}
                   >
-                    {crmProcessSubmitting ? "발송 중..." : "메시지 큐 실행"}
-                  </button>
-               </div>
-            </div>
-          </div>
+                    메시지 큐 실행
+                  </Button>
+                </Flex>
+              </Form>
 
-          {/* STATUS MONITOR */}
-          <div className="ops-block">
-             <span className="ops-focus-card__eyebrow">운영 피드백 및 상태</span>
-             <div className="ops-feedback-stack mt-md">
+              <div style={{ marginTop: 8 }}>
+                <Text type="secondary" style={{ fontSize: "0.84rem", display: "block", marginBottom: 12 }}>
+                  운영 피드백 및 상태
+                </Text>
                 {!isLiveCrmRoleSupported && (
-                  <div className="field-ops-note field-ops-note--restricted">
-                    <span className="field-ops-note__label">운영 권한 제한</span>
-                    <div className="text-sm brand-title mt-xs">현재 관리자 권한이 없어 CRM 발송 작업을 실행할 수 없습니다.</div>
-                    <div className="mt-xs text-sm">시스템 설정에서 적절한 운영 역할을 부여받아야 합니다.</div>
-                  </div>
+                  <Alert
+                    message="운영 권한 제한"
+                    description="현재 관리자 권한이 없어 CRM 발송 작업을 실행할 수 없습니다."
+                    type="error"
+                    showIcon
+                  />
                 )}
-                {crmPanelMessage && <div className={`pill ok full-span ${styles.feedbackPill}`}>{crmPanelMessage}</div>}
-                {crmPanelError && <div className={`pill danger full-span ${styles.feedbackPill}`}>{crmPanelError}</div>}
-                {!crmPanelMessage && !crmPanelError && (
-                  <div className={`ops-empty ${styles.emptyFeed}`}>
-                    <p className="text-muted text-sm">실행 대기 중입니다.<br/>좌측 패널에서 작업을 선택해 주세요.</p>
-                  </div>
+                {crmPanelMessage && <Alert message={crmPanelMessage} type="success" showIcon style={{ marginBottom: 8 }} />}
+                {crmPanelError && <Alert message={crmPanelError} type="error" showIcon style={{ marginBottom: 8 }} />}
+                {!crmPanelMessage && !crmPanelError && isLiveCrmRoleSupported && (
+                  <Empty
+                    description={<Text type="secondary">실행 대기 중입니다.<br />작업을 선택해 주세요.</Text>}
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  />
                 )}
-             </div>
-          </div>
-        </div>
-      </article>
+              </div>
+            </Flex>
+          </Card>
+        </Col>
 
-      {/* HISTORY TABLE */}
-      <article className="panel-card">
-        <div className="ops-section__header">
-          <div>
-            <h2 className="ops-section__title">발송 로그 및 이력</h2>
-            <p className="ops-section__subtitle">발송 상태, 재시도, 실패 이력을 확인합니다.</p>
-          </div>
-          <div className="row-actions">
-              <select
-                className="input"
+        <Col xs={24} lg={16}>
+          <Card
+            title={
+              <Space direction="vertical" size={2}>
+                <Title level={5} style={{ margin: 0 }}>발송 로그 및 이력</Title>
+                <Text type="secondary" style={{ fontSize: "0.84rem" }}>상태, 재시도, 실패 이력을 확인합니다.</Text>
+              </Space>
+            }
+            extra={
+              <Select
+                aria-label="발송 상태 필터"
+                style={{ width: 140 }}
                 value={crmFilters.sendStatus}
                 disabled={!isLiveCrmRoleSupported}
-                onChange={(event) =>
+                onChange={(value) =>
                   setCrmFilters((prev) => ({
                     ...prev,
-                    sendStatus: event.target.value as typeof prev.sendStatus
+                    sendStatus: value as typeof prev.sendStatus
                   }))
                 }
-              >
-                <option value="">전체 상태</option>
-                <option value="PENDING">대기 중</option>
-                <option value="RETRY_WAIT">재시도 예정</option>
-                <option value="SENT">발송 완료</option>
-                <option value="DEAD">실패</option>
-              </select>
-           </div>
-        </div>
-
-        <div className="table-shell">
-          <table className="members-table">
-            <thead>
-              <tr>
-                <th>대상</th>
-                <th>이벤트</th>
-                <th>상태</th>
-                <th>시도 횟수</th>
-                <th className="ops-right">기록 시각</th>
-              </tr>
-            </thead>
-            <tbody>
-              {historyPagination.pagedItems.map((row) => {
-                const status = statusMap[row.sendStatus] || { label: row.sendStatus, class: 'pill muted' };
-                return (
-                  <tr key={row.crmMessageEventId}>
-                    <td>
-                      <div className="stack-sm">
-                        <span className="text-sm brand-title">회원 #{row.memberId}</span>
-                        <span className="text-xs text-muted">로그 #{row.crmMessageEventId}</span>
-                      </div>
-                    </td>
-                    <td><span className="text-xs brand-title">{row.eventType}</span></td>
-                    <td><span className={status.class}>{status.label}</span></td>
-                    <td>
-                      <div className="stack-sm">
-                        <span className="text-xs brand-title">{row.attemptCount} / 3 시도</span>
-                        {row.lastErrorMessage && <span className={`text-xs text-danger ${styles.errorMsg}`}>{row.lastErrorMessage}</span>}
-                      </div>
-                    </td>
-                    <td className="ops-right">
-                      <span className="text-xs text-muted">{formatDateTime(row.createdAt)}</span>
-                    </td>
-                  </tr>
-                );
-              })}
-              {historyPagination.pagedItems.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="empty-cell">
-                    {crmHistoryLoading ? "로그 불러오는 중..." : "발송 이력이 없습니다."}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-        <div className="mt-md">
-          <PaginationControls {...historyPagination} pageSizeOptions={[10, 20]} onPageChange={historyPagination.setPage} onPageSizeChange={historyPagination.setPageSize} />
-        </div>
-      </article>
-
-    </section>
+                options={[
+                  { label: "전체 상태", value: "" },
+                  { label: "대기 중", value: "PENDING" },
+                  { label: "재시도 예정", value: "RETRY_WAIT" },
+                  { label: "발송 완료", value: "SENT" },
+                  { label: "실패", value: "DEAD" }
+                ]}
+              />
+            }
+          >
+            <Table<CrmHistoryRow>
+              rowKey="crmMessageEventId"
+              loading={crmHistoryLoading}
+              columns={columns}
+              dataSource={historyPagination.pagedItems}
+              pagination={{
+                current: historyPagination.page,
+                pageSize: historyPagination.pageSize,
+                total: historyPagination.totalItems,
+                showSizeChanger: true,
+                pageSizeOptions: ["10", "20"],
+                onChange: (page, pageSize) => {
+                  historyPagination.setPage(page);
+                  historyPagination.setPageSize(pageSize);
+                }
+              }}
+              locale={{ emptyText: crmHistoryLoading ? "로그를 불러오는 중..." : "발송 이력이 없습니다." }}
+              scroll={{ x: 600 }}
+            />
+          </Card>
+        </Col>
+      </Row>
+    </Flex>
   );
 }

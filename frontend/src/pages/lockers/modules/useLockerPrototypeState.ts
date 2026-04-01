@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { apiPost, isMockApiMode } from "../../../api/client";
-import { invalidateQueryDomains } from "../../../api/queryInvalidation";
+import { queryKeys } from "../../../app/queryHelpers";
 import {
   createEmptyLockerAssignForm,
   type LockerAssignForm,
@@ -9,6 +10,7 @@ import {
 } from "./types";
 
 export function useLockerPrototypeState(selectedMemberId?: number | null) {
+  const queryClient = useQueryClient();
   const [lockerFilters, setLockerFilters] = useState<LockerFilters>({
     lockerStatus: "",
     lockerZone: "",
@@ -39,6 +41,10 @@ export function useLockerPrototypeState(selectedMemberId?: number | null) {
     setLockerPanelError(null);
   }
 
+  const invalidateLockers = async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.lockers.all });
+  };
+
   async function handleLockerAssign() {
     clearLockerFeedback();
     setLockerAssignSubmitting(true);
@@ -66,12 +72,14 @@ export function useLockerPrototypeState(selectedMemberId?: number | null) {
             endDate: lockerAssignForm.endDate,
             memo: lockerAssignForm.memo.trim() || null,
           });
-      invalidateQueryDomains(["lockerSlots", "lockerAssignments"]);
-      if ("ok" in result && !result.ok) {
-        setLockerPanelError(result.message);
+
+      await invalidateLockers();
+      
+      if ("ok" in (result as any) && !(result as any).ok) {
+        setLockerPanelError((result as any).message);
         return false;
       }
-      setLockerPanelMessage(result.message);
+      setLockerPanelMessage((result as any).message || "라커가 성공적으로 배정되었습니다.");
       setLockerAssignForm(createEmptyLockerAssignForm(selectedMemberId));
       return true;
     } finally {
@@ -92,12 +100,14 @@ export function useLockerPrototypeState(selectedMemberId?: number | null) {
             `/api/v1/lockers/assignments/${lockerAssignmentId}/return`,
             {},
           );
-      invalidateQueryDomains(["lockerSlots", "lockerAssignments"]);
-      if ("ok" in result && !result.ok) {
-        setLockerPanelError(result.message);
+
+      await invalidateLockers();
+
+      if ("ok" in (result as any) && !(result as any).ok) {
+        setLockerPanelError((result as any).message);
         return false;
       }
-      setLockerPanelMessage(result.message);
+      setLockerPanelMessage((result as any).message || "라커가 반납 처리되었습니다.");
       return true;
     } finally {
       setLockerReturnSubmittingId(null);

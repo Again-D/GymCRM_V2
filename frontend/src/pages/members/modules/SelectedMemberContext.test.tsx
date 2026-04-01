@@ -1,15 +1,22 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, act } from "@testing-library/react";
 import { type ReactNode, useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { setMockApiModeForTests } from "../../../api/client";
+import { appQueryClient } from "../../../app/queryClient";
 import { AuthStateProvider } from "../../../app/auth";
+import { ThemeProvider } from "../../../app/theme";
 import { SelectedMemberProvider, useSelectedMemberStore } from "./SelectedMemberContext";
+import { FoundationProviders } from "../../../app/providers";
+import { selectedMemberStore } from "../../../app/selectedMemberStore";
 
 describe("SelectedMemberContext", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     setMockApiModeForTests(false);
+    selectedMemberStore.getState().reset();
+    appQueryClient.clear();
   });
 
   it("loads member detail into the members-domain owner store", async () => {
@@ -39,7 +46,11 @@ describe("SelectedMemberContext", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const { result } = renderHook(() => useSelectedMemberStore(), {
-      wrapper: ({ children }) => <SelectedMemberProvider>{children}</SelectedMemberProvider>
+      wrapper: ({ children }) => (
+        <FoundationProviders>
+          <SelectedMemberProvider>{children}</SelectedMemberProvider>
+        </FoundationProviders>
+      )
     });
 
     let loaded = false;
@@ -49,6 +60,8 @@ describe("SelectedMemberContext", () => {
 
     expect(loaded).toBe(true);
     expect(result.current.selectedMemberId).toBe(17);
+    // Note: Since we use TanStack Query, the second expect might need act or wait if it's async-heavy,
+    // but foundation store's integration should ideally show state after selectMember resolves.
     expect(result.current.selectedMember?.memberName).toBe("김회원");
   });
 
@@ -59,9 +72,9 @@ describe("SelectedMemberContext", () => {
 
     const { result } = renderHook(() => useSelectedMemberStore(), {
       wrapper: ({ children }) => (
-        <AuthStateProvider value={{ authUser: { userId: 41, username: "trainer-a", primaryRole: "ROLE_TRAINER", roles: ["ROLE_TRAINER"] } }}>
+        <FoundationProviders authValue={{ authUser: { userId: 41, username: "trainer-a", primaryRole: "ROLE_TRAINER", roles: ["ROLE_TRAINER"] } }}>
           <SelectedMemberProvider>{children}</SelectedMemberProvider>
-        </AuthStateProvider>
+        </FoundationProviders>
       )
     });
 
@@ -75,6 +88,67 @@ describe("SelectedMemberContext", () => {
     expect(result.current.selectedMember).toBeNull();
     expect(result.current.selectedMemberError).toContain("회원 선택 화면");
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("clears a previously selected member when a later selection fails the access precheck", async () => {
+    setMockApiModeForTests(true);
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+    queryClient.setQueryData(["members", "detail", "101"], {
+      memberId: 101,
+      centerId: 1,
+      memberName: "김민수",
+      phone: "010-1234-5678",
+      email: null,
+      gender: null,
+      birthDate: null,
+      memberStatus: "ACTIVE",
+      joinDate: "2026-01-04",
+      consentSms: true,
+      consentMarketing: false,
+      memo: null,
+    });
+
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <ThemeProvider>
+        <AuthStateProvider
+          value={{
+            authUser: {
+              userId: 41,
+              username: "trainer-a",
+              primaryRole: "ROLE_TRAINER",
+              roles: ["ROLE_TRAINER"],
+            },
+          }}
+        >
+          <QueryClientProvider client={queryClient}>
+            <SelectedMemberProvider>{children}</SelectedMemberProvider>
+          </QueryClientProvider>
+        </AuthStateProvider>
+      </ThemeProvider>
+    );
+
+    const { result } = renderHook(() => useSelectedMemberStore(), { wrapper });
+
+    await act(async () => {
+      await result.current.selectMember(101);
+    });
+
+    expect(result.current.selectedMemberId).toBe(101);
+    expect(result.current.selectedMember?.memberName).toBe("김민수");
+
+    await act(async () => {
+      await result.current.selectMember(102);
+    });
+
+    expect(result.current.selectedMemberId).toBeNull();
+    expect(result.current.selectedMember).toBeNull();
+    expect(result.current.selectedMemberError).toContain("회원 선택 화면");
   });
 
   it("clears selected member when auth identity changes", async () => {
@@ -115,9 +189,9 @@ describe("SelectedMemberContext", () => {
       } | null>({ userId: 11, username: "jwt-admin", primaryRole: "ROLE_CENTER_ADMIN", roles: ["ROLE_CENTER_ADMIN"] });
       setAuthUser = setAuthUserState;
       return (
-        <AuthStateProvider value={{ authUser }}>
+        <FoundationProviders authValue={{ authUser }}>
           <SelectedMemberProvider>{children}</SelectedMemberProvider>
-        </AuthStateProvider>
+        </FoundationProviders>
       );
     };
 

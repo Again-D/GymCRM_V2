@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { toUserFacingErrorMessage } from "../../../app/uiError";
 import type {
   MembershipPaymentRecord,
   PurchasedMembership,
@@ -377,9 +378,7 @@ export function useMembershipPrototypeState(
       );
       return result.membership;
     } catch (error) {
-      setMembershipPanelError(
-        error instanceof Error ? error.message : "회원권 생성에 실패했습니다.",
-      );
+      setMembershipPanelError(toUserFacingErrorMessage(error, "회원권 생성에 실패했습니다."));
       return null;
     }
   }
@@ -408,9 +407,7 @@ export function useMembershipPrototypeState(
         `회원권 #${membership.membershipId}를 홀딩했습니다.`,
       );
     } catch (error) {
-      setMembershipPanelError(
-        error instanceof Error ? error.message : "회원권 홀딩에 실패했습니다.",
-      );
+      setMembershipPanelError(toUserFacingErrorMessage(error, "회원권 홀딩에 실패했습니다."));
     }
   }
 
@@ -433,9 +430,7 @@ export function useMembershipPrototypeState(
         `회원권 #${membership.membershipId} 홀딩을 해제했습니다.`,
       );
     } catch (error) {
-      setMembershipPanelError(
-        error instanceof Error ? error.message : "홀딩 해제에 실패했습니다.",
-      );
+      setMembershipPanelError(toUserFacingErrorMessage(error, "홀딩 해제에 실패했습니다."));
     }
   }
 
@@ -459,11 +454,7 @@ export function useMembershipPrototypeState(
       }));
       return response.calculation;
     } catch (error) {
-      setMembershipPanelError(
-        error instanceof Error
-          ? error.message
-          : "환불 미리보기를 계산하지 못했습니다.",
-      );
+      setMembershipPanelError(toUserFacingErrorMessage(error, "환불 미리보기를 계산하지 못했습니다."));
       return null;
     }
   }
@@ -497,9 +488,7 @@ export function useMembershipPrototypeState(
         `회원권 #${membership.membershipId}를 환불 처리했습니다.`,
       );
     } catch (error) {
-      setMembershipPanelError(
-        error instanceof Error ? error.message : "회원권 환불에 실패했습니다.",
-      );
+      setMembershipPanelError(toUserFacingErrorMessage(error, "회원권 환불에 실패했습니다."));
     }
   }
 

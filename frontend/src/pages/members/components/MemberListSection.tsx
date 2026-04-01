@@ -1,12 +1,30 @@
 import { useEffect, useState } from "react";
-
-import styles from "../MemberList.module.css";
+import {
+  Alert,
+  Button,
+  Card,
+  Col,
+  DatePicker,
+  Flex,
+  Form,
+  Input,
+  Modal,
+  Row,
+  Select,
+  Space,
+  Statistic,
+  Table,
+  Tag,
+  Typography,
+  Checkbox
+} from "antd";
+import { PlusOutlined, SearchOutlined, RestOutlined, UserOutlined, ContactsOutlined, SolutionOutlined } from "@ant-design/icons";
+import type { ColumnsType } from "antd/es/table";
 import { useNavigate } from "react-router-dom";
+import dayjs from "dayjs";
 
 import { formatDate } from "../../../shared/format";
 import { usePagination } from "../../../shared/hooks/usePagination";
-import { Modal } from "../../../shared/ui/Modal";
-import { PaginationControls } from "../../../shared/ui/PaginationControls";
 import { MembershipPeriodFilter } from "./MembershipPeriodFilter";
 import { SelectedMemberContextBadge } from "./SelectedMemberContextBadge";
 import { SelectedMemberSummaryCard } from "./SelectedMemberSummaryCard";
@@ -14,13 +32,16 @@ import { useMembershipDateFilter } from "../modules/useMembershipDateFilter";
 import { useMemberManagementState } from "../modules/useMemberManagementState";
 import { useMembersQuery } from "../modules/useMembersQuery";
 import { useSelectedMemberStore } from "../modules/SelectedMemberContext";
+import type { MemberSummary } from "../modules/types";
 
-function operationalStatusClass(status: "정상" | "홀딩중" | "만료임박" | "만료" | "없음") {
-  if (status === "정상") return "pill ok";
-  if (status === "홀딩중") return "pill hold";
-  if (status === "만료임박") return "pill warn";
-  if (status === "만료") return "pill danger";
-  return "pill muted";
+const { Title, Text, Paragraph } = Typography;
+
+function operationalStatusColor(status: "정상" | "홀딩중" | "만료임박" | "만료" | "없음" | string) {
+  if (status === "정상") return "success";
+  if (status === "홀딩중") return "processing";
+  if (status === "만료임박") return "warning";
+  if (status === "만료") return "error";
+  return "default";
 }
 
 export function MemberListSection() {
@@ -31,6 +52,7 @@ export function MemberListSection() {
   const [memberStatus, setMemberStatus] = useState("");
   const [membershipOperationalStatus, setMembershipOperationalStatus] = useState("");
   const { selectedMemberId, selectedMember, selectedMemberLoading, clearSelectedMember, selectMember } = useSelectedMemberStore();
+  
   const {
     modalState,
     memberForm,
@@ -50,25 +72,20 @@ export function MemberListSection() {
     selectedMemberId,
     selectMember
   });
-  const { members, membersLoading, membersQueryError, loadMembers } = useMembersQuery({
-    getDefaultFilters: () => ({
-      name,
-      phone,
-      memberStatus,
-      membershipOperationalStatus,
-      dateFrom: dateFilter.dateFrom,
-      dateTo: dateFilter.dateTo
-    })
+
+  const { members, membersLoading, membersQueryError } = useMembersQuery({
+    name,
+    phone,
+    memberStatus,
+    membershipOperationalStatus,
+    dateFrom: dateFilter.dateFrom,
+    dateTo: dateFilter.dateTo
   });
 
   const pagination = usePagination(members, {
     initialPageSize: 20,
     resetDeps: [name, phone, memberStatus, membershipOperationalStatus, dateFilter.presetRange, dateFilter.dateFrom, dateFilter.dateTo, members.length]
   });
-
-  useEffect(() => {
-    void loadMembers();
-  }, [loadMembers]);
 
   useEffect(() => {
     if (!selectedMemberId && !selectedMemberLoading && modalState.kind === "detail") {
@@ -98,443 +115,457 @@ export function MemberListSection() {
     navigate(path);
   }
 
-  async function runMemberSubmit() {
-    await submitMemberForm();
-  }
+  const memberFormModalTitle = modalState.kind === "create"
+    ? "신규 회원 등록"
+    : modalState.kind === "edit"
+      ? `회원 #${modalState.memberId} 수정`
+      : "회원 정보";
+  const deactivationMemberId = modalState.kind === "deactivate" ? modalState.memberId : null;
 
-  async function runDeactivateMember() {
-    if (modalState.kind !== "deactivate") {
-      return;
+  const columns: ColumnsType<MemberSummary> = [
+    {
+      title: "ID",
+      dataIndex: "memberId",
+      key: "memberId",
+      width: 70,
+      render: (id) => <Text strong>{id}</Text>
+    },
+    {
+      title: "이름",
+      dataIndex: "memberName",
+      key: "memberName",
+      render: (name) => <Text>{name}</Text>
+    },
+    {
+      title: "연락처",
+      dataIndex: "phone",
+      key: "phone",
+      render: (phone) => <Text type="secondary" style={{ fontSize: "0.84rem" }}>{phone}</Text>
+    },
+    {
+      title: "상태",
+      dataIndex: "memberStatus",
+      key: "memberStatus",
+      render: (status) => (
+        <Tag color={status === "ACTIVE" ? "success" : "default"}>
+          {status === "ACTIVE" ? "활성" : "비활성"}
+        </Tag>
+      )
+    },
+    {
+      title: "운영 상태",
+      dataIndex: "membershipOperationalStatus",
+      key: "membershipOperationalStatus",
+      render: (status) => (
+        <Tag color={operationalStatusColor(status)}>
+          {status}
+        </Tag>
+      )
+    },
+    {
+      title: "만료일",
+      dataIndex: "membershipExpiryDate",
+      key: "membershipExpiryDate",
+      render: (date) => <Text style={{ fontSize: "0.84rem" }}>{formatDate(date)}</Text>
+    },
+    {
+      title: "PT 잔여",
+      dataIndex: "remainingPtCount",
+      key: "remainingPtCount",
+      align: "center",
+      render: (count) => <Text strong>{count != null && count > 0 ? count : "-"}</Text>
+    },
+    {
+      title: "가입일",
+      dataIndex: "joinDate",
+      key: "joinDate",
+      render: (date) => <Text type="secondary" style={{ fontSize: "0.84rem" }}>{formatDate(date)}</Text>
+    },
+    {
+      title: "액션",
+      key: "actions",
+      align: "right",
+      render: (_, record) => (
+        <Space>
+          <Button
+            size="small"
+            onClick={(event) => {
+              event.stopPropagation();
+              void goToMemberContext("/memberships", record.memberId);
+            }}
+          >
+            회원권
+          </Button>
+          <Button
+            size="small"
+            onClick={(event) => {
+              event.stopPropagation();
+              void goToMemberContext("/reservations", record.memberId);
+            }}
+          >
+            예약
+          </Button>
+        </Space>
+      )
     }
-    await deactivateMember(modalState.memberId);
-  }
-
-  const formTitle = modalState.kind === "create" ? "신규 회원 등록" : modalState.kind === "edit" ? `회원 #${modalState.memberId} 수정` : "회원 수정";
+  ];
 
   return (
-    <section className="ops-shell">
-      <article className="panel-card">
-        <div className="ops-hero">
-          <div className="ops-hero__copy">
-            <span className="ops-eyebrow">운영 디렉터리</span>
-            <h1 className="ops-title">회원 디렉터리</h1>
-            <p className="ops-subtitle">회원 상태를 빠르게 확인하고, 선택한 회원을 다른 업무 화면으로 자연스럽게 넘길 수 있습니다.</p>
-            <div className="ops-meta">
-              <span className="ops-meta__pill">목록 중심</span>
-              <span className="ops-meta__pill">업무 간 컨텍스트 연동</span>
-              <span className="ops-meta__pill">데스크 + 현장 대응</span>
-            </div>
-          </div>
-          {canManageMembers ? (
-            <button type="button" className="primary-button" onClick={startCreateMember}>
+    <Flex vertical gap={24}>
+      <Card>
+        <Flex justify="space-between" align="center" wrap="wrap" gap={16}>
+          <Space direction="vertical" size={4}>
+            <Text type="secondary" style={{ fontSize: "0.72rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "#1677ff" }}>
+              운영 디렉터리
+            </Text>
+            <Title level={2} style={{ margin: 0 }}>회원 디렉터리</Title>
+            <Paragraph type="secondary" style={{ margin: 0, maxWidth: 640 }}>
+              회원 상태를 빠르게 확인하고, 선택한 회원을 다른 업무 화면으로 자연스럽게 넘길 수 있습니다.
+            </Paragraph>
+            <Space wrap>
+              <Tag color="blue">목록 중심</Tag>
+              <Tag color="cyan">업무 간 컨텍스트 연동</Tag>
+              <Tag color="purple">데스크 + 현장 대응</Tag>
+            </Space>
+          </Space>
+          {canManageMembers && (
+            <Button type="primary" size="large" icon={<PlusOutlined />} onClick={startCreateMember}>
               회원 등록
-            </button>
-          ) : null}
-        </div>
+            </Button>
+          )}
+        </Flex>
+      </Card>
 
-        <div className="ops-stat-strip">
-          <div className="ops-stat-card">
-            <span className="ops-stat-card__label">현재 조회 결과</span>
-            <span className="ops-stat-card__value">{members.length}</span>
-            <span className="ops-stat-card__hint">현재 필터 기준으로 불러온 회원 수입니다.</span>
-          </div>
-          <div className="ops-stat-card">
-            <span className="ops-stat-card__label">선택된 컨텍스트</span>
-            <span className="ops-stat-card__value">{selectedMemberId ?? "-"}</span>
-            <span className="ops-stat-card__hint">{selectedMemberId ? "다음 업무 화면으로 이어집니다." : "선택된 회원이 없습니다."}</span>
-          </div>
-        </div>
+      <Row gutter={[16, 16]}>
+        <Col xs={12} sm={6}>
+          <Card>
+            <Statistic
+              title={<Text type="secondary" style={{ fontSize: "0.75rem", fontWeight: 700 }}>현재 조회 결과</Text>}
+              value={members.length}
+              suffix={<Text type="secondary" style={{ fontSize: "0.75rem", display: "block" }}>현재 필터 기준 회원 수</Text>}
+            />
+          </Card>
+        </Col>
+        <Col xs={12} sm={6}>
+          <Card>
+            <Statistic
+              title={<Text type="secondary" style={{ fontSize: "0.75rem", fontWeight: 700 }}>선택된 컨텍스트</Text>}
+              value={selectedMemberId ?? "-"}
+              valueStyle={{ color: selectedMemberId ? "#1677ff" : undefined }}
+              suffix={<Text type="secondary" style={{ fontSize: "0.75rem", display: "block" }}>{selectedMemberId ? "업무 연동 중" : "회원 미선택"}</Text>}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12}>
+          <Card style={{ height: "100%" }}>
+            <Flex justify="space-between" align="center" style={{ height: "100%" }}>
+              <SelectedMemberContextBadge />
+              <Space direction="vertical" align="end" size={0}>
+                <Text type="secondary" style={{ fontSize: "0.75rem" }}>
+                  {selectedMemberId ? "회원 정보를 모달에서 확인할 수 있습니다." : "회원을 선택하면 상세 모달이 열립니다."}
+                </Text>
+                <Button
+                  type="link"
+                  icon={<UserOutlined />}
+                  disabled={!selectedMemberId}
+                  onClick={() => selectedMemberId && openMemberDetail(selectedMemberId)}
+                >
+                  선택 정보 보기
+                </Button>
+              </Space>
+            </Flex>
+          </Card>
+        </Col>
+      </Row>
 
-        <div className={styles.selectedContextRow}>
-          <SelectedMemberContextBadge />
-          <div className={styles.selectedContextActions}>
-            <span className={styles.selectedContextHint}>
-              {selectedMemberId ? "선택된 회원 정보를 모달에서 확인할 수 있습니다." : "회원을 선택하면 상세 정보 모달이 열립니다."}
-            </span>
-            <button
-              type="button"
-              className="secondary-button"
-              disabled={!selectedMemberId}
-              onClick={() => {
-                if (selectedMemberId) {
-                  openMemberDetail(selectedMemberId);
-                }
-              }}
-            >
-              선택 정보 보기
-            </button>
-          </div>
-        </div>
-
-        <form
-          className="members-filter-grid"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void loadMembers();
-          }}
+      <Card title="검색 및 필터">
+        <Form
+          layout="vertical"
         >
-          <label>
-            <span className="text-sm">회원명</span>
-            <input value={name} onChange={(event) => setName(event.target.value)} placeholder="이름 검색" />
-          </label>
-          <label>
-            <span className="text-sm">연락처</span>
-            <input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="010-..." />
-          </label>
-          <label>
-            <span className="text-sm">회원상태</span>
-            <select value={memberStatus} onChange={(event) => {setMemberStatus(event.target.value)}}>
-              <option value="">전체 상태</option>
-              <option value="ACTIVE">활성</option>
-              <option value="INACTIVE">비활성</option>
-            </select>
-          </label>
-          <label>
-            <span className="text-sm">회원권 상태</span>
-            <select value={membershipOperationalStatus} onChange={(event) => setMembershipOperationalStatus(event.target.value)}>
-              <option value="">전체 상태</option>
-              <option value="정상">정상</option>
-              <option value="홀딩중">홀딩중</option>
-              <option value="만료임박">만료임박</option>
-              <option value="만료">만료</option>
-              <option value="없음">회원권 없음</option>
-            </select>
-          </label>
-          <MembershipPeriodFilter
-            value={dateFilter}
-            onPresetChange={applyPreset}
-            onDateFromChange={setDateFrom}
-            onDateToChange={setDateTo}
-          />
-          <div className="toolbar-actions full-span mt-sm">
-            <button type="submit" className="primary-button" disabled={membersLoading}>
-              {membersLoading ? "불러오는 중..." : "조회"}
-            </button>
-            <button
-              type="button"
-              className="secondary-button"
+          <Row gutter={[16, 0]}>
+            <Col xs={24} sm={12} lg={4}>
+              <Form.Item label="회원명">
+                <Input
+                  prefix={<UserOutlined style={{ color: "rgba(0,0,0,.25)" }} />}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="이름 검색"
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12} lg={4}>
+              <Form.Item label="연락처">
+                <Input
+                  prefix={<ContactsOutlined style={{ color: "rgba(0,0,0,.25)" }} />}
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="010-..."
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12} lg={4}>
+              <Form.Item label="회원상태">
+                <Select
+                  value={memberStatus}
+                  onChange={setMemberStatus}
+                  options={[
+                    { label: "전체 상태", value: "" },
+                    { label: "활성", value: "ACTIVE" },
+                    { label: "비활성", value: "INACTIVE" }
+                  ]}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12} lg={4}>
+              <Form.Item label="회원권 상태">
+                <Select
+                  value={membershipOperationalStatus}
+                  onChange={setMembershipOperationalStatus}
+                  options={[
+                    { label: "전체 상태", value: "" },
+                    { label: "정상", value: "정상" },
+                    { label: "홀딩중", value: "홀딩중" },
+                    { label: "만료임박", value: "만료임박" },
+                    { label: "만료", value: "만료" },
+                    { label: "회원권 없음", value: "없음" }
+                  ]}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} lg={8}>
+              <MembershipPeriodFilter
+                value={dateFilter}
+                onPresetChange={applyPreset}
+                onDateFromChange={setDateFrom}
+                onDateToChange={setDateTo}
+              />
+            </Col>
+          </Row>
+          <Flex justify="flex-end" gap={8} style={{ marginTop: 16 }}>
+            <Button
+              icon={<RestOutlined />}
               onClick={() => {
                 setName("");
                 setPhone("");
                 setMemberStatus("");
                 setMembershipOperationalStatus("");
                 reset();
-                void loadMembers({
-                  name: "",
-                  phone: "",
-                  memberStatus: "",
-                  membershipOperationalStatus: "",
-                  dateFrom: "",
-                  dateTo: ""
-                });
               }}
             >
               초기화
-            </button>
-          </div>
-        </form>
+            </Button>
+            <Button
+              type="primary"
+              htmlType="submit"
+              icon={<SearchOutlined />}
+              loading={membersLoading}
+            >
+              조회
+            </Button>
+          </Flex>
+        </Form>
+      </Card>
 
-        {membersQueryError ? <div className="pill danger mt-md">{membersQueryError}</div> : null}
+      {membersQueryError && <Alert message={membersQueryError} type="error" showIcon closable style={{ marginBottom: 16 }} />}
 
-        <section className="ops-section mt-lg">
-          <div className="ops-section__header">
-            <div>
-              <h2 className="ops-section__title">회원 작업 화면</h2>
-              <p className="ops-section__subtitle">회원을 선택하거나 바로 회원권/예약 업무로 이동할 수 있습니다.</p>
-            </div>
-          </div>
-        <div className="table-shell">
-          <table className="members-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>이름</th>
-                <th>연락처</th>
-                <th>상태</th>
-                <th>운영 상태</th>
-                <th>만료일</th>
-                <th>PT 잔여</th>
-                <th>가입일</th>
-                <th className="ops-right">액션</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pagination.pagedItems.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="empty-cell">
-                    조건에 맞는 회원이 없습니다.
-                  </td>
-                </tr>
-              ) : (
-                pagination.pagedItems.map((member) => (
-                  <tr key={member.memberId} className={member.memberId === selectedMemberId ? "is-selected-row" : undefined} onClick={() => void openSelectedMemberSummary(member.memberId)}>
-                    <td><strong>{member.memberId}</strong></td>
-                    <td>{member.memberName}</td>
-                    <td className="text-muted">{member.phone}</td>
-                    <td>
-                      <span className={member.memberStatus === "ACTIVE" ? "pill ok" : "pill muted"}>
-                        {member.memberStatus === "ACTIVE" ? "활성" : "비활성"}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={operationalStatusClass(member.membershipOperationalStatus)}>
-                        {member.membershipOperationalStatus}
-                      </span>
-                    </td>
-                    <td>{formatDate(member.membershipExpiryDate)}</td>
-                    <td><strong>{member.remainingPtCount != null && member.remainingPtCount > 0 ? member.remainingPtCount : "-"}</strong></td>
-                    <td className="text-muted">{formatDate(member.joinDate)}</td>
-                    <td>
-                      <div className="ops-table-actions">
-                        <button
-                          type="button"
-                          className="secondary-button ops-action-button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            void goToMemberContext("/memberships", member.memberId);
-                          }}
-                        >
-                          회원권
-                        </button>
-                        <button
-                          type="button"
-                          className="secondary-button ops-action-button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            void goToMemberContext("/reservations", member.memberId);
-                          }}
-                        >
-                          예약
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-        </section>
+      <Card
+        title={
+          <Space direction="vertical" size={2}>
+            <Title level={5} style={{ margin: 0 }}>회원 작업 리스트</Title>
+            <Paragraph type="secondary" style={{ margin: 0, fontSize: "0.84rem" }}>회원을 클릭하면 상세 모달이 열립니다.</Paragraph>
+          </Space>
+        }
+      >
+        <Table<MemberSummary>
+          rowKey="memberId"
+          columns={columns}
+          dataSource={pagination.pagedItems}
+          loading={membersLoading}
+          rowClassName={(record) => record.memberId === selectedMemberId ? "ant-table-row-selected" : ""}
+          onRow={(record) => ({
+            onClick: () => void openSelectedMemberSummary(record.memberId),
+            style: { cursor: "pointer" }
+          })}
+          pagination={{
+            current: pagination.page,
+            pageSize: pagination.pageSize,
+            total: pagination.totalItems,
+            showSizeChanger: true,
+            pageSizeOptions: ["20", "50", "100"],
+            onChange: (page, pageSize) => {
+              pagination.setPage(page);
+              pagination.setPageSize(pageSize);
+            }
+          }}
+          scroll={{ x: 1000 }}
+        />
+      </Card>
 
-        <div className="mt-lg">
-          <PaginationControls
-            page={pagination.page}
-            totalPages={pagination.totalPages}
-            pageSize={pagination.pageSize}
-            pageSizeOptions={[20, 50, 100]}
-            totalItems={pagination.totalItems}
-            startItemIndex={pagination.startItemIndex}
-            endItemIndex={pagination.endItemIndex}
-            onPageChange={pagination.setPage}
-            onPageSizeChange={pagination.setPageSize}
-          />
-        </div>
-      </article>
-
+      {/* 상세 모달 */}
       <Modal
-        isOpen={modalState.kind === "detail"}
-        onClose={closeMemberModal}
-        title={selectedMember ? `${selectedMember.memberName} 회원 정보` : "선택 회원 정보"}
-        size="lg"
-        footer={(
-          <>
-            <button type="button" className="secondary-button" onClick={closeMemberModal}>
-              닫기
-            </button>
-            {selectedMemberId ? (
-              <>
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={() => {
-                    clearSelectedMember();
-                    closeMemberModal();
-                  }}
-                >
-                  선택 해제
-                </button>
-                {canManageMembers && selectedMember ? (
-                  <>
-                    <button type="button" className="secondary-button" onClick={() => openMemberEdit(selectedMember)}>
-                      수정
-                    </button>
-                    <button
-                      type="button"
-                      className={`secondary-button ${styles.dangerAction}`}
-                      onClick={() => openMemberDeactivate(selectedMemberId)}
-                    >
-                      비활성화
-                    </button>
-                  </>
-                ) : null}
-                <button type="button" className="secondary-button" onClick={() => goToSelectedMemberContext("/memberships")}>
-                  회원권
-                </button>
-                <button type="button" className="primary-button" onClick={() => goToSelectedMemberContext("/reservations")}>
-                  예약
-                </button>
-              </>
-            ) : null}
-          </>
-        )}
+        open={modalState.kind === "detail"}
+        onCancel={closeMemberModal}
+        title={selectedMember ? <Space><SolutionOutlined />{selectedMember.memberName} 회원 정보</Space> : "회원 상세"}
+        width={800}
+        footer={[
+          <Button key="close" onClick={closeMemberModal}>닫기</Button>,
+          selectedMemberId && (
+            <Button key="deselect" onClick={() => { clearSelectedMember(); closeMemberModal(); }}>선택 해제</Button>
+          ),
+          canManageMembers && selectedMember && (
+            <Button key="edit" onClick={() => openMemberEdit(selectedMember)}>수정</Button>
+          ),
+          canManageMembers && selectedMemberId && (
+            <Button key="deactivate" danger onClick={() => openMemberDeactivate(selectedMemberId)}>비활성화</Button>
+          ),
+          <Button key="membership" onClick={() => goToSelectedMemberContext("/memberships")}>회원권</Button>,
+          <Button key="reservation" type="primary" onClick={() => goToSelectedMemberContext("/reservations")}>예약</Button>
+        ].filter(Boolean)}
       >
         <SelectedMemberSummaryCard surface="plain" />
       </Modal>
 
+      {/* 등록/수정 모달 */}
       <Modal
-        isOpen={modalState.kind === "create" || modalState.kind === "edit"}
-        onClose={closeMemberModal}
-        title={formTitle}
-        size="lg"
-        footer={(
-          <>
-            <button type="button" className="secondary-button" onClick={closeMemberModal} disabled={memberFormSubmitting}>
-              닫기
-            </button>
-            <button type="button" className="primary-button" onClick={() => void runMemberSubmit()} disabled={memberFormSubmitting}>
-              {memberFormSubmitting ? "저장 중..." : "저장"}
-            </button>
-          </>
-        )}
+        open={modalState.kind === "create" || modalState.kind === "edit"}
+        onCancel={closeMemberModal}
+        title={memberFormModalTitle}
+        width={800}
+        confirmLoading={memberFormSubmitting}
+        onOk={() => void submitMemberForm()}
+        okText="저장"
+        cancelText="닫기"
       >
-        <div className={styles.modalFormGrid}>
-          {(memberFormMessage || memberFormError) ? (
-            <div className="ops-feedback-stack full-span">
-              {memberFormMessage ? <div className="pill ok full-span">{memberFormMessage}</div> : null}
-              {memberFormError ? <div className="pill danger full-span">{memberFormError}</div> : null}
-            </div>
-          ) : null}
-          <label className={styles.modalField}>
-            <span className="text-sm">회원명</span>
-            <input
-              autoFocus
-              value={memberForm.memberName}
-              onChange={(event) => setMemberForm((current) => ({ ...current, memberName: event.target.value }))}
-              placeholder="회원 이름"
-            />
-          </label>
-          <label className={styles.modalField}>
-            <span className="text-sm">연락처</span>
-            <input
-              value={memberForm.phone}
-              onChange={(event) => setMemberForm((current) => ({ ...current, phone: event.target.value }))}
-              placeholder="010-1234-5678"
-            />
-          </label>
-          <label className={styles.modalField}>
-            <span className="text-sm">이메일</span>
-            <input
-              value={memberForm.email}
-              onChange={(event) => setMemberForm((current) => ({ ...current, email: event.target.value }))}
-              placeholder="선택 입력"
-            />
-          </label>
-          <label className={styles.modalField}>
-            <span className="text-sm">성별</span>
-            <select
-              value={memberForm.gender}
-              onChange={(event) =>
-                setMemberForm((current) => ({
-                  ...current,
-                  gender: event.target.value as typeof current.gender
-                }))
-              }
-            >
-              <option value="">선택 안 함</option>
-              <option value="MALE">남성</option>
-              <option value="FEMALE">여성</option>
-              <option value="OTHER">기타</option>
-            </select>
-          </label>
-          <label className={styles.modalField}>
-            <span className="text-sm">생년월일</span>
-            <input
-              type="date"
-              value={memberForm.birthDate}
-              onChange={(event) => setMemberForm((current) => ({ ...current, birthDate: event.target.value }))}
-            />
-          </label>
-          <label className={styles.modalField}>
-            <span className="text-sm">가입일</span>
-            <input
-              type="date"
-              value={memberForm.joinDate}
-              onChange={(event) => setMemberForm((current) => ({ ...current, joinDate: event.target.value }))}
-            />
-          </label>
-          <div className={`${styles.modalField} ${styles.modalFieldFull}`}>
-            <span className="text-sm">수신 동의</span>
-            <div className={styles.modalCheckboxRow}>
-              <label className={styles.modalCheckbox}>
-                <input
-                  type="checkbox"
-                  checked={memberForm.consentSms}
-                  onChange={(event) => setMemberForm((current) => ({ ...current, consentSms: event.target.checked }))}
+        <Form layout="vertical" style={{ marginTop: 16 }}>
+          {memberFormMessage && <Alert message={memberFormMessage} type="success" showIcon style={{ marginBottom: 16 }} />}
+          {memberFormError && <Alert message={memberFormError} type="error" showIcon style={{ marginBottom: 16 }} />}
+          
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="회원명" required>
+                <Input
+                  autoFocus
+                  value={memberForm.memberName}
+                  onChange={(e) => setMemberForm(prev => ({ ...prev, memberName: e.target.value }))}
+                  placeholder="회원 이름"
                 />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="연락처" required>
+                <Input
+                  value={memberForm.phone}
+                  onChange={(e) => setMemberForm(prev => ({ ...prev, phone: e.target.value }))}
+                  placeholder="010-1234-5678"
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+          
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="이메일">
+                <Input
+                  value={memberForm.email}
+                  onChange={(e) => setMemberForm(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="선택 입력"
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="성별">
+                <Select
+                  value={memberForm.gender}
+                  onChange={(val) => setMemberForm(prev => ({ ...prev, gender: val }))}
+                  options={[
+                    { label: "선택 안 함", value: "" },
+                    { label: "남성", value: "MALE" },
+                    { label: "여성", value: "FEMALE" },
+                    { label: "기타", value: "OTHER" }
+                  ]}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+          
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="생년월일">
+                <DatePicker
+                  style={{ width: "100%" }}
+                  value={memberForm.birthDate ? dayjs(memberForm.birthDate) : null}
+                  onChange={(date) => setMemberForm(prev => ({ ...prev, birthDate: date ? date.format("YYYY-MM-DD") : "" }))}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="가입일">
+                <DatePicker
+                  style={{ width: "100%" }}
+                  value={memberForm.joinDate ? dayjs(memberForm.joinDate) : null}
+                  onChange={(date) => setMemberForm(prev => ({ ...prev, joinDate: date ? date.format("YYYY-MM-DD") : "" }))}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+          
+          <Form.Item label="수신 동의">
+            <Space size="large">
+              <Checkbox
+                checked={memberForm.consentSms}
+                onChange={(e) => setMemberForm(prev => ({ ...prev, consentSms: e.target.checked }))}
+              >
                 SMS 수신 동의
-              </label>
-              <label className={styles.modalCheckbox}>
-                <input
-                  type="checkbox"
-                  checked={memberForm.consentMarketing}
-                  onChange={(event) =>
-                    setMemberForm((current) => ({
-                      ...current,
-                      consentMarketing: event.target.checked
-                    }))
-                  }
-                />
+              </Checkbox>
+              <Checkbox
+                checked={memberForm.consentMarketing}
+                onChange={(e) => setMemberForm(prev => ({ ...prev, consentMarketing: e.target.checked }))}
+              >
                 마케팅 수신 동의
-              </label>
-            </div>
-          </div>
-          <label className={`${styles.modalField} ${styles.modalFieldFull}`}>
-            <span className="text-sm">메모</span>
-            <textarea
+              </Checkbox>
+            </Space>
+          </Form.Item>
+          
+          <Form.Item label="메모">
+            <Input.TextArea
               rows={4}
               value={memberForm.memo}
-              onChange={(event) => setMemberForm((current) => ({ ...current, memo: event.target.value }))}
+              onChange={(e) => setMemberForm(prev => ({ ...prev, memo: e.target.value }))}
               placeholder="회원 메모를 남길 수 있습니다."
             />
-          </label>
-        </div>
+          </Form.Item>
+        </Form>
       </Modal>
 
+      {/* 비활성화 모달 */}
       <Modal
-        isOpen={modalState.kind === "deactivate"}
-        onClose={closeMemberModal}
+        open={modalState.kind === "deactivate"}
+        onCancel={closeMemberModal}
         title={selectedMember ? `${selectedMember.memberName} 비활성화` : "회원 비활성화"}
-        size="md"
-        footer={(
-          <>
-            <button type="button" className="secondary-button" onClick={closeMemberModal} disabled={memberFormSubmitting}>
-              취소
-            </button>
-            <button type="button" className="primary-button" onClick={() => void runDeactivateMember()} disabled={memberFormSubmitting}>
-              {memberFormSubmitting ? "처리 중..." : "비활성화"}
-            </button>
-          </>
-        )}
+        confirmLoading={memberFormSubmitting}
+        onOk={() => {
+          if (deactivationMemberId != null) {
+            void deactivateMember(deactivationMemberId);
+          }
+        }}
+        okText="비활성화"
+        okButtonProps={{ danger: true }}
+        cancelText="취소"
       >
-        {(memberFormMessage || memberFormError) ? (
-          <div className="ops-feedback-stack mb-md">
-            {memberFormMessage ? <div className="pill ok full-span">{memberFormMessage}</div> : null}
-            {memberFormError ? <div className="pill danger full-span">{memberFormError}</div> : null}
-          </div>
-        ) : null}
-        <div className="stack-sm">
-          <p className="brand-title text-sm">선택한 회원을 삭제하지 않고 비활성 상태로 전환합니다.</p>
-          <p className="text-sm text-muted">
+        <Flex vertical gap={16} style={{ marginTop: 16 }}>
+          {memberFormError && <Alert message={memberFormError} type="error" showIcon />}
+          <Text strong>선택한 회원을 삭제하지 않고 비활성 상태로 전환합니다.</Text>
+          <Text type="secondary">
             비활성 회원은 목록에 계속 남고, 운영 상태는 유지되지만 신규 업무 진입 전 상태 확인이 필요합니다.
-          </p>
-          <div className="field-ops-note field-ops-note--restricted">
-            <span className="field-ops-note__label">확인 필요</span>
-            <div className="mt-xs text-sm">
-              {selectedMember ? `${selectedMember.memberName} (#${selectedMember.memberId}) 회원을 비활성화합니다.` : "이 회원을 비활성화합니다."}
-            </div>
-          </div>
-        </div>
+          </Text>
+          <Alert
+            message="확인 필요"
+            description={selectedMember ? `${selectedMember.memberName} (#${selectedMember.memberId}) 회원을 비활성화합니다.` : "이 회원을 비활성화합니다."}
+            type="warning"
+            showIcon
+          />
+        </Flex>
       </Modal>
-    </section>
+    </Flex>
   );
 }

@@ -1,10 +1,29 @@
 import { act, renderHook } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { setMockApiModeForTests } from "../../../api/client";
-import { getMockResponse, resetMockData } from "../../../api/mockData";
+import { resetMockData, getMockResponse } from "../../../api/mockData";
 import { useProductPrototypeState } from "./useProductPrototypeState";
 import type { ProductRecord } from "./types";
+
+function createTestQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+      mutations: {
+        retry: false,
+      },
+    },
+  });
+}
+
+function TestWrapper({ client, children }: { client: QueryClient; children: ReactNode }) {
+  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+}
 
 describe("useProductPrototypeState", () => {
   beforeEach(() => {
@@ -13,8 +32,12 @@ describe("useProductPrototypeState", () => {
     resetMockData();
   });
 
-  it("creates a product and exposes it through the shared products source", async () => {
-    const { result } = renderHook(() => useProductPrototypeState());
+  it("creates a product and invalidates domains", async () => {
+    const queryClient = createTestQueryClient();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    const { result } = renderHook(() => useProductPrototypeState(), {
+      wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper>,
+    });
 
     act(() => {
       result.current.startCreateProduct();
@@ -36,10 +59,16 @@ describe("useProductPrototypeState", () => {
     const products = getMockResponse("/api/v1/products")?.data as ProductRecord[];
     expect(products.some((product) => product.productName === "필라테스 8회권")).toBe(true);
     expect(result.current.productPanelMessage).toContain("생성");
+    expect(invalidateSpy).toHaveBeenCalled();
   });
 
-  it("toggles product status for the selected product", async () => {
-    const { result } = renderHook(() => useProductPrototypeState());
+  it("toggles product status and invalidates domains", async () => {
+    const queryClient = createTestQueryClient();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    const { result } = renderHook(() => useProductPrototypeState(), {
+      wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper>,
+    });
+
     const products = getMockResponse("/api/v1/products")?.data as ProductRecord[];
     const target = products[0];
 
@@ -53,6 +82,7 @@ describe("useProductPrototypeState", () => {
 
     const refreshedProducts = getMockResponse("/api/v1/products")?.data as ProductRecord[];
     expect(refreshedProducts.find((product) => product.productId === target.productId)?.productStatus).toBe("INACTIVE");
+    expect(invalidateSpy).toHaveBeenCalled();
   });
 
   it("creates products through live API mode", async () => {
@@ -84,7 +114,10 @@ describe("useProductPrototypeState", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    const { result } = renderHook(() => useProductPrototypeState());
+    const queryClient = createTestQueryClient();
+    const { result } = renderHook(() => useProductPrototypeState(), {
+      wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper>,
+    });
 
     act(() => {
       result.current.startCreateProduct();

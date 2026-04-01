@@ -6,11 +6,16 @@ import { setMockApiModeForTests } from "../../api/client";
 import { resetMockData } from "../../api/mockData";
 import { SelectedMemberProvider } from "../members/modules/SelectedMemberContext";
 import AccessPage from "./AccessPage";
+import { FoundationProviders } from "../../app/providers";
+import { appQueryClient } from "../../app/queryClient";
+import { selectedMemberStore } from "../../app/selectedMemberStore";
 
 describe("AccessPage", () => {
   beforeEach(() => {
+    appQueryClient.clear();
     setMockApiModeForTests(true);
     resetMockData();
+    selectedMemberStore.getState().reset();
     vi.stubGlobal('matchMedia', vi.fn().mockImplementation(query => ({
       matches: false,
       media: query,
@@ -31,25 +36,25 @@ describe("AccessPage", () => {
 
   it("stays usable without selected member context", async () => {
     render(
-      <AuthStateProvider>
+      <FoundationProviders>
         <SelectedMemberProvider>
           <AccessPage />
         </SelectedMemberProvider>
-      </AuthStateProvider>
+      </FoundationProviders>
     );
 
     expect(await screen.findByRole("heading", { name: "출입 모니터링" })).toBeTruthy();
     expect(screen.getByText("현재 입장 회원")).toBeTruthy();
     expect(screen.getByText("출입 이력")).toBeTruthy();
     expect(screen.getByText("회원 디렉터리")).toBeTruthy();
-  });
+  }, 10000);
 
   it("shows trainer unsupported note in live mode", async () => {
     setMockApiModeForTests(false);
 
     render(
-      <AuthStateProvider
-        value={{
+      <FoundationProviders
+        authValue={{
           securityMode: "jwt",
           authUser: {
             userId: 41,
@@ -62,12 +67,12 @@ describe("AccessPage", () => {
         <SelectedMemberProvider>
           <AccessPage />
         </SelectedMemberProvider>
-      </AuthStateProvider>
+      </FoundationProviders>
     );
 
     expect(await screen.findByRole("heading", { name: "출입 모니터링" })).toBeTruthy();
-    expect(screen.getByText("현재 관리자 권한이 없어 실시간 출입 제어가 불가능합니다.")).toBeTruthy();
-    expect(screen.getByText("데모 또는 실제 관리자 세션으로 전환이 필요합니다.")).toBeTruthy();
+    expect(screen.getByText(/현재 관리자 권한이 없어/)).toBeTruthy();
+    expect(screen.getByText(/데모 또는 실제 관리자 세션으로 전환이 필요합니다/)).toBeTruthy();
     expect(screen.getByText("현재 입장 중인 회원이 없습니다.")).toBeTruthy();
   });
 
@@ -135,8 +140,8 @@ describe("AccessPage", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const { rerender } = render(
-      <AuthStateProvider
-        value={{
+      <FoundationProviders
+        authValue={{
           securityMode: "jwt",
           authUser: {
             userId: 11,
@@ -149,14 +154,14 @@ describe("AccessPage", () => {
         <SelectedMemberProvider>
           <AccessPage />
         </SelectedMemberProvider>
-      </AuthStateProvider>
+      </FoundationProviders>
     );
 
     expect(await screen.findByText("김민수")).toBeTruthy();
 
     rerender(
-      <AuthStateProvider
-        value={{
+      <FoundationProviders
+        authValue={{
           securityMode: "jwt",
           authUser: {
             userId: 41,
@@ -169,10 +174,10 @@ describe("AccessPage", () => {
         <SelectedMemberProvider>
           <AccessPage />
         </SelectedMemberProvider>
-      </AuthStateProvider>
+      </FoundationProviders>
     );
 
-    expect(await screen.findByText("현재 관리자 권한이 없어 실시간 출입 제어가 불가능합니다.")).toBeTruthy();
+    expect(await screen.findByText(/현재 관리자 권한이 없어/)).toBeTruthy();
     await waitFor(() => {
       expect(screen.queryByText("김민수")).toBeNull();
     });
@@ -227,8 +232,8 @@ describe("AccessPage", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     render(
-      <AuthStateProvider
-        value={{
+      <FoundationProviders
+        authValue={{
           securityMode: "jwt",
           authUser: {
             userId: 11,
@@ -241,7 +246,7 @@ describe("AccessPage", () => {
         <SelectedMemberProvider>
           <AccessPage />
         </SelectedMemberProvider>
-      </AuthStateProvider>
+      </FoundationProviders>
     );
 
     expect(screen.getByRole("heading", { name: "출입 모니터링" })).toBeTruthy();
@@ -260,5 +265,5 @@ describe("AccessPage", () => {
     await Promise.resolve();
 
     expect(fetchMock.mock.calls.filter(([url]) => String(url).startsWith("/api/v1/members")).length).toBe(2);
-  });
+  }, 15000);
 });

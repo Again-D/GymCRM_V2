@@ -1,20 +1,33 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getMockResponse, resetMockData } from "../../../api/mockData";
-import { getQueryInvalidationVersion, resetQueryInvalidationStateForTests } from "../../../api/queryInvalidation";
 import { AuthStateProvider } from "../../../app/auth";
 import type { MemberDetail, MemberSummary } from "./types";
 import { createEmptyMemberForm } from "./types";
 import { useMemberManagementState } from "./useMemberManagementState";
 import { setMockApiModeForTests } from "../../../api/client";
 
+function createTestQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
+}
+
 describe("useMemberManagementState", () => {
+  let queryClient: QueryClient;
+
   beforeEach(() => {
     vi.restoreAllMocks();
     resetMockData();
-    resetQueryInvalidationStateForTests();
     setMockApiModeForTests(true);
+    queryClient = createTestQueryClient();
+    vi.spyOn(queryClient, "invalidateQueries");
   });
 
   it("creates a member in mock mode and invalidates members", async () => {
@@ -26,7 +39,11 @@ describe("useMemberManagementState", () => {
           selectMember,
         }),
       {
-        wrapper: ({ children }) => <AuthStateProvider>{children}</AuthStateProvider>,
+        wrapper: ({ children }) => (
+          <QueryClientProvider client={queryClient}>
+            <AuthStateProvider>{children}</AuthStateProvider>
+          </QueryClientProvider>
+        ),
       },
     );
 
@@ -49,7 +66,7 @@ describe("useMemberManagementState", () => {
 
     expect(createdMember?.memberStatus).toBe("ACTIVE");
     expect(selectMember).toHaveBeenCalledWith(createdMember?.memberId);
-    expect(getQueryInvalidationVersion("members")).toBe(1);
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith(expect.objectContaining({ queryKey: ["members"] }));
     expect(result.current.modalState.kind).toBe("detail");
   });
 
@@ -63,15 +80,17 @@ describe("useMemberManagementState", () => {
         }),
       {
         wrapper: ({ children }) => (
-          <AuthStateProvider
-            value={{
-              securityMode: "jwt",
-              authBootstrapping: false,
-              authUser: { userId: 11, username: "jwt-admin", primaryRole: "ROLE_CENTER_ADMIN", roles: ["ROLE_CENTER_ADMIN"] },
-            }}
-          >
-            {children}
-          </AuthStateProvider>
+          <QueryClientProvider client={queryClient}>
+            <AuthStateProvider
+              value={{
+                securityMode: "jwt",
+                authBootstrapping: false,
+                authUser: { userId: 11, username: "jwt-admin", primaryRole: "ROLE_CENTER_ADMIN", roles: ["ROLE_CENTER_ADMIN"] },
+              }}
+            >
+              {children}
+            </AuthStateProvider>
+          </QueryClientProvider>
         ),
       },
     );
@@ -102,7 +121,7 @@ describe("useMemberManagementState", () => {
     expect(updatedDetail.phone).toBe("010-0000-9999");
     expect(updatedDetail.memo).toBe("수정 테스트");
     expect(selectMember).toHaveBeenCalledWith(101);
-    expect(getQueryInvalidationVersion("members")).toBe(1);
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith(expect.objectContaining({ queryKey: ["members"] }));
   });
 
   it("uses memberStatus patch for deactivation in live mode", async () => {
@@ -141,15 +160,17 @@ describe("useMemberManagementState", () => {
         }),
       {
         wrapper: ({ children }) => (
-          <AuthStateProvider
-            value={{
-              securityMode: "jwt",
-              authBootstrapping: false,
-              authUser: { userId: 11, username: "jwt-admin", primaryRole: "ROLE_CENTER_ADMIN", roles: ["ROLE_CENTER_ADMIN"] },
-            }}
-          >
-            {children}
-          </AuthStateProvider>
+          <QueryClientProvider client={queryClient}>
+            <AuthStateProvider
+              value={{
+                securityMode: "jwt",
+                authBootstrapping: false,
+                authUser: { userId: 11, username: "jwt-admin", primaryRole: "ROLE_CENTER_ADMIN", roles: ["ROLE_CENTER_ADMIN"] },
+              }}
+            >
+              {children}
+            </AuthStateProvider>
+          </QueryClientProvider>
         ),
       },
     );
@@ -167,7 +188,7 @@ describe("useMemberManagementState", () => {
       }),
     );
     expect(selectMember).toHaveBeenCalledWith(101);
-    expect(getQueryInvalidationVersion("members")).toBe(1);
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith(expect.objectContaining({ queryKey: ["members"] }));
   });
 
   it("blocks member mutations for trainer role", async () => {
@@ -180,13 +201,15 @@ describe("useMemberManagementState", () => {
         }),
       {
         wrapper: ({ children }) => (
-          <AuthStateProvider
-            value={{
-              authUser: { userId: 41, username: "trainer-a", primaryRole: "ROLE_TRAINER", roles: ["ROLE_TRAINER"] },
-            }}
-          >
-            {children}
-          </AuthStateProvider>
+          <QueryClientProvider client={queryClient}>
+            <AuthStateProvider
+              value={{
+                authUser: { userId: 41, username: "trainer-a", primaryRole: "ROLE_TRAINER", roles: ["ROLE_TRAINER"] },
+              }}
+            >
+              {children}
+            </AuthStateProvider>
+          </QueryClientProvider>
         ),
       },
     );
@@ -206,6 +229,6 @@ describe("useMemberManagementState", () => {
 
     expect(result.current.canManageMembers).toBe(false);
     expect(result.current.memberFormError).toBe("회원 정보를 변경할 권한이 없습니다.");
-    expect(getQueryInvalidationVersion("members")).toBe(0);
+    expect(queryClient.invalidateQueries).not.toHaveBeenCalled();
   });
 });

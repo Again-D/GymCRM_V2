@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 
 import { apiPatch, apiPost, isMockApiMode } from "../../../api/client";
-import { invalidateQueryDomains } from "../../../api/queryInvalidation";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "../../../app/queryHelpers";
 import { useAuthState } from "../../../app/auth";
 import { hasAnyRole } from "../../../app/roles";
 import {
@@ -83,6 +84,7 @@ export function useMemberManagementState({
   selectMember: (memberId: number) => Promise<boolean>;
 }) {
   const { authUser } = useAuthState();
+  const queryClient = useQueryClient();
   const [modalState, setModalState] = useState<MembersModalState>({
     kind: "none",
   });
@@ -199,7 +201,7 @@ export function useMemberManagementState({
         }
       }
 
-      invalidateQueryDomains(["members"]);
+      queryClient.invalidateQueries({ queryKey: queryKeys.members.all });
       await selectMember(nextMember.memberId);
       setMemberForm(createMemberFormFromDetail(nextMember));
       setModalState({ kind: "detail", memberId: nextMember.memberId });
@@ -239,7 +241,7 @@ export function useMemberManagementState({
         setMemberFormMessage(response.message);
       }
 
-      invalidateQueryDomains(["members"]);
+      queryClient.invalidateQueries({ queryKey: queryKeys.members.all });
       await syncSelectedMember(memberId);
       setModalState({ kind: "detail", memberId });
       return nextMember;

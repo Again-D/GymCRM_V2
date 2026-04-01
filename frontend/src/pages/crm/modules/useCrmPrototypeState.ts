@@ -1,11 +1,13 @@
 import { useCallback, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { apiPost, isMockApiMode } from "../../../api/client";
-import { invalidateQueryDomains } from "../../../api/queryInvalidation";
+import { queryKeys } from "../../../app/queryHelpers";
 import { createDefaultCrmFilters } from "./types";
 
 export function useCrmPrototypeState() {
-  const [crmFilters, setCrmFilters] = useState(createDefaultCrmFilters);
+  const queryClient = useQueryClient();
+  const [crmFilters, setCrmFilters] = useState(createDefaultCrmFilters());
   const [crmTriggerDaysAhead, setCrmTriggerDaysAhead] = useState("3");
   const [crmTriggerSubmitting, setCrmTriggerSubmitting] = useState(false);
   const [crmProcessSubmitting, setCrmProcessSubmitting] = useState(false);
@@ -17,6 +19,10 @@ export function useCrmPrototypeState() {
     setCrmPanelMessage(null);
     setCrmPanelError(null);
   }, []);
+
+  const invalidateCrm = async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.crm.all });
+  };
 
   async function triggerCrmExpiryReminder() {
     clearCrmFeedback();
@@ -39,7 +45,7 @@ export function useCrmPrototypeState() {
               daysAhead,
             },
           );
-      invalidateQueryDomains(["crmHistory", "crmQueue"]);
+      await invalidateCrm();
       setCrmPanelMessage(result.message);
       return true;
     } finally {
@@ -58,7 +64,7 @@ export function useCrmPrototypeState() {
         : await apiPost("/api/v1/crm/messages/process", {
             limit: 100,
           });
-      invalidateQueryDomains(["crmHistory", "crmQueue"]);
+      await invalidateCrm();
       setCrmPanelMessage(result.message);
       return true;
     } finally {

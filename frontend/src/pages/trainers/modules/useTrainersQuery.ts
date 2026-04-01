@@ -1,99 +1,52 @@
-import { useCallback, useRef, useState } from "react";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 import { apiGet } from "../../../api/client";
-import { useQueryInvalidationVersion } from "../../../api/queryInvalidation";
+import { queryKeys, queryPolicies } from "../../../app/queryHelpers";
+import { toUserFacingErrorMessage } from "../../../app/uiError";
 import type { TrainerFilters, TrainerSummary } from "./types";
 
-type UseTrainersQueryOptions = {
-  getDefaultFilters: () => TrainerFilters;
-};
-
-function useLatestRef<T>(value: T) {
-  const ref = useRef(value);
-  ref.current = value;
-  return ref;
-}
-
-export function useTrainersQuery({ getDefaultFilters }: UseTrainersQueryOptions) {
-  const [trainers, setTrainers] = useState<TrainerSummary[]>([]);
-  const [trainersLoading, setTrainersLoading] = useState(false);
-  const [trainersQueryError, setTrainersQueryError] = useState<string | null>(null);
-  const requestIdRef = useRef(0);
-  const cacheRef = useRef(new Map<string, TrainerSummary[]>());
-  const inflightRef = useRef(new Map<string, Promise<TrainerSummary[]>>());
-  const getDefaultFiltersRef = useLatestRef(getDefaultFilters);
-  const trainersVersion = useQueryInvalidationVersion("trainers");
-
-  const loadTrainers = useCallback(
-    async (filters?: TrainerFilters) => {
-      const requestId = requestIdRef.current + 1;
-      requestIdRef.current = requestId;
-      setTrainersLoading(true);
-      setTrainersQueryError(null);
-
-      try {
-        const effectiveFilters = filters ?? getDefaultFiltersRef.current();
-        const params = new URLSearchParams();
-        if (effectiveFilters.centerId > 0) {
-          params.set("centerId", String(effectiveFilters.centerId));
-        }
-        if (effectiveFilters.keyword.trim()) {
-          params.set("keyword", effectiveFilters.keyword.trim());
-        }
-        if (effectiveFilters.status) {
-          params.set("status", effectiveFilters.status);
-        }
-        const query = params.toString();
-        const cacheKey = `${trainersVersion}:${query}`;
-        if (cacheRef.current.has(cacheKey)) {
-          if (requestIdRef.current !== requestId) return;
-          setTrainers(cacheRef.current.get(cacheKey) ?? []);
-          return;
-        }
-
-        let responsePromise = inflightRef.current.get(cacheKey);
-        if (!responsePromise) {
-          responsePromise = apiGet<TrainerSummary[]>(
-            `/api/v1/trainers${query ? `?${query}` : ""}`,
-          )
-            .then((response) => response.data)
-            .finally(() => inflightRef.current.delete(cacheKey));
-          inflightRef.current.set(cacheKey, responsePromise);
-        }
-
-        const nextTrainers = await responsePromise;
-        if (requestIdRef.current !== requestId) return;
-        cacheRef.current.set(cacheKey, nextTrainers);
-        setTrainers(nextTrainers);
-      } catch (error) {
-        if (requestIdRef.current !== requestId) return;
-        setTrainers([]);
-        setTrainersQueryError(
-          error instanceof Error
-            ? error.message
-            : "트레이너 목록을 불러오지 못했습니다.",
-        );
-      } finally {
-        if (requestIdRef.current === requestId) {
-          setTrainersLoading(false);
-        }
+export function useTrainersQuery(filters: TrainerFilters) {
+  const query = useQuery({
+    queryKey: queryKeys.trainers.list({ 
+      centerId: filters.centerId, 
+      keyword: filters.keyword?.trim(), 
+      status: filters.status 
+    }),
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (filters.centerId > 0) {
+        params.set("centerId", String(filters.centerId));
       }
+      const trimmedKeyword = filters.keyword?.trim();
+      if (trimmedKeyword) {
+        params.set("keyword", trimmedKeyword);
+      }
+      if (filters.status) {
+        params.set("status", filters.status);
+      }
+      const queryString = params.toString();
+      const response = await apiGet<TrainerSummary[]>(
+        `/api/v1/trainers${queryString ? `?${queryString}` : ""}`,
+      );
+      return response.data;
     },
-    [trainersVersion],
-  );
+    staleTime: queryPolicies.list.staleTime,
+    gcTime: queryPolicies.list.gcTime,
+  });
 
-  const resetTrainersQuery = useCallback(() => {
-    requestIdRef.current += 1;
-    setTrainers([]);
-    setTrainersLoading(false);
-    setTrainersQueryError(null);
-  }, []);
+  const { refetch } = query;
 
-  return {
-    trainers,
-    trainersLoading,
-    trainersQueryError,
-    loadTrainers,
-    resetTrainersQuery,
-  } as const;
+  return useMemo(() => ({
+    trainers: query.data ?? [],
+    trainersLoading: query.isFetching || query.isPending,
+    trainersQueryError: query.error ? toUserFacingErrorMessage(query.error, "트레이너 목록을 불러오지 못했습니다.") : null,
+    refetchTrainers: refetch,
+  }), [
+    query.data,
+    query.isFetching,
+    query.isPending,
+    query.error,
+    refetch
+  ]);
 }

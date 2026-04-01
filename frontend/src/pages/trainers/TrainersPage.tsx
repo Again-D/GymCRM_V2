@@ -1,17 +1,42 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Alert,
+  Button,
+  Card,
+  Descriptions,
+  Empty,
+  Flex,
+  Form,
+  Input,
+  List,
+  Modal,
+  Select,
+  Space,
+  Statistic,
+  Table,
+  Tag,
+  Typography,
+  Row,
+  Col
+} from "antd";
+import type { ColumnsType } from "antd/es/table";
+import {
+  SolutionOutlined,
+  TeamOutlined
+} from "@ant-design/icons";
 
 import { apiGet, apiPatch, apiPost, isMockApiMode } from "../../api/client";
 import { invalidateQueryDomains } from "../../api/queryInvalidation";
 import { useAuthState } from "../../app/auth";
 import { hasAnyRole, hasRole } from "../../app/roles";
+import { toUserFacingErrorMessage } from "../../app/uiError";
 import { usePagination } from "../../shared/hooks/usePagination";
-import { Modal } from "../../shared/ui/Modal";
-import { PaginationControls } from "../../shared/ui/PaginationControls";
 import { TrainerAvailabilityMonthView } from "../trainer-availability/TrainerAvailabilityMonthView";
 import {
   formatAvailabilityTimeRange,
   getAvailabilityStatusLabel,
   getCurrentMonthValue,
+  type TrainerAvailabilityScope
 } from "../trainer-availability/modules/types";
 import { useTrainerAvailabilityQuery } from "../trainer-availability/modules/useTrainerAvailabilityQuery";
 import {
@@ -23,6 +48,8 @@ import {
 import { useTrainersQuery } from "./modules/useTrainersQuery";
 
 import styles from "./TrainersPage.module.css";
+
+const { Title, Text, Paragraph } = Typography;
 
 function asNullableText(value: string) {
   const trimmed = value.trim();
@@ -57,33 +84,29 @@ export default function TrainersPage() {
   const [trainerPanelError, setTrainerPanelError] = useState<string | null>(null);
   const [trainerFormError, setTrainerFormError] = useState<string | null>(null);
 
-  const { trainers, trainersLoading, trainersQueryError, loadTrainers, resetTrainersQuery } =
-    useTrainersQuery({
-      getDefaultFilters: () => trainerFilters,
-    });
+  const availabilityScope = useMemo<TrainerAvailabilityScope | null>(() => {
+    if (!detailOpen || !selectedTrainer) return null;
+    return { type: "trainer", trainerUserId: selectedTrainer.userId };
+  }, [detailOpen, selectedTrainer]);
+
+  const {
+    trainers,
+    trainersLoading,
+    trainersQueryError,
+    refetchTrainers
+  } = useTrainersQuery(trainerFilters);
+
   const {
     snapshot: trainerAvailabilitySnapshot,
     loading: trainerAvailabilityLoading,
     error: trainerAvailabilityError,
-    loadSnapshot: loadTrainerAvailability,
-    reset: resetTrainerAvailability,
-  } = useTrainerAvailabilityQuery();
+    refetch: refetchTrainerAvailability
+  } = useTrainerAvailabilityQuery(availabilityScope, availabilityMonth);
 
   const pagination = usePagination(trainers, {
     initialPageSize: 10,
     resetDeps: [trainers.length, trainerFilters.centerId, trainerFilters.keyword, trainerFilters.status],
   });
-
-  useEffect(() => {
-    if (!canReadLiveTrainers) {
-      resetTrainersQuery();
-      return;
-    }
-    void loadTrainers(trainerFilters);
-    return () => {
-      resetTrainersQuery();
-    };
-  }, [canReadLiveTrainers, loadTrainers, resetTrainersQuery, trainerFilters]);
 
   useEffect(() => {
     if (!canMutateTrainers && trainerFormOpen) {
@@ -107,28 +130,10 @@ export default function TrainersPage() {
     );
   }, [defaultCenterId, isSuperAdmin]);
 
-  useEffect(() => {
-    if (!detailOpen || !selectedTrainer) {
-      resetTrainerAvailability();
-      return;
-    }
-    void loadTrainerAvailabilitySnapshot(selectedTrainer.userId, availabilityMonth);
-  }, [
-    availabilityMonth,
-    detailOpen,
-    loadTrainerAvailability,
-    resetTrainerAvailability,
-    selectedTrainer,
-  ]);
-
   function clearFeedback() {
     setTrainerPanelMessage(null);
     setTrainerPanelError(null);
     setTrainerFormError(null);
-  }
-
-  async function loadTrainerAvailabilitySnapshot(userId: number, month: string) {
-    return loadTrainerAvailability({ type: "trainer", trainerUserId: userId }, month);
   }
 
   async function loadTrainerDetail(userId: number) {
@@ -148,9 +153,7 @@ export default function TrainersPage() {
       }
       setDetailOpen(true);
     } catch (error) {
-      setTrainerPanelError(
-        error instanceof Error ? error.message : "트레이너 상세를 불러오지 못했습니다.",
-      );
+      setTrainerPanelError(toUserFacingErrorMessage(error, "트레이너 상세를 불러오지 못했습니다."));
     } finally {
       setDetailLoading(false);
     }
@@ -183,9 +186,7 @@ export default function TrainersPage() {
       setTrainerForm(createTrainerFormFromDetail(detail));
       setTrainerFormOpen(true);
     } catch (error) {
-      setTrainerPanelError(
-        error instanceof Error ? error.message : "트레이너 상세를 불러오지 못했습니다.",
-      );
+      setTrainerPanelError(toUserFacingErrorMessage(error, "트레이너 상세를 불러오지 못했습니다."));
     } finally {
       setDetailLoading(false);
     }
@@ -265,11 +266,9 @@ export default function TrainersPage() {
       setTrainerForm(createTrainerFormFromDetail(detail));
       setTrainerFormOpen(false);
       invalidateQueryDomains(["trainers"]);
-      await loadTrainers(trainerFilters);
+      await refetchTrainers();
     } catch (error) {
-      setTrainerFormError(
-        error instanceof Error ? error.message : "트레이너 정보를 저장하지 못했습니다.",
-      );
+      setTrainerFormError(toUserFacingErrorMessage(error, "트레이너 정보를 저장하지 못했습니다."));
     } finally {
       setTrainerFormSubmitting(false);
     }
@@ -304,543 +303,485 @@ export default function TrainersPage() {
         );
       }
       invalidateQueryDomains(["trainers"]);
-      await loadTrainers(trainerFilters);
+      await refetchTrainers();
     } catch (error) {
-      setTrainerPanelError(
-        error instanceof Error ? error.message : "트레이너 상태를 변경하지 못했습니다.",
-      );
+      setTrainerPanelError(toUserFacingErrorMessage(error, "트레이너 상태를 변경하지 못했습니다."));
     }
   }
 
+  const activeTrainerCount = useMemo(
+    () => trainers.filter((trainer) => trainer.userStatus === "ACTIVE").length,
+    [trainers],
+  );
+  const confirmedReservationCount = useMemo(
+    () =>
+      trainers.reduce(
+        (sum, trainer) => sum + trainer.todayConfirmedReservationCount,
+        0,
+      ),
+    [trainers],
+  );
+
+  const trainerColumns: ColumnsType<(typeof trainers)[number]> = [
+    {
+      title: "이름",
+      key: "displayName",
+      render: (_, trainer) => (
+        <Space direction="vertical" size={2}>
+          <Text strong style={{ fontSize: "0.95rem" }}>{trainer.displayName}</Text>
+          <Text type="secondary" style={{ fontSize: "0.75rem" }}>
+            #{trainer.userId}
+          </Text>
+        </Space>
+      ),
+    },
+    {
+      title: "상태",
+      dataIndex: "userStatus",
+      key: "userStatus",
+      render: (status) => (
+        <Tag color={status === "ACTIVE" ? "success" : "default"}>
+          {status === "ACTIVE" ? "활성" : "비활성"}
+        </Tag>
+      ),
+    },
+    {
+      title: "연락처",
+      dataIndex: "phone",
+      key: "phone",
+      render: (phone) => <Text type="secondary" style={{ fontSize: "0.84rem" }}>{phone ?? "미등록"}</Text>,
+    },
+    {
+      title: "담당 회원",
+      dataIndex: "assignedMemberCount",
+      key: "assignedMemberCount",
+      align: "center",
+      render: (count) => <Text strong>{count}</Text>
+    },
+    {
+      title: "오늘 예약",
+      dataIndex: "todayConfirmedReservationCount",
+      key: "todayConfirmedReservationCount",
+      align: "center",
+      render: (count) => <Text strong style={{ color: count > 0 ? "#1677ff" : undefined }}>{count}</Text>
+    },
+    {
+      title: "액션",
+      key: "actions",
+      align: "right",
+      render: (_, trainer) => (
+        <Space wrap>
+          <Button size="small" onClick={() => void loadTrainerDetail(trainer.userId)}>
+            상세
+          </Button>
+          {canMutateTrainers && (
+            <Button size="small" onClick={() => void startEditTrainer(trainer.userId)}>
+              수정
+            </Button>
+          )}
+          {canMutateTrainers && (
+            <Button
+              size="small"
+              danger={trainer.userStatus === "ACTIVE"}
+              onClick={() =>
+                void toggleTrainerStatus(
+                  trainer.userId,
+                  trainer.userStatus === "ACTIVE" ? "INACTIVE" : "ACTIVE",
+                )
+              }
+            >
+              {trainer.userStatus === "ACTIVE" ? "비활성화" : "활성화"}
+            </Button>
+          )}
+        </Space>
+      ),
+    },
+  ];
+
   return (
-    <section className="ops-shell">
-      <div className="ops-hero">
-        <div className="ops-hero__copy">
-          <span className="ops-eyebrow">현장 운영 계정</span>
-          <h1 className="ops-title">트레이너 관리</h1>
-          <p className="ops-subtitle">
-            트레이너 계정 상태와 담당 회원 수, 오늘 예약 현황을 한 화면에서 확인합니다.
-          </p>
-          <div className="ops-meta">
-            <span className="ops-meta__pill">계정 운영</span>
-            <span className="ops-meta__pill">담당 현황</span>
-            <span className="ops-meta__pill">데스크 조회 전용</span>
-          </div>
-        </div>
-        {canMutateTrainers ? (
-          <button type="button" className="primary-button" onClick={startCreateTrainer}>
-            트레이너 등록
-          </button>
-        ) : null}
-      </div>
-
-      <div className="ops-stat-strip">
-        <div className="ops-stat-card">
-          <span className="ops-stat-card__label">조회 결과</span>
-          <span className="ops-stat-card__value">{trainers.length}</span>
-          <span className="ops-stat-card__hint">현재 센터 기준 트레이너 계정 수</span>
-        </div>
-        <div className="ops-stat-card">
-          <span className="ops-stat-card__label">활성 트레이너</span>
-          <span className="ops-stat-card__value">
-            {trainers.filter((trainer) => trainer.userStatus === "ACTIVE").length}
-          </span>
-          <span className="ops-stat-card__hint">새 배정에 사용할 수 있는 활성 계정</span>
-        </div>
-        <div className="ops-stat-card">
-          <span className="ops-stat-card__label">오늘 확정 예약</span>
-          <span className="ops-stat-card__value">
-            {trainers.reduce(
-              (sum, trainer) => sum + trainer.todayConfirmedReservationCount,
-              0,
-            )}
-          </span>
-          <span className="ops-stat-card__hint">현재 목록 기준 오늘 `CONFIRMED` 예약 합계</span>
-        </div>
-        <div className="ops-stat-card">
-          <span className="ops-stat-card__label">운영 권한</span>
-          <span className="ops-stat-card__value">
-            {canMutateTrainers ? "편집 가능" : "조회 전용"}
-          </span>
-          <span className="ops-stat-card__hint">
-            {canMutateTrainers
-              ? "트레이너 계정 생성과 상태 변경이 가능합니다."
-              : "데스크 모드에서는 운영 정보만 조회할 수 있습니다."}
-          </span>
-        </div>
-      </div>
-
-      <article className="panel-card">
-        <div className="ops-section__header">
-          <div>
-            <h2 className="ops-section__title">트레이너 디렉터리</h2>
-            <p className="ops-section__subtitle">
-              이름, 상태, 연락처, 담당 회원 수, 오늘 예약 수를 기준으로 운영 상태를 확인합니다.
-            </p>
-          </div>
-        </div>
-
-        {!canMutateTrainers && canReadLiveTrainers ? (
-          <div className={`field-ops-note field-ops-note--restricted ${styles.readOnlyBanner}`}>
-            <span className="field-ops-note__label">조회 전용 모드</span>
-            <div className="text-sm brand-title mt-xs">
-              데스크 권한에서는 상세 조회만 가능하며 계정 생성, 수정, 상태 변경은 숨겨집니다.
-            </div>
-          </div>
-        ) : null}
-
-        {!canReadLiveTrainers ? (
-          <div className="field-ops-note field-ops-note--restricted">
-            <span className="field-ops-note__label">운영 권한 제한</span>
-            <div className="text-sm brand-title mt-xs">
-              현재 권한에서는 트레이너 관리 화면에 접근할 수 없습니다.
-            </div>
-          </div>
-        ) : null}
-
-        {(trainerPanelMessage || trainerPanelError || trainersQueryError) && (
-          <div className="ops-feedback-stack mb-md">
-            {trainerPanelMessage ? (
-              <div className="pill ok full-span">{trainerPanelMessage}</div>
-            ) : null}
-            {trainerPanelError || trainersQueryError ? (
-              <div className="pill danger full-span">
-                {trainerPanelError ?? trainersQueryError}
-              </div>
-            ) : null}
-          </div>
-        )}
-
-        <div className={styles.filterGrid}>
-          <label className="stack-sm">
-            <span className="text-xs text-muted brand-title">검색어</span>
-            <input
-              className="input"
-              value={trainerFilters.keyword}
-              onChange={(event) =>
-                setTrainerFilters((current) => ({
-                  ...current,
-                  keyword: event.target.value,
-                }))
-              }
-              placeholder="이름 / 로그인 ID / 연락처"
-            />
-          </label>
-          <label className="stack-sm">
-            <span className="text-xs text-muted brand-title">상태</span>
-            <select
-              className="input"
-              value={trainerFilters.status}
-              onChange={(event) =>
-                setTrainerFilters((current) => ({
-                  ...current,
-                  status: event.target.value as "ACTIVE" | "INACTIVE" | "",
-                }))
-              }
-            >
-              <option value="">전체 상태</option>
-              <option value="ACTIVE">활성</option>
-              <option value="INACTIVE">비활성</option>
-            </select>
-          </label>
-          {isSuperAdmin ? (
-            <label className="stack-sm">
-              <span className="text-xs text-muted brand-title">센터 ID</span>
-              <input
-                className="input"
-                type="number"
-                min={1}
-                value={trainerFilters.centerId}
-                onChange={(event) =>
-                  setTrainerFilters((current) => ({
-                    ...current,
-                    centerId: Number(event.target.value || "1"),
-                  }))
-                }
-              />
-            </label>
+    <Flex vertical gap={24}>
+      <Card>
+        <Flex justify="space-between" align="center" wrap="wrap" gap={16}>
+          <Space direction="vertical" size={4}>
+            <Text type="secondary" style={{ fontSize: "0.72rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "#1677ff" }}>
+              Trainer Ops
+            </Text>
+            <Title level={2} style={{ margin: 0 }}>
+              트레이너 관리
+            </Title>
+            <Paragraph type="secondary" style={{ margin: 0, maxWidth: 640 }}>
+              트레이너 계정 상태와 담당 회원 수, 오늘 예약 현황을 한 화면에서 확인합니다.
+            </Paragraph>
+            <Space wrap>
+              <Tag color="blue">계정 운영</Tag>
+              <Tag color="cyan">담당 현황</Tag>
+              <Tag color="purple">데스크 조회 전용</Tag>
+            </Space>
+          </Space>
+          {canMutateTrainers ? (
+            <Button type="primary" size="large" onClick={startCreateTrainer}>
+              트레이너 등록
+            </Button>
           ) : null}
-          <div className={styles.filterActions}>
-            <button
-              type="button"
-              className="secondary-button"
-              disabled={!canReadLiveTrainers}
-              onClick={() => {
-                const nextFilters = createDefaultTrainerFilters(defaultCenterId);
-                setTrainerFilters(nextFilters);
-                void loadTrainers(nextFilters);
-              }}
-            >
-              초기화
-            </button>
-            <button
-              type="button"
-              className="secondary-button"
-              disabled={trainersLoading || !canReadLiveTrainers}
-              onClick={() => void loadTrainers(trainerFilters)}
-            >
-              {trainersLoading ? "불러오는 중..." : "적용"}
-            </button>
-          </div>
-        </div>
+        </Flex>
+      </Card>
 
-        <div className="table-shell mt-lg">
-          <table className="members-table">
-            <thead>
-              <tr>
-                <th>이름</th>
-                <th>상태</th>
-                <th>연락처</th>
-                <th>담당 회원</th>
-                <th>오늘 예약</th>
-                <th className="ops-right">액션</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pagination.pagedItems.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="empty-cell">
-                    {canReadLiveTrainers
-                      ? "조건에 맞는 트레이너가 없습니다."
-                      : "현재 권한에서는 트레이너 정보를 조회할 수 없습니다."}
-                  </td>
-                </tr>
-              ) : (
-                pagination.pagedItems.map((trainer) => (
-                  <tr key={trainer.userId}>
-                    <td>
-                      <strong>{trainer.displayName}</strong>
-                    </td>
-                    <td>
-                      <span
-                        className={
-                          trainer.userStatus === "ACTIVE" ? "pill ok" : "pill muted"
-                        }
-                      >
-                        {trainer.userStatus === "ACTIVE" ? "활성" : "비활성"}
-                      </span>
-                    </td>
-                    <td className="text-muted">{trainer.phone ?? "미등록"}</td>
-                    <td>{trainer.assignedMemberCount}</td>
-                    <td>{trainer.todayConfirmedReservationCount}</td>
-                    <td className="ops-right">
-                      <div className={styles.tableActions}>
-                        <button
-                          type="button"
-                          className="secondary-button"
-                          onClick={() => void loadTrainerDetail(trainer.userId)}
-                        >
-                          상세
-                        </button>
-                        {canMutateTrainers ? (
-                          <button
-                            type="button"
-                            className="secondary-button"
-                            onClick={() => void startEditTrainer(trainer.userId)}
-                          >
-                            수정
-                          </button>
-                        ) : null}
-                        {canMutateTrainers ? (
-                          <button
-                            type="button"
-                            className="secondary-button"
-                            onClick={() =>
-                              void toggleTrainerStatus(
-                                trainer.userId,
-                                trainer.userStatus === "ACTIVE"
-                                  ? "INACTIVE"
-                                  : "ACTIVE",
-                              )
-                            }
-                          >
-                            {trainer.userStatus === "ACTIVE" ? "비활성화" : "활성화"}
-                          </button>
-                        ) : null}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+      <Row gutter={[16, 16]}>
+        {[
+          { label: "조회 결과", value: trainers.length, hint: "센터 기준 트레이너 수" },
+          { label: "활성 트레이너", value: activeTrainerCount, hint: "예약 배정 가능", color: "#52c41a" },
+          { label: "오늘 확정 예약", value: confirmedReservationCount, hint: "CONFIRMED 예약 합계", color: "#1677ff" },
+          { label: "운영 권한", value: canMutateTrainers ? "편집 가능" : "조회 전용", hint: "작업 범위 안내" }
+        ].map((stat) => (
+          <Col xs={12} sm={6} key={stat.label}>
+            <Card>
+              <Statistic
+                title={<Text type="secondary" style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase" }}>{stat.label}</Text>}
+                value={stat.value}
+                valueStyle={{ fontWeight: 800, color: stat.color }}
+                suffix={<Text type="secondary" style={{ fontSize: "0.75rem", display: "block" }}>{stat.hint}</Text>}
+              />
+            </Card>
+          </Col>
+        ))}
+      </Row>
 
-        <PaginationControls
-          page={pagination.page}
-          totalPages={pagination.totalPages}
-          pageSize={pagination.pageSize}
-          pageSizeOptions={[10, 20, 50]}
-          totalItems={pagination.totalItems}
-          startItemIndex={pagination.startItemIndex}
-          endItemIndex={pagination.endItemIndex}
-          onPageChange={pagination.setPage}
-          onPageSizeChange={pagination.setPageSize}
-        />
-      </article>
-
-      <Modal
-        isOpen={detailOpen}
-        onClose={() => setDetailOpen(false)}
-        title={selectedTrainer ? `${selectedTrainer.displayName} 상세` : "트레이너 상세"}
-        size="lg"
-      >
-        {detailLoading ? (
-          <div className="text-sm text-muted">상세 정보를 불러오는 중입니다...</div>
-        ) : selectedTrainer ? (
-          <>
-            <div className={styles.detailGrid}>
-              <div className={styles.detailCard}>
-                <div className="text-xs text-muted">이름</div>
-                <div className="brand-title mt-xs">{selectedTrainer.displayName}</div>
-              </div>
-              <div className={styles.detailCard}>
-                <div className="text-xs text-muted">상태</div>
-                <div className="brand-title mt-xs">
-                  {selectedTrainer.userStatus === "ACTIVE" ? "활성" : "비활성"}
-                </div>
-              </div>
-              <div className={styles.detailCard}>
-                <div className="text-xs text-muted">연락처</div>
-                <div className="brand-title mt-xs">{selectedTrainer.phone ?? "미등록"}</div>
-              </div>
-              <div className={styles.detailCard}>
-                <div className="text-xs text-muted">담당 회원</div>
-                <div className="brand-title mt-xs">{selectedTrainer.assignedMemberCount}명</div>
-              </div>
-              <div className={styles.detailCard}>
-                <div className="text-xs text-muted">오늘 확정 예약</div>
-                <div className="brand-title mt-xs">
-                  {selectedTrainer.todayConfirmedReservationCount}건
-                </div>
-              </div>
-              {selectedTrainer.loginId ? (
-                <div className={styles.detailCard}>
-                  <div className="text-xs text-muted">로그인 ID</div>
-                  <div className="brand-title mt-xs">{selectedTrainer.loginId}</div>
-                </div>
-              ) : null}
-            </div>
-
-            <div className="ops-section mt-lg">
-              <div className="ops-section__header">
-                <div>
-                  <h3 className="ops-section__title">담당 회원 요약</h3>
-                  <p className="ops-section__subtitle">
-                    현재 배정된 활성 또는 홀딩 회원권 기준 상위 20건입니다.
-                  </p>
-                </div>
-              </div>
-              {selectedTrainer.assignedMembers.length === 0 ? (
-                <div className="text-sm text-muted">현재 배정된 회원이 없습니다.</div>
-              ) : (
-                <div className={styles.assignedList}>
-                  {selectedTrainer.assignedMembers.map((member) => (
-                    <div key={member.membershipId} className={styles.assignedItem}>
-                      <div>
-                        <div className="brand-title">{member.memberName}</div>
-                        <div className="text-xs text-muted">
-                          회원 #{member.memberId} · 회원권 #{member.membershipId}
-                        </div>
-                      </div>
-                      <span
-                        className={
-                          member.membershipStatus === "ACTIVE" ? "pill ok" : "pill hold"
-                        }
-                      >
-                        {member.membershipStatus}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="ops-section mt-lg">
-              <div className="ops-section__header">
-                <div>
-                  <h3 className="ops-section__title">가용 스케줄</h3>
-                  <p className="ops-section__subtitle">
-                    트레이너가 등록한 주간 가능 시간과 날짜별 예외를 조회합니다.
-                  </p>
-                </div>
-                <label className="stack-sm">
-                  <span className="text-xs text-muted brand-title">조회 월</span>
-                  <input
-                    className="input"
-                    type="month"
-                    value={availabilityMonth}
-                    onChange={(event) => setAvailabilityMonth(event.target.value)}
-                  />
-                </label>
-              </div>
-              {trainerAvailabilityError ? (
-                <div className="pill danger">{trainerAvailabilityError}</div>
-              ) : null}
-              {trainerAvailabilityLoading ? (
-                <div className="text-sm text-muted">가용 스케줄을 불러오는 중입니다...</div>
-              ) : trainerAvailabilitySnapshot ? (
-                <div className={styles.availabilitySection}>
-                  <div className={styles.availabilitySummary}>
-                    <div className={styles.availabilityCard}>
-                      <div className="text-xs text-muted">가용 일수</div>
-                      <div className="brand-title mt-xs">
-                        {
-                          trainerAvailabilitySnapshot.effectiveDays.filter(
-                            (day) => day.availabilityStatus === "AVAILABLE",
-                          ).length
-                        }
-                        일
-                      </div>
-                    </div>
-                    <div className={styles.availabilityCard}>
-                      <div className="text-xs text-muted">예외 일정</div>
-                      <div className="brand-title mt-xs">
-                        {trainerAvailabilitySnapshot.exceptions.length}건
-                      </div>
-                    </div>
-                  </div>
-
-                  <TrainerAvailabilityMonthView snapshot={trainerAvailabilitySnapshot} />
-
-                  <div className={styles.readonlyExceptionList}>
-                    {trainerAvailabilitySnapshot.exceptions.length === 0 ? (
-                      <div className="text-sm text-muted">등록된 예외 일정이 없습니다.</div>
-                    ) : (
-                      trainerAvailabilitySnapshot.exceptions.map((exception) => (
-                        <div
-                          key={exception.availabilityExceptionId}
-                          className={styles.readonlyExceptionItem}
-                        >
-                          <div>
-                            <div className="brand-title">{exception.exceptionDate}</div>
-                            <div className="text-xs text-muted">
-                              {exception.exceptionType === "OFF"
-                                ? getAvailabilityStatusLabel("OFF")
-                                : formatAvailabilityTimeRange(
-                                    exception.overrideStartTime,
-                                    exception.overrideEndTime,
-                                  )}
-                            </div>
-                          </div>
-                          <div className="text-sm text-muted">
-                            {exception.memo ?? "메모 없음"}
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="text-sm text-muted">등록된 스케줄 정보가 없습니다.</div>
-              )}
-            </div>
-          </>
-        ) : (
-          <div className="text-sm text-muted">선택된 트레이너가 없습니다.</div>
-        )}
-      </Modal>
-
-      <Modal
-        isOpen={trainerFormOpen}
-        onClose={() => setTrainerFormOpen(false)}
-        title={trainerFormMode === "create" ? "트레이너 등록" : "트레이너 정보 수정"}
-        footer={
-          <>
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() => setTrainerFormOpen(false)}
-            >
-              닫기
-            </button>
-            <button
-              type="button"
-              className="primary-button"
-              onClick={() => void submitTrainerForm()}
-              disabled={trainerFormSubmitting}
-            >
-              {trainerFormSubmitting ? "저장 중..." : "저장"}
-            </button>
-          </>
+      <Card
+        title={
+          <Space direction="vertical" size={2}>
+            <Title level={5} style={{ margin: 0 }}>
+              트레이너 디렉터리
+            </Title>
+            <Text type="secondary" style={{ fontSize: "0.84rem" }}>
+              이름, 상태, 연락처, 담당 회원 수 기준 운영 점검
+            </Text>
+          </Space>
         }
       >
-        <div className="stack-md">
-          {trainerFormError ? <div className="pill danger">{trainerFormError}</div> : null}
-          <label className="stack-sm">
-            <span className="text-xs text-muted brand-title">센터 ID</span>
-            <input
-              className="input"
-              type="number"
-              min={1}
-              value={trainerForm.centerId}
-              disabled={!isSuperAdmin}
-              onChange={(event) =>
-                setTrainerForm((current) => ({
-                  ...current,
-                  centerId: Number(event.target.value || "1"),
-                }))
-              }
+        <Flex vertical gap={16}>
+          {!canMutateTrainers && canReadLiveTrainers ? (
+            <Alert
+              message="조회 전용 모드"
+              description="데스크 권한에서는 상세 조회만 가능하며 계정 생성, 수정, 상태 변경은 숨겨집니다."
+              type="info"
+              showIcon
             />
-          </label>
-          <label className="stack-sm">
-            <span className="text-xs text-muted brand-title">로그인 ID</span>
-            <input
-              className="input"
-              value={trainerForm.loginId}
-              onChange={(event) =>
-                setTrainerForm((current) => ({
-                  ...current,
-                  loginId: event.target.value,
-                }))
-              }
-            />
-          </label>
-          {trainerFormMode === "create" ? (
-            <label className="stack-sm">
-              <span className="text-xs text-muted brand-title">초기 비밀번호</span>
-              <input
-                className="input"
-                type="password"
-                value={trainerForm.password}
-                onChange={(event) =>
-                  setTrainerForm((current) => ({
-                    ...current,
-                    password: event.target.value,
-                  }))
-                }
-              />
-            </label>
           ) : null}
-          <label className="stack-sm">
-            <span className="text-xs text-muted brand-title">이름</span>
-            <input
-              className="input"
-              value={trainerForm.displayName}
-              onChange={(event) =>
-                setTrainerForm((current) => ({
-                  ...current,
-                  displayName: event.target.value,
-                }))
-              }
+
+          {!canReadLiveTrainers ? (
+            <Alert
+              message="운영 권한 제한"
+              description="현재 권한에서는 트레이너 관리 화면에 접근할 수 없습니다."
+              type="warning"
+              showIcon
             />
-          </label>
-          <label className="stack-sm">
-            <span className="text-xs text-muted brand-title">연락처</span>
-            <input
-              className="input"
-              value={trainerForm.phone}
-              onChange={(event) =>
-                setTrainerForm((current) => ({
-                  ...current,
-                  phone: event.target.value,
-                }))
+          ) : null}
+
+          {trainerPanelMessage && <Alert message={trainerPanelMessage} type="success" showIcon closable />}
+          {(trainerPanelError || trainersQueryError) && (
+            <Alert message={trainerPanelError ?? trainersQueryError} type="error" showIcon closable />
+          )}
+
+          <Form layout="vertical">
+            <Row gutter={16}>
+              <Col xs={24} sm={12} lg={8}>
+                <Form.Item label="검색어" style={{ marginBottom: 0 }}>
+                  <Input
+                    value={trainerFilters.keyword}
+                    onChange={(e) =>
+                      setTrainerFilters((prev) => ({ ...prev, keyword: e.target.value }))
+                    }
+                    placeholder="이름 / 로그인 ID / 연락처"
+                  />
+                </Form.Item>
+              </Col>
+              <Col xs={24} sm={8} lg={4}>
+                <Form.Item label="상태" style={{ marginBottom: 0 }}>
+                  <Select
+                    value={trainerFilters.status || ""}
+                    onChange={(val) =>
+                      setTrainerFilters((prev) => ({ ...prev, status: val as any }))
+                    }
+                    options={[
+                      { value: "", label: "전체 상태" },
+                      { value: "ACTIVE", label: "활성" },
+                      { value: "INACTIVE", label: "비활성" },
+                    ]}
+                  />
+                </Form.Item>
+              </Col>
+              {isSuperAdmin && (
+                <Col xs={24} sm={8} lg={4}>
+                  <Form.Item label="센터 ID" style={{ marginBottom: 0 }}>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={trainerFilters.centerId}
+                      onChange={(e) =>
+                        setTrainerFilters((prev) => ({ ...prev, centerId: Number(e.target.value || "1") }))
+                      }
+                    />
+                  </Form.Item>
+                </Col>
+              )}
+              <Col xs={24} sm={16} lg={isSuperAdmin ? 8 : 12}>
+                <Flex justify="flex-end" gap={8} style={{ height: "100%", alignItems: "flex-end" }}>
+                  <Button
+                    disabled={!canReadLiveTrainers}
+                    onClick={() => {
+                      const nextFilters = createDefaultTrainerFilters(defaultCenterId);
+                      setTrainerFilters(nextFilters);
+                      void refetchTrainers();
+                    }}
+                  >
+                    초기화
+                  </Button>
+                  <Button
+                    type="primary"
+                    loading={trainersLoading}
+                    disabled={!canReadLiveTrainers}
+                    onClick={() => void refetchTrainers()}
+                  >
+                    조회 적용
+                  </Button>
+                </Flex>
+              </Col>
+            </Row>
+          </Form>
+
+          <Table
+            rowKey="userId"
+            columns={trainerColumns}
+            dataSource={pagination.pagedItems}
+            pagination={{
+              current: pagination.page,
+              pageSize: pagination.pageSize,
+              total: pagination.totalItems,
+              showSizeChanger: true,
+              pageSizeOptions: ["10", "20", "50"],
+              onChange: (page, pageSize) => {
+                pagination.setPage(page);
+                pagination.setPageSize(pageSize);
               }
-              placeholder="010-..."
-            />
-          </label>
-        </div>
+            }}
+            loading={trainersLoading}
+            scroll={{ x: 800 }}
+            locale={{
+              emptyText: canReadLiveTrainers
+                ? "조건에 맞는 트레이너가 없습니다."
+                : "트레이너 정보를 조회할 수 없습니다.",
+            }}
+          />
+        </Flex>
+      </Card>
+
+      {/* 상세 모달 */}
+      <Modal
+        open={detailOpen}
+        onCancel={() => setDetailOpen(false)}
+        title={selectedTrainer ? <Space><SolutionOutlined />{selectedTrainer.displayName} 상세 정보</Space> : "트레이너 상세"}
+        width={900}
+        footer={[<Button key="close" onClick={() => setDetailOpen(false)}>닫기</Button>]}
+      >
+        <Flex vertical gap={24} style={{ marginTop: 16 }}>
+          {detailLoading ? (
+            <Empty description="상세 정보를 불러오는 중입니다..." />
+          ) : selectedTrainer ? (
+            <>
+              <Card size="small">
+                <Descriptions column={2} bordered size="small">
+                  <Descriptions.Item label="이름">{selectedTrainer.displayName}</Descriptions.Item>
+                  <Descriptions.Item label="상태">
+                    <Tag color={selectedTrainer.userStatus === "ACTIVE" ? "success" : "default"}>
+                      {selectedTrainer.userStatus === "ACTIVE" ? "활성" : "비활성"}
+                    </Tag>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="연락처">{selectedTrainer.phone ?? "미등록"}</Descriptions.Item>
+                  <Descriptions.Item label="담당 회원">{selectedTrainer.assignedMemberCount}명</Descriptions.Item>
+                  <Descriptions.Item label="오늘 예약">{selectedTrainer.todayConfirmedReservationCount}건</Descriptions.Item>
+                  <Descriptions.Item label="로그인 ID">{selectedTrainer.loginId || "-"}</Descriptions.Item>
+                </Descriptions>
+              </Card>
+
+              <Row gutter={24}>
+                <Col xs={24} lg={10}>
+                  <Card
+                    size="small"
+                    title={<Space><TeamOutlined />담당 회원 요약</Space>}
+                    style={{ height: "100%" }}
+                  >
+                    {selectedTrainer.assignedMembers.length === 0 ? (
+                      <Empty description="배정된 회원이 없습니다." image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                    ) : (
+                      <List
+                        size="small"
+                        dataSource={selectedTrainer.assignedMembers}
+                        renderItem={(member) => (
+                          <List.Item>
+                            <Flex justify="space-between" align="center" style={{ width: "100%" }}>
+                              <Space direction="vertical" size={0}>
+                                <Text strong style={{ fontSize: "0.84rem" }}>{member.memberName}</Text>
+                                <Text type="secondary" style={{ fontSize: "0.72rem" }}>
+                                  #{member.memberId} · 회원권 #{member.membershipId}
+                                </Text>
+                              </Space>
+                              <Tag color={member.membershipStatus === "ACTIVE" ? "success" : "warning"}>
+                                {member.membershipStatus}
+                              </Tag>
+                            </Flex>
+                          </List.Item>
+                        )}
+                      />
+                    )}
+                  </Card>
+                </Col>
+
+                <Col xs={24} lg={14}>
+                  <Card
+                    size="small"
+                    title={
+                      <Flex justify="space-between" align="center">
+                        <Title level={5} style={{ margin: 0 }}>가용 스케줄</Title>
+                        <input
+                          type="month"
+                          value={availabilityMonth}
+                          style={{ fontSize: "0.84rem", padding: "2px 8px" }}
+                          onChange={(e) => setAvailabilityMonth(e.target.value)}
+                        />
+                      </Flex>
+                    }
+                  >
+                    <Flex vertical gap={12}>
+                      {trainerAvailabilityError && <Alert message={trainerAvailabilityError} type="error" showIcon />}
+                      
+                      {trainerAvailabilityLoading ? (
+                        <Empty description="스케줄 불러오는 중..." />
+                      ) : trainerAvailabilitySnapshot ? (
+                        <Flex vertical gap={16}>
+                          <Row gutter={8}>
+                            <Col span={12}>
+                              <Statistic
+                                title={<Text type="secondary" style={{ fontSize: "0.72rem" }}>가용 일수</Text>}
+                                value={trainerAvailabilitySnapshot.effectiveDays.filter(d => d.availabilityStatus === "AVAILABLE").length}
+                                valueStyle={{ fontSize: "1.2rem", fontWeight: 700 }}
+                                suffix={<Text style={{ fontSize: "0.84rem" }}>일</Text>}
+                              />
+                            </Col>
+                            <Col span={12}>
+                              <Statistic
+                                title={<Text type="secondary" style={{ fontSize: "0.72rem" }}>예외 일정</Text>}
+                                value={trainerAvailabilitySnapshot.exceptions.length}
+                                valueStyle={{ fontSize: "1.2rem", fontWeight: 700 }}
+                                suffix={<Text style={{ fontSize: "0.84rem" }}>건</Text>}
+                              />
+                            </Col>
+                          </Row>
+
+                          <TrainerAvailabilityMonthView snapshot={trainerAvailabilitySnapshot} />
+
+                          {trainerAvailabilitySnapshot.exceptions.length > 0 && (
+                            <List
+                              size="small"
+                              header={<Text strong style={{ fontSize: "0.75rem" }}>예외 리스트</Text>}
+                              dataSource={trainerAvailabilitySnapshot.exceptions}
+                              renderItem={(ex) => (
+                                <List.Item>
+                                  <Flex justify="space-between" align="center" style={{ width: "100%" }}>
+                                    <Space direction="vertical" size={0}>
+                                      <Text strong style={{ fontSize: "0.75rem" }}>{ex.exceptionDate}</Text>
+                                      <Text type="secondary" style={{ fontSize: "0.72rem" }}>
+                                        {ex.exceptionType === "OFF" ? "휴무" : formatAvailabilityTimeRange(ex.overrideStartTime, ex.overrideEndTime)}
+                                      </Text>
+                                    </Space>
+                                    <Text type="secondary" style={{ fontSize: "0.72rem" }}>{ex.memo ?? "-"}</Text>
+                                  </Flex>
+                                </List.Item>
+                              )}
+                            />
+                          )}
+                        </Flex>
+                      ) : (
+                        <Empty description="스케줄 소득 없음" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                      )}
+                    </Flex>
+                  </Card>
+                </Col>
+              </Row>
+            </>
+          ) : (
+            <Empty description="정보가 없습니다." />
+          )}
+        </Flex>
       </Modal>
-    </section>
+
+      {/* 등록/수정 모달 */}
+      <Modal
+        open={trainerFormOpen}
+        onCancel={() => setTrainerFormOpen(false)}
+        title={trainerFormMode === "create" ? "트레이너 계정 등록" : "트레이너 정보 수정"}
+        onOk={() => void submitTrainerForm()}
+        okText="저장"
+        cancelText="닫기"
+        confirmLoading={trainerFormSubmitting}
+      >
+        <Form layout="vertical" style={{ marginTop: 16 }}>
+          {trainerFormError && <Alert message={trainerFormError} type="error" showIcon style={{ marginBottom: 16 }} />}
+          
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="센터 ID" required>
+                <Input
+                  type="number"
+                  min={1}
+                  value={trainerForm.centerId}
+                  disabled={!isSuperAdmin}
+                  onChange={(e) => setTrainerForm(prev => ({ ...prev, centerId: Number(e.target.value || "1") }))}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="로그인 ID" required>
+                <Input
+                  value={trainerForm.loginId}
+                  onChange={(e) => setTrainerForm(prev => ({ ...prev, loginId: e.target.value }))}
+                  placeholder="아이디 입력"
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          {trainerFormMode === "create" && (
+            <Form.Item label="초기 비밀번호" required>
+              <Input.Password
+                value={trainerForm.password}
+                onChange={(e) => setTrainerForm(prev => ({ ...prev, password: e.target.value }))}
+                placeholder="최소 8자 이상"
+              />
+            </Form.Item>
+          )}
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="이름" required>
+                <Input
+                  value={trainerForm.displayName}
+                  onChange={(e) => setTrainerForm(prev => ({ ...prev, displayName: e.target.value }))}
+                  placeholder="트레이너 성명"
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="연락처">
+                <Input
+                  value={trainerForm.phone}
+                  onChange={(e) => setTrainerForm(prev => ({ ...prev, phone: e.target.value }))}
+                  placeholder="010-..."
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+        </Form>
+      </Modal>
+    </Flex>
   );
 }

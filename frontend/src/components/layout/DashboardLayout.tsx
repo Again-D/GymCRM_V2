@@ -1,56 +1,46 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { Layout, Menu, Tag, Typography } from "antd";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 
-import { useAuthState } from "../../app/auth";
 import type { ShellRoute } from "../../app/routes";
 import HeaderLayout from "./HeaderLayout";
 
 import styles from "./DashboardLayout.module.css";
 
+const { Sider, Header, Content } = Layout;
+const { Text } = Typography;
+
 export default function DashboardLayout({ routes }: { routes: ShellRoute[] }) {
-  const {
-    authError,
-    authStatusMessage,
-    authUser,
-    clearRuntimeSession,
-    isMockMode,
-    logout,
-    securityMode,
-    setRuntimeAuthPreset
-  } = useAuthState();
+  const location = useLocation();
 
   return (
-    <div className={styles["app-shell"]}>
-      <aside className={styles["app-shell__sidebar"]}>
-        <div className={styles["app-shell__brand"]}>
-          <span className={styles["brand-kicker"]}>Field Ops</span>
-          <span>GymCRM Ops</span>
+    <Layout className={styles.shell}>
+      <Sider breakpoint="lg" collapsedWidth={0} width={200} className={styles.sidebar}>
+        <div className={styles.brand}>
+          <span className={styles.brandKicker}>Field Ops</span>
+          <span className={styles.brandName}>GymCRM Ops</span>
+          <Text className={styles.brandDescription}>Secure center operations workspace</Text>
         </div>
-        
 
+        <Menu
+          mode="inline"
+          selectedKeys={[location.pathname]}
+          className={styles.menu}
+          items={routes.map((item) => ({
+            key: item.path,
+            label: <NavLink to={item.path}>{item.label}</NavLink>,
+            extra: <Tag bordered={false} className={styles.menuTag}>{item.description}</Tag>
+          }))}
+        />
+      </Sider>
 
-        <nav className={styles["app-nav"]}>
-          {routes.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={({ isActive }) => `${styles["app-nav__link"]}${isActive ? ` ${styles["is-active"]}` : ""}`}
-            >
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
-
-
-      </aside>
-
-      <main className={styles["app-shell__main"]}>
-        <HeaderLayout>
-           {/* Page Title or Breadcrumbs could go here */}
-        </HeaderLayout>
-        <div className={styles["app-shell__content"]}>
+      <Layout className={styles.main}>
+        <Header className={styles.header}>
+          <HeaderLayout />
+        </Header>
+        <Content className={styles.content}>
           <Outlet />
-        </div>
-      </main>
-    </div>
+        </Content>
+      </Layout>
+    </Layout>
   );
 }

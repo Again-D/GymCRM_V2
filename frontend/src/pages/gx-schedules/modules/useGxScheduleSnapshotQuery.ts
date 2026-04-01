@@ -1,59 +1,34 @@
-import { useCallback, useRef, useState } from "react";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 import { apiGet } from "../../../api/client";
+import { queryKeys, queryPolicies } from "../../../app/queryHelpers";
+import { toUserFacingErrorMessage } from "../../../app/uiError";
 import type { GxScheduleSnapshot } from "./types";
 
-export function useGxScheduleSnapshotQuery() {
-  const [snapshot, setSnapshot] = useState<GxScheduleSnapshot | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const requestIdRef = useRef(0);
-
-  const loadSnapshot = useCallback(async (month: string) => {
-    const requestId = requestIdRef.current + 1;
-    requestIdRef.current = requestId;
-    setLoading(true);
-    setError(null);
-
-    try {
+export function useGxScheduleSnapshotQuery(month: string) {
+  const query = useQuery({
+    queryKey: queryKeys.gxSchedules.list({ month }),
+    queryFn: async () => {
       const response = await apiGet<GxScheduleSnapshot>(
         `/api/v1/reservations/gx/snapshot?month=${month}`,
       );
-      if (requestIdRef.current !== requestId) {
-        return null;
-      }
-      setSnapshot(response.data);
       return response.data;
-    } catch (caught) {
-      if (requestIdRef.current !== requestId) {
-        return null;
-      }
-      setSnapshot(null);
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : "GX 스케줄을 불러오지 못했습니다.",
-      );
-      return null;
-    } finally {
-      if (requestIdRef.current === requestId) {
-        setLoading(false);
-      }
-    }
-  }, []);
+    },
+    staleTime: queryPolicies.list.staleTime,
+    gcTime: queryPolicies.list.gcTime,
+  });
 
-  const applySnapshot = useCallback((nextSnapshot: GxScheduleSnapshot | null) => {
-    requestIdRef.current += 1;
-    setSnapshot(nextSnapshot);
-    setLoading(false);
-    setError(null);
-  }, []);
-
-  return {
-    snapshot,
-    loading,
-    error,
-    loadSnapshot,
-    applySnapshot,
-  } as const;
+  return useMemo(() => ({
+    snapshot: query.data ?? null,
+    loading: query.isFetching || query.isPending,
+    error: query.error ? toUserFacingErrorMessage(query.error, "GX 스케줄 스냅샷을 불러오지 못했습니다.") : null,
+    refetch: query.refetch,
+  }), [
+    query.data,
+    query.isFetching,
+    query.isPending,
+    query.error,
+    query.refetch
+  ]);
 }

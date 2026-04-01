@@ -3,20 +3,20 @@ import {
   type PropsWithChildren,
   useContext,
   useEffect,
-  useMemo,
-  useState
+  useRef
 } from "react";
+import { useStore } from "zustand";
+
+import {
+  createThemeStore,
+  initialThemeStoreState,
+  type ThemeStoreApi
+} from "./themeStore";
 
 export type ThemePreference = "light" | "dark" | "system";
 export type ResolvedTheme = "light" | "dark";
 
-type ThemeStore = {
-  themePreference: ThemePreference;
-  resolvedTheme: ResolvedTheme;
-  setThemePreference: (pref: ThemePreference) => void;
-};
-
-const ThemeContext = createContext<ThemeStore | null>(null);
+const ThemeStoreContext = createContext<ThemeStoreApi | null>(null);
 
 const STORAGE_KEY = "gymcrm.themePreference";
 const LEGACY_STORAGE_KEY = "gymcrm-theme-preference";
@@ -82,21 +82,36 @@ function applyResolvedTheme(nextTheme: ResolvedTheme) {
   document.documentElement.setAttribute("data-theme", nextTheme);
 }
 
-export function initializeThemeOnDocument() {
+function getInitialThemeState() {
   const themePreference = readStoredThemePreference();
-  const resolvedTheme = resolveTheme(themePreference, readSystemTheme());
-  applyResolvedTheme(resolvedTheme);
-  return { themePreference, resolvedTheme } as const;
+  const systemTheme = readSystemTheme();
+
+  return {
+    ...initialThemeStoreState,
+    themePreference,
+    systemTheme,
+    resolvedTheme: resolveTheme(themePreference, systemTheme)
+  };
+}
+
+export function initializeThemeOnDocument() {
+  const initialThemeState = getInitialThemeState();
+  applyResolvedTheme(initialThemeState.resolvedTheme);
+  return {
+    themePreference: initialThemeState.themePreference,
+    resolvedTheme: initialThemeState.resolvedTheme
+  } as const;
 }
 
 export function ThemeProvider({ children }: PropsWithChildren) {
-  const [themePreference, setThemePreference] = useState<ThemePreference>(() => readStoredThemePreference());
-  const [systemTheme, setSystemTheme] = useState<ResolvedTheme>(() => readSystemTheme());
+  const storeRef = useRef<ThemeStoreApi | null>(null);
+  if (!storeRef.current) {
+    storeRef.current = createThemeStore(getInitialThemeState());
+  }
 
-  const resolvedTheme = useMemo(
-    () => resolveTheme(themePreference, systemTheme),
-    [systemTheme, themePreference]
-  );
+  const store = storeRef.current;
+  const themePreference = useStore(store, (state) => state.themePreference);
+  const resolvedTheme = useStore(store, (state) => state.resolvedTheme);
 
   useEffect(() => {
     const storage = getBrowserStorage();
@@ -117,7 +132,7 @@ export function ThemeProvider({ children }: PropsWithChildren) {
 
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     const updateSystemTheme = () => {
-      setSystemTheme(mediaQuery.matches ? "dark" : "light");
+      store.getState().setSystemTheme(mediaQuery.matches ? "dark" : "light");
     };
 
     updateSystemTheme();
@@ -125,20 +140,24 @@ export function ThemeProvider({ children }: PropsWithChildren) {
     return () => {
       mediaQuery.removeEventListener("change", updateSystemTheme);
     };
-  }, []);
+  }, [store]);
 
-  const value = useMemo<ThemeStore>(
-    () => ({ themePreference, resolvedTheme, setThemePreference }),
-    [resolvedTheme, themePreference]
-  );
-
-  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+  return <ThemeStoreContext.Provider value={store}>{children}</ThemeStoreContext.Provider>;
 }
 
 export function useThemeStore() {
-  const context = useContext(ThemeContext);
-  if (!context) {
+  const store = useContext(ThemeStoreContext);
+  if (!store) {
     throw new Error("useThemeStore must be used inside ThemeProvider");
   }
-  return context;
+
+  const themePreference = useStore(store, (state) => state.themePreference);
+  const resolvedTheme = useStore(store, (state) => state.resolvedTheme);
+  const setThemePreference = useStore(store, (state) => state.setThemePreference);
+
+  return {
+    themePreference,
+    resolvedTheme,
+    setThemePreference
+  };
 }
