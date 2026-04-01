@@ -434,19 +434,18 @@ export function useMembershipPrototypeState(
     }
   }
 
-  async function handleRefundPreview(membership: PurchasedMembership) {
+  async function handleRefundPreview(membership: PurchasedMembership, date?: string) {
     clearPanelFeedback();
-    const preview = buildRefundPreview(membership);
-    if ("error" in preview) {
-      setMembershipPanelError(
-        preview.error ?? "환불 미리보기를 계산하지 못했습니다.",
-      );
+    
+    const refundDate = date || getMembershipActionDraft(membership.membershipId).refundDate;
+    if (!refundDate) {
+      setMembershipPanelError("환불 기준일을 입력해야 합니다.");
       return null;
     }
+
     try {
       const response = await previewMembershipRefund(membership, {
-        refundDate: getMembershipActionDraft(membership.membershipId)
-          .refundDate,
+        refundDate: refundDate,
       });
       setMembershipRefundPreviewById((prev) => ({
         ...prev,

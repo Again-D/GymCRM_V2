@@ -17,7 +17,8 @@ import {
   Table, 
   Tag, 
   Typography,
-  Alert
+  Alert,
+  theme
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import dayjs from "dayjs";
@@ -65,6 +66,7 @@ function paymentLabel(payment: MembershipPaymentRecord) {
 }
 
 export default function MembershipsPage() {
+  const { token } = theme.useToken();
   const { selectedMember, selectedMemberId, clearSelectedMember } = useSelectedMemberStore();
   const {
     selectedMemberMemberships,
@@ -208,6 +210,8 @@ export default function MembershipsPage() {
                 onClick={() => {
                   setTargetMembership(record);
                   setActiveModal('refund');
+                  // Trigger initial preview calculation
+                  void handleRefundPreview(record);
                 }}
               >
                 환불
@@ -615,12 +619,17 @@ export default function MembershipsPage() {
                   <DatePicker 
                     style={{ width: '100%' }}
                     value={currentDraft.refundDate ? dayjs(currentDraft.refundDate) : null}
-                    onChange={(date) => 
+                    onChange={(date) => {
+                      const newDate = date ? date.format("YYYY-MM-DD") : "";
                       updateMembershipActionDraft(targetMembership.membershipId, (prev) => ({
                         ...prev,
-                        refundDate: date ? date.format("YYYY-MM-DD") : ""
-                      }))
-                    }
+                        refundDate: newDate
+                      }));
+                      // Re-trigger preview if a valid date is selected
+                      if (newDate) {
+                        void handleRefundPreview(targetMembership, newDate);
+                      }
+                    }}
                   />
                 </Form.Item>
               </Col>
@@ -655,28 +664,26 @@ export default function MembershipsPage() {
               />
             </Form.Item>
 
-            <Button 
-              onClick={() => void handleRefundPreview(targetMembership)}
-              style={{ marginBottom: 16 }}
-            >
-              환불 금액 계산
-            </Button>
 
             {membershipRefundPreviewById[targetMembership.membershipId] && (
               <Card size="small" className={styles.previewCard}>
                 <Flex vertical gap={8}>
                   <Flex justify="space-between">
-                    <Text>원래 금액</Text>
+                    <Text>결제 금액</Text>
                     <span>{formatCurrency(membershipRefundPreviewById[targetMembership.membershipId].originalAmount)}</span>
                   </Flex>
                   <Flex justify="space-between">
-                    <Text>사용 금액</Text>
+                    <Text>이용 금액 (이용분 공제)</Text>
                     <span>- {formatCurrency(membershipRefundPreviewById[targetMembership.membershipId].usedAmount)}</span>
+                  </Flex>
+                  <Flex justify="space-between">
+                    <Text>위약금 (결제액의 10%)</Text>
+                    <span>- {formatCurrency(membershipRefundPreviewById[targetMembership.membershipId].penaltyAmount)}</span>
                   </Flex>
                   <Divider style={{ margin: '8px 0' }} />
                   <Flex justify="space-between">
-                    <Text strong>환불 합계</Text>
-                    <Text strong type="danger" style={{ fontSize: '1.2rem' }}>
+                    <Text strong>최종 환불 합계</Text>
+                    <Text strong style={{ fontSize: '1.2rem', color: token.colorError }}>
                       {formatCurrency(membershipRefundPreviewById[targetMembership.membershipId].refundAmount)}
                     </Text>
                   </Flex>
