@@ -210,6 +210,8 @@ export default function MembershipsPage() {
                 onClick={() => {
                   setTargetMembership(record);
                   setActiveModal('refund');
+                  // Trigger initial preview calculation
+                  void handleRefundPreview(record);
                 }}
               >
                 환불
@@ -617,12 +619,17 @@ export default function MembershipsPage() {
                   <DatePicker 
                     style={{ width: '100%' }}
                     value={currentDraft.refundDate ? dayjs(currentDraft.refundDate) : null}
-                    onChange={(date) => 
+                    onChange={(date) => {
+                      const newDate = date ? date.format("YYYY-MM-DD") : "";
                       updateMembershipActionDraft(targetMembership.membershipId, (prev) => ({
                         ...prev,
-                        refundDate: date ? date.format("YYYY-MM-DD") : ""
-                      }))
-                    }
+                        refundDate: newDate
+                      }));
+                      // Re-trigger preview if a valid date is selected
+                      if (newDate) {
+                        void handleRefundPreview(targetMembership, newDate);
+                      }
+                    }}
                   />
                 </Form.Item>
               </Col>
@@ -657,12 +664,6 @@ export default function MembershipsPage() {
               />
             </Form.Item>
 
-            <Button 
-              onClick={() => void handleRefundPreview(targetMembership)}
-              style={{ marginBottom: 16 }}
-            >
-              환불 금액 계산
-            </Button>
 
             {membershipRefundPreviewById[targetMembership.membershipId] && (
               <Card size="small" className={styles.previewCard}>
