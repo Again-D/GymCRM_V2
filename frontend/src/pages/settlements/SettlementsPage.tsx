@@ -184,9 +184,9 @@ export default function SettlementsPage() {
 
       <Row gutter={[16, 16]}>
         {[
-          { label: "총 매출", value: formatCurrency(settlementReport?.totalGrossSales ?? 0), hint: "환불 차감 전 합계", icon: <BarChartOutlined /> },
+          { label: "순 매출액", value: formatCurrency(settlementReport?.totalNetSales ?? 0), hint: "매출 실익 합계 (결제 - 환불)", color: token.colorSuccess, icon: <DollarOutlined /> },
+          { label: "총 매출", value: formatCurrency(settlementReport?.totalGrossSales ?? 0), hint: "환불 차감 전 결제 합계", icon: <BarChartOutlined /> },
           { label: "총 환불", value: formatCurrency(settlementReport?.totalRefundAmount ?? 0), hint: "기간 내 환불 총액", color: token.colorError, icon: <ReloadOutlined /> },
-          { label: "순 매출액", value: formatCurrency(settlementReport?.totalNetSales ?? 0), hint: "매출 실익 합계", color: token.colorSuccess, icon: <DollarOutlined /> },
           { label: "거래 건수", value: totalTransactionCount, hint: "집계된 거래 총수", icon: <DashboardOutlined /> }
         ].map((stat) => (
           <Col xs={12} sm={6} key={stat.label}>

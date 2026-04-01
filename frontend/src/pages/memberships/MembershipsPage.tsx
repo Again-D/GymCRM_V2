@@ -17,7 +17,8 @@ import {
   Table, 
   Tag, 
   Typography,
-  Alert
+  Alert,
+  theme
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import dayjs from "dayjs";
@@ -65,6 +66,7 @@ function paymentLabel(payment: MembershipPaymentRecord) {
 }
 
 export default function MembershipsPage() {
+  const { token } = theme.useToken();
   const { selectedMember, selectedMemberId, clearSelectedMember } = useSelectedMemberStore();
   const {
     selectedMemberMemberships,
@@ -666,17 +668,21 @@ export default function MembershipsPage() {
               <Card size="small" className={styles.previewCard}>
                 <Flex vertical gap={8}>
                   <Flex justify="space-between">
-                    <Text>원래 금액</Text>
+                    <Text>결제 금액</Text>
                     <span>{formatCurrency(membershipRefundPreviewById[targetMembership.membershipId].originalAmount)}</span>
                   </Flex>
                   <Flex justify="space-between">
-                    <Text>사용 금액</Text>
+                    <Text>이용 금액 (이용분 공제)</Text>
                     <span>- {formatCurrency(membershipRefundPreviewById[targetMembership.membershipId].usedAmount)}</span>
+                  </Flex>
+                  <Flex justify="space-between">
+                    <Text>위약금 (결제액의 10%)</Text>
+                    <span>- {formatCurrency(membershipRefundPreviewById[targetMembership.membershipId].penaltyAmount)}</span>
                   </Flex>
                   <Divider style={{ margin: '8px 0' }} />
                   <Flex justify="space-between">
-                    <Text strong>환불 합계</Text>
-                    <Text strong type="danger" style={{ fontSize: '1.2rem' }}>
+                    <Text strong>최종 환불 합계</Text>
+                    <Text strong style={{ fontSize: '1.2rem', color: token.colorError }}>
                       {formatCurrency(membershipRefundPreviewById[targetMembership.membershipId].refundAmount)}
                     </Text>
                   </Flex>
