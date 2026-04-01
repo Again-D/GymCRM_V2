@@ -32,6 +32,7 @@ import { useMembershipDateFilter } from "../modules/useMembershipDateFilter";
 import { useMemberManagementState } from "../modules/useMemberManagementState";
 import { useMembersQuery } from "../modules/useMembersQuery";
 import { useSelectedMemberStore } from "../modules/SelectedMemberContext";
+import { useThemeStore } from "../../../app/theme";
 import type { MemberSummary } from "../modules/types";
 
 const { Title, Text, Paragraph } = Typography;
@@ -45,6 +46,39 @@ function operationalStatusColor(status: "정상" | "홀딩중" | "만료임박" 
 }
 
 export function MemberListSection() {
+  const { resolvedTheme } = useThemeStore();
+  const isDark = resolvedTheme === "dark";
+
+  const getTagStyle = (status: string, defaultColor?: string) => {
+    const statusColors: Record<string, string> = {
+      "ACTIVE": "#52c41a",
+      "INACTIVE": "#d9d9d9",
+      "정상": "#52c41a",
+      "만료임박": "#faad14",
+      "홀딩중": "#1677ff",
+      "기간만료": "#ff4d4f"
+    };
+    const baseColor = statusColors[status] || defaultColor || "#d9d9d9";
+
+    if (isDark) {
+      const isNeutral = status === "INACTIVE" || baseColor === "#d9d9d9";
+      return {
+        backgroundColor: isNeutral ? "rgba(255, 255, 255, 0.08)" : `${baseColor}26`,
+        color: isNeutral ? "rgba(255, 255, 255, 0.45)" : baseColor,
+        border: `1px solid ${isNeutral ? "rgba(255, 255, 255, 0.12)" : `${baseColor}4D`}`,
+        fontWeight: 600
+      };
+    }
+
+    const isNeutral = status === "INACTIVE" || baseColor === "#d9d9d9";
+    return {
+      backgroundColor: baseColor,
+      color: isNeutral ? "rgba(0, 0, 0, 0.45)" : "#fff",
+      border: "none",
+      fontWeight: 700
+    };
+  };
+
   const navigate = useNavigate();
   const { dateFilter, applyPreset, setDateFrom, setDateTo, reset } = useMembershipDateFilter();
   const [name, setName] = useState("");
@@ -147,17 +181,17 @@ export function MemberListSection() {
       dataIndex: "memberStatus",
       key: "memberStatus",
       render: (status) => (
-        <Tag color={status === "ACTIVE" ? "success" : "default"} bordered={false} style={{ fontWeight: 600 }}>
+        <Tag bordered={false} style={getTagStyle(status)}>
           {status === "ACTIVE" ? "활성" : "비활성"}
         </Tag>
       )
     },
     {
-      title: "운영 상태",
+      title: "회원권 상태",
       dataIndex: "membershipOperationalStatus",
       key: "membershipOperationalStatus",
       render: (status) => (
-        <Tag color={operationalStatusColor(status)} bordered={false} style={{ fontWeight: 600 }}>
+        <Tag bordered={false} style={getTagStyle(status)}>
           {status}
         </Tag>
       )

@@ -1,4 +1,4 @@
-import { Layout, Menu, Tag, Typography } from "antd";
+import { Layout, Menu, Typography } from "antd";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 
 import type { ShellRoute } from "../../app/routes";
@@ -27,8 +27,7 @@ export default function DashboardLayout({ routes }: { routes: ShellRoute[] }) {
           className={styles.menu}
           items={routes.map((item) => ({
             key: item.path,
-            label: <NavLink to={item.path}>{item.label}</NavLink>,
-            extra: <Tag bordered={false} className={styles.menuTag}>{item.description}</Tag>
+            label: <NavLink to={item.path}>{item.label}</NavLink>
           }))}
         />
       </Sider>

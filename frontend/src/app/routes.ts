@@ -19,7 +19,6 @@ export type ShellRoute = {
   key: NavSectionKey;
   path: string;
   label: string;
-  description: string;
   protected: boolean;
   showInSidebar: boolean;
   showInDashboard: boolean;
@@ -32,7 +31,6 @@ export const shellRoutes: ShellRoute[] = [
     key: "dashboard",
     path: "/dashboard",
     label: "대시보드",
-    description: "운영 요약 / 빠른 진입",
     protected: true,
     showInSidebar: true,
     showInDashboard: false,
@@ -41,7 +39,6 @@ export const shellRoutes: ShellRoute[] = [
     key: "members",
     path: "/members",
     label: "회원 관리",
-    description: "회원 목록 / 검색 / 상태 확인",
     protected: true,
     showInSidebar: true,
     showInDashboard: true,
@@ -50,7 +47,6 @@ export const shellRoutes: ShellRoute[] = [
     key: "mySchedule",
     path: "/my-schedule",
     label: "내 스케줄",
-    description: "주간 가능 시간 / 휴무 / 날짜별 예외",
     protected: true,
     showInSidebar: true,
     showInDashboard: true,
@@ -61,7 +57,6 @@ export const shellRoutes: ShellRoute[] = [
     key: "gxSchedules",
     path: "/gx-schedules",
     label: "GX 스케줄",
-    description: "반복 규칙 / 회차 예외 / 월별 생성 슬롯",
     protected: true,
     showInSidebar: true,
     showInDashboard: true,
@@ -84,7 +79,6 @@ export const shellRoutes: ShellRoute[] = [
     key: "trainers",
     path: "/trainers",
     label: "트레이너 관리",
-    description: "계정 운영 / 담당 회원 / 오늘 예약 현황",
     protected: true,
     showInSidebar: true,
     showInDashboard: true,
@@ -95,7 +89,6 @@ export const shellRoutes: ShellRoute[] = [
     key: "memberships",
     path: "/memberships",
     label: "회원권 업무",
-    description: "구매 / 홀딩 / 해제 / 환불",
     protected: true,
     showInSidebar: true,
     showInDashboard: true,
@@ -104,7 +97,6 @@ export const shellRoutes: ShellRoute[] = [
     key: "reservations",
     path: "/reservations",
     label: "예약 관리",
-    description: "예약 생성 / 변경 / 완료",
     protected: true,
     showInSidebar: true,
     showInDashboard: true,
@@ -113,7 +105,6 @@ export const shellRoutes: ShellRoute[] = [
     key: "access",
     path: "/access",
     label: "출입 관리",
-    description: "입장 / 퇴장 / 현재 입장",
     protected: true,
     showInSidebar: true,
     showInDashboard: true,
@@ -122,7 +113,6 @@ export const shellRoutes: ShellRoute[] = [
     key: "lockers",
     path: "/lockers",
     label: "라커 관리",
-    description: "슬롯 조회 / 배정 / 반납",
     protected: true,
     showInSidebar: true,
     showInDashboard: false,
@@ -131,7 +121,6 @@ export const shellRoutes: ShellRoute[] = [
     key: "crm",
     path: "/crm",
     label: "CRM 메시지",
-    description: "트리거 / 큐 / 발송 이력",
     protected: true,
     showInSidebar: true,
     showInDashboard: false,
@@ -140,7 +129,6 @@ export const shellRoutes: ShellRoute[] = [
     key: "settlements",
     path: "/settlements",
     label: "정산 리포트",
-    description: "기간별 정산 집계",
     protected: true,
     showInSidebar: true,
     showInDashboard: false,
@@ -149,7 +137,6 @@ export const shellRoutes: ShellRoute[] = [
     key: "products",
     path: "/products",
     label: "상품 관리",
-    description: "상품 목록 / 정책",
     protected: true,
     showInSidebar: true,
     showInDashboard: true,
