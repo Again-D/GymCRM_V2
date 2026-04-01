@@ -65,8 +65,20 @@ export const shellRoutes: ShellRoute[] = [
     protected: true,
     showInSidebar: true,
     showInDashboard: true,
-    visibleRoles: ["ROLE_SUPER_ADMIN", "ROLE_CENTER_ADMIN", "ROLE_MANAGER", "ROLE_DESK", "ROLE_TRAINER"],
-    allowedRoles: ["ROLE_SUPER_ADMIN", "ROLE_CENTER_ADMIN", "ROLE_MANAGER", "ROLE_DESK", "ROLE_TRAINER"],
+    visibleRoles: [
+      "ROLE_SUPER_ADMIN",
+      "ROLE_CENTER_ADMIN",
+      "ROLE_MANAGER",
+      "ROLE_DESK",
+      "ROLE_TRAINER",
+    ],
+    allowedRoles: [
+      "ROLE_SUPER_ADMIN",
+      "ROLE_CENTER_ADMIN",
+      "ROLE_MANAGER",
+      "ROLE_DESK",
+      "ROLE_TRAINER",
+    ],
   },
   {
     key: "trainers",
@@ -179,7 +191,8 @@ export function getSidebarRoutes(
   isMockMode: boolean,
 ) {
   return shellRoutes.filter(
-    (route) => route.showInSidebar && canSeeShellRoute(route, authUser, isMockMode),
+    (route) =>
+      route.showInSidebar && canSeeShellRoute(route, authUser, isMockMode),
   );
 }
 
