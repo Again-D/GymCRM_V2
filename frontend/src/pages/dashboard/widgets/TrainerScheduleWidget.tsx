@@ -44,7 +44,7 @@ export default function TrainerScheduleWidget({ title = "나의 오늘 수업" }
 
   if (error) {
     return (
-      <Card title={title} variant="borderless">
+      <Card title={title} bordered={false}>
         <Alert
           type="warning"
           message={toUserFacingErrorMessage(error, "수업 내역을 불러오지 못했습니다.")}
@@ -57,7 +57,7 @@ export default function TrainerScheduleWidget({ title = "나의 오늘 수업" }
   return (
     <Card
       title={title}
-      variant="borderless"
+      bordered={false}
       styles={{ body: { padding: "12px" } }}
       actions={[
         <Link key="link" to="/reservations">

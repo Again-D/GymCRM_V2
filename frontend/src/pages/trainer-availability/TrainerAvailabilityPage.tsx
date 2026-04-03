@@ -413,7 +413,7 @@ export default function TrainerAvailabilityPage() {
             저장
           </Button>
         ]}
-        destroyOnHidden
+        destroyOnClose
       >
         {selectedDate && exceptionDraft && (
           <Flex vertical gap={16} style={{ marginTop: 16 }}>

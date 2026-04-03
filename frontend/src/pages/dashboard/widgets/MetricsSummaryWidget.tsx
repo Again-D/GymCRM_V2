@@ -50,7 +50,7 @@ export default function MetricsSummaryWidget({ title = "회원 지표 요약" }:
 
   if (error) {
     return (
-      <Card title={title} variant="borderless">
+      <Card title={title} bordered={false}>
         <Alert
           type="warning"
           message={toUserFacingErrorMessage(error, "회원 지표를 불러오지 못했습니다.")}
@@ -63,7 +63,7 @@ export default function MetricsSummaryWidget({ title = "회원 지표 요약" }:
   return (
     <Card
       title={title}
-      variant="borderless"
+      bordered={false}
       actions={[
         <Link key="link" to="/members">
           <Button type="link" icon={<ArrowRightOutlined />} iconPosition="end">

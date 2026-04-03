@@ -26,7 +26,7 @@ export default function Dashboard() {
   return (
     <Flex vertical gap={24}>
       {/* Hero Section */}
-      <Card variant="borderless" className={styles.heroCard}>
+      <Card bordered={false} className={styles.heroCard}>
         <Row gutter={[24, 24]} align="middle">
           <Col xs={24} lg={16}>
             <Space direction="vertical" size={12}>
@@ -84,7 +84,7 @@ export default function Dashboard() {
           </Space>
         }
         extra={<Text type="secondary">자주 쓰는 업무로 곧바로 이동합니다.</Text>}
-        variant="borderless"
+        bordered={false}
       >
         {dashboardRoutes.length === 0 ? (
           <Empty
