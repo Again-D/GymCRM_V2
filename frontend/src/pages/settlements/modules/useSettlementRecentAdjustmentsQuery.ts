@@ -43,7 +43,7 @@ export function useSettlementRecentAdjustmentsQuery(filters: SettlementReportFil
     recentAdjustments: query.data?.data ?? [],
     recentAdjustmentsLoading: query.isFetching || query.isPending,
     recentAdjustmentsError: query.error
-      ? toUserFacingErrorMessage(query.error, "최근 환불/취소 목록을 불러오지 못했습니다.")
+      ? toUserFacingErrorMessage(query.error, "최근 환불 목록을 불러오지 못했습니다.")
       : null,
     recentAdjustmentsMessage: query.data?.message ?? null,
     refetchRecentAdjustments: query.refetch

@@ -75,7 +75,7 @@ public class SalesSettlementReportController {
                 ).stream()
                 .map(RecentAdjustmentResponse::from)
                 .toList();
-        return ApiResponse.success(rows, "최근 환불/취소 조회 성공");
+        return ApiResponse.success(rows, "최근 환불 조회 성공");
     }
 
     @GetMapping(value = "/sales-report/export", produces = "text/csv")

@@ -31,6 +31,7 @@ import {
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 
+import { todayLocalDate } from "../../shared/date";
 import { usePagination } from "../../shared/hooks/usePagination";
 import styles from "./SettlementsPage.module.css";
 import { DEFAULT_SETTLEMENT_TAB, settlementTabs } from "./modules/settlementTabs";
@@ -79,8 +80,7 @@ const paymentMethodLabel: Record<string, string> = {
 };
 
 const adjustmentTypeMeta: Record<SettlementAdjustmentType, { label: string; color: string }> = {
-  REFUND: { label: "환불", color: "error" },
-  CANCELED: { label: "취소", color: "warning" }
+  REFUND: { label: "환불", color: "error" }
 };
 
 type SettlementReportRow = NonNullable<ReturnType<typeof useSettlementReportQuery>["settlementReport"]>["rows"][number];
@@ -114,9 +114,9 @@ function createDashboardStats(dashboard: SalesDashboard | null, token: ReturnTyp
       icon: <CalendarOutlined />
     },
     {
-      label: "환불/취소 신호",
+      label: "환불 신호",
       value: dashboard?.refundCount ?? 0,
-      hint: "오늘 확인이 필요한 조정 건수",
+      hint: "오늘 확인이 필요한 환불 건수",
       icon: <ReloadOutlined />,
       color: token.colorError
     }
@@ -125,6 +125,7 @@ function createDashboardStats(dashboard: SalesDashboard | null, token: ReturnTyp
 
 export default function SettlementsPage() {
   const { token } = theme.useToken();
+  const dashboardBaseDate = todayLocalDate();
   const [activeTab, setActiveTab] = useState<SettlementTabKey>(DEFAULT_SETTLEMENT_TAB);
   const {
     settlementFilters,
@@ -151,7 +152,7 @@ export default function SettlementsPage() {
     salesDashboardError,
     refetchSalesDashboard
   } = useSalesDashboardQuery({
-    baseDate: settlementFilters.endDate,
+    baseDate: dashboardBaseDate,
     expiringWithinDays: 7
   });
 
@@ -198,6 +199,7 @@ export default function SettlementsPage() {
   const trendPoints = settlementReport?.trend ?? [];
   const latestTrendPoint = trendPoints[trendPoints.length - 1];
   const previousTrendPoint = trendPoints.length > 1 ? trendPoints[trendPoints.length - 2] : undefined;
+  const trainerPayrollBaseDate = settlementFilters.endDate || todayLocalDate();
 
   const reportColumns: ColumnsType<SettlementReportRow> = [
     {
@@ -528,8 +530,8 @@ export default function SettlementsPage() {
             <Card
               title={
                 <Space direction="vertical" size={2}>
-                  <Title level={5} style={{ margin: 0 }}>최근 환불/취소</Title>
-                  <Text type="secondary" style={{ fontSize: "0.84rem" }}>숫자 변화의 원인을 최근 건 기준으로 확인합니다.</Text>
+                  <Title level={5} style={{ margin: 0 }}>최근 환불</Title>
+                  <Text type="secondary" style={{ fontSize: "0.84rem" }}>선택 조건 안에서 숫자 변화의 원인을 최근 환불 기준으로 확인합니다.</Text>
                 </Space>
               }
             >
@@ -543,7 +545,7 @@ export default function SettlementsPage() {
                 locale={{
                   emptyText: recentAdjustmentsLoading
                     ? "최근 조정 목록을 불러오는 중입니다..."
-                    : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="최근 환불/취소 내역이 없습니다." />
+                    : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="최근 환불 내역이 없습니다." />
                 }}
               />
             </Card>
@@ -565,8 +567,8 @@ export default function SettlementsPage() {
                 <Flex vertical gap={12}>
                   <Select
                     aria-label="정산 월 선택"
-                    value={dayjs(settlementFilters.endDate).format("YYYY-MM")}
-                    options={[{ label: dayjs(settlementFilters.endDate).format("YYYY년 MM월"), value: dayjs(settlementFilters.endDate).format("YYYY-MM") }]}
+                    value={dayjs(trainerPayrollBaseDate).format("YYYY-MM")}
+                    options={[{ label: dayjs(trainerPayrollBaseDate).format("YYYY년 MM월"), value: dayjs(trainerPayrollBaseDate).format("YYYY-MM") }]}
                   />
                   <Input aria-label="세션 단가 입력" placeholder="세션 단가를 입력할 예정입니다." disabled />
                 </Flex>

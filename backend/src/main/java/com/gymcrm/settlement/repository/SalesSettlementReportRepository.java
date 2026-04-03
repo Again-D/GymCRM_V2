@@ -4,6 +4,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -29,7 +30,7 @@ public class SalesSettlementReportRepository {
     public List<SalesTrendRow> findTrendRows(QueryCommand command, String bucketExpression) {
         String sql = """
                 SELECT
-                    %s AS "bucketStartAt",
+                    %s AS "bucketStartDate",
                     SUM(CASE WHEN p.payment_type = 'PURCHASE' THEN p.amount ELSE 0 END) AS "grossSales",
                     SUM(CASE WHEN p.payment_type = 'REFUND' THEN p.amount ELSE 0 END) AS "refundAmount",
                     SUM(CASE
@@ -54,10 +55,7 @@ public class SalesSettlementReportRepository {
         String sql = """
                 SELECT
                     p.payment_id AS "paymentId",
-                    CASE
-                        WHEN p.payment_status = 'CANCELED' THEN 'CANCELED'
-                        ELSE 'REFUND'
-                    END AS "adjustmentType",
+                    'REFUND' AS "adjustmentType",
                     COALESCE(mm.product_name_snapshot, 'UNKNOWN') AS "productName",
                     COALESCE(m.member_name, 'UNKNOWN') AS "memberName",
                     p.payment_method AS "paymentMethod",
@@ -72,10 +70,7 @@ public class SalesSettlementReportRepository {
                   AND p.is_deleted = FALSE
                   AND p.paid_at >= :startAt
                   AND p.paid_at < :endExclusiveAt
-                  AND (
-                      p.payment_type = 'REFUND'
-                      OR p.payment_status = 'CANCELED'
-                  )
+                  AND p.payment_type = 'REFUND'
                 """
                 + buildOptionalFilters(command)
                 + """
@@ -165,7 +160,7 @@ public class SalesSettlementReportRepository {
     }
 
     public record SalesTrendRow(
-            OffsetDateTime bucketStartAt,
+            LocalDate bucketStartDate,
             BigDecimal grossSales,
             BigDecimal refundAmount,
             BigDecimal netSales,

@@ -100,8 +100,8 @@ public class SalesSettlementReportService {
 
         List<SalesTrendPoint> trend = trendRows.stream()
                 .map(row -> new SalesTrendPoint(
-                        row.bucketStartAt().toLocalDate(),
-                        validated.trendGranularity().labelFor(row.bucketStartAt().toLocalDate()),
+                        row.bucketStartDate(),
+                        validated.trendGranularity().labelFor(row.bucketStartDate()),
                         nullSafe(row.grossSales()),
                         nullSafe(row.refundAmount()),
                         nullSafe(row.netSales()),
@@ -270,25 +270,25 @@ public class SalesSettlementReportService {
     }
 
     enum TrendGranularity {
-        DAILY("date_trunc('day', p.paid_at AT TIME ZONE 'Asia/Seoul') AT TIME ZONE 'Asia/Seoul'") {
+        DAILY("date_trunc('day', p.paid_at AT TIME ZONE 'Asia/Seoul')::date") {
             @Override
             String labelFor(LocalDate date) {
                 return DATE_FORMATTER.format(date);
             }
         },
-        WEEKLY("date_trunc('week', p.paid_at AT TIME ZONE 'Asia/Seoul') AT TIME ZONE 'Asia/Seoul'") {
+        WEEKLY("date_trunc('week', p.paid_at AT TIME ZONE 'Asia/Seoul')::date") {
             @Override
             String labelFor(LocalDate date) {
                 return DATE_FORMATTER.format(date) + " 주간";
             }
         },
-        MONTHLY("date_trunc('month', p.paid_at AT TIME ZONE 'Asia/Seoul') AT TIME ZONE 'Asia/Seoul'") {
+        MONTHLY("date_trunc('month', p.paid_at AT TIME ZONE 'Asia/Seoul')::date") {
             @Override
             String labelFor(LocalDate date) {
                 return date.getYear() + "-" + String.format("%02d", date.getMonthValue());
             }
         },
-        YEARLY("date_trunc('year', p.paid_at AT TIME ZONE 'Asia/Seoul') AT TIME ZONE 'Asia/Seoul'") {
+        YEARLY("date_trunc('year', p.paid_at AT TIME ZONE 'Asia/Seoul')::date") {
             @Override
             String labelFor(LocalDate date) {
                 return String.valueOf(date.getYear());

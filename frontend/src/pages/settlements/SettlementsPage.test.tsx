@@ -34,7 +34,7 @@ describe("SettlementsPage", () => {
     expect(screen.getByRole("tab", { selected: true, name: "매출 분석" })).toBeTruthy();
     expect(screen.getByText("리포트 조건")).toBeTruthy();
     expect(screen.getByText("기간 추이 리포트")).toBeTruthy();
-    expect(screen.getByText("최근 환불/취소")).toBeTruthy();
+    expect(screen.getByText("최근 환불")).toBeTruthy();
   });
 
   it("switches to trainer payroll tab", async () => {
@@ -48,5 +48,6 @@ describe("SettlementsPage", () => {
 
     expect(screen.getByRole("tab", { selected: true, name: "트레이너 정산" })).toBeTruthy();
     expect(screen.getByText("트레이너 정산 조회 기능은 다음 구현 단위에서 연결됩니다.")).toBeTruthy();
+    expect(screen.queryByText("Invalid Date")).toBeNull();
   });
 });

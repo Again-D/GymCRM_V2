@@ -23,7 +23,7 @@ origin: docs/brainstorms/2026-04-03-settlements-analytics-and-trainer-payroll-re
 조회만 사용 중이라 실제 사용자 경험과 구현 자산이 분리되어 있다.
 
 이번 플랜은 브레인스토밍 문서에서 확정한 요구사항을 기준으로,
-- 1차: 운영 상황 읽기 + 기간 추이 확인 + 최근 환불/취소 확인
+- 1차: 운영 상황 읽기 + 기간 추이 확인 + 최근 환불 확인
 - 2차: 트레이너 정산 조회 + 확정 + 정산서 출력
 으로 분리해 구현 가능한 단위로 쪼개는 데 목적이 있다.
 
@@ -32,7 +32,7 @@ origin: docs/brainstorms/2026-04-03-settlements-analytics-and-trainer-payroll-re
 ## Requirements Trace
 
 - R1-R4. `/settlements` 단일 진입점 유지, `매출 분석`/`트레이너 정산` 탭 구조 도입
-- R5-R13. 1차 매출 분석 탭: 상단 운영 상황판, 하단 기간 추이, 최신순 환불/취소 목록
+- R5-R13. 1차 매출 분석 탭: 상단 운영 상황판, 하단 기간 추이, 최신순 환불 목록
 - R14-R18. 2차 트레이너 정산 탭: 월별 조회, 확정, 정산서 출력
 
 ## Scope Boundaries
@@ -40,7 +40,7 @@ origin: docs/brainstorms/2026-04-03-settlements-analytics-and-trainer-payroll-re
 - 1차 구현 우선순위는 `매출 분석` 탭 완성이다.
 - 2차 트레이너 정산 탭은 같은 계획 안에 포함하지만, 1차 완료 이후 이어지는 후속 구현 단위로 둔다.
 - 급여 정책 자체의 사업 규칙 재정의는 이번 플랜에 포함하지 않는다.
-- 외부 ERP/세무 연동, 일일 마감 정산, 심화 환불 분석 화면은 이번 범위에서 제외한다.
+- 외부 ERP/세무 연동, 일일 마감 정산, 결제 취소 시각 기반 심화 분석, 심화 환불 분석 화면은 이번 범위에서 제외한다.
 
 ## Context & Research
 
@@ -79,10 +79,10 @@ origin: docs/brainstorms/2026-04-03-settlements-analytics-and-trainer-payroll-re
 - 탭 상태는 페이지 내부 UI 상태로 관리
   - 현재 앱 라우팅 구조상 `/settlements`를 유지하는 편이 자연스럽고, 탭 전환 자체는 URL 분기 없이 페이지 내부 상태로 충분하다.
 - 매출 분석 탭은 상단 판단, 하단 검증 구조
-  - 상단은 `KPI 카드 + 미니 추이 차트`로 현재 상태와 방향성을 읽게 하고, 하단은 `기간 추이 리포트 -> 최근 환불/취소 목록` 순서로 상세 검증 흐름을 만든다.
+  - 상단은 `KPI 카드 + 미니 추이 차트`로 현재 상태와 방향성을 읽게 하고, 하단은 `기간 추이 리포트 -> 최근 환불 목록` 순서로 상세 검증 흐름을 만든다.
 - 1차는 기존 집계 서비스 확장 우선
   - `SalesDashboardService`와 `SalesSettlementReportService`를 확장해 신규 대시보드 카드와 기간 추이를 맞추고, 프론트는 해당 결과를 소비하도록 재구성한다.
-- 환불/취소는 전용 분석 도구가 아니라 최신 이슈 확인용 목록으로 제한
+- 환불은 전용 분석 도구가 아니라 최신 이슈 확인용 목록으로 제한
   - 범위를 제어하면서도 운영자의 원인 추적 니즈를 충족한다.
 - 트레이너 정산은 조회 API 위에 저장/확정/출력 흐름을 추가
   - 현재 계산 전용 API를 완결 업무 흐름으로 끌어올리기 위해 별도 정산 도메인 영속성과 출력 계층이 필요해진다.
@@ -96,9 +96,9 @@ origin: docs/brainstorms/2026-04-03-settlements-analytics-and-trainer-payroll-re
 - `매출 분석`과 `트레이너 정산`의 정보 구조는 어떻게 나눌 것인가?
   - `/settlements` 단일 진입점을 유지하고 페이지 내부 탭으로 분리한다.
 - 1차 매출 분석 탭의 메인 영역은 무엇인가?
-  - 상단 운영 상황판, 하단 기간 추이 및 최신 환불/취소 목록 구조로 간다.
-- 환불/취소는 1차에서 어디까지 포함할 것인가?
-  - 최신순의 간단한 상세 목록까지 포함하고, 심화 분석 경험은 제외한다.
+- 상단 운영 상황판, 하단 기간 추이 및 최신 환불 목록 구조로 간다.
+- 환불은 1차에서 어디까지 포함할 것인가?
+  - 최신순의 간단한 상세 목록까지 포함하고, 결제 취소 시각 기반 분석은 이후 단계로 미루며 심화 분석 경험은 제외한다.
 - 매출 분석 탭의 상단 표현 밀도는 어떻게 가져갈 것인가?
   - KPI 카드만 두지 않고, 최근 흐름의 상승/하락을 읽게 하는 미니 추이 차트를 함께 둔다.
 - 트레이너 정산 탭의 기본 액션 구조는 무엇인가?
@@ -127,7 +127,7 @@ flowchart TB
 
     C --> C1["대시보드 KPI query"]
     C --> C2["기간 추이 report query"]
-    C --> C3["최근 환불/취소 list query"]
+    C --> C3["최근 환불 list query"]
 
     C1 --> E["SalesDashboardService 확장"]
     C2 --> F["SalesSettlementReportService 확장"]
@@ -163,7 +163,7 @@ flowchart TB
 - 현재 페이지를 리포트 단일 레이아웃에서 탭 컨테이너로 바꾼다.
 - 기본 탭은 `매출 분석`으로 고정하고, 추후 URL 파라미터 연동 없이도 테스트 가능한 순수 탭 정의 모듈을 둔다.
 - 현재 리포트 관련 로컬 상태는 `매출 분석` 탭 쪽으로 밀어넣고, 트레이너 정산용 상태는 별도 모듈로 분리할 준비를 한다.
-- `매출 분석` 탭은 상단에 대시보드/KPI와 미니 추이 요약을, 하단에 `기간 추이 리포트 -> 최근 환불/취소 목록` 순서를 강제하는 구조로 잡는다.
+- `매출 분석` 탭은 상단에 대시보드/KPI와 미니 추이 요약을, 하단에 `기간 추이 리포트 -> 최근 환불 목록` 순서를 강제하는 구조로 잡는다.
 - `트레이너 정산` 탭은 상단 필터, 하단 결과 테이블, 테이블 상단 일괄 액션 배치가 가능한 골격을 먼저 만든다.
 - 사이드바 라벨은 당장 바꾸지 않더라도 계획상 문구 정렬 필요성을 별도 체크한다.
 
@@ -250,7 +250,7 @@ flowchart TB
 - 집계 단위는 request-level 파라미터로 제어하고, 프론트는 이를 일/주/월/연 선택 UI에 연결한다.
 - 기존 CSV export가 깨지지 않도록, 추이 데이터가 추가되더라도 CSV는 명시적으로 어떤 section을 export하는지 정리한다.
 - 추이 리포트는 1차에서는 운영자 해석이 쉬운 숫자/간단 차트 중심으로 두고, 무거운 분석 BI 화면으로 확장하지 않는다.
-- 하단 상세 영역에서 추이 리포트가 최근 환불/취소 목록보다 먼저 렌더링되도록 우선순위를 고정한다.
+- 하단 상세 영역에서 추이 리포트가 최근 환불 목록보다 먼저 렌더링되도록 우선순위를 고정한다.
 
 **Patterns to follow:**
 - `backend/src/main/java/com/gymcrm/settlement/repository/SalesSettlementReportRepository.java`의 동적 SQL 빌드
@@ -268,9 +268,9 @@ flowchart TB
 **Verification:**
 - 리포트 API가 일/주/월/연 추이를 모두 지원하고, 프론트가 해당 단위를 선택해 결과를 해석 가능하게 보여준다.
 
-- [x] **Unit 4: 최근 환불/취소 목록 추가**
+- [x] **Unit 4: 최근 환불 목록 추가**
 
-**Goal:** 운영자가 숫자 변화의 원인을 바로 확인할 수 있도록 매출 분석 탭에 최신 환불/취소 목록을 추가한다.
+**Goal:** 운영자가 숫자 변화의 원인을 바로 확인할 수 있도록 매출 분석 탭에 최신 환불 목록을 추가한다.
 
 **Requirements:** R11-R13
 
@@ -288,9 +288,9 @@ flowchart TB
 - Modify: `frontend/src/api/mockData.ts`
 
 **Approach:**
-- 리포트 응답에 억지로 목록을 섞기보다, 최근 환불/취소 목록은 전용 query 또는 report response subresource로 분리하는 편이 프론트 사용성이 좋다.
+- 리포트 응답에 억지로 목록을 섞기보다, 최근 환불 목록은 전용 query 또는 report response subresource로 분리하는 편이 프론트 사용성이 좋다.
 - 목록은 최신순 기본 정렬, 제한 개수 중심으로 제공하고, 표시 컬럼은 운영 검토에 꼭 필요한 최소 항목으로 제한한다.
-- `payment_type='REFUND'` 외에 취소를 어떤 상태/레코드로 표현하는지 현 코드 기준을 먼저 반영하고, 심화 감사 분석은 이후로 미룬다.
+- Phase 1은 `payment_type='REFUND'` 기반 환불 내역만 다루고, 별도 취소 시각/이력 모델이 생긴 뒤 결제 취소 분석을 확장한다.
 
 **Patterns to follow:**
 - `frontend/src/pages/access/AccessPage.tsx`와 유사한 "요약 + 최근 이벤트 테이블" 배치 감각
@@ -298,13 +298,12 @@ flowchart TB
 
 **Test scenarios:**
 - Happy path: 최근 환불 레코드가 있을 때 최신 paidAt 순으로 목록이 반환된다.
-- Happy path: 취소 레코드가 별도 상태로 존재하면 동일 목록에 포함된다.
 - Edge case: 최근 조정 내역이 없으면 빈 상태 메시지가 표시된다.
 - Edge case: 동일 시각 레코드가 여러 개면 보조 정렬 기준이 일관된다.
 - Integration: 매출 분석 탭에서 대시보드 아래 목록이 렌더링되고, 리포트 필터 변경이 정책상 영향을 주는 범위만 반영된다.
 
 **Verification:**
-- 운영자가 최신 환불/취소 이슈를 별도 화면 이동 없이 현재 탭에서 확인할 수 있다.
+- 운영자가 최신 환불 이슈를 별도 화면 이동 없이 현재 탭에서 확인할 수 있다.
 
 - [ ] **Unit 5: 트레이너 정산 탭 조회 UX 완성**
 
@@ -445,7 +444,7 @@ flowchart TB
 Unit 1 탭 구조 재구성
   -> Unit 2 KPI 대시보드 연결
   -> Unit 3 기간 추이 리포트 확장
-  -> Unit 4 최근 환불/취소 목록 추가
+  -> Unit 4 최근 환불 목록 추가
   -> Unit 5 트레이너 정산 조회 탭 연결
   -> Unit 6 트레이너 정산 확정 영속화
   -> Unit 7 정산서 출력
@@ -460,7 +459,7 @@ Unit 1 탭 구조 재구성
 | settlements 탭 구조 | `frontend/src/pages/settlements/SettlementsPage.test.tsx`, `frontend/src/pages/settlements/modules/settlementTabs.test.ts` |
 | KPI 대시보드 | `backend/src/test/java/com/gymcrm/settlement/SalesDashboardServiceTest.java`, `backend/src/test/java/com/gymcrm/settlement/SalesDashboardServiceIntegrationTest.java`, `frontend/src/pages/settlements/modules/useSalesDashboardQuery.test.tsx` |
 | 기간 추이 리포트 | `backend/src/test/java/com/gymcrm/settlement/SalesSettlementReportServiceTest.java`, `backend/src/test/java/com/gymcrm/settlement/SalesSettlementReportServiceIntegrationTest.java`, `frontend/src/pages/settlements/modules/useSettlementReportQuery.test.tsx` |
-| 환불/취소 목록 | `backend/src/test/java/com/gymcrm/settlement/SalesSettlementReportServiceIntegrationTest.java`, `frontend/src/pages/settlements/modules/useSettlementRecentAdjustmentsQuery.test.tsx` |
+| 환불 목록 | `backend/src/test/java/com/gymcrm/settlement/SalesSettlementReportServiceIntegrationTest.java`, `frontend/src/pages/settlements/modules/useSettlementRecentAdjustmentsQuery.test.tsx` |
 | 트레이너 정산 조회 | `backend/src/test/java/com/gymcrm/settlement/TrainerPayrollSettlementServiceIntegrationTest.java`, `frontend/src/pages/settlements/modules/useTrainerPayrollQuery.test.tsx` |
 | 트레이너 정산 확정 | `backend/src/test/java/com/gymcrm/settlement/TrainerSettlementLifecycleServiceIntegrationTest.java` |
 | 정산서 출력 | `backend/src/test/java/com/gymcrm/settlement/TrainerSettlementDocumentExporterTest.java`, `frontend/src/pages/settlements/SettlementsPage.test.tsx` |

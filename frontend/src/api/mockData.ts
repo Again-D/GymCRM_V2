@@ -1103,7 +1103,7 @@ function filterSalesDashboard(url: URL): SalesDashboard {
     monthNetSales: monthTransactions.reduce((sum, transaction) => sum + transaction.grossSales - transaction.refundAmount, 0),
     newMemberCount,
     expiringMemberCount,
-    refundCount: todayTransactions.filter((transaction) => transaction.refundAmount > 0 || (transaction.canceledAmount ?? 0) > 0).length
+    refundCount: todayTransactions.filter((transaction) => transaction.refundAmount > 0).length
   };
 }
 
@@ -1262,19 +1262,6 @@ function filterSettlementRecentAdjustments(url: URL): SettlementRecentAdjustment
           paymentMethod: transaction.paymentMethod,
           amount: transaction.refundAmount,
           paidAt: `${transaction.transactionDate}T10:00:00+09:00`,
-          memo: transaction.memo ?? null,
-          approvalRef: transaction.approvalRef ?? null
-        });
-      }
-      if ((transaction.canceledAmount ?? 0) > 0) {
-        rows.push({
-          paymentId: transaction.transactionId * 10,
-          adjustmentType: "CANCELED",
-          productName,
-          memberName,
-          paymentMethod: transaction.paymentMethod,
-          amount: transaction.canceledAmount ?? 0,
-          paidAt: `${transaction.transactionDate}T15:00:00+09:00`,
           memo: transaction.memo ?? null,
           approvalRef: transaction.approvalRef ?? null
         });

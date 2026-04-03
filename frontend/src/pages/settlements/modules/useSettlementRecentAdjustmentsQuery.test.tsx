@@ -77,4 +77,35 @@ describe("useSettlementRecentAdjustmentsQuery", () => {
     expect(fetchMock).toHaveBeenCalledWith(expect.stringMatching(/paymentMethod=CARD/), expect.anything());
     expect(fetchMock).toHaveBeenCalledWith(expect.stringMatching(/productKeyword=PT/), expect.anything());
   });
+
+  it("returns an empty list when the API has no refund rows", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: [],
+        message: "ok"
+      })
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const filters: SettlementReportFilters = {
+      startDate: "2026-03-01",
+      endDate: "2026-03-31",
+      paymentMethod: "",
+      productKeyword: "",
+      trendGranularity: "DAILY"
+    };
+
+    const queryClient = createTestQueryClient();
+    const { result } = renderHook(() => useSettlementRecentAdjustmentsQuery(filters, 5), {
+      wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper>
+    });
+
+    await vi.waitFor(() => {
+      expect(result.current.recentAdjustmentsLoading).toBe(false);
+    });
+
+    expect(result.current.recentAdjustments).toEqual([]);
+  });
 });

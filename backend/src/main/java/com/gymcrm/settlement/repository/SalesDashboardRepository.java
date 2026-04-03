@@ -59,10 +59,7 @@ public class SalesDashboardRepository {
                         FROM payments pr
                         WHERE pr.center_id = :centerId
                           AND pr.is_deleted = FALSE
-                          AND (
-                              pr.payment_type = 'REFUND'
-                              OR pr.payment_status = 'CANCELED'
-                          )
+                          AND pr.payment_type = 'REFUND'
                           AND (pr.paid_at AT TIME ZONE 'Asia/Seoul')::date = :baseDate
                     ) AS "refundCount"
                 FROM payments p

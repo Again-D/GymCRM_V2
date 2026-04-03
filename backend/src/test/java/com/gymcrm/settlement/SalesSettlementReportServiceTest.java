@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
@@ -69,7 +70,7 @@ class SalesSettlementReportServiceTest {
         given(repository.findSalesRows(any())).willReturn(rows);
         given(repository.findTrendRows(any(), any())).willReturn(List.of(
                 new SalesSettlementReportRepository.SalesTrendRow(
-                        OffsetDateTime.parse("2099-07-01T00:00:00+09:00"),
+                        LocalDate.of(2099, 7, 1),
                         new BigDecimal("100000"),
                         new BigDecimal("20000"),
                         new BigDecimal("80000"),
@@ -111,6 +112,72 @@ class SalesSettlementReportServiceTest {
         verify(repository).findSalesRows(commandCaptor.capture());
         assertThat(commandCaptor.getValue().startAt()).isEqualTo(OffsetDateTime.parse("2026-03-01T00:00:00+09:00"));
         assertThat(commandCaptor.getValue().endExclusiveAt()).isEqualTo(OffsetDateTime.parse("2026-04-01T00:00:00+09:00"));
+    }
+
+    @Test
+    void mapsTrendLabelsForNonDailyGranularities() {
+        SalesSettlementReportRepository repository = mock(SalesSettlementReportRepository.class);
+        SalesSettlementReportCacheService cacheService = mock(SalesSettlementReportCacheService.class);
+        CurrentUserProvider currentUserProvider = mock(CurrentUserProvider.class);
+        SalesSettlementReportService service = new SalesSettlementReportService(repository, cacheService, currentUserProvider);
+
+        given(currentUserProvider.currentCenterId()).willReturn(1L);
+        given(repository.findSalesRows(any())).willReturn(List.of());
+        given(repository.findTrendRows(any(), any())).willReturn(List.of(
+                new SalesSettlementReportRepository.SalesTrendRow(
+                        LocalDate.of(2026, 3, 2),
+                        BigDecimal.ONE,
+                        BigDecimal.ZERO,
+                        BigDecimal.ONE,
+                        1L
+                )
+        ));
+
+        given(cacheService.get(1L, LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 31), null, null, "WEEKLY"))
+                .willReturn(Optional.empty());
+        assertThat(service.getReport(new SalesSettlementReportService.ReportQuery(
+                LocalDate.of(2026, 3, 1),
+                LocalDate.of(2026, 3, 31),
+                null,
+                null,
+                "WEEKLY"
+        )).trend().getFirst().bucketLabel()).isEqualTo("2026-03-02 주간");
+
+        given(cacheService.get(1L, LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 31), null, null, "MONTHLY"))
+                .willReturn(Optional.empty());
+        assertThat(service.getReport(new SalesSettlementReportService.ReportQuery(
+                LocalDate.of(2026, 3, 1),
+                LocalDate.of(2026, 3, 31),
+                null,
+                null,
+                "MONTHLY"
+        )).trend().getFirst().bucketLabel()).isEqualTo("2026-03");
+
+        given(cacheService.get(1L, LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 31), null, null, "YEARLY"))
+                .willReturn(Optional.empty());
+        assertThat(service.getReport(new SalesSettlementReportService.ReportQuery(
+                LocalDate.of(2026, 3, 1),
+                LocalDate.of(2026, 3, 31),
+                null,
+                null,
+                "YEARLY"
+        )).trend().getFirst().bucketLabel()).isEqualTo("2026");
+    }
+
+    @Test
+    void rejectsUnsupportedTrendGranularity() {
+        SalesSettlementReportRepository repository = mock(SalesSettlementReportRepository.class);
+        SalesSettlementReportCacheService cacheService = mock(SalesSettlementReportCacheService.class);
+        CurrentUserProvider currentUserProvider = mock(CurrentUserProvider.class);
+        SalesSettlementReportService service = new SalesSettlementReportService(repository, cacheService, currentUserProvider);
+
+        assertThatThrownBy(() -> service.getReport(new SalesSettlementReportService.ReportQuery(
+                LocalDate.of(2026, 3, 1),
+                LocalDate.of(2026, 3, 31),
+                null,
+                null,
+                "HOURLY"
+        ))).hasMessageContaining("trendGranularity is invalid");
     }
 
     private SalesSettlementReportService.SalesReportResult sampleResult() {

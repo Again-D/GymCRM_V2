@@ -163,4 +163,43 @@ describe("useSettlementReportQuery", () => {
 
     expect(result.current.refetchSettlementReport).toBe(firstRefetch);
   });
+
+  it("uses a different request parameter when trend granularity changes", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: {
+          startDate: "2026-03-01",
+          endDate: "2026-03-31",
+          trendGranularity: "MONTHLY",
+          totalGrossSales: 100000,
+          trend: [],
+          rows: []
+        },
+        message: "ok"
+      })
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const queryClient = createTestQueryClient();
+    const { result } = renderHook(() => useSettlementReportQuery({
+      startDate: "2026-03-01",
+      endDate: "2026-03-31",
+      paymentMethod: "",
+      productKeyword: "",
+      trendGranularity: "MONTHLY"
+    }), {
+      wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper>,
+    });
+
+    await vi.waitFor(() => {
+      expect(result.current.settlementReport?.trendGranularity).toBe("MONTHLY");
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringMatching(/trendGranularity=MONTHLY/),
+      expect.anything()
+    );
+  });
 });

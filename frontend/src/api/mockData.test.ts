@@ -87,7 +87,7 @@ describe("mockData membership propagation", () => {
     expect(dashboard.monthNetSales).toBeGreaterThan(0);
     expect(dashboard.refundCount).toBeGreaterThan(0);
     expect(recentAdjustments.length).toBeGreaterThan(0);
-    expect(recentAdjustments[0]?.adjustmentType).toBeTruthy();
+    expect(recentAdjustments.every((row) => row.adjustmentType === "REFUND")).toBe(true);
   });
 
   it("creates and updates a member through mock helpers", () => {

@@ -3,7 +3,7 @@ import { startOfMonthLocalDate, todayLocalDate } from "../../../shared/date";
 export type SettlementPaymentMethod = "" | "CASH" | "CARD" | "TRANSFER" | "ETC";
 export type SettlementTabKey = "salesAnalytics" | "trainerPayroll";
 export type SettlementTrendGranularity = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
-export type SettlementAdjustmentType = "REFUND" | "CANCELED";
+export type SettlementAdjustmentType = "REFUND";
 
 export type SettlementReportFilters = {
   startDate: string;
