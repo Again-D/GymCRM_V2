@@ -287,6 +287,7 @@ class MembershipPurchaseServiceIntegrationTest {
                 30,
                 1,
                 false,
+                false,
                 "ACTIVE",
                 null
         ));
@@ -304,6 +305,7 @@ class MembershipPurchaseServiceIntegrationTest {
                 true,
                 30,
                 1,
+                false,
                 false,
                 "ACTIVE",
                 null

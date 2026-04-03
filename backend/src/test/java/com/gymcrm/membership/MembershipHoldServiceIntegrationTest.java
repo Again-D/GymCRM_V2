@@ -235,6 +235,7 @@ class MembershipHoldServiceIntegrationTest {
                 30,
                 2,
                 false,
+                false,
                 "ACTIVE",
                 null
         ));

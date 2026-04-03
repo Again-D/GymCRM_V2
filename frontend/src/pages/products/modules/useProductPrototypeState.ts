@@ -64,6 +64,7 @@ function buildProductInput(productForm: ProductFormState) {
       maxHoldCount: productForm.allowHold
         ? parseOptionalNumber(productForm.maxHoldCount)
         : null,
+      allowHoldBypass: productForm.allowHold && productForm.allowHoldBypass,
       allowTransfer: productForm.allowTransfer,
       productStatus: productForm.productStatus,
       description: productForm.description.trim() || null,
