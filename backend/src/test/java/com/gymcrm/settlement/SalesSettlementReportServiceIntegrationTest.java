@@ -93,7 +93,7 @@ class SalesSettlementReportServiceIntegrationTest {
         ));
 
         SalesSettlementReportService.SalesReportResult report = reportService.getReport(
-                new SalesSettlementReportService.ReportQuery(reportDate, reportDate, null, keyword)
+                new SalesSettlementReportService.ReportQuery(reportDate, reportDate, null, keyword, "DAILY")
         );
 
         assertNotNull(report.totalGrossSales());
@@ -103,6 +103,7 @@ class SalesSettlementReportServiceIntegrationTest {
         assertTrue(report.totalRefundAmount().compareTo(BigDecimal.ZERO) > 0);
         assertEquals(0, report.totalGrossSales().subtract(report.totalRefundAmount()).compareTo(report.totalNetSales()));
         assertEquals(2, report.rows().size());
+        assertEquals(1, report.trend().size());
 
         SalesSettlementReportService.SalesReportRow cardRow = report.rows().stream()
                 .filter(row -> row.paymentMethod().equals("CARD"))
@@ -116,7 +117,7 @@ class SalesSettlementReportServiceIntegrationTest {
         assertEquals(0, cardRow.grossSales().subtract(cardRow.refundAmount()).compareTo(cardRow.netSales()));
 
         SalesSettlementReportService.SalesReportResult cardOnlyReport = reportService.getReport(
-                new SalesSettlementReportService.ReportQuery(reportDate, reportDate, "CARD", keyword + "-CARD")
+                new SalesSettlementReportService.ReportQuery(reportDate, reportDate, "CARD", keyword + "-CARD", "DAILY")
         );
         assertEquals(1, cardOnlyReport.rows().size());
         assertEquals("CARD", cardOnlyReport.rows().get(0).paymentMethod());
@@ -138,13 +139,51 @@ class SalesSettlementReportServiceIntegrationTest {
                 OffsetDateTime.parse("2026-03-01T15:30:00Z"));
 
         SalesSettlementReportService.SalesReportResult report = reportService.getReport(
-                new SalesSettlementReportService.ReportQuery(reportDate, reportDate, "CARD", keyword)
+                new SalesSettlementReportService.ReportQuery(reportDate, reportDate, "CARD", keyword, "DAILY")
         );
 
         assertEquals(1, report.rows().size());
         assertEquals(0, new BigDecimal("100000").compareTo(report.totalGrossSales()));
         assertEquals(0, BigDecimal.ZERO.compareTo(report.totalRefundAmount()));
         assertEquals(0, new BigDecimal("100000").compareTo(report.totalNetSales()));
+    }
+
+    @Test
+    @Transactional
+    void recentAdjustmentsReturnsRefundsInLatestFirstOrder() {
+        LocalDate reportDate = OffsetDateTime.now(ZoneOffset.UTC).toLocalDate();
+        String keyword = "ADJ-SAL-" + UUID.randomUUID().toString().substring(0, 6);
+        Member member = createActiveMember();
+        Product product = createCountProduct(keyword, new BigDecimal("100000"));
+
+        MembershipPurchaseService.PurchaseResult purchase = purchaseService.purchase(new MembershipPurchaseService.PurchaseRequest(
+                member.memberId(),
+                product.productId(),
+                null,
+                LocalDate.now(),
+                null,
+                "CARD",
+                null,
+                null
+        ));
+
+        refundService.refund(new MembershipRefundService.RefundRequest(
+                purchase.membership().membershipId(),
+                LocalDate.now(),
+                "CARD",
+                "최근 환불 테스트",
+                null,
+                null
+        ));
+
+        var adjustments = reportService.getRecentAdjustments(
+                new SalesSettlementReportService.ReportQuery(reportDate, reportDate, "CARD", keyword, null),
+                5
+        );
+
+        assertEquals(1, adjustments.size());
+        assertEquals("REFUND", adjustments.get(0).adjustmentType());
+        assertTrue(adjustments.get(0).productName().contains(keyword));
     }
 
     private Member createActiveMember() {
@@ -167,7 +206,7 @@ class SalesSettlementReportServiceIntegrationTest {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
         return productService.create(new ProductService.ProductCreateRequest(
                 prefix + "-" + suffix,
-                "PT",
+                "MEMBERSHIP",
                 "COUNT",
                 price,
                 null,

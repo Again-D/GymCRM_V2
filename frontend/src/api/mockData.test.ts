@@ -67,12 +67,27 @@ describe("mockData membership propagation", () => {
 
   it("aggregates settlement report rows by product and payment method", () => {
     const report = getMockResponse(
-      "/api/v1/settlements/sales-report?startDate=2026-03-01&endDate=2026-03-31&paymentMethod=CARD"
+      "/api/v1/settlements/sales-report?startDate=2026-03-01&endDate=2026-03-31&paymentMethod=CARD&trendGranularity=DAILY"
     )?.data as SettlementReport;
 
     expect(report.totalGrossSales).toBeGreaterThan(0);
     expect(report.rows.every((row) => row.paymentMethod === "CARD")).toBe(true);
     expect(report.rows.some((row) => row.productName.includes("PT"))).toBe(true);
+    expect(report.trend.length).toBeGreaterThan(0);
+  });
+
+  it("returns dashboard and recent adjustments mock responses", () => {
+    const dashboard = getMockResponse(
+      "/api/v1/settlements/sales-dashboard?baseDate=2026-03-11&expiringWithinDays=7"
+    )?.data as { refundCount: number; monthNetSales: number };
+    const recentAdjustments = getMockResponse(
+      "/api/v1/settlements/sales-report/recent-adjustments?startDate=2026-03-01&endDate=2026-03-31&limit=5"
+    )?.data as Array<{ adjustmentType: string }>;
+
+    expect(dashboard.monthNetSales).toBeGreaterThan(0);
+    expect(dashboard.refundCount).toBeGreaterThan(0);
+    expect(recentAdjustments.length).toBeGreaterThan(0);
+    expect(recentAdjustments[0]?.adjustmentType).toBeTruthy();
   });
 
   it("creates and updates a member through mock helpers", () => {

@@ -57,7 +57,8 @@ class RedisSalesDashboardCacheServiceIntegrationTest {
                 new BigDecimal("80000"),
                 new BigDecimal("130000"),
                 1L,
-                1L
+                1L,
+                2L
         );
 
         cacheService.put(1L, result);
@@ -70,6 +71,7 @@ class RedisSalesDashboardCacheServiceIntegrationTest {
                     assertThat(cached.monthNetSales()).isEqualByComparingTo(result.monthNetSales());
                     assertThat(cached.newMemberCount()).isEqualTo(result.newMemberCount());
                     assertThat(cached.expiringMemberCount()).isEqualTo(result.expiringMemberCount());
+                    assertThat(cached.refundCount()).isEqualTo(result.refundCount());
                 });
         assertThat(cacheService.get(2L, LocalDate.of(2099, 7, 15), 7)).isEmpty();
     }

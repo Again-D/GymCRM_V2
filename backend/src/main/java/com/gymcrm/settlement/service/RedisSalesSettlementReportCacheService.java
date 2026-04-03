@@ -36,10 +36,11 @@ public class RedisSalesSettlementReportCacheService implements SalesSettlementRe
             LocalDate startDate,
             LocalDate endDate,
             String paymentMethod,
-            String productKeyword
+            String productKeyword,
+            String trendGranularity
     ) {
         try {
-            String payload = stringRedisTemplate.opsForValue().get(key(centerId, startDate, endDate, paymentMethod, productKeyword));
+            String payload = stringRedisTemplate.opsForValue().get(key(centerId, startDate, endDate, paymentMethod, productKeyword, trendGranularity));
             if (payload == null || payload.isBlank()) {
                 return Optional.empty();
             }
@@ -47,7 +48,7 @@ public class RedisSalesSettlementReportCacheService implements SalesSettlementRe
         } catch (JsonProcessingException ex) {
             log.warn("Invalid sales settlement report cache payload. Evicting key. centerId={}, startDate={}, endDate={}",
                     centerId, startDate, endDate, ex);
-            stringRedisTemplate.delete(key(centerId, startDate, endDate, paymentMethod, productKeyword));
+            stringRedisTemplate.delete(key(centerId, startDate, endDate, paymentMethod, productKeyword, trendGranularity));
             return Optional.empty();
         } catch (RuntimeException ex) {
             log.warn("Sales settlement report cache read unavailable. Falling back to DB. centerId={}, startDate={}, endDate={}",
@@ -60,7 +61,7 @@ public class RedisSalesSettlementReportCacheService implements SalesSettlementRe
     public void put(Long centerId, SalesSettlementReportService.SalesReportResult result) {
         try {
             stringRedisTemplate.opsForValue().set(
-                    key(centerId, result.startDate(), result.endDate(), result.paymentMethod(), result.productKeyword()),
+                    key(centerId, result.startDate(), result.endDate(), result.paymentMethod(), result.productKeyword(), result.trendGranularity()),
                     objectMapper.writeValueAsString(result),
                     redisRuntimeProperties.settlementReportCache().ttl()
             );
@@ -73,12 +74,13 @@ public class RedisSalesSettlementReportCacheService implements SalesSettlementRe
         }
     }
 
-    private String key(Long centerId, LocalDate startDate, LocalDate endDate, String paymentMethod, String productKeyword) {
+    private String key(Long centerId, LocalDate startDate, LocalDate endDate, String paymentMethod, String productKeyword, String trendGranularity) {
         return KEY_PREFIX + centerId
                 + ":" + startDate
                 + ":" + endDate
                 + ":" + encode(paymentMethod)
-                + ":" + encode(productKeyword);
+                + ":" + encode(productKeyword)
+                + ":" + encode(trendGranularity);
     }
 
     private String encode(String value) {

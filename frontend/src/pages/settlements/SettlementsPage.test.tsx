@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { FoundationProviders } from "../../app/providers";
@@ -23,16 +23,30 @@ describe("SettlementsPage", () => {
     vi.unstubAllGlobals();
   });
 
-  it("renders settlement hero and report panels in mock mode", async () => {
+  it("renders sales analytics tab by default in mock mode", async () => {
     render(
       <FoundationProviders>
         <SettlementsPage />
       </FoundationProviders>
     );
 
-    expect(await screen.findByRole("heading", { name: "정산 리포트" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "정산 운영 센터" })).toBeTruthy();
+    expect(screen.getByRole("tab", { selected: true, name: "매출 분석" })).toBeTruthy();
     expect(screen.getByText("리포트 조건")).toBeTruthy();
-    expect(screen.getByText("거래 집계 결과")).toBeTruthy();
-    expect(screen.getByText("총 매출")).toBeTruthy();
+    expect(screen.getByText("기간 추이 리포트")).toBeTruthy();
+    expect(screen.getByText("최근 환불/취소")).toBeTruthy();
+  });
+
+  it("switches to trainer payroll tab", async () => {
+    render(
+      <FoundationProviders>
+        <SettlementsPage />
+      </FoundationProviders>
+    );
+
+    fireEvent.click(await screen.findByRole("tab", { name: "트레이너 정산" }));
+
+    expect(screen.getByRole("tab", { selected: true, name: "트레이너 정산" })).toBeTruthy();
+    expect(screen.getByText("트레이너 정산 조회 기능은 다음 구현 단위에서 연결됩니다.")).toBeTruthy();
   });
 });

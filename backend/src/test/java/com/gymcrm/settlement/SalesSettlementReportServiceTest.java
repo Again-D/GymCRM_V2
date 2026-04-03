@@ -32,11 +32,11 @@ class SalesSettlementReportServiceTest {
         SalesSettlementReportService.SalesReportResult cached = sampleResult();
 
         given(currentUserProvider.currentCenterId()).willReturn(1L);
-        given(cacheService.get(1L, cached.startDate(), cached.endDate(), cached.paymentMethod(), cached.productKeyword()))
+        given(cacheService.get(1L, cached.startDate(), cached.endDate(), cached.paymentMethod(), cached.productKeyword(), cached.trendGranularity()))
                 .willReturn(Optional.of(cached));
 
         SalesSettlementReportService.SalesReportResult result = service.getReport(
-                new SalesSettlementReportService.ReportQuery(cached.startDate(), cached.endDate(), cached.paymentMethod(), cached.productKeyword())
+                new SalesSettlementReportService.ReportQuery(cached.startDate(), cached.endDate(), cached.paymentMethod(), cached.productKeyword(), cached.trendGranularity())
         );
 
         assertThat(result).isEqualTo(cached);
@@ -65,17 +65,28 @@ class SalesSettlementReportServiceTest {
         );
 
         given(currentUserProvider.currentCenterId()).willReturn(1L);
-        given(cacheService.get(1L, startDate, endDate, "CARD", "PT")).willReturn(Optional.empty());
+        given(cacheService.get(1L, startDate, endDate, "CARD", "PT", "DAILY")).willReturn(Optional.empty());
         given(repository.findSalesRows(any())).willReturn(rows);
+        given(repository.findTrendRows(any(), any())).willReturn(List.of(
+                new SalesSettlementReportRepository.SalesTrendRow(
+                        OffsetDateTime.parse("2099-07-01T00:00:00+09:00"),
+                        new BigDecimal("100000"),
+                        new BigDecimal("20000"),
+                        new BigDecimal("80000"),
+                        2L
+                )
+        ));
 
         SalesSettlementReportService.SalesReportResult result = service.getReport(
-                new SalesSettlementReportService.ReportQuery(startDate, endDate, "CARD", "PT")
+                new SalesSettlementReportService.ReportQuery(startDate, endDate, "CARD", "PT", "DAILY")
         );
 
         assertThat(result.totalGrossSales()).isEqualByComparingTo("100000");
         assertThat(result.totalRefundAmount()).isEqualByComparingTo("20000");
         assertThat(result.totalNetSales()).isEqualByComparingTo("80000");
+        assertThat(result.trend()).hasSize(1);
         verify(repository).findSalesRows(any());
+        verify(repository).findTrendRows(any(), any());
         verify(cacheService).put(1L, result);
     }
 
@@ -90,10 +101,11 @@ class SalesSettlementReportServiceTest {
         LocalDate endDate = LocalDate.of(2026, 3, 31);
 
         given(currentUserProvider.currentCenterId()).willReturn(1L);
-        given(cacheService.get(1L, startDate, endDate, null, null)).willReturn(Optional.empty());
+        given(cacheService.get(1L, startDate, endDate, null, null, "DAILY")).willReturn(Optional.empty());
         given(repository.findSalesRows(any())).willReturn(List.of());
+        given(repository.findTrendRows(any(), any())).willReturn(List.of());
 
-        service.getReport(new SalesSettlementReportService.ReportQuery(startDate, endDate, null, null));
+        service.getReport(new SalesSettlementReportService.ReportQuery(startDate, endDate, null, null, "DAILY"));
 
         var commandCaptor = forClass(SalesSettlementReportRepository.QueryCommand.class);
         verify(repository).findSalesRows(commandCaptor.capture());
@@ -107,9 +119,18 @@ class SalesSettlementReportServiceTest {
                 LocalDate.of(2099, 7, 31),
                 "CARD",
                 "PT",
+                "DAILY",
                 new BigDecimal("100000"),
                 new BigDecimal("20000"),
                 new BigDecimal("80000"),
+                List.of(new SalesSettlementReportService.SalesTrendPoint(
+                        LocalDate.of(2099, 7, 1),
+                        "2099-07-01",
+                        new BigDecimal("100000"),
+                        new BigDecimal("20000"),
+                        new BigDecimal("80000"),
+                        2L
+                )),
                 List.of(new SalesSettlementReportService.SalesReportRow(
                         "PT-30",
                         "CARD",

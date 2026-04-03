@@ -10,7 +10,8 @@ public class NoOpSalesSettlementReportCacheService implements SalesSettlementRep
             LocalDate startDate,
             LocalDate endDate,
             String paymentMethod,
-            String productKeyword
+            String productKeyword,
+            String trendGranularity
     ) {
         return Optional.empty();
     }

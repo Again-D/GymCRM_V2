@@ -53,7 +53,8 @@ class SalesDashboardServiceTest {
                         new BigDecimal("80000"),
                         new BigDecimal("130000"),
                         1L,
-                        1L
+                        1L,
+                        2L
                 );
 
         given(currentUserProvider.currentCenterId()).willReturn(1L);
@@ -66,6 +67,7 @@ class SalesDashboardServiceTest {
 
         assertThat(result.todayNetSales()).isEqualByComparingTo("80000");
         assertThat(result.monthNetSales()).isEqualByComparingTo("130000");
+        assertThat(result.refundCount()).isEqualTo(2L);
         verify(repository).aggregate(any());
         verify(cacheService).put(1L, result);
     }
@@ -77,7 +79,8 @@ class SalesDashboardServiceTest {
                 new BigDecimal("80000"),
                 new BigDecimal("130000"),
                 1L,
-                1L
+                1L,
+                2L
         );
     }
 }
