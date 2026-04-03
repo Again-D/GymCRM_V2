@@ -48,6 +48,9 @@ public class ProductEntity {
     @Column(name = "max_hold_count")
     private Integer maxHoldCount;
 
+    @Column(name = "allow_hold_bypass", nullable = false)
+    private boolean allowHoldBypass;
+
     @Column(name = "allow_transfer", nullable = false)
     private boolean allowTransfer;
 
@@ -163,6 +166,14 @@ public class ProductEntity {
 
     public void setMaxHoldCount(Integer maxHoldCount) {
         this.maxHoldCount = maxHoldCount;
+    }
+
+    public boolean isAllowHoldBypass() {
+        return allowHoldBypass;
+    }
+
+    public void setAllowHoldBypass(boolean allowHoldBypass) {
+        this.allowHoldBypass = allowHoldBypass;
     }
 
     public boolean isAllowTransfer() {

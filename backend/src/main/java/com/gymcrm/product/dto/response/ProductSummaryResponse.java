@@ -11,7 +11,15 @@ public record ProductSummaryResponse(
             String productCategory,
             String productType,
             BigDecimal priceAmount,
-            String productStatus
+            Integer validityDays,
+            Integer totalCount,
+            boolean allowHold,
+            Integer maxHoldDays,
+            Integer maxHoldCount,
+            boolean allowHoldBypass,
+            boolean allowTransfer,
+            String productStatus,
+            String description
     ) {
         public static ProductSummaryResponse from(Product product) {
             return new ProductSummaryResponse(
@@ -21,7 +29,15 @@ public record ProductSummaryResponse(
                     product.productCategory(),
                     product.productType(),
                     product.priceAmount(),
-                    product.productStatus()
+                    product.validityDays(),
+                    product.totalCount(),
+                    product.allowHold(),
+                    product.maxHoldDays(),
+                    product.maxHoldCount(),
+                    product.allowHoldBypass(),
+                    product.allowTransfer(),
+                    product.productStatus(),
+                    product.description()
             );
         }
     }

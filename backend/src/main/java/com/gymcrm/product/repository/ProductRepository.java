@@ -105,6 +105,7 @@ public class ProductRepository {
                 entity.isAllowHold(),
                 entity.getMaxHoldDays(),
                 entity.getMaxHoldCount(),
+                entity.isAllowHoldBypass(),
                 entity.isAllowTransfer(),
                 entity.getProductStatus(),
                 entity.getDescription(),

@@ -14,6 +14,7 @@ export type ProductRecord = {
   allowHold: boolean;
   maxHoldDays: number | null;
   maxHoldCount: number | null;
+  allowHoldBypass: boolean;
   allowTransfer: boolean;
   productStatus: ProductStatus;
   description: string | null;
@@ -34,6 +35,7 @@ export type ProductFormState = {
   allowHold: boolean;
   maxHoldDays: string;
   maxHoldCount: string;
+  allowHoldBypass: boolean;
   allowTransfer: boolean;
   productStatus: ProductStatus;
   description: string;
@@ -57,6 +59,7 @@ export function createEmptyProductForm(): ProductFormState {
     allowHold: true,
     maxHoldDays: "30",
     maxHoldCount: "1",
+    allowHoldBypass: false,
     allowTransfer: false,
     productStatus: "ACTIVE",
     description: ""
@@ -74,6 +77,7 @@ export function createProductFormFromRecord(product: ProductRecord): ProductForm
     allowHold: product.allowHold,
     maxHoldDays: product.maxHoldDays == null ? "" : String(product.maxHoldDays),
     maxHoldCount: product.maxHoldCount == null ? "" : String(product.maxHoldCount),
+    allowHoldBypass: product.allowHoldBypass,
     allowTransfer: product.allowTransfer,
     productStatus: product.productStatus,
     description: product.description ?? ""

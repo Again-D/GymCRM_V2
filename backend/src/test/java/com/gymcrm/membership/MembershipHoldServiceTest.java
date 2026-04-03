@@ -75,15 +75,32 @@ class MembershipHoldServiceTest {
         assertEquals(ErrorCode.BUSINESS_RULE, exception.getErrorCode()); 
     } 
  
-    @Test 
-    void allowsHoldWhenOverrideLimitsIsTrueEvenIfLimitsExceeded() { 
-        service.validateHoldEligibility( 
-                membership("ACTIVE", "DURATION", LocalDate.of(2026, 3, 10), null, 25, 1), 
-                product(true, 30, 2), 
-                LocalDate.of(2026, 2, 23), 
-                LocalDate.of(2026, 3, 4), 
-                true 
-        ); 
+    @Test
+    void allowsHoldWhenOverrideLimitsIsTrueEvenIfLimitsExceeded() {
+        service.validateHoldEligibility(
+                membership("ACTIVE", "DURATION", LocalDate.of(2026, 3, 10), null, 25, 1),
+                product(true, 30, 2),
+                LocalDate.of(2026, 2, 23),
+                LocalDate.of(2026, 3, 4),
+                true
+        );
+    }
+
+    @Test
+    void rejectsHoldWhenLimitsExceededAndOverrideIsFalse() {
+        ApiException exception = assertThrows(
+                ApiException.class,
+                () -> service.validateHoldEligibility(
+                        membership("ACTIVE", "DURATION", LocalDate.of(2026, 3, 10), null, 25, 1),
+                        product(true, 30, 2),
+                        LocalDate.of(2026, 2, 23),
+                        LocalDate.of(2026, 3, 4),
+                        false
+                )
+        );
+
+        assertEquals(ErrorCode.BUSINESS_RULE, exception.getErrorCode());
+        assertEquals("상품 홀딩 가능 일수를 초과했습니다.", exception.getMessage());
     }
 
     @Test
@@ -155,6 +172,7 @@ class MembershipHoldServiceTest {
                 allowHold,
                 maxHoldDays,
                 maxHoldCount,
+                false,
                 false,
                 "ACTIVE",
                 null,

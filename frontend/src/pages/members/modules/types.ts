@@ -60,6 +60,9 @@ export type PurchasedMembership = {
   activeHoldStatus?: "ACTIVE" | null;
   holdDaysUsed?: number;
   holdCountUsed?: number;
+  holdDaysLimit?: number;
+  holdCountLimit?: number;
+  overrideLimits?: boolean;
 };
 
 export type MembershipPaymentRecord = {
