@@ -391,10 +391,62 @@ X-RateLimit-Reset: 1740001860
 | 1 | `POST` | `/api/v1/products` | 상품 등록 | O | ADMIN, MANAGER |
 | 2 | `GET` | `/api/v1/products` | 상품 목록 조회 (카테고리/상태 필터) | O | ALL |
 | 3 | `GET` | `/api/v1/products/{productId}` | 상품 상세 조회 | O | ALL |
-| 4 | `PUT` | `/api/v1/products/{productId}` | 상품 정보 수정 | O | ADMIN, MANAGER |
+| 4 | `PATCH` | `/api/v1/products/{productId}` | 상품 정보 수정 | O | ADMIN, MANAGER |
 | 5 | `DELETE` | `/api/v1/products/{productId}` | 상품 삭제 (소프트 삭제) | O | ADMIN, MANAGER |
 | 6 | `PATCH` | `/api/v1/products/{productId}/status` | 상품 활성/비활성 전환 | O | ADMIN, MANAGER |
 | 7 | `GET` | `/api/v1/products/categories` | 상품 카테고리 목록 조회 | O | ALL |
+
+**상품 계약 메모**
+- `POST /api/v1/products`, `PATCH /api/v1/products/{productId}`, `GET /api/v1/products`, `GET /api/v1/products/{productId}` 응답에는 홀딩 정책 필드 `allowHold`, `maxHoldDays`, `maxHoldCount`, `allowHoldBypass`가 포함된다.
+- `allowHoldBypass`는 관리자 권한자가 홀딩 기본 제한을 우회할 수 있는지 나타내는 Boolean 필드다.
+- `allowHold=false`인 상품은 저장 시 `allowHoldBypass=false`로 정규화된다.
+
+**상품 등록/수정 Request 예시**
+
+```json
+{
+  "productName": "헬스 90일권",
+  "productCategory": "MEMBERSHIP",
+  "productType": "DURATION",
+  "priceAmount": 180000,
+  "validityDays": 90,
+  "totalCount": null,
+  "allowHold": true,
+  "maxHoldDays": 30,
+  "maxHoldCount": 1,
+  "allowHoldBypass": true,
+  "allowTransfer": false,
+  "productStatus": "ACTIVE",
+  "description": "관리자 승인 시 제한 우회 홀딩 가능"
+}
+```
+
+**상품 상세/목록 Response 예시**
+
+```json
+{
+  "success": true,
+  "data": {
+    "productId": 301,
+    "centerId": 1,
+    "productName": "헬스 90일권",
+    "productCategory": "MEMBERSHIP",
+    "productType": "DURATION",
+    "priceAmount": 180000,
+    "validityDays": 90,
+    "totalCount": null,
+    "allowHold": true,
+    "maxHoldDays": 30,
+    "maxHoldCount": 1,
+    "allowHoldBypass": true,
+    "allowTransfer": false,
+    "productStatus": "ACTIVE",
+    "description": "관리자 승인 시 제한 우회 홀딩 가능"
+  },
+  "message": "상품 상세 조회 성공",
+  "timestamp": "2026-04-03T12:00:00+09:00"
+}
+```
 
 ### 3.4 예약 관리 API (`/api/v1/reservations`)
 
@@ -901,15 +953,19 @@ GET /api/v1/members?keyword=홍길동&status=ACTIVE&sort=name&order=asc&page=1&s
 {
   "holdStartDate": "2026-03-01",
   "holdEndDate": "2026-03-14",
-  "reason": "해외 출장"
+  "reason": "해외 출장",
+  "memo": "4월 첫째 주 복귀 예정",
+  "overrideLimits": true
 }
 ```
 
 | 필드 | 타입 | 필수 | 설명 |
 |------|------|------|------|
-| `holdStartDate` | String | O | 홀딩 시작일 (yyyy-MM-dd) |
+| `holdStartDate` | String | X | 홀딩 시작일 (yyyy-MM-dd, 비우면 요청일 기준 오늘) |
 | `holdEndDate` | String | O | 홀딩 종료일 (yyyy-MM-dd) |
-| `reason` | String | O | 홀딩 사유 |
+| `reason` | String | X | 홀딩 사유 |
+| `memo` | String | X | 내부 메모 |
+| `overrideLimits` | Boolean | X | 홀딩 일수/횟수 제한을 우회할지 여부 |
 
 **Response Body (성공 - 200):**
 
@@ -917,21 +973,50 @@ GET /api/v1/members?keyword=홍길동&status=ACTIVE&sort=name&order=asc&page=1&s
 {
   "success": true,
   "data": {
-    "membershipId": "MSP-20260220-0001",
-    "status": "HELD",
-    "holdInfo": {
+    "membership": {
+      "membershipId": 2001,
+      "centerId": 1,
+      "memberId": 101,
+      "productId": 301,
+      "assignedTrainerId": null,
+      "membershipStatus": "HOLDING",
+      "productNameSnapshot": "헬스 90일권",
+      "productCategorySnapshot": "MEMBERSHIP",
+      "productTypeSnapshot": "DURATION",
+      "priceAmountSnapshot": 180000,
+      "purchasedAt": "2026-02-20T10:00:00Z",
+      "startDate": "2026-02-20",
+      "endDate": "2026-05-29",
+      "totalCount": null,
+      "remainingCount": null,
+      "usedCount": null,
+      "holdDaysUsed": 0,
+      "holdCountUsed": 0,
+      "memo": "주 3회 운동 목표",
+      "overrideLimits": null,
+      "activeHoldStatus": null,
+      "activeHoldStartDate": null,
+      "activeHoldEndDate": null
+    },
+    "hold": {
+      "membershipHoldId": 77,
+      "centerId": 1,
+      "membershipId": 2001,
+      "holdStatus": "ACTIVE",
       "holdStartDate": "2026-03-01",
       "holdEndDate": "2026-03-14",
-      "holdDays": 14,
-      "reason": "해외 출장"
+      "resumedAt": null,
+      "actualHoldDays": null,
+      "reason": "해외 출장",
+      "memo": "4월 첫째 주 복귀 예정",
+      "overrideLimits": true
     },
-    "originalEndDate": "2026-05-20",
-    "newEndDate": "2026-06-03",
-    "holdCount": 1,
-    "maxHoldCount": 1,
-    "remainingHoldCount": 0
+    "preview": {
+      "plannedHoldDays": 14,
+      "recalculatedEndDate": "2026-06-12"
+    }
   },
-  "message": "회원권이 홀딩 처리되었습니다. 종료일이 2026-06-03으로 연장됩니다.",
+  "message": "회원권 홀딩이 완료되었습니다.",
   "timestamp": "2026-02-20T10:00:00+09:00"
 }
 ```
@@ -956,12 +1041,14 @@ GET /api/v1/members?keyword=홍길동&status=ACTIVE&sort=name&order=asc&page=1&s
 
 **비즈니스 규칙:**
 - `ACTIVE` 상태의 회원권만 홀딩 가능하다.
-- 최소 홀딩 기간은 7일이다.
-- 최대 홀딩 기간은 30일이다.
-- 홀딩 가능 횟수는 상품별로 설정되며, 기본값은 1회이다.
-- 홀딩 시작일은 현재 날짜 이후여야 한다.
+- `holdEndDate`는 필수이며 `holdStartDate`보다 빠를 수 없다.
+- `holdStartDate`를 비우면 요청일 기준 오늘로 처리한다.
+- 기본 홀딩 제한(최대 일수/최대 횟수)은 상품 설정 `maxHoldDays`, `maxHoldCount`를 따른다.
+- `overrideLimits=true`는 상품의 `allowHoldBypass=true`인 경우에만 허용된다.
+- `overrideLimits=true`를 요청해도 관리자 계열 권한이 아닌 경우 거부된다.
 - 홀딩 기간만큼 회원권 종료일이 자동 연장된다.
-- 이미 `HELD` 상태인 회원권은 중복 홀딩할 수 없다.
+- 이미 활성 홀딩(`holdStatus=ACTIVE`)이 있는 회원권은 중복 홀딩할 수 없다.
+- 자동 재개 배치는 `holdEndDate`가 지난 활성 홀드를 기준으로 처리하며, 누락된 실행이 있어도 미처리 건을 catch-up 한다.
 
 ---
 
@@ -1912,4 +1999,5 @@ X-Cache: HIT
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| v1.1.0 | 2026-04-03 | 상품 API의 `allowHoldBypass` 필드와 회원권 홀딩 API의 `overrideLimits`/자동 재개 규칙을 현재 구현 기준으로 동기화하고, 상품 수정 메서드를 `PATCH`로 정정 | Codex |
 | v1.0.0 | 2026-02-20 | 최초 작성 | - |
