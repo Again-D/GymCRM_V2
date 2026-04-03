@@ -103,7 +103,9 @@ public class AuditLogService {
                 && !normalized.equals("MEMBERSHIP_REFUND")
                 && !normalized.equals("ACCOUNT_ROLE_CHANGE")
                 && !normalized.equals("ACCOUNT_STATUS_CHANGE")
-                && !normalized.equals("ACCOUNT_ACCESS_REVOKE")) {
+                && !normalized.equals("ACCOUNT_ACCESS_REVOKE")
+                && !normalized.equals("MEMBERSHIP_HOLD")
+                && !normalized.equals("MEMBERSHIP_RESUME")) {
             throw new ApiException(ErrorCode.VALIDATION_ERROR, "eventType is invalid");
         }
         return normalized;

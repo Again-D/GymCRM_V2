@@ -26,17 +26,17 @@ public class MembershipHoldRepository {
                 INSERT INTO membership_holds (
                     center_id, membership_id, hold_status,
                     hold_start_date, hold_end_date, reason, memo,
-                    created_by, updated_by
+                    override_limits, created_by, updated_by
                 )
                 VALUES (
                     :centerId, :membershipId, :holdStatus,
                     :holdStartDate, :holdEndDate, :reason, :memo,
-                    :actorUserId, :actorUserId
+                    :overrideLimits, :actorUserId, :actorUserId
                 )
                 RETURNING
                     membership_hold_id, center_id, membership_id, hold_status,
                     hold_start_date, hold_end_date, resumed_at, actual_hold_days,
-                    reason, memo,
+                    reason, memo, override_limits,
                     created_at, created_by, updated_at, updated_by
                 """)
                 .paramSource(command)
@@ -49,7 +49,7 @@ public class MembershipHoldRepository {
                 SELECT
                     membership_hold_id, center_id, membership_id, hold_status,
                     hold_start_date, hold_end_date, resumed_at, actual_hold_days,
-                    reason, memo,
+                    reason, memo, override_limits,
                     created_at, created_by, updated_at, updated_by
                 FROM membership_holds
                 WHERE membership_id = :membershipId
@@ -71,7 +71,7 @@ public class MembershipHoldRepository {
                 SELECT
                     membership_hold_id, center_id, membership_id, hold_status,
                     hold_start_date, hold_end_date, resumed_at, actual_hold_days,
-                    reason, memo,
+                    reason, memo, override_limits,
                     created_at, created_by, updated_at, updated_by
                 FROM membership_holds
                 WHERE membership_id IN (:membershipIds)
@@ -105,7 +105,7 @@ public class MembershipHoldRepository {
                 RETURNING
                     membership_hold_id, center_id, membership_id, hold_status,
                     hold_start_date, hold_end_date, resumed_at, actual_hold_days,
-                    reason, memo,
+                    reason, memo, override_limits,
                     created_at, created_by, updated_at, updated_by
                 """)
                 .paramSource(command)
@@ -125,6 +125,7 @@ public class MembershipHoldRepository {
                 rs.getObject("actual_hold_days", Integer.class),
                 rs.getString("reason"),
                 rs.getString("memo"),
+                rs.getBoolean("override_limits"),
                 rs.getObject("created_at", OffsetDateTime.class),
                 rs.getObject("created_by", Long.class),
                 rs.getObject("updated_at", OffsetDateTime.class),
@@ -140,6 +141,7 @@ public class MembershipHoldRepository {
             LocalDate holdEndDate,
             String reason,
             String memo,
+            Boolean overrideLimits,
             Long actorUserId
     ) {}
 

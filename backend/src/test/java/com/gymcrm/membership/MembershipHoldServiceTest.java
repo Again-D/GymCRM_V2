@@ -1,5 +1,6 @@
 package com.gymcrm.membership;
 
+import com.gymcrm.audit.AuditLogService;
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
@@ -28,7 +29,8 @@ class MembershipHoldServiceTest {
             mock(MembershipHoldRepository.class),
             new MembershipStatusTransitionService(),
             mock(ProductService.class),
-            mock(CurrentUserProvider.class)
+            mock(CurrentUserProvider.class),
+            mock(AuditLogService.class)
     );
 
     @Test
@@ -49,7 +51,8 @@ class MembershipHoldServiceTest {
                         membership("ACTIVE", "DURATION", LocalDate.of(2026, 3, 10), null, 0, 0),
                         product(false, 30, 1),
                         LocalDate.of(2026, 2, 23),
-                        LocalDate.of(2026, 2, 25)
+                        LocalDate.of(2026, 2, 25),
+                        null
                 )
         );
 
@@ -64,11 +67,23 @@ class MembershipHoldServiceTest {
                         membership("ACTIVE", "COUNT", null, 0, 0, 0),
                         product(true, 30, 3),
                         LocalDate.of(2026, 2, 23),
-                        LocalDate.of(2026, 2, 25)
+                        LocalDate.of(2026, 2, 25),
+                        false
                 )
         );
 
-        assertEquals(ErrorCode.BUSINESS_RULE, exception.getErrorCode());
+        assertEquals(ErrorCode.BUSINESS_RULE, exception.getErrorCode()); 
+    } 
+ 
+    @Test 
+    void allowsHoldWhenOverrideLimitsIsTrueEvenIfLimitsExceeded() { 
+        service.validateHoldEligibility( 
+                membership("ACTIVE", "DURATION", LocalDate.of(2026, 3, 10), null, 25, 1), 
+                product(true, 30, 2), 
+                LocalDate.of(2026, 2, 23), 
+                LocalDate.of(2026, 3, 4), 
+                true 
+        ); 
     }
 
     @Test
