@@ -16,6 +16,7 @@ public record MembershipHold(
         Integer actualHoldDays,
         String reason,
         String memo,
+        Boolean overrideLimits,
         OffsetDateTime createdAt,
         Long createdBy,
         OffsetDateTime updatedAt,

@@ -15,6 +15,7 @@ public record Product(
         boolean allowHold,
         Integer maxHoldDays,
         Integer maxHoldCount,
+        boolean allowHoldBypass,
         boolean allowTransfer,
         String productStatus,
         String description,

@@ -24,6 +24,7 @@ describe("mockData membership propagation", () => {
   it("adds a new membership to member summaries and reservation targets", () => {
     createMockMembership({
       memberId: 103,
+      productId: 2,
       productNameSnapshot: "PT 10회권",
       productTypeSnapshot: "COUNT",
       startDate: "2026-03-12",

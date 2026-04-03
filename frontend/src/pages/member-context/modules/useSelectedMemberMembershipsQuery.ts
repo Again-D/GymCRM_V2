@@ -235,6 +235,7 @@ export function useSelectedMemberMembershipsQuery(hookMemberId?: number | null) 
         holdEndDate: string;
         reason?: string | null;
         memo?: string | null;
+        overrideLimits?: boolean;
       },
     ) => {
       if (!useMockMutations) {
@@ -245,6 +246,7 @@ export function useSelectedMemberMembershipsQuery(hookMemberId?: number | null) 
             holdEndDate: input.holdEndDate || null,
             reason: input.reason ?? null,
             memo: input.memo ?? null,
+            overrideLimits: input.overrideLimits ?? false,
           },
         );
         replaceMembership(response.data.membership);

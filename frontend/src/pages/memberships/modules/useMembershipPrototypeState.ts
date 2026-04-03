@@ -64,6 +64,7 @@ type HoldMembership = (
     holdEndDate: string;
     reason?: string | null;
     memo?: string | null;
+    overrideLimits?: boolean;
   },
 ) => Promise<{ membership: PurchasedMembership }>;
 
@@ -291,6 +292,41 @@ export function useMembershipPrototypeState(
     } as const;
   }
 
+  function buildHoldLimitsSummary(
+    membership: PurchasedMembership,
+    product: ProductRecord,
+  ) {
+    const draft = getMembershipActionDraft(membership.membershipId);
+    const plannedHoldDays = dateDiffInDays(
+      draft.holdStartDate,
+      draft.holdEndDate,
+    );
+
+    const maxDays = product.maxHoldDays ?? 0;
+    const maxCount = product.maxHoldCount ?? 0;
+    const usedDays = membership.holdDaysUsed ?? 0;
+    const usedCount = membership.holdCountUsed ?? 0;
+
+    const remainingDays = Math.max(0, maxDays - usedDays);
+    const remainingCount = Math.max(0, maxCount - usedCount);
+
+    const isDaysExceeded = plannedHoldDays > remainingDays;
+    const isCountExceeded = remainingCount <= 0;
+
+    return {
+      plannedHoldDays,
+      maxDays,
+      usedDays,
+      remainingDays,
+      maxCount,
+      usedCount,
+      remainingCount,
+      isDaysExceeded,
+      isCountExceeded,
+      isExceeded: isDaysExceeded || isCountExceeded,
+    };
+  }
+
   function buildResumePreview(membership: PurchasedMembership) {
     const draft = getMembershipActionDraft(membership.membershipId);
     if (!draft.resumeDate) {
@@ -378,13 +414,19 @@ export function useMembershipPrototypeState(
       );
       return result.membership;
     } catch (error) {
-      setMembershipPanelError(toUserFacingErrorMessage(error, "회원권 생성에 실패했습니다."));
+      setMembershipPanelError(
+        toUserFacingErrorMessage(error, "회원권 생성에 실패했습니다."),
+      );
       return null;
     }
   }
 
-  async function handleHoldSubmit(membership: PurchasedMembership) {
+  async function handleHoldSubmit(
+    membership: PurchasedMembership,
+    overrideLimits = false,
+  ) {
     clearPanelFeedback();
+    const draft = getMembershipActionDraft(membership.membershipId);
     const preview = buildHoldPreview(membership);
     if ("error" in preview) {
       setMembershipPanelError(
@@ -395,19 +437,19 @@ export function useMembershipPrototypeState(
 
     try {
       await holdMembership(membership, {
-        holdStartDate: getMembershipActionDraft(membership.membershipId)
-          .holdStartDate,
-        holdEndDate: getMembershipActionDraft(membership.membershipId)
-          .holdEndDate,
-        reason:
-          getMembershipActionDraft(membership.membershipId).holdReason || null,
+        holdStartDate: draft.holdStartDate,
+        holdEndDate: draft.holdEndDate,
+        reason: draft.holdReason || null,
         memo: null,
+        overrideLimits,
       });
       setMembershipPanelMessage(
         `회원권 #${membership.membershipId}를 홀딩했습니다.`,
       );
     } catch (error) {
-      setMembershipPanelError(toUserFacingErrorMessage(error, "회원권 홀딩에 실패했습니다."));
+      setMembershipPanelError(
+        toUserFacingErrorMessage(error, "회원권 홀딩에 실패했습니다."),
+      );
     }
   }
 
@@ -430,14 +472,20 @@ export function useMembershipPrototypeState(
         `회원권 #${membership.membershipId} 홀딩을 해제했습니다.`,
       );
     } catch (error) {
-      setMembershipPanelError(toUserFacingErrorMessage(error, "홀딩 해제에 실패했습니다."));
+      setMembershipPanelError(
+        toUserFacingErrorMessage(error, "홀딩 해제에 실패했습니다."),
+      );
     }
   }
 
-  async function handleRefundPreview(membership: PurchasedMembership, date?: string) {
+  async function handleRefundPreview(
+    membership: PurchasedMembership,
+    date?: string,
+  ) {
     clearPanelFeedback();
-    
-    const refundDate = date || getMembershipActionDraft(membership.membershipId).refundDate;
+
+    const refundDate =
+      date || getMembershipActionDraft(membership.membershipId).refundDate;
     if (!refundDate) {
       setMembershipPanelError("환불 기준일을 입력해야 합니다.");
       return null;
@@ -453,7 +501,12 @@ export function useMembershipPrototypeState(
       }));
       return response.calculation;
     } catch (error) {
-      setMembershipPanelError(toUserFacingErrorMessage(error, "환불 미리보기를 계산하지 못했습니다."));
+      setMembershipPanelError(
+        toUserFacingErrorMessage(
+          error,
+          "환불 미리보기를 계산하지 못했습니다.",
+        ),
+      );
       return null;
     }
   }
@@ -487,7 +540,9 @@ export function useMembershipPrototypeState(
         `회원권 #${membership.membershipId}를 환불 처리했습니다.`,
       );
     } catch (error) {
-      setMembershipPanelError(toUserFacingErrorMessage(error, "회원권 환불에 실패했습니다."));
+      setMembershipPanelError(
+        toUserFacingErrorMessage(error, "회원권 환불에 실패했습니다."),
+      );
     }
   }
 
@@ -503,6 +558,7 @@ export function useMembershipPrototypeState(
     updateMembershipActionDraft,
     membershipRefundPreviewById,
     buildHoldPreview,
+    buildHoldLimitsSummary,
     buildResumePreview,
     handlePurchaseSubmit,
     handleHoldSubmit,

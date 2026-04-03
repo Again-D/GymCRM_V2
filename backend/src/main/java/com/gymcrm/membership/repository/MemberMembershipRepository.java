@@ -163,6 +163,13 @@ public class MemberMembershipRepository {
         return memberMembershipJpaRepository.findByMembershipIdAndIsDeletedFalse(membershipId).map(this::toDomain);
     }
 
+    public java.util.List<MemberMembership> findByStatusAndEndDate(String status, LocalDate endDate) {
+        return memberMembershipJpaRepository.findByMembershipStatusAndEndDateAndIsDeletedFalse(status, endDate)
+                .stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
     public List<MemberMembership> findVisibleByMemberId(Long centerId, Long memberId, Long trainerUserId) {
         return queryFactory
                 .selectFrom(memberMembershipEntity)

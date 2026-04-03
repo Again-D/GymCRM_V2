@@ -48,6 +48,7 @@ export type MemberFormState = {
 export type PurchasedMembership = {
   membershipId: number;
   memberId: number;
+  productId: number;
   productNameSnapshot: string;
   productCategorySnapshot?: string | null;
   productTypeSnapshot: "DURATION" | "COUNT";
@@ -57,6 +58,11 @@ export type PurchasedMembership = {
   remainingCount: number | null;
   assignedTrainerId?: number | null;
   activeHoldStatus?: "ACTIVE" | null;
+  holdDaysUsed?: number;
+  holdCountUsed?: number;
+  holdDaysLimit?: number;
+  holdCountLimit?: number;
+  overrideLimits?: boolean;
 };
 
 export type MembershipPaymentRecord = {

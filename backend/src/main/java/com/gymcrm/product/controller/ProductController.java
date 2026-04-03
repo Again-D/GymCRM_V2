@@ -49,6 +49,7 @@ public class ProductController {
                 request.allowHold(),
                 request.maxHoldDays(),
                 request.maxHoldCount(),
+                request.allowHoldBypass(),
                 request.allowTransfer(),
                 request.productStatus(),
                 request.description()
@@ -90,6 +91,7 @@ public class ProductController {
                 request.allowHold(),
                 request.maxHoldDays(),
                 request.maxHoldCount(),
+                request.allowHoldBypass(),
                 request.allowTransfer(),
                 request.productStatus(),
                 request.description()

@@ -255,6 +255,7 @@ class CrmMessageServiceIntegrationTest {
                 30,
                 1,
                 false,
+                false,
                 "ACTIVE",
                 null
         ));
@@ -272,6 +273,7 @@ class CrmMessageServiceIntegrationTest {
                 true,
                 30,
                 1,
+                false,
                 false,
                 "ACTIVE",
                 null

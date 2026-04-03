@@ -28,6 +28,7 @@ public record MembershipSummaryResponse(
         Integer holdDaysUsed,
         Integer holdCountUsed,
         String memo,
+        Boolean overrideLimits,
         String activeHoldStatus,
         LocalDate activeHoldStartDate,
         LocalDate activeHoldEndDate
@@ -61,6 +62,7 @@ public record MembershipSummaryResponse(
                 membership.holdDaysUsed(),
                 membership.holdCountUsed(),
                 membership.memo(),
+                activeHold == null ? null : activeHold.overrideLimits(),
                 activeHold == null ? null : activeHold.holdStatus().name(),
                 activeHold == null ? null : activeHold.holdStartDate(),
                 activeHold == null ? null : activeHold.holdEndDate()

@@ -17,6 +17,7 @@ const availableProducts: ProductRecord[] = [
     allowHold: true,
     maxHoldDays: 30,
     maxHoldCount: 1,
+    allowHoldBypass: false,
     allowTransfer: false,
     productStatus: "ACTIVE",
     description: null
@@ -33,6 +34,7 @@ const availableProducts: ProductRecord[] = [
     allowHold: true,
     maxHoldDays: 30,
     maxHoldCount: 1,
+    allowHoldBypass: false,
     allowTransfer: false,
     productStatus: "ACTIVE",
     description: null
@@ -184,6 +186,7 @@ describe("useMembershipPrototypeState", () => {
       startDate: "2026-03-01",
       endDate: "2026-05-29",
       remainingCount: null,
+      productId: 1,
       activeHoldStatus: null
     };
 

@@ -205,6 +205,7 @@ class MembershipRefundServiceIntegrationTest {
                 LocalDate.of(2026, 2, 5),
                 LocalDate.of(2026, 2, 6),
                 "테스트 홀딩",
+                null,
                 null
         ));
 
@@ -267,6 +268,7 @@ class MembershipRefundServiceIntegrationTest {
                 true,
                 30,
                 2,
+                false,
                 false,
                 "ACTIVE",
                 null

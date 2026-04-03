@@ -32,9 +32,7 @@ public class AuditLogController {
     @GetMapping
     @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN)
     public ApiResponse<AuditLogListResponse> list(
-            @RequestParam(required = false)
-            @Pattern(regexp = "^(?i)(PII_READ|MEMBERSHIP_REFUND|ACCOUNT_ROLE_CHANGE|ACCOUNT_STATUS_CHANGE|ACCOUNT_ACCESS_REVOKE)?$", message = "eventType is invalid")
-            String eventType,
+            @RequestParam(required = false) String eventType, 
             @RequestParam(defaultValue = "100") @Min(1) @Max(500) Integer limit
     ) {
         List<AuditLogResponse> rows = auditLogService.getRecentLogs(eventType, limit).stream()

@@ -48,7 +48,8 @@ public class MembershipHoldController {
                 request.holdStartDate(),
                 request.holdEndDate(),
                 request.reason(),
-                request.memo()
+                request.memo(),
+                request.overrideLimits()
         ));
 
         return ApiResponse.success(MembershipHoldResponse.from(result), "회원권 홀딩이 완료되었습니다.");

@@ -52,7 +52,7 @@ export default function CrmActionWidget({ title = "CRM 대상자" }: WidgetBaseP
 
   if (error) {
     return (
-      <Card title={title} bordered={false}>
+      <Card title={title} variant="borderless">
         <Alert
           type="warning"
           message={toUserFacingErrorMessage(error, "CRM 데이터를 불러오지 못했습니다.")}
@@ -65,7 +65,7 @@ export default function CrmActionWidget({ title = "CRM 대상자" }: WidgetBaseP
   return (
     <Card
       title={title}
-      bordered={false}
+      variant="borderless"
       styles={{ body: { padding: "12px" } }}
       actions={[
         <Link key="link" to="/members">

@@ -23,6 +23,7 @@ const MembershipsPage = lazy(() => import("./pages/memberships/MembershipsPage")
 const ProductsPage = lazy(() => import("./pages/products/ProductsPage"));
 const ReservationsPage = lazy(() => import("./pages/reservations/ReservationsPage"));
 const SettlementsPage = lazy(() => import("./pages/settlements/SettlementsPage"));
+const AuditLogsPage = lazy(() => import("./pages/audit/AuditLogsPage"));
 const GxSchedulesPage = lazy(() => import("./pages/gx-schedules/GxSchedulesPage"));
 const TrainerAvailabilityPage = lazy(() => import("./pages/trainer-availability/TrainerAvailabilityPage"));
 const TrainersPage = lazy(() => import("./pages/trainers/TrainersPage"));
@@ -171,6 +172,14 @@ export default function App() {
               element={
                 <RouteProfiler id="Settlements">
                   <SettlementsPage />
+                </RouteProfiler>
+              }
+            />
+            <Route
+              path="/audit"
+              element={
+                <RouteProfiler id="AuditLogs">
+                  <AuditLogsPage />
                 </RouteProfiler>
               }
             />

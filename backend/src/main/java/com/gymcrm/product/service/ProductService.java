@@ -40,6 +40,7 @@ public class ProductService {
                 request.allowHold(),
                 request.maxHoldDays(),
                 request.maxHoldCount(),
+                request.allowHoldBypass(),
                 request.allowTransfer(),
                 request.productStatus(),
                 request.description()
@@ -57,6 +58,7 @@ public class ProductService {
                     input.allowHold(),
                     input.maxHoldDays(),
                     input.maxHoldCount(),
+                    input.allowHoldBypass(),
                     input.allowTransfer(),
                     input.productStatus(),
                     input.description(),
@@ -99,6 +101,7 @@ public class ProductService {
                 request.allowHold() == null ? current.allowHold() : request.allowHold(),
                 request.maxHoldDays() == null ? current.maxHoldDays() : request.maxHoldDays(),
                 request.maxHoldCount() == null ? current.maxHoldCount() : request.maxHoldCount(),
+                request.allowHoldBypass() == null ? current.allowHoldBypass() : request.allowHoldBypass(),
                 request.allowTransfer() == null ? current.allowTransfer() : request.allowTransfer(),
                 request.productStatus() == null ? current.productStatus() : request.productStatus(),
                 request.description() == null ? current.description() : request.description()
@@ -116,6 +119,7 @@ public class ProductService {
                     input.allowHold(),
                     input.maxHoldDays(),
                     input.maxHoldCount(),
+                    input.allowHoldBypass(),
                     input.allowTransfer(),
                     input.productStatus(),
                     input.description(),
@@ -150,6 +154,7 @@ public class ProductService {
             Boolean allowHold,
             Integer maxHoldDays,
             Integer maxHoldCount,
+            Boolean allowHoldBypass,
             Boolean allowTransfer,
             String productStatus,
             String description
@@ -207,6 +212,7 @@ public class ProductService {
                 allowHold != null && allowHold,
                 maxHoldDays,
                 maxHoldCount,
+                allowHold != null && allowHold && allowHoldBypass != null && allowHoldBypass,
                 allowTransfer != null && allowTransfer,
                 status,
                 trimToNull(description)
@@ -250,6 +256,7 @@ public class ProductService {
             Boolean allowHold,
             Integer maxHoldDays,
             Integer maxHoldCount,
+            Boolean allowHoldBypass,
             Boolean allowTransfer,
             String productStatus,
             String description
@@ -265,6 +272,7 @@ public class ProductService {
             Boolean allowHold,
             Integer maxHoldDays,
             Integer maxHoldCount,
+            Boolean allowHoldBypass,
             Boolean allowTransfer,
             String productStatus,
             String description
@@ -280,6 +288,7 @@ public class ProductService {
             boolean allowHold,
             Integer maxHoldDays,
             Integer maxHoldCount,
+            boolean allowHoldBypass,
             boolean allowTransfer,
             String productStatus,
             String description

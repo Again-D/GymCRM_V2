@@ -8,6 +8,7 @@ import com.gymcrm.membership.entity.MemberMembership;
 import com.gymcrm.membership.enums.HoldStatus;
 import com.gymcrm.membership.repository.MemberMembershipRepository;
 import com.gymcrm.membership.repository.MembershipHoldRepository;
+import com.gymcrm.membership.service.MembershipHoldAutoResumeScheduler;
 import com.gymcrm.membership.service.MembershipHoldService;
 import com.gymcrm.membership.service.MembershipPurchaseService;
 import com.gymcrm.product.entity.Product;
@@ -62,6 +63,9 @@ class MembershipHoldServiceIntegrationTest {
     @Autowired
     private JdbcClient jdbcClient;
 
+    @Autowired
+    private MembershipHoldAutoResumeScheduler membershipHoldAutoResumeScheduler;
+
     @SpyBean
     private MembershipHoldRepository membershipHoldRepositorySpy;
 
@@ -92,7 +96,8 @@ class MembershipHoldServiceIntegrationTest {
                 LocalDate.of(2026, 3, 5),
                 LocalDate.of(2026, 3, 7),
                 "출장",
-                "테스트 홀딩"
+                "테스트 홀딩",
+                null
         ));
 
         assertEquals("HOLDING", holdResult.membership().membershipStatus());
@@ -142,6 +147,7 @@ class MembershipHoldServiceIntegrationTest {
                 LocalDate.of(2026, 3, 5),
                 LocalDate.of(2026, 3, 6),
                 null,
+                null,
                 null
         )));
 
@@ -173,6 +179,7 @@ class MembershipHoldServiceIntegrationTest {
                 LocalDate.of(2026, 3, 6),
                 null,
                 null,
+                Boolean.FALSE,
                 1L
         ));
 
@@ -186,6 +193,7 @@ class MembershipHoldServiceIntegrationTest {
                         LocalDate.of(2026, 3, 8),
                         null,
                         null,
+                        Boolean.FALSE,
                         1L
                 ))
         );
@@ -194,6 +202,85 @@ class MembershipHoldServiceIntegrationTest {
                 ? exception.getMostSpecificCause().getMessage()
                 : exception.getMessage();
         assertTrue(message != null && message.contains("uk_membership_holds_membership_active"));
+    }
+
+    @Test
+    @Transactional
+    void autoResumeUpdatesMembershipAndEnqueuesCrmEvent() {
+        Member member = createActiveMember();
+        Product product = createHoldableDurationProduct();
+        LocalDate holdStartDate = LocalDate.now().minusDays(3);
+        LocalDate holdEndDate = LocalDate.now().minusDays(1);
+
+        MembershipPurchaseService.PurchaseResult purchase = purchaseService.purchase(new MembershipPurchaseService.PurchaseRequest(
+                member.memberId(),
+                product.productId(),
+                null,
+                LocalDate.now().minusDays(20),
+                null,
+                "CASH",
+                null,
+                null
+        ));
+        LocalDate originalEndDate = purchase.membership().endDate();
+
+        MembershipHoldService.HoldResult holdResult = holdService.hold(new MembershipHoldService.HoldRequest(
+                purchase.membership().membershipId(),
+                holdStartDate,
+                holdEndDate,
+                "출장",
+                "자동 재개 테스트",
+                null
+        ));
+
+        assertEquals("HOLDING", holdResult.membership().membershipStatus());
+        assertEquals(HoldStatus.ACTIVE, holdResult.hold().holdStatus());
+
+        membershipHoldAutoResumeScheduler.autoResumeExpiredHolds();
+
+        MemberMembership resumedMembership = memberMembershipRepository.findById(purchase.membership().membershipId()).orElseThrow();
+        assertEquals("ACTIVE", resumedMembership.membershipStatus());
+        assertEquals(originalEndDate.plusDays(3), resumedMembership.endDate());
+        assertEquals(3, resumedMembership.holdDaysUsed());
+        assertEquals(1, resumedMembership.holdCountUsed());
+
+        String holdStatus = jdbcClient.sql("""
+                SELECT hold_status
+                FROM membership_holds
+                WHERE membership_hold_id = :membershipHoldId
+                """)
+                .param("membershipHoldId", holdResult.hold().membershipHoldId())
+                .query(String.class)
+                .single();
+        Integer actualHoldDays = jdbcClient.sql("""
+                SELECT actual_hold_days
+                FROM membership_holds
+                WHERE membership_hold_id = :membershipHoldId
+                """)
+                .param("membershipHoldId", holdResult.hold().membershipHoldId())
+                .query(Integer.class)
+                .single();
+
+        assertEquals("RESUMED", holdStatus);
+        assertEquals(3, actualHoldDays);
+
+        Integer crmEventCount = jdbcClient.sql("""
+                SELECT COUNT(*)
+                FROM crm_message_events
+                WHERE center_id = :centerId
+                  AND membership_id = :membershipId
+                  AND event_type = 'MEMBERSHIP_HOLD_RESUMED'
+                  AND dedupe_key = :dedupeKey
+                  AND send_status = 'PENDING'
+                  AND is_deleted = FALSE
+                """)
+                .param("centerId", resumedMembership.centerId())
+                .param("membershipId", resumedMembership.membershipId())
+                .param("dedupeKey", "MEMBERSHIP_HOLD_RESUMED:" + resumedMembership.centerId() + ":" + holdResult.hold().membershipHoldId())
+                .query(Integer.class)
+                .single();
+
+        assertEquals(1, crmEventCount);
     }
 
     private long countRows(String tableName) {
@@ -230,6 +317,7 @@ class MembershipHoldServiceIntegrationTest {
                 true,
                 30,
                 2,
+                false,
                 false,
                 "ACTIVE",
                 null
