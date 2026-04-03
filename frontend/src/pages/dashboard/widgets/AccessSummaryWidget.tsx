@@ -26,7 +26,7 @@ export default function AccessSummaryWidget({ title = "실시간 출입 현황" 
 
   if (error) {
     return (
-      <Card title={title} bordered={false}>
+      <Card title={title} variant="borderless">
         <Alert
           type="warning"
           message={toUserFacingErrorMessage(error, "출입 현황을 불러오지 못했습니다.")}
@@ -39,7 +39,7 @@ export default function AccessSummaryWidget({ title = "실시간 출입 현황" 
   return (
     <Card
       title={title}
-      bordered={false}
+      variant="borderless"
       actions={[
         <Link key="link" to="/access">
           <Button type="link" icon={<ArrowRightOutlined />} iconPosition="end">

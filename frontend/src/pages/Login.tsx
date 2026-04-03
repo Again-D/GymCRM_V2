@@ -40,7 +40,7 @@ export default function Login() {
       <Content>
         <Flex align="center" justify="center" style={{ height: "100%", padding: "24px" }}>
           <Card 
-            bordered={false}
+            variant="borderless"
             style={{ 
               maxWidth: 480, 
               width: "100%", 

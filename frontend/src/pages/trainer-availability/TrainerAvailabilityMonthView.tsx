@@ -52,7 +52,7 @@ export function TrainerAvailabilityMonthView({
               flexDirection: "column",
               background: isAvailable ? "#f6ffed" : isOff ? "#fff2f0" : "#fafafa"
             }}
-            bodyStyle={{ padding: 12, flex: 1, display: "flex", flexDirection: "column", gap: 4 }}
+            styles={{ body: { padding: 12, flex: 1, display: "flex", flexDirection: "column", gap: 4 } }}
           >
             <Flex justify="space-between" align="center">
               <Text strong style={{ fontSize: "1.1rem" }}>{getDayNumber(day.date)}</Text>

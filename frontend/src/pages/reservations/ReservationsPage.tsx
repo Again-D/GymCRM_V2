@@ -72,6 +72,11 @@ function formatDateTime(value: string | null) {
   });
 }
 
+function formatBusinessClockTime(value: string) {
+  const matched = value.match(/T(\d{2}:\d{2})/);
+  return matched ? matched[1] : dayjs(value).format("HH:mm");
+}
+
 function buildReservationStatusTag(status: string) {
   if (status === "CONFIRMED") return <Tag color="success">예약 확정</Tag>;
   if (status === "ATTENDED") return <Tag color="processing">출석</Tag>;
@@ -852,7 +857,7 @@ export default function ReservationsPage() {
                     disabled={ptReservationCandidatesLoading || !reservationCreateForm.trainerUserId || !reservationCreateForm.reservationDate}
                     onChange={(val) => setReservationCreateForm(prev => ({ ...prev, ptCandidateStartAt: val }))}
                     options={(ptReservationCandidates?.items ?? []).map(c => ({
-                      label: `${dayjs(c.startAt).format("HH:mm")} ~ ${dayjs(c.endAt).format("HH:mm")}`,
+                      label: `${formatBusinessClockTime(c.startAt)} ~ ${formatBusinessClockTime(c.endAt)}`,
                       value: c.startAt
                     }))}
                   />
