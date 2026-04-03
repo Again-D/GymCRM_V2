@@ -10,6 +10,7 @@ import ReservationsPage from "./ReservationsPage";
 import { FoundationProviders } from "../../app/providers";
 import { appQueryClient } from "../../app/queryClient";
 import { selectedMemberStore } from "../../app/selectedMemberStore";
+import * as dateUtils from "../../shared/date";
 
 function getTopmostDialog() {
   const dialogs = screen.getAllByRole("dialog");
@@ -23,8 +24,15 @@ async function selectAntdOptionIn(container: HTMLElement, index: number, optionN
     throw new Error(`Combobox at index ${index} not found`);
   }
   fireEvent.mouseDown(combobox);
-  const options = await screen.findAllByText(optionName);
-  fireEvent.click(options[options.length - 1] as HTMLElement);
+  const normalizedTarget = optionName.replace(/\s+/g, " ").trim();
+  const renderedMatches = await screen.findAllByText((_, element) =>
+    element?.textContent?.replace(/\s+/g, " ").trim().includes(normalizedTarget) ?? false,
+  );
+  const matchedOption = renderedMatches[renderedMatches.length - 1] as HTMLElement | undefined;
+  if (!matchedOption) {
+    throw new Error(`Option "${optionName}" not found`);
+  }
+  fireEvent.click(matchedOption);
 }
 
 describe("ReservationsPage", () => {
@@ -73,6 +81,7 @@ describe("ReservationsPage", () => {
   });
 
   it("opens the new reservation modal from the workbench and creates a PT reservation", async () => {
+    vi.spyOn(dateUtils, "todayLocalDate").mockReturnValue("2026-03-16");
     vi.spyOn(Date, "now").mockReturnValue(new Date("2026-03-16T09:00:00+09:00").getTime());
 
     render(
@@ -120,6 +129,7 @@ describe("ReservationsPage", () => {
   }, 15000);
 
   it("shows PT guidance and keeps submit disabled until required PT fields are selected", async () => {
+    vi.spyOn(dateUtils, "todayLocalDate").mockReturnValue("2026-03-12");
     vi.spyOn(Date, "now").mockReturnValue(new Date("2026-03-12T09:00:00+09:00").getTime());
 
     render(
