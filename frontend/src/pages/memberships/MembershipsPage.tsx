@@ -45,13 +45,25 @@ function formatCurrency(amount: number) {
 }
 
 function buildStatusTag(membership: PurchasedMembership) {
+  const isBypassed = !!membership.overrideLimits;
+  
   if (membership.membershipStatus === "HOLDING") {
     const text = membership.activeHoldStatus === "ACTIVE" ? "홀딩 중" : "홀딩";
-    return <Tag color="warning">{text}</Tag>;
+    return (
+      <Space size={4}>
+        <Tag color="warning">{text}</Tag>
+        {isBypassed && <Tag color="error">강제 승인됨</Tag>}
+      </Space>
+    );
   }
   switch (membership.membershipStatus) {
     case "ACTIVE":
-      return <Tag color="success">활성</Tag>;
+      return (
+        <Space size={4}>
+          <Tag color="success">활성</Tag>
+          {isBypassed && <Tag color="error">강제 승인됨</Tag>}
+        </Space>
+      );
     case "REFUNDED":
       return <Tag color="error">환불됨</Tag>;
     case "EXPIRED":
@@ -553,25 +565,50 @@ export default function MembershipsPage() {
                 const product = products.find(p => p.productId === targetMembership.productId);
                 if (!product) return null;
                 const limits = buildHoldLimitsSummary(targetMembership, product);
-                if (!limits.isExceeded) return null;
                 
                 return (
-                  <Alert
-                    type="warning"
-                    showIcon
-                    message="홀딩 제한 초과"
-                    description={
-                      <Flex vertical gap={4}>
-                        {limits.isDaysExceeded && (
-                          <Text>- 잔여 홀딩 일수({limits.remainingDays}일)를 초과했습니다. (요청: {limits.plannedHoldDays}일)</Text>
-                        )}
-                        {limits.isCountExceeded && (
-                          <Text>- 최대 홀딩 횟수({limits.maxCount}회)를 모두 사용했습니다. (사용: {limits.usedCount}회)</Text>
-                        )}
-                        <Text strong style={{ marginTop: 4 }}>관리자 권한으로 강제 진행하시겠습니까?</Text>
-                      </Flex>
-                    }
-                  />
+                  <Flex vertical gap={12}>
+                    <Card size="small" style={{ background: token.colorFillAlter }}>
+                      <Text type="secondary" style={{ fontSize: '0.75rem' }}>홀딩 잔여량 (상품 기준)</Text>
+                      <Row gutter={16} style={{ marginTop: 8 }}>
+                        <Col span={12}>
+                          <Statistic 
+                            title="잔여 일수" 
+                            value={limits.remainingDays} 
+                            suffix={`/ ${limits.maxDays}일`} 
+                            valueStyle={{ fontSize: '1rem', color: limits.isDaysExceeded ? token.colorError : undefined }}
+                          />
+                        </Col>
+                        <Col span={12}>
+                          <Statistic 
+                            title="잔여 횟수" 
+                            value={limits.remainingCount} 
+                            suffix={`/ ${limits.maxCount}회`} 
+                            valueStyle={{ fontSize: '1rem', color: limits.isCountExceeded ? token.colorError : undefined }}
+                          />
+                        </Col>
+                      </Row>
+                    </Card>
+
+                    {limits.isExceeded && (
+                      <Alert
+                        type="warning"
+                        showIcon
+                        message="홀딩 제한 초과"
+                        description={
+                          <Flex vertical gap={4}>
+                            {limits.isDaysExceeded && (
+                              <Text>- 잔여 홀딩 일수({limits.remainingDays}일)를 초과했습니다. (요청: {limits.plannedHoldDays}일)</Text>
+                            )}
+                            {limits.isCountExceeded && (
+                              <Text>- 최대 홀딩 횟수({limits.maxCount}회)를 모두 사용했습니다. (사용: {limits.usedCount}회)</Text>
+                            )}
+                            <Text strong style={{ marginTop: 4 }}>관리자 권한으로 강제 진행하시겠습니까?</Text>
+                          </Flex>
+                        }
+                      />
+                    )}
+                  </Flex>
                 );
               })()}
             </Flex>

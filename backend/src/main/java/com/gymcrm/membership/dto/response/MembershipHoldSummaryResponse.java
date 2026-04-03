@@ -15,7 +15,8 @@ public record MembershipHoldSummaryResponse(
         OffsetDateTime resumedAt,
         Integer actualHoldDays,
         String reason,
-        String memo
+        String memo,
+        Boolean overrideLimits
 ) {
     public static MembershipHoldSummaryResponse from(MembershipHold hold) {
         return new MembershipHoldSummaryResponse(
@@ -28,7 +29,8 @@ public record MembershipHoldSummaryResponse(
                 hold.resumedAt(),
                 hold.actualHoldDays(),
                 hold.reason(),
-                hold.memo()
+                hold.memo(),
+                hold.overrideLimits()
         );
     }
 }
