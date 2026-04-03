@@ -8,4 +8,5 @@ import java.util.Optional;
 
 public interface MemberMembershipJpaRepository extends JpaRepository<MemberMembershipEntity, Long> {
     Optional<MemberMembershipEntity> findByMembershipIdAndIsDeletedFalse(Long membershipId);
+    java.util.List<MemberMembershipEntity> findByMembershipStatusAndEndDateAndIsDeletedFalse(String membershipStatus, java.time.LocalDate endDate);
 }
