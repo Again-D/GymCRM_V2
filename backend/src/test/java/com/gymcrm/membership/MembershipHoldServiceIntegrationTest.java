@@ -175,6 +175,7 @@ class MembershipHoldServiceIntegrationTest {
                 LocalDate.of(2026, 3, 6),
                 null,
                 null,
+                Boolean.FALSE,
                 1L
         ));
 
@@ -188,6 +189,7 @@ class MembershipHoldServiceIntegrationTest {
                         LocalDate.of(2026, 3, 8),
                         null,
                         null,
+                        Boolean.FALSE,
                         1L
                 ))
         );

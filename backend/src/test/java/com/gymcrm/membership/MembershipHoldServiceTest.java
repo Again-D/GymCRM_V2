@@ -1,5 +1,6 @@
 package com.gymcrm.membership;
 
+import com.gymcrm.audit.AuditLogService;
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
@@ -28,7 +29,8 @@ class MembershipHoldServiceTest {
             mock(MembershipHoldRepository.class),
             new MembershipStatusTransitionService(),
             mock(ProductService.class),
-            mock(CurrentUserProvider.class)
+            mock(CurrentUserProvider.class),
+            mock(AuditLogService.class)
     );
 
     @Test

@@ -1,5 +1,6 @@
 package com.gymcrm.membership.service;
 
+import com.gymcrm.audit.AuditLogService;
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
@@ -27,19 +28,22 @@ public class MembershipHoldService {
     private final MembershipStatusTransitionService membershipStatusTransitionService;
     private final ProductService productService;
     private final CurrentUserProvider currentUserProvider;
+    private final AuditLogService auditLogService;
 
     public MembershipHoldService(
             MemberMembershipRepository memberMembershipRepository,
             MembershipHoldRepository membershipHoldRepository,
             MembershipStatusTransitionService membershipStatusTransitionService,
             ProductService productService,
-            CurrentUserProvider currentUserProvider
+            CurrentUserProvider currentUserProvider,
+            AuditLogService auditLogService
     ) {
         this.memberMembershipRepository = memberMembershipRepository;
         this.membershipHoldRepository = membershipHoldRepository;
         this.membershipStatusTransitionService = membershipStatusTransitionService;
         this.productService = productService;
         this.currentUserProvider = currentUserProvider;
+        this.auditLogService = auditLogService;
     }
 
     @Transactional
@@ -71,6 +75,7 @@ public class MembershipHoldService {
                     holdEndDate,
                     trimToNull(request.reason()),
                     trimToNull(request.memo()),
+                    Boolean.TRUE.equals(request.overrideLimits()),
                     actorUserId
             ));
 
@@ -84,6 +89,15 @@ public class MembershipHoldService {
                             ErrorCode.CONFLICT,
                             "회원권 상태가 변경되어 홀딩을 처리할 수 없습니다. 다시 조회 후 시도해주세요."
                     ));
+
+            // Record Audit Log
+            auditLogService.recordEvent(
+                    "MEMBERSHIP_HOLD",
+                    "MEMBERSHIP",
+                    membership.membershipId().toString(),
+                    String.format("{\"holdId\":%d, \"startDate\":\"%s\", \"endDate\":\"%s\", \"override\":%b}",
+                            hold.membershipHoldId(), holdStartDate, holdEndDate, Boolean.TRUE.equals(request.overrideLimits()))
+            );
 
             return new HoldResult(updatedMembership, hold);
         } catch (DataAccessException ex) {
@@ -129,6 +143,15 @@ public class MembershipHoldService {
                             safeInt(membership.holdCountUsed()) + 1,
                             actorUserId
                     )
+            );
+
+            // Record Audit Log
+            auditLogService.recordEvent(
+                    "MEMBERSHIP_RESUME",
+                    "MEMBERSHIP",
+                    membership.membershipId().toString(),
+                    String.format("{\"holdId\":%d, \"resumeDate\":\"%s\", \"actualDays\":%d}",
+                            activeHold.membershipHoldId(), resumeDate, actualHoldDays)
             );
 
             return new ResumeResult(updatedMembership, resumedHold, actualHoldDays, recalculatedEndDate);
