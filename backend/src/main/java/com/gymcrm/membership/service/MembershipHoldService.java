@@ -54,7 +54,7 @@ public class MembershipHoldService {
         LocalDate holdEndDate = request.holdEndDate();
 
         validateHoldDateRange(holdStartDate, holdEndDate);
-        validateHoldEligibility(membership, product, holdStartDate, holdEndDate);
+        validateHoldEligibility(membership, product, holdStartDate, holdEndDate, request.overrideLimits());
         ensureNoActiveHoldExists(membership.membershipId());
 
         Long actorUserId = currentUserProvider.currentUserId();
@@ -146,7 +146,7 @@ public class MembershipHoldService {
         }
     }
 
-    public void validateHoldEligibility(MemberMembership membership, Product product, LocalDate holdStartDate, LocalDate holdEndDate) {
+    public void validateHoldEligibility(MemberMembership membership, Product product, LocalDate holdStartDate, LocalDate holdEndDate, Boolean overrideLimits) {
         if (!membership.centerId().equals(product.centerId())) {
             throw new ApiException(ErrorCode.BUSINESS_RULE, "회원권과 상품의 센터가 일치하지 않습니다.");
         }
@@ -167,6 +167,10 @@ public class MembershipHoldService {
 
         if (membership.endDate() != null && holdStartDate.isAfter(membership.endDate())) {
             throw new ApiException(ErrorCode.BUSINESS_RULE, "만료된 회원권은 홀딩할 수 없습니다.");
+        }
+
+        if (Boolean.TRUE.equals(overrideLimits)) {
+            return;
         }
 
         int requestedHoldDays = calculateRequestedHoldDays(holdStartDate, holdEndDate);
@@ -250,7 +254,8 @@ public class MembershipHoldService {
             LocalDate holdStartDate,
             LocalDate holdEndDate,
             String reason,
-            String memo
+            String memo,
+            Boolean overrideLimits
     ) {}
 
     public record ResumeRequest(

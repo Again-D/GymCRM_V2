@@ -3,9 +3,11 @@ package com.gymcrm.membership.dto.request;
 import java.time.LocalDate;
 
 public record MembershipHoldRequest(
+        Long membershipId,
         LocalDate holdStartDate,
         LocalDate holdEndDate,
         String reason,
-        String memo
+        String memo,
+        Boolean overrideLimits
 ) {
 }
