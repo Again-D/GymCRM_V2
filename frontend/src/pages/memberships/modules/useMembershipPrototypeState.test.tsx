@@ -184,6 +184,7 @@ describe("useMembershipPrototypeState", () => {
       startDate: "2026-03-01",
       endDate: "2026-05-29",
       remainingCount: null,
+      productId: 1,
       activeHoldStatus: null
     };
 

@@ -13,6 +13,7 @@ export type NavSectionKey =
   | "lockers"
   | "crm"
   | "settlements"
+  | "audit"
   | "products";
 
 export type ShellRoute = {
@@ -132,6 +133,16 @@ export const shellRoutes: ShellRoute[] = [
     protected: true,
     showInSidebar: true,
     showInDashboard: false,
+  },
+  {
+    key: "audit",
+    path: "/audit",
+    label: "감사 로그",
+    protected: true,
+    showInSidebar: true,
+    showInDashboard: false,
+    visibleRoles: ["ROLE_SUPER_ADMIN", "ROLE_CENTER_ADMIN"],
+    allowedRoles: ["ROLE_SUPER_ADMIN", "ROLE_CENTER_ADMIN"],
   },
   {
     key: "products",

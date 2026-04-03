@@ -292,6 +292,7 @@ const initialMemberMemberships = new Map<number, PurchasedMembership[]>([
       {
         membershipId: 9001,
         memberId: 101,
+        productId: 2,
         productNameSnapshot: "PT 10회권",
         productCategorySnapshot: "PT",
         productTypeSnapshot: "COUNT",
@@ -305,6 +306,7 @@ const initialMemberMemberships = new Map<number, PurchasedMembership[]>([
       {
         membershipId: 9002,
         memberId: 101,
+        productId: 1,
         productNameSnapshot: "헬스 3개월",
         productCategorySnapshot: "GYM",
         productTypeSnapshot: "DURATION",
@@ -318,6 +320,7 @@ const initialMemberMemberships = new Map<number, PurchasedMembership[]>([
       {
         membershipId: 9003,
         memberId: 101,
+        productId: 2,
         productNameSnapshot: "만료된 PT 5회권",
         productCategorySnapshot: "PT",
         productTypeSnapshot: "COUNT",
@@ -336,6 +339,7 @@ const initialMemberMemberships = new Map<number, PurchasedMembership[]>([
       {
         membershipId: 9011,
         memberId: 102,
+        productId: 2,
         productNameSnapshot: "PT 20회권",
         productCategorySnapshot: "PT",
         productTypeSnapshot: "COUNT",
@@ -349,6 +353,7 @@ const initialMemberMemberships = new Map<number, PurchasedMembership[]>([
       {
         membershipId: 9012,
         memberId: 102,
+        productId: 3,
         productNameSnapshot: "GX 12회권",
         productCategorySnapshot: "GX",
         productTypeSnapshot: "COUNT",
@@ -1226,6 +1231,7 @@ export function createMockMembership(input: {
   productNameSnapshot: string;
   productTypeSnapshot: "DURATION" | "COUNT";
   assignedTrainerId?: number | null;
+  productId: number;
   startDate: string;
   endDate: string | null;
   remainingCount: number | null;
@@ -1234,6 +1240,7 @@ export function createMockMembership(input: {
   const membership: PurchasedMembership = {
     membershipId: membershipIdSeed,
     memberId: input.memberId,
+    productId: input.productId,
     productNameSnapshot: input.productNameSnapshot,
     productCategorySnapshot:
       input.productNameSnapshot.includes("PT")
