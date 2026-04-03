@@ -28,7 +28,7 @@ export function MembershipPeriodFilter({
     <Flex vertical gap={8}>
       <Text strong style={{ fontSize: "0.84rem" }}>만료 기간</Text>
       <Space wrap>
-        <Space.Compact size="small">
+        <Button.Group size="small">
           {PRESETS.map((preset) => (
             <Button
               key={preset.value}
@@ -38,7 +38,7 @@ export function MembershipPeriodFilter({
               {preset.label}
             </Button>
           ))}
-        </Space.Compact>
+        </Button.Group>
         <Space>
           <DatePicker
             size="small"

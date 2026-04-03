@@ -41,7 +41,7 @@ export default function ScheduleOverviewWidget({ title = "오늘의 수업 일�
 
   if (error) {
     return (
-      <Card title={title} variant="borderless">
+      <Card title={title} bordered={false}>
         <Alert
           type="warning"
           message={toUserFacingErrorMessage(error, "오늘의 수업 스케줄을 불러오지 못했습니다.")}
@@ -54,7 +54,7 @@ export default function ScheduleOverviewWidget({ title = "오늘의 수업 일�
   return (
     <Card
       title={title}
-      variant="borderless"
+      bordered={false}
       styles={{ body: { padding: "12px" } }}
       actions={[
         <Link key="link" to="/gx-schedules">
