@@ -105,6 +105,7 @@ export default function MembershipsPage() {
     updateMembershipActionDraft,
     membershipRefundPreviewById,
     buildHoldPreview,
+    buildHoldLimitsSummary,
     buildResumePreview,
     handlePurchaseSubmit,
     handleHoldSubmit,
@@ -478,12 +479,20 @@ export default function MembershipsPage() {
             type="primary"
             onClick={async () => {
               if (targetMembership) {
-                await handleHoldSubmit(targetMembership);
+                const product = products.find(p => p.productId === targetMembership.productId);
+                const limits = product ? buildHoldLimitsSummary(targetMembership, product) : { isExceeded: false };
+                
+                await handleHoldSubmit(targetMembership, limits.isExceeded);
                 handleCloseModal();
               }
             }}
           >
-            홀딩 처리
+            {(() => {
+              if (!targetMembership) return "홀딩 처리";
+              const product = products.find(p => p.productId === targetMembership.productId);
+              const limits = product ? buildHoldLimitsSummary(targetMembership, product) : { isExceeded: false };
+              return limits.isExceeded ? "강제 홀딩 처리" : "홀딩 처리";
+            })()}
           </Button>
         ]}
       >
@@ -531,13 +540,41 @@ export default function MembershipsPage() {
                 }
               />
             </Form.Item>
-            <Alert 
-              type="info" 
-              message={(() => {
-                const preview = buildHoldPreview(targetMembership);
-                return 'error' in preview ? preview.error : `영향: ${preview.plannedHoldDays}일 추가. 재계산된 만료일: ${preview.recalculatedEndDate ?? "-"}`;  
+            <Flex vertical gap={12}>
+              <Alert 
+                type="info" 
+                message={(() => {
+                  const preview = buildHoldPreview(targetMembership);
+                  return 'error' in preview ? preview.error : `영향: ${preview.plannedHoldDays}일 추가. 재계산된 만료일: ${preview.recalculatedEndDate ?? "-"}`;  
+                })()}
+              />
+
+              {(() => {
+                const product = products.find(p => p.productId === targetMembership.productId);
+                if (!product) return null;
+                const limits = buildHoldLimitsSummary(targetMembership, product);
+                if (!limits.isExceeded) return null;
+                
+                return (
+                  <Alert
+                    type="warning"
+                    showIcon
+                    message="홀딩 제한 초과"
+                    description={
+                      <Flex vertical gap={4}>
+                        {limits.isDaysExceeded && (
+                          <Text>- 잔여 홀딩 일수({limits.remainingDays}일)를 초과했습니다. (요청: {limits.plannedHoldDays}일)</Text>
+                        )}
+                        {limits.isCountExceeded && (
+                          <Text>- 최대 홀딩 횟수({limits.maxCount}회)를 모두 사용했습니다. (사용: {limits.usedCount}회)</Text>
+                        )}
+                        <Text strong style={{ marginTop: 4 }}>관리자 권한으로 강제 진행하시겠습니까?</Text>
+                      </Flex>
+                    }
+                  />
+                );
               })()}
-            />
+            </Flex>
           </Form>
         )}
       </AntdModal>
