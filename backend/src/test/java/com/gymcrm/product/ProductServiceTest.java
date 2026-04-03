@@ -34,6 +34,7 @@ class ProductServiceTest {
                         30,
                         1,
                         false,
+                        false,
                         "ACTIVE",
                         null
                 )
@@ -57,6 +58,7 @@ class ProductServiceTest {
                         null,
                         null,
                         false,
+                        false,
                         "ACTIVE",
                         null
                 )
@@ -79,6 +81,7 @@ class ProductServiceTest {
                         true,
                         -1,
                         1,
+                        false,
                         false,
                         "ACTIVE",
                         null

@@ -90,6 +90,24 @@ public class MembershipHoldRepository {
                 ));
     }
 
+    public List<MembershipHold> findActiveByHoldEndDateOnOrBefore(LocalDate holdEndDate) {
+        return jdbcClient.sql("""
+                SELECT
+                    membership_hold_id, center_id, membership_id, hold_status,
+                    hold_start_date, hold_end_date, resumed_at, actual_hold_days,
+                    reason, memo, override_limits,
+                    created_at, created_by, updated_at, updated_by
+                FROM membership_holds
+                WHERE hold_status = 'ACTIVE'
+                  AND hold_end_date <= :holdEndDate
+                  AND is_deleted = FALSE
+                ORDER BY hold_end_date ASC, membership_hold_id ASC
+                """)
+                .param("holdEndDate", holdEndDate)
+                .query((rs, rowNum) -> toDomain(rs))
+                .list();
+    }
+
     public MembershipHold markResumed(MembershipHoldResumeCommand command) {
         return jdbcClient.sql("""
                 UPDATE membership_holds

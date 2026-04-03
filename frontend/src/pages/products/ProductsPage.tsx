@@ -445,6 +445,16 @@ export default function ProductsPage() {
                         />
                       </Form.Item>
                     </Col>
+                    <Col span={24}>
+                      <Form.Item style={{ marginTop: 12, marginBottom: 0 }}>
+                        <Checkbox
+                          checked={productForm.allowHoldBypass}
+                          onChange={(e) => setProductForm(prev => ({ ...prev, allowHoldBypass: e.target.checked }))}
+                        >
+                          관리자 제한 우회 홀딩 허용
+                        </Checkbox>
+                      </Form.Item>
+                    </Col>
                   </Row>
                 )}
               </Flex>

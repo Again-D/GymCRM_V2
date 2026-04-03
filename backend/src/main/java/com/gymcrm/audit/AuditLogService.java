@@ -34,11 +34,30 @@ public class AuditLogService {
 
     @Transactional
     public AuditLog recordEvent(String eventType, String resourceType, String resourceId, String attributesJson) {
+        return recordEvent(
+                currentUserProvider.currentCenterId(),
+                currentUserProvider.currentUserId(),
+                eventType,
+                resourceType,
+                resourceId,
+                attributesJson
+        );
+    }
+
+    @Transactional
+    public AuditLog recordEvent(
+            Long centerId,
+            Long actorUserId,
+            String eventType,
+            String resourceType,
+            String resourceId,
+            String attributesJson
+    ) {
         String normalizedType = normalizeEventType(eventType);
         return auditLogRepository.insert(new AuditLogRepository.InsertCommand(
-                currentUserProvider.currentCenterId(),
+                centerId,
                 normalizedType,
-                currentUserProvider.currentUserId(),
+                actorUserId,
                 resourceType,
                 resourceId,
                 OffsetDateTime.now(ZoneOffset.UTC),

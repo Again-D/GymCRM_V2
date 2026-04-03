@@ -38,6 +38,7 @@ public class ProductRepository {
         entity.setAllowHold(Boolean.TRUE.equals(command.allowHold()));
         entity.setMaxHoldDays(command.maxHoldDays());
         entity.setMaxHoldCount(command.maxHoldCount());
+        entity.setAllowHoldBypass(Boolean.TRUE.equals(command.allowHoldBypass()));
         entity.setAllowTransfer(Boolean.TRUE.equals(command.allowTransfer()));
         entity.setProductStatus(command.productStatus());
         entity.setDescription(command.description());
@@ -71,6 +72,7 @@ public class ProductRepository {
         entity.setAllowHold(Boolean.TRUE.equals(command.allowHold()));
         entity.setMaxHoldDays(command.maxHoldDays());
         entity.setMaxHoldCount(command.maxHoldCount());
+        entity.setAllowHoldBypass(Boolean.TRUE.equals(command.allowHoldBypass()));
         entity.setAllowTransfer(Boolean.TRUE.equals(command.allowTransfer()));
         entity.setProductStatus(command.productStatus());
         entity.setDescription(command.description());
@@ -127,6 +129,7 @@ public class ProductRepository {
             Boolean allowHold,
             Integer maxHoldDays,
             Integer maxHoldCount,
+            Boolean allowHoldBypass,
             Boolean allowTransfer,
             String productStatus,
             String description,
@@ -144,6 +147,7 @@ public class ProductRepository {
             Boolean allowHold,
             Integer maxHoldDays,
             Integer maxHoldCount,
+            Boolean allowHoldBypass,
             Boolean allowTransfer,
             String productStatus,
             String description,

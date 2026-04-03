@@ -188,6 +188,32 @@ public class CrmMessageService {
     }
 
     @Transactional
+    public boolean enqueueMembershipHoldResumed(MembershipHoldResumedRequest request) {
+        String dedupeKey = "MEMBERSHIP_HOLD_RESUMED:" + request.centerId() + ":" + request.membershipHoldId();
+        String payloadJson = "{" +
+                "\"memberName\":\"" + escapeJson(request.memberName()) + "\"," +
+                "\"phone\":\"" + escapeJson(request.phone()) + "\"," +
+                "\"membershipId\":" + request.membershipId() + "," +
+                "\"productName\":\"" + escapeJson(request.productName()) + "\"," +
+                "\"today\":\"" + request.resumedOn() + "\"" +
+                "}";
+
+        return eventRepository.insertIfAbsent(new InsertCommand(
+                request.centerId(),
+                request.memberId(),
+                request.membershipId(),
+                "MEMBERSHIP_HOLD_RESUMED",
+                "SMS",
+                dedupeKey,
+                payloadJson,
+                "PENDING",
+                null,
+                TraceIdFilter.currentTraceIdOrGenerate(),
+                request.actorUserId()
+        )).isPresent();
+    }
+
+    @Transactional
     public ProcessResult processPending(ProcessRequest request) {
         int limit = request.limit() == null ? 20 : request.limit();
         if (limit < 1 || limit > 200) {
@@ -393,6 +419,19 @@ public class CrmMessageService {
 
     public record MessageHistoryResult(
             List<CrmMessageEvent> rows
+    ) {
+    }
+
+    public record MembershipHoldResumedRequest(
+            Long centerId,
+            Long memberId,
+            Long membershipId,
+            Long membershipHoldId,
+            String memberName,
+            String phone,
+            String productName,
+            LocalDate resumedOn,
+            Long actorUserId
     ) {
     }
 }

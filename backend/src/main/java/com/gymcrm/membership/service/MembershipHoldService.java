@@ -1,6 +1,8 @@
 package com.gymcrm.membership.service;
 
 import com.gymcrm.audit.AuditLogService;
+import com.gymcrm.common.auth.entity.AuthUser;
+import com.gymcrm.common.auth.repository.AuthUserRepository;
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
@@ -23,12 +25,17 @@ import java.time.temporal.ChronoUnit;
 
 @Service
 public class MembershipHoldService {
+    private static final String ROLE_SUPER_ADMIN = "ROLE_SUPER_ADMIN";
+    private static final String ROLE_CENTER_ADMIN = "ROLE_CENTER_ADMIN";
+    private static final String ROLE_MANAGER = "ROLE_MANAGER";
+
     private final MemberMembershipRepository memberMembershipRepository;
     private final MembershipHoldRepository membershipHoldRepository;
     private final MembershipStatusTransitionService membershipStatusTransitionService;
     private final ProductService productService;
     private final CurrentUserProvider currentUserProvider;
     private final AuditLogService auditLogService;
+    private final AuthUserRepository authUserRepository;
 
     public MembershipHoldService(
             MemberMembershipRepository memberMembershipRepository,
@@ -36,7 +43,8 @@ public class MembershipHoldService {
             MembershipStatusTransitionService membershipStatusTransitionService,
             ProductService productService,
             CurrentUserProvider currentUserProvider,
-            AuditLogService auditLogService
+            AuditLogService auditLogService,
+            AuthUserRepository authUserRepository
     ) {
         this.memberMembershipRepository = memberMembershipRepository;
         this.membershipHoldRepository = membershipHoldRepository;
@@ -44,6 +52,7 @@ public class MembershipHoldService {
         this.productService = productService;
         this.currentUserProvider = currentUserProvider;
         this.auditLogService = auditLogService;
+        this.authUserRepository = authUserRepository;
     }
 
     @Transactional
@@ -107,6 +116,15 @@ public class MembershipHoldService {
 
     @Transactional
     public ResumeResult resume(ResumeRequest request) {
+        return resumeInternal(request, currentUserProvider.currentUserId(), true);
+    }
+
+    @Transactional
+    public ResumeResult resumeByScheduler(ResumeRequest request, Long actorUserId) {
+        return resumeInternal(request, actorUserId, false);
+    }
+
+    private ResumeResult resumeInternal(ResumeRequest request, Long actorUserId, boolean recordAuditWithCurrentContext) {
         if (request.membershipId() == null) {
             throw new ApiException(ErrorCode.VALIDATION_ERROR, "membershipId is required");
         }
@@ -120,7 +138,6 @@ public class MembershipHoldService {
 
         int actualHoldDays = calculateActualHoldDays(activeHold.holdStartDate(), resumeDate);
         LocalDate recalculatedEndDate = recalculateEndDateAfterResume(membership.endDate(), actualHoldDays);
-        Long actorUserId = currentUserProvider.currentUserId();
         OffsetDateTime resumedAt = OffsetDateTime.now(ZoneOffset.UTC);
         String targetStatus = membershipStatusTransitionService
                 .transition(MembershipStatus.valueOf(membership.membershipStatus()), MembershipStatus.ACTIVE)
@@ -146,13 +163,29 @@ public class MembershipHoldService {
             );
 
             // Record Audit Log
-            auditLogService.recordEvent(
-                    "MEMBERSHIP_RESUME",
-                    "MEMBERSHIP",
-                    membership.membershipId().toString(),
-                    String.format("{\"holdId\":%d, \"resumeDate\":\"%s\", \"actualDays\":%d}",
-                            activeHold.membershipHoldId(), resumeDate, actualHoldDays)
+            String attributesJson = String.format(
+                    "{\"holdId\":%d, \"resumeDate\":\"%s\", \"actualDays\":%d}",
+                    activeHold.membershipHoldId(),
+                    resumeDate,
+                    actualHoldDays
             );
+            if (recordAuditWithCurrentContext) {
+                auditLogService.recordEvent(
+                        "MEMBERSHIP_RESUME",
+                        "MEMBERSHIP",
+                        membership.membershipId().toString(),
+                        attributesJson
+                );
+            } else {
+                auditLogService.recordEvent(
+                        membership.centerId(),
+                        actorUserId,
+                        "MEMBERSHIP_RESUME",
+                        "MEMBERSHIP",
+                        membership.membershipId().toString(),
+                        attributesJson
+                );
+            }
 
             return new ResumeResult(updatedMembership, resumedHold, actualHoldDays, recalculatedEndDate);
         } catch (DataAccessException ex) {
@@ -193,6 +226,7 @@ public class MembershipHoldService {
         }
 
         if (Boolean.TRUE.equals(overrideLimits)) {
+            validateOverrideAccess(product);
             return;
         }
 
@@ -262,6 +296,26 @@ public class MembershipHoldService {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private void validateOverrideAccess(Product product) {
+        if (!product.allowHoldBypass()) {
+            throw new ApiException(ErrorCode.ACCESS_DENIED, "해당 상품은 홀딩 제한 우회를 허용하지 않습니다.");
+        }
+
+        AuthUser actor = authUserRepository.findActiveById(currentUserProvider.currentUserId())
+                .filter(AuthUser::isActive)
+                .orElseThrow(() -> new ApiException(ErrorCode.AUTHENTICATION_FAILED, "활성 사용자 정보를 찾을 수 없습니다."));
+
+        if (!canOverrideHoldLimits(actor.roleCode())) {
+            throw new ApiException(ErrorCode.ACCESS_DENIED, "홀딩 제한 우회 권한이 없습니다.");
+        }
+    }
+
+    private boolean canOverrideHoldLimits(String roleCode) {
+        return ROLE_SUPER_ADMIN.equals(roleCode)
+                || ROLE_CENTER_ADMIN.equals(roleCode)
+                || ROLE_MANAGER.equals(roleCode);
     }
 
     private ApiException mapHoldDataAccessException(DataAccessException ex) {

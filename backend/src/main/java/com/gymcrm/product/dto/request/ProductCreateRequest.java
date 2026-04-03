@@ -21,6 +21,7 @@ public record ProductCreateRequest(
             Boolean allowHold,
             Integer maxHoldDays,
             Integer maxHoldCount,
+            Boolean allowHoldBypass,
             Boolean allowTransfer,
             @Pattern(regexp = "^(?i)(ACTIVE|INACTIVE)?$", message = "productStatus must be ACTIVE or INACTIVE")
             String productStatus,

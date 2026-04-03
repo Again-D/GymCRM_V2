@@ -16,6 +16,7 @@ public record ProductResponse(
             boolean allowHold,
             Integer maxHoldDays,
             Integer maxHoldCount,
+            boolean allowHoldBypass,
             boolean allowTransfer,
             String productStatus,
             String description
@@ -33,6 +34,7 @@ public record ProductResponse(
                     product.allowHold(),
                     product.maxHoldDays(),
                     product.maxHoldCount(),
+                    product.allowHoldBypass(),
                     product.allowTransfer(),
                     product.productStatus(),
                     product.description()

@@ -1,6 +1,8 @@
 package com.gymcrm.membership;
 
 import com.gymcrm.audit.AuditLogService;
+import com.gymcrm.common.auth.entity.AuthUser;
+import com.gymcrm.common.auth.repository.AuthUserRepository;
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
@@ -16,21 +18,26 @@ import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class MembershipHoldServiceTest {
+    private final CurrentUserProvider currentUserProvider = mock(CurrentUserProvider.class);
+    private final AuthUserRepository authUserRepository = mock(AuthUserRepository.class);
 
     private final MembershipHoldService service = new MembershipHoldService(
             mock(MemberMembershipRepository.class),
             mock(MembershipHoldRepository.class),
             new MembershipStatusTransitionService(),
             mock(ProductService.class),
-            mock(CurrentUserProvider.class),
-            mock(AuditLogService.class)
+            currentUserProvider,
+            mock(AuditLogService.class),
+            authUserRepository
     );
 
     @Test
@@ -76,14 +83,55 @@ class MembershipHoldServiceTest {
     } 
  
     @Test
-    void allowsHoldWhenOverrideLimitsIsTrueEvenIfLimitsExceeded() {
+    void allowsHoldWhenOverrideLimitsIsTrueForAuthorizedActor() {
+        when(currentUserProvider.currentUserId()).thenReturn(7L);
+        when(authUserRepository.findActiveById(7L)).thenReturn(Optional.of(activeUser("ROLE_CENTER_ADMIN")));
+
         service.validateHoldEligibility(
                 membership("ACTIVE", "DURATION", LocalDate.of(2026, 3, 10), null, 25, 1),
-                product(true, 30, 2),
+                product(true, 30, 2, true),
                 LocalDate.of(2026, 2, 23),
                 LocalDate.of(2026, 3, 4),
                 true
         );
+    }
+
+    @Test
+    void rejectsOverrideWhenProductDisallowsBypass() {
+        when(currentUserProvider.currentUserId()).thenReturn(7L);
+        when(authUserRepository.findActiveById(7L)).thenReturn(Optional.of(activeUser("ROLE_CENTER_ADMIN")));
+
+        ApiException exception = assertThrows(
+                ApiException.class,
+                () -> service.validateHoldEligibility(
+                        membership("ACTIVE", "DURATION", LocalDate.of(2026, 3, 10), null, 25, 1),
+                        product(true, 30, 2, false),
+                        LocalDate.of(2026, 2, 23),
+                        LocalDate.of(2026, 3, 4),
+                        true
+                )
+        );
+
+        assertEquals(ErrorCode.ACCESS_DENIED, exception.getErrorCode());
+    }
+
+    @Test
+    void rejectsOverrideForDeskActor() {
+        when(currentUserProvider.currentUserId()).thenReturn(8L);
+        when(authUserRepository.findActiveById(8L)).thenReturn(Optional.of(activeUser("ROLE_DESK")));
+
+        ApiException exception = assertThrows(
+                ApiException.class,
+                () -> service.validateHoldEligibility(
+                        membership("ACTIVE", "DURATION", LocalDate.of(2026, 3, 10), null, 25, 1),
+                        product(true, 30, 2, true),
+                        LocalDate.of(2026, 2, 23),
+                        LocalDate.of(2026, 3, 4),
+                        true
+                )
+        );
+
+        assertEquals(ErrorCode.ACCESS_DENIED, exception.getErrorCode());
     }
 
     @Test
@@ -159,6 +207,10 @@ class MembershipHoldServiceTest {
     }
 
     private Product product(boolean allowHold, Integer maxHoldDays, Integer maxHoldCount) {
+        return product(allowHold, maxHoldDays, maxHoldCount, false);
+    }
+
+    private Product product(boolean allowHold, Integer maxHoldDays, Integer maxHoldCount, boolean allowHoldBypass) {
         OffsetDateTime now = OffsetDateTime.now();
         return new Product(
                 1L,
@@ -172,7 +224,7 @@ class MembershipHoldServiceTest {
                 allowHold,
                 maxHoldDays,
                 maxHoldCount,
-                false,
+                allowHoldBypass,
                 false,
                 "ACTIVE",
                 null,
@@ -181,5 +233,9 @@ class MembershipHoldServiceTest {
                 now,
                 1L
         );
+    }
+
+    private AuthUser activeUser(String roleCode) {
+        return new AuthUser(1L, 1L, "tester", "hash", "Tester", "010-0000-0000", roleCode, "ACTIVE", null, null);
     }
 }

@@ -411,6 +411,7 @@ class ReservationServiceIntegrationTest {
                 null,
                 null,
                 false,
+                false,
                 "ACTIVE",
                 null
         ));
@@ -437,6 +438,7 @@ class ReservationServiceIntegrationTest {
                 false,
                 null,
                 null,
+                false,
                 false,
                 "ACTIVE",
                 null
