@@ -126,6 +126,23 @@ describe("ReservationsPage", () => {
     fireEvent.click(submitButton);
 
     expect(await screen.findByText(/예약 #\d+이\(가\) 생성되었습니다\./)).toBeTruthy();
+    await waitFor(() => {
+      expect(
+        screen.getAllByRole("dialog").some((dialog) =>
+          within(dialog).queryByText("현재 예약 내역") != null,
+        ),
+      ).toBe(true);
+    });
+    const workbenchDialog = screen
+      .getAllByRole("dialog")
+      .find((dialog) => within(dialog).queryByText("현재 예약 내역") != null) as HTMLElement;
+    expect(await within(workbenchDialog).findByText("2026.03.16 10:00 ~ 11:00")).toBeTruthy();
+    expect(await within(workbenchDialog).findByText("PT · 정트레이너 · PT 예약")).toBeTruthy();
+    expect(
+      await within(workbenchDialog).findAllByText((_, element) =>
+        element?.textContent?.startsWith("예약 생성:") ?? false,
+      ),
+    ).not.toHaveLength(0);
   }, 15000);
 
   it("shows PT guidance and keeps submit disabled until required PT fields are selected", async () => {
@@ -154,4 +171,5 @@ describe("ReservationsPage", () => {
     expect(await screen.findByText("담당 트레이너 기본값: 정트레이너")).toBeTruthy();
     expect((submitButton as HTMLButtonElement).disabled).toBe(true);
   }, 15000);
+
 });

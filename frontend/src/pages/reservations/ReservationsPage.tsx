@@ -77,6 +77,21 @@ function formatBusinessClockTime(value: string) {
   return matched ? matched[1] : dayjs(value).format("HH:mm");
 }
 
+function formatScheduleWindow(startAt: string, endAt: string) {
+  const start = dayjs(startAt);
+  const end = dayjs(endAt);
+
+  if (start.isValid() && end.isValid() && start.isSame(end, "day")) {
+    return `${start.format("YYYY.MM.DD HH:mm")} ~ ${end.format("HH:mm")}`;
+  }
+
+  if (start.isValid() && end.isValid()) {
+    return `${start.format("YYYY.MM.DD HH:mm")} ~ ${end.format("YYYY.MM.DD HH:mm")}`;
+  }
+
+  return `${formatDateTime(startAt)} ~ ${formatDateTime(endAt)}`;
+}
+
 function buildReservationStatusTag(status: string) {
   if (status === "CONFIRMED") return <Tag color="success">예약 확정</Tag>;
   if (status === "ATTENDED") return <Tag color="processing">출석</Tag>;
@@ -200,6 +215,11 @@ export default function ReservationsPage() {
   
   const gxReservationSchedules = useMemo(
     () => reservationSchedules.filter((schedule) => schedule.scheduleType === "GX"),
+    [reservationSchedules],
+  );
+
+  const reservationScheduleById = useMemo(
+    () => new Map(reservationSchedules.map((schedule) => [schedule.scheduleId, schedule])),
     [reservationSchedules],
   );
   
@@ -527,12 +547,24 @@ export default function ReservationsPage() {
     {
       title: "일정 정보",
       key: "reservedAt",
-      render: (_, reservation) => (
-        <Space direction="vertical" size={2}>
-          <Text strong style={{ fontSize: "0.9rem" }}>{formatDateTime(reservation.reservedAt)}</Text>
-          <Text type="secondary" style={{ fontSize: "0.75rem" }}>ID: #{reservation.reservationId}</Text>
-        </Space>
-      )
+      render: (_, reservation) => {
+        const schedule = reservationScheduleById.get(reservation.scheduleId);
+        const scheduleSummary = schedule
+          ? `${schedule.scheduleType} · ${schedule.trainerName} · ${schedule.slotTitle}`
+          : "현재 예약 기준 일정 정보를 확인할 수 없습니다.";
+
+        return (
+          <Space direction="vertical" size={2}>
+            <Text strong style={{ fontSize: "0.9rem" }}>
+              {schedule ? formatScheduleWindow(schedule.startAt, schedule.endAt) : "-"}
+            </Text>
+            <Text type="secondary" style={{ fontSize: "0.75rem" }}>{scheduleSummary}</Text>
+            <Text type="secondary" style={{ fontSize: "0.75rem" }}>
+              예약 생성: {formatDateTime(reservation.reservedAt)}
+            </Text>
+          </Space>
+        );
+      }
     },
     {
       title: "상태",
