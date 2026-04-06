@@ -160,6 +160,42 @@ class SalesSettlementApiIntegrationTest {
                 .andExpect(jsonPath("$.error.detail", containsString("expiringWithinDays")));
     }
 
+    @Test
+    void trainerPayrollEndpointsRejectCalendarInvalidSettlementMonthAtHttpBoundary() throws Exception {
+        String adminToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
+
+        mockMvc.perform(get("/api/v1/settlements/trainer-payroll")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .param("settlementMonth", "2026-13")
+                        .param("sessionUnitPrice", "50000"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.error.detail", containsString("settlementMonth")));
+
+        mockMvc.perform(post("/api/v1/settlements/trainer-payroll/confirm")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "settlementMonth": "2026-13",
+                                  "sessionUnitPrice": 50000
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.error.detail", containsString("settlementMonth")));
+
+        mockMvc.perform(get("/api/v1/settlements/trainer-payroll/document")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .param("settlementMonth", "2026-13"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.error.detail", containsString("settlementMonth")));
+    }
+
     private long insertMember(LocalDate joinDate) {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
         return jdbcClient.sql("""

@@ -25,6 +25,9 @@ import type {
   SettlementPaymentMethod,
   SettlementReport,
   SettlementTrendGranularity,
+  TrainerPayrollReport,
+  TrainerPayrollRow,
+  TrainerSettlementStatus,
 } from "../pages/settlements/modules/types";
 import type { ReservationTargetSummary } from "../pages/reservations/modules/useReservationTargetsQuery";
 import type {
@@ -653,6 +656,25 @@ type SettlementTransaction = {
   approvalRef?: string | null;
 };
 
+type MockTrainerPayrollAggregate = {
+  settlementMonth: string;
+  trainerUserId: number | null;
+  trainerName: string;
+  completedClassCount: number;
+};
+
+type MockTrainerSettlementSnapshot = {
+  settlementId: number;
+  settlementMonth: string;
+  trainerUserId: number | null;
+  trainerName: string;
+  completedClassCount: number;
+  sessionUnitPrice: number;
+  payrollAmount: number;
+  settlementStatus: TrainerSettlementStatus;
+  confirmedAt: string;
+};
+
 const initialSettlementTransactions: SettlementTransaction[] = [
   {
     transactionId: 21001,
@@ -714,6 +736,27 @@ const initialSettlementTransactions: SettlementTransaction[] = [
   },
 ];
 
+const initialTrainerPayrollAggregates: MockTrainerPayrollAggregate[] = [
+  {
+    settlementMonth: "2026-03",
+    trainerUserId: 41,
+    trainerName: "정트레이너",
+    completedClassCount: 12
+  },
+  {
+    settlementMonth: "2026-03",
+    trainerUserId: 42,
+    trainerName: "김트레이너",
+    completedClassCount: 9
+  },
+  {
+    settlementMonth: "2026-04",
+    trainerUserId: 41,
+    trainerName: "정트레이너",
+    completedClassCount: 6
+  }
+];
+
 let mockMembers = cloneMembers(initialMembers);
 let mockMemberDetails = cloneMemberDetails(initialMemberDetails);
 let mockMemberMemberships = cloneMembershipMap(initialMemberMemberships);
@@ -735,6 +778,8 @@ let mockGxExceptions = initialMockGxExceptions.map((exception) => ({ ...exceptio
 let mockSettlementTransactions = initialSettlementTransactions.map(
   (transaction) => ({ ...transaction }),
 );
+let mockTrainerPayrollAggregates = initialTrainerPayrollAggregates.map((aggregate) => ({ ...aggregate }));
+let mockTrainerSettlementSnapshots: MockTrainerSettlementSnapshot[] = [];
 let mockDataVersion = 0;
 let membershipIdSeed = 99000;
 let reservationIdSeed = 5002;
@@ -745,6 +790,7 @@ let lockerAssignmentIdSeed = 98000;
 let productIdSeed = 200;
 let crmMessageEventIdSeed = 12050;
 let memberIdSeed = 103;
+let trainerSettlementIdSeed = 5000;
 
 function cloneMembers(source: MemberSummary[]) {
   return source.map((member) => ({ ...member }));
@@ -829,6 +875,10 @@ function cloneCrmHistoryRows(source: CrmHistoryRow[]) {
 
 function cloneSettlementTransactions(source: SettlementTransaction[]) {
   return source.map((transaction) => ({ ...transaction }));
+}
+
+function cloneTrainerSettlementSnapshots(source: MockTrainerSettlementSnapshot[]) {
+  return source.map((snapshot) => ({ ...snapshot }));
 }
 
 function envelope<T>(data: T): ApiEnvelope<T> {
@@ -1300,6 +1350,70 @@ function filterSettlementRecentAdjustments(url: URL): SettlementRecentAdjustment
     .slice(0, limit);
 }
 
+function buildTrainerPayrollReport(settlementMonth: string, sessionUnitPrice: number): TrainerPayrollReport {
+  const confirmedRows = mockTrainerSettlementSnapshots
+    .filter((snapshot) => snapshot.settlementMonth === settlementMonth)
+    .sort((left, right) => {
+      if (right.completedClassCount !== left.completedClassCount) {
+        return right.completedClassCount - left.completedClassCount;
+      }
+      return left.trainerName.localeCompare(right.trainerName, "ko");
+    });
+
+  if (confirmedRows.length > 0) {
+    const rows: TrainerPayrollRow[] = confirmedRows.map((snapshot) => ({
+      settlementId: snapshot.settlementId,
+      trainerUserId: snapshot.trainerUserId,
+      trainerName: snapshot.trainerName,
+      completedClassCount: snapshot.completedClassCount,
+      sessionUnitPrice: snapshot.sessionUnitPrice,
+      payrollAmount: snapshot.payrollAmount
+    }));
+    return {
+      settlementMonth,
+      sessionUnitPrice: confirmedRows[0].sessionUnitPrice,
+      totalCompletedClassCount: rows.reduce((sum, row) => sum + row.completedClassCount, 0),
+      totalPayrollAmount: rows.reduce((sum, row) => sum + row.payrollAmount, 0),
+      settlementStatus: "CONFIRMED",
+      confirmedAt: confirmedRows[0].confirmedAt,
+      rows
+    };
+  }
+
+  const rows: TrainerPayrollRow[] = mockTrainerPayrollAggregates
+    .filter((aggregate) => aggregate.settlementMonth === settlementMonth)
+    .sort((left, right) => {
+      if (right.completedClassCount !== left.completedClassCount) {
+        return right.completedClassCount - left.completedClassCount;
+      }
+      return left.trainerName.localeCompare(right.trainerName, "ko");
+    })
+    .map((aggregate) => ({
+      settlementId: null,
+      trainerUserId: aggregate.trainerUserId,
+      trainerName: aggregate.trainerName,
+      completedClassCount: aggregate.completedClassCount,
+      sessionUnitPrice,
+      payrollAmount: aggregate.completedClassCount * sessionUnitPrice
+    }));
+
+  return {
+    settlementMonth,
+    sessionUnitPrice,
+    totalCompletedClassCount: rows.reduce((sum, row) => sum + row.completedClassCount, 0),
+    totalPayrollAmount: rows.reduce((sum, row) => sum + row.payrollAmount, 0),
+    settlementStatus: "DRAFT",
+    confirmedAt: null,
+    rows
+  };
+}
+
+function filterTrainerPayroll(url: URL): TrainerPayrollReport {
+  const settlementMonth = url.searchParams.get("settlementMonth")?.trim() ?? todayText().slice(0, 7);
+  const sessionUnitPrice = Number(url.searchParams.get("sessionUnitPrice") ?? "50000");
+  return buildTrainerPayrollReport(settlementMonth, sessionUnitPrice);
+}
+
 function filterMembers(url: URL) {
   const name = url.searchParams.get("name")?.trim() ?? "";
   const phone = url.searchParams.get("phone")?.trim() ?? "";
@@ -1348,6 +1462,8 @@ export function resetMockData() {
   mockSettlementTransactions = cloneSettlementTransactions(
     initialSettlementTransactions,
   );
+  mockTrainerPayrollAggregates = initialTrainerPayrollAggregates.map((aggregate) => ({ ...aggregate }));
+  mockTrainerSettlementSnapshots = [];
   mockDataVersion = 0;
   membershipIdSeed = 99000;
   reservationIdSeed = 5002;
@@ -1362,6 +1478,7 @@ export function resetMockData() {
   trainerAvailabilityExceptionIdSeed = 11;
   gxRuleIdSeed = 1;
   gxExceptionIdSeed = 1;
+  trainerSettlementIdSeed = 5000;
 }
 
 export function createMockMember(input: {
@@ -2656,9 +2773,86 @@ export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
     return envelope(filterSettlementRecentAdjustments(url));
   }
 
+  if (url.pathname === "/api/v1/settlements/trainer-payroll") {
+    return envelope(filterTrainerPayroll(url));
+  }
+
   return null;
 }
 
 export function getTrainerScopedMemberIds(userId: number) {
   return new Set(trainerAssignedMemberIds.get(userId) ?? []);
+}
+
+export async function createMockTrainerSettlementConfirm(input: {
+  settlementMonth: string;
+  sessionUnitPrice: number;
+}) {
+  const report = buildTrainerPayrollReport(input.settlementMonth, input.sessionUnitPrice);
+  if (report.settlementStatus === "CONFIRMED") {
+    return {
+      ok: false,
+      message: "이미 확정된 월 정산이 존재합니다."
+    };
+  }
+  if (report.rows.length === 0) {
+    return {
+      ok: false,
+      message: "확정할 트레이너 정산 데이터가 없습니다."
+    };
+  }
+
+  const confirmedAt = `${input.settlementMonth}-25T10:00:00+09:00`;
+  mockTrainerSettlementSnapshots = [
+    ...mockTrainerSettlementSnapshots.filter((snapshot) => snapshot.settlementMonth !== input.settlementMonth),
+    ...report.rows.map((row) => ({
+      settlementId: ++trainerSettlementIdSeed,
+      settlementMonth: input.settlementMonth,
+      trainerUserId: row.trainerUserId,
+      trainerName: row.trainerName,
+      completedClassCount: row.completedClassCount,
+      sessionUnitPrice: input.sessionUnitPrice,
+      payrollAmount: row.payrollAmount,
+      settlementStatus: "CONFIRMED" as const,
+      confirmedAt
+    }))
+  ];
+  mockDataVersion += 1;
+
+  return {
+    ok: true,
+    message: "mock 트레이너 정산이 확정되었습니다."
+  };
+}
+
+export async function downloadMockTrainerSettlementDocument(settlementMonth: string) {
+  const report = buildTrainerPayrollReport(settlementMonth, 50000);
+  if (report.settlementStatus !== "CONFIRMED") {
+    return {
+      ok: false,
+      message: "확정된 정산만 출력할 수 있습니다.",
+      fileName: null,
+      content: null
+    };
+  }
+
+  const content = [
+    "settlementMonth,trainerName,completedClassCount,sessionUnitPrice,payrollAmount",
+    ...report.rows.map((row) =>
+      [
+        settlementMonth,
+        row.trainerName,
+        String(row.completedClassCount),
+        String(row.sessionUnitPrice),
+        String(row.payrollAmount)
+      ].join(",")
+    )
+  ].join("\n");
+
+  return {
+    ok: true,
+    fileName: `trainer-settlement-${settlementMonth}.csv`,
+    content,
+    message: "mock 정산서를 생성했습니다."
+  };
 }

@@ -31,6 +31,8 @@ import {
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 
+import { apiDownload, apiPost, isMockApiMode } from "../../api/client";
+import { toUserFacingErrorMessage } from "../../app/uiError";
 import { todayLocalDate } from "../../shared/date";
 import { usePagination } from "../../shared/hooks/usePagination";
 import styles from "./SettlementsPage.module.css";
@@ -39,13 +41,17 @@ import { useSalesDashboardQuery } from "./modules/useSalesDashboardQuery";
 import { useSettlementPrototypeState } from "./modules/useSettlementPrototypeState";
 import { useSettlementRecentAdjustmentsQuery } from "./modules/useSettlementRecentAdjustmentsQuery";
 import { useSettlementReportQuery } from "./modules/useSettlementReportQuery";
+import { useTrainerPayrollPrototypeState } from "./modules/useTrainerPayrollPrototypeState";
+import { useTrainerPayrollQuery } from "./modules/useTrainerPayrollQuery";
 import type {
   SalesDashboard,
   SettlementAdjustmentType,
   SettlementPaymentMethod,
   SettlementReportFilters,
   SettlementTabKey,
-  SettlementTrendPoint
+  SettlementTrendPoint,
+  TrainerPayrollReport,
+  TrainerPayrollRow
 } from "./modules/types";
 
 const { Paragraph, Text, Title } = Typography;
@@ -85,6 +91,7 @@ const adjustmentTypeMeta: Record<SettlementAdjustmentType, { label: string; colo
 
 type SettlementReportRow = NonNullable<ReturnType<typeof useSettlementReportQuery>["settlementReport"]>["rows"][number];
 type RecentAdjustmentRow = ReturnType<typeof useSettlementRecentAdjustmentsQuery>["recentAdjustments"][number];
+type TrainerPayrollTableRow = TrainerPayrollRow;
 
 function createDashboardStats(dashboard: SalesDashboard | null, token: ReturnType<typeof theme.useToken>["token"]) {
   return [
@@ -121,6 +128,15 @@ function createDashboardStats(dashboard: SalesDashboard | null, token: ReturnTyp
       color: token.colorError
     }
   ];
+}
+
+function triggerBrowserDownload(blob: Blob, filename: string) {
+  const downloadUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = downloadUrl;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(downloadUrl);
 }
 
 export default function SettlementsPage() {
@@ -162,6 +178,28 @@ export default function SettlementsPage() {
     recentAdjustmentsError,
     refetchRecentAdjustments
   } = useSettlementRecentAdjustmentsQuery(settlementFilters, 5);
+  const trainerPayrollBaseDate = settlementFilters.endDate || todayLocalDate();
+  const {
+    trainerPayrollFilters,
+    setTrainerPayrollFilters,
+    submittedTrainerPayrollQuery,
+    trainerPayrollPanelMessage,
+    setTrainerPayrollPanelMessage,
+    trainerPayrollPanelError,
+    setTrainerPayrollPanelError,
+    clearTrainerPayrollFeedback,
+    submitTrainerPayrollFilters,
+    resetTrainerPayrollWorkspace
+  } = useTrainerPayrollPrototypeState(trainerPayrollBaseDate);
+  const {
+    trainerPayroll,
+    trainerPayrollLoading,
+    trainerPayrollError,
+    trainerPayrollMessage,
+    refetchTrainerPayroll
+  } = useTrainerPayrollQuery(submittedTrainerPayrollQuery);
+  const [trainerPayrollConfirming, setTrainerPayrollConfirming] = useState(false);
+  const [trainerPayrollDownloading, setTrainerPayrollDownloading] = useState(false);
 
   const rowsPagination = usePagination(settlementReport?.rows ?? [], {
     initialPageSize: 10,
@@ -185,21 +223,40 @@ export default function SettlementsPage() {
     setSettlementPanelError(settlementReportError ?? salesDashboardError ?? recentAdjustmentsError);
   }, [recentAdjustmentsError, salesDashboardError, settlementReportError, setSettlementPanelError]);
 
+  useEffect(() => {
+    if (trainerPayrollMessage) {
+      setTrainerPayrollPanelMessage(trainerPayrollMessage);
+    }
+  }, [setTrainerPayrollPanelMessage, trainerPayrollMessage]);
+
+  useEffect(() => {
+    setTrainerPayrollPanelError(trainerPayrollError);
+  }, [setTrainerPayrollPanelError, trainerPayrollError]);
+
   const reloadAll = useCallback(async () => {
     clearSettlementFeedback();
+    clearTrainerPayrollFeedback();
     await Promise.all([
       refetchSalesDashboard(),
       refetchSettlementReport(),
-      refetchRecentAdjustments()
+      refetchRecentAdjustments(),
+      submittedTrainerPayrollQuery ? refetchTrainerPayroll() : Promise.resolve()
     ]);
-  }, [clearSettlementFeedback, refetchRecentAdjustments, refetchSalesDashboard, refetchSettlementReport]);
+  }, [
+    clearSettlementFeedback,
+    clearTrainerPayrollFeedback,
+    refetchRecentAdjustments,
+    refetchSalesDashboard,
+    refetchSettlementReport,
+    refetchTrainerPayroll,
+    submittedTrainerPayrollQuery
+  ]);
 
   const reportRows = settlementReport?.rows ?? [];
   const totalTransactionCount = reportRows.reduce((acc, row) => acc + row.transactionCount, 0);
   const trendPoints = settlementReport?.trend ?? [];
   const latestTrendPoint = trendPoints[trendPoints.length - 1];
   const previousTrendPoint = trendPoints.length > 1 ? trendPoints[trendPoints.length - 2] : undefined;
-  const trainerPayrollBaseDate = settlementFilters.endDate || todayLocalDate();
 
   const reportColumns: ColumnsType<SettlementReportRow> = [
     {
@@ -284,7 +341,128 @@ export default function SettlementsPage() {
     }
   ];
 
+  const trainerPayrollColumns: ColumnsType<TrainerPayrollTableRow> = [
+    {
+      title: "트레이너",
+      key: "trainerName",
+      render: (_, row) => (
+        <Space direction="vertical" size={2}>
+          <Text strong>{row.trainerName}</Text>
+          <Text type="secondary" style={{ fontSize: "0.76rem" }}>
+            {row.trainerUserId ? `USER #${row.trainerUserId}` : "이름 기준 집계"}
+          </Text>
+        </Space>
+      )
+    },
+    {
+      title: "완료 수업 수",
+      dataIndex: "completedClassCount",
+      key: "completedClassCount",
+      align: "right"
+    },
+    {
+      title: "세션 단가",
+      dataIndex: "sessionUnitPrice",
+      key: "sessionUnitPrice",
+      align: "right",
+      render: (value: number) => formatCurrency(value)
+    },
+    {
+      title: "예상 급여",
+      dataIndex: "payrollAmount",
+      key: "payrollAmount",
+      align: "right",
+      render: (value: number) => <Text strong>{formatCurrency(value)}</Text>
+    }
+  ];
+
   const dashboardStats = useMemo(() => createDashboardStats(salesDashboard, token), [salesDashboard, token]);
+
+  const submitTrainerPayrollQuery = useCallback(async () => {
+    const nextQuery = submitTrainerPayrollFilters();
+    if (!nextQuery) {
+      return;
+    }
+    if (
+      submittedTrainerPayrollQuery &&
+      submittedTrainerPayrollQuery.settlementMonth === nextQuery.settlementMonth &&
+      submittedTrainerPayrollQuery.sessionUnitPrice === nextQuery.sessionUnitPrice
+    ) {
+      await refetchTrainerPayroll();
+    }
+  }, [refetchTrainerPayroll, submitTrainerPayrollFilters, submittedTrainerPayrollQuery]);
+
+  const handleTrainerPayrollConfirm = useCallback(async () => {
+    if (!submittedTrainerPayrollQuery) {
+      setTrainerPayrollPanelError("정산 월과 세션 단가를 입력한 뒤 먼저 조회해 주세요.");
+      return;
+    }
+
+    clearTrainerPayrollFeedback();
+    setTrainerPayrollConfirming(true);
+    try {
+      const result = isMockApiMode()
+        ? await import("../../api/mockData").then(({ createMockTrainerSettlementConfirm }) =>
+            createMockTrainerSettlementConfirm(submittedTrainerPayrollQuery)
+          )
+        : await apiPost<TrainerPayrollReport>("/api/v1/settlements/trainer-payroll/confirm", submittedTrainerPayrollQuery);
+
+      if ("ok" in (result as Record<string, unknown>) && !(result as { ok: boolean }).ok) {
+        setTrainerPayrollPanelError((result as { message?: string }).message ?? "트레이너 정산 확정에 실패했습니다.");
+        return;
+      }
+
+      setTrainerPayrollPanelMessage((result as { message?: string }).message ?? "트레이너 월 정산이 확정되었습니다.");
+      await refetchTrainerPayroll();
+    } catch (error) {
+      setTrainerPayrollPanelError(toUserFacingErrorMessage(error, "트레이너 정산 확정에 실패했습니다."));
+    } finally {
+      setTrainerPayrollConfirming(false);
+    }
+  }, [
+    clearTrainerPayrollFeedback,
+    refetchTrainerPayroll,
+    setTrainerPayrollPanelError,
+    setTrainerPayrollPanelMessage,
+    submittedTrainerPayrollQuery
+  ]);
+
+  const handleTrainerSettlementDocumentDownload = useCallback(async () => {
+    if (!trainerPayroll || trainerPayroll.settlementStatus !== "CONFIRMED") {
+      setTrainerPayrollPanelError("확정된 정산만 출력할 수 있습니다.");
+      return;
+    }
+
+    clearTrainerPayrollFeedback();
+    setTrainerPayrollDownloading(true);
+    try {
+      if (isMockApiMode()) {
+        const result = await import("../../api/mockData").then(({ downloadMockTrainerSettlementDocument }) =>
+          downloadMockTrainerSettlementDocument(trainerPayroll.settlementMonth)
+        );
+        if (!result.ok || result.content == null || result.fileName == null) {
+          setTrainerPayrollPanelError(result.message ?? "정산서 출력에 실패했습니다.");
+          return;
+        }
+        triggerBrowserDownload(new Blob([result.content], { type: "text/csv;charset=utf-8" }), result.fileName);
+      } else {
+        const result = await apiDownload(
+          `/api/v1/settlements/trainer-payroll/document?settlementMonth=${trainerPayroll.settlementMonth}`
+        );
+        triggerBrowserDownload(result.blob, result.filename ?? `trainer-settlement-${trainerPayroll.settlementMonth}.csv`);
+      }
+      setTrainerPayrollPanelMessage("정산서 다운로드를 시작했습니다.");
+    } catch (error) {
+      setTrainerPayrollPanelError(toUserFacingErrorMessage(error, "정산서 출력에 실패했습니다."));
+    } finally {
+      setTrainerPayrollDownloading(false);
+    }
+  }, [
+    clearTrainerPayrollFeedback,
+    setTrainerPayrollPanelError,
+    setTrainerPayrollPanelMessage,
+    trainerPayroll
+  ]);
 
   const tabItems = settlementTabs.map((tab) => ({
     key: tab.key,
@@ -555,19 +733,53 @@ export default function SettlementsPage() {
           <Space direction="vertical" size={4}>
             <Title level={4} style={{ margin: 0 }}>트레이너 정산</Title>
             <Paragraph type="secondary" style={{ margin: 0 }}>
-              월 선택, 세션 단가, 결과 테이블, 일괄 액션 구조를 먼저 준비했습니다. 이후 Unit 5부터 조회/확정/정산서 출력 흐름을 이어갑니다.
+              월별 수업 완료 수와 세션 단가를 기준으로 급여를 조회하고, 검토가 끝나면 월 단위로 확정 및 정산서 출력을 진행합니다.
             </Paragraph>
           </Space>
           <Row gutter={[16, 16]}>
             <Col xs={24} lg={8}>
               <Card size="small" title="정산 기준">
-                <Flex vertical gap={12}>
-                  <Select
-                    aria-label="정산 월 선택"
-                    value={dayjs(trainerPayrollBaseDate).format("YYYY-MM")}
-                    options={[{ label: dayjs(trainerPayrollBaseDate).format("YYYY년 MM월"), value: dayjs(trainerPayrollBaseDate).format("YYYY-MM") }]}
-                  />
-                  <Input aria-label="세션 단가 입력" placeholder="세션 단가를 입력할 예정입니다." disabled />
+                <Form layout="vertical" onFinish={() => void submitTrainerPayrollQuery()}>
+                  <Flex vertical gap={12}>
+                    <Form.Item label="정산 월">
+                      <Input
+                        aria-label="정산 월 입력"
+                        value={trainerPayrollFilters.settlementMonth}
+                        onChange={(event) => {
+                          setTrainerPayrollFilters((prev) => ({
+                            ...prev,
+                            settlementMonth: event.target.value
+                          }));
+                        }}
+                        placeholder="YYYY-MM"
+                      />
+                    </Form.Item>
+                    <Form.Item label="세션 단가">
+                      <Input
+                        aria-label="세션 단가 입력"
+                        value={trainerPayrollFilters.sessionUnitPrice}
+                        onChange={(event) => {
+                          setTrainerPayrollFilters((prev) => ({
+                            ...prev,
+                            sessionUnitPrice: event.target.value
+                          }));
+                        }}
+                        placeholder="예: 50000"
+                      />
+                    </Form.Item>
+                    <Space>
+                      <Button htmlType="submit" type="primary" loading={trainerPayrollLoading}>
+                        월 정산 조회
+                      </Button>
+                      <Button onClick={resetTrainerPayrollWorkspace}>
+                        기준 초기화
+                      </Button>
+                    </Space>
+                  </Flex>
+                </Form>
+                <Flex vertical gap={8} style={{ marginTop: 16 }}>
+                  {trainerPayrollPanelMessage && <Alert type="success" showIcon message={trainerPayrollPanelMessage} closable />}
+                  {trainerPayrollPanelError && <Alert type="error" showIcon message={trainerPayrollPanelError} closable />}
                 </Flex>
               </Card>
             </Col>
@@ -577,12 +789,61 @@ export default function SettlementsPage() {
                 title="정산 결과"
                 extra={
                   <Space>
-                    <Button disabled>월 정산 확정</Button>
-                    <Button type="primary" disabled>정산서 출력</Button>
+                    <Button
+                      onClick={() => void handleTrainerPayrollConfirm()}
+                      loading={trainerPayrollConfirming}
+                      disabled={!trainerPayroll || trainerPayroll.rows.length === 0 || trainerPayroll.settlementStatus === "CONFIRMED"}
+                    >
+                      월 정산 확정
+                    </Button>
+                    <Button
+                      type="primary"
+                      onClick={() => void handleTrainerSettlementDocumentDownload()}
+                      loading={trainerPayrollDownloading}
+                      disabled={!trainerPayroll || trainerPayroll.settlementStatus !== "CONFIRMED"}
+                    >
+                      정산서 출력
+                    </Button>
                   </Space>
                 }
               >
-                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="트레이너 정산 조회 기능은 다음 구현 단위에서 연결됩니다." />
+                <Flex vertical gap={16}>
+                  <Row gutter={[12, 12]} className={styles.statsGridCompact}>
+                    {[
+                      { label: "정산 월", value: trainerPayroll?.settlementMonth ?? trainerPayrollFilters.settlementMonth },
+                      { label: "총 완료 수업", value: trainerPayroll?.totalCompletedClassCount ?? 0 },
+                      { label: "총 급여", value: formatCurrency(trainerPayroll?.totalPayrollAmount ?? 0) },
+                      { label: "상태", value: trainerPayroll?.settlementStatus === "CONFIRMED" ? "확정됨" : "조회 전 / 초안" }
+                    ].map((stat) => (
+                      <Col xs={12} md={6} key={stat.label}>
+                        <Card size="small">
+                          <Statistic title={stat.label} value={stat.value} valueStyle={{ fontSize: "1rem", fontWeight: 700 }} />
+                        </Card>
+                      </Col>
+                    ))}
+                  </Row>
+
+                  {trainerPayroll?.settlementStatus === "CONFIRMED" && trainerPayroll.confirmedAt && (
+                    <Alert
+                      type="info"
+                      showIcon
+                      message={`이 월 정산은 ${formatCompactDateTime(trainerPayroll.confirmedAt)}에 확정되었습니다.`}
+                    />
+                  )}
+
+                  <Table
+                    rowKey={(row) => row.settlementId ?? `${row.trainerUserId ?? "name"}-${row.trainerName}`}
+                    loading={trainerPayrollLoading}
+                    columns={trainerPayrollColumns}
+                    dataSource={trainerPayroll?.rows ?? []}
+                    pagination={false}
+                    locale={{
+                      emptyText: trainerPayrollLoading
+                        ? "트레이너 정산 데이터를 집계하고 있습니다..."
+                        : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="수업이 없는 월입니다. 완료 수업 수와 총 급여는 0으로 유지됩니다." />
+                    }}
+                  />
+                </Flex>
               </Card>
             </Col>
           </Row>

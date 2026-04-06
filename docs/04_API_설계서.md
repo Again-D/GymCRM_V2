@@ -501,10 +501,9 @@ X-RateLimit-Reset: 1740001860
 | 2 | `GET` | `/api/v1/settlements/sales-report` | 기간별 매출/환불/순매출 및 추이 조회 | O | ADMIN, MANAGER, DESK |
 | 3 | `GET` | `/api/v1/settlements/sales-report/recent-adjustments` | 최근 환불 목록 조회 | O | ADMIN, MANAGER, DESK |
 | 4 | `GET` | `/api/v1/settlements/sales-report/export` | 매출 리포트 CSV 내보내기 | O | ADMIN, MANAGER, DESK |
-| 5 | `GET` | `/api/v1/settlements/trainer-payroll` | 트레이너 월별 급여 산정 조회 | O | ADMIN, MANAGER |
-| 6 | `GET` | `/api/v1/settlements/trainer-payroll/{trainerId}` | 트레이너 정산 상세 조회 | O | ADMIN, MANAGER, TRAINER |
-| 7 | `POST` | `/api/v1/settlements` | 정산 생성 (기간 지정) | O | ADMIN, MANAGER |
-| 8 | `POST` | `/api/v1/settlements/{settlementId}/confirm` | 정산 확정 | O | ADMIN, MANAGER |
+| 5 | `GET` | `/api/v1/settlements/trainer-payroll` | 트레이너 월별 급여 조회. 확정된 월이면 저장된 스냅샷과 `settlementStatus`/`confirmedAt`를 함께 반환 | O | ADMIN, MANAGER, DESK |
+| 6 | `POST` | `/api/v1/settlements/trainer-payroll/confirm` | 월별 트레이너 정산 일괄 확정 및 스냅샷 저장 | O | ADMIN, MANAGER, DESK |
+| 7 | `GET` | `/api/v1/settlements/trainer-payroll/document` | 확정된 월 정산 CSV 정산서 다운로드 | O | ADMIN, MANAGER, DESK |
 
 ### 3.8 CRM 메시지 API (`/api/v1/messages`)
 
@@ -2154,6 +2153,7 @@ X-Cache: HIT
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| v1.3.0 | 2026-04-06 | 트레이너 정산 API를 현재 구현 기준으로 동기화하여 `/trainer-payroll` 조회의 확정 상태 필드, `/trainer-payroll/confirm` 확정 저장, `/trainer-payroll/document` CSV 출력 계약을 반영 | Codex |
 | v1.2.0 | 2026-04-03 | 정산 API 계약을 현재 구현 기준으로 동기화하여 `sales-dashboard`, 확장된 `sales-report`, `sales-report/recent-adjustments`, `sales-report/export`와 Phase 1 환불 기준을 명시 | Codex |
 | v1.1.0 | 2026-04-03 | 상품 API의 `allowHoldBypass` 필드와 회원권 홀딩 API의 `overrideLimits`/자동 재개 규칙을 현재 구현 기준으로 동기화하고, 상품 수정 메서드를 `PATCH`로 정정 | Codex |
 | v1.0.0 | 2026-02-20 | 최초 작성 | - |

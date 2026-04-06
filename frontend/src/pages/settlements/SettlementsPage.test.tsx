@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { FoundationProviders } from "../../app/providers";
 import SettlementsPage from "./SettlementsPage";
-import type { SettlementReportFilters } from "./modules/types";
+import type { SettlementReportFilters, TrainerPayrollFilters } from "./modules/types";
 
 const refetchSalesDashboard = vi.fn();
 const refetchSettlementReport = vi.fn();
@@ -13,6 +13,13 @@ const clearSettlementFeedback = vi.fn();
 const setSettlementFilters = vi.fn();
 const setSettlementPanelMessage = vi.fn();
 const setSettlementPanelError = vi.fn();
+const refetchTrainerPayroll = vi.fn();
+const setTrainerPayrollFilters = vi.fn();
+const setTrainerPayrollPanelMessage = vi.fn();
+const setTrainerPayrollPanelError = vi.fn();
+const clearTrainerPayrollFeedback = vi.fn();
+const submitTrainerPayrollFilters = vi.fn();
+const resetTrainerPayrollWorkspace = vi.fn();
 
 let mockSettlementFilters: SettlementReportFilters = {
   startDate: "2026-03-01",
@@ -20,6 +27,10 @@ let mockSettlementFilters: SettlementReportFilters = {
   paymentMethod: "",
   productKeyword: "",
   trendGranularity: "DAILY"
+};
+let mockTrainerPayrollFilters: TrainerPayrollFilters = {
+  settlementMonth: "2026-03",
+  sessionUnitPrice: "50000"
 };
 
 vi.mock("./modules/useSettlementPrototypeState", () => ({
@@ -113,6 +124,59 @@ vi.mock("./modules/useSettlementRecentAdjustmentsQuery", () => ({
   })
 }));
 
+vi.mock("./modules/useTrainerPayrollPrototypeState", () => ({
+  useTrainerPayrollPrototypeState: () => ({
+    trainerPayrollFilters: mockTrainerPayrollFilters,
+    setTrainerPayrollFilters,
+    submittedTrainerPayrollQuery: {
+      settlementMonth: "2026-03",
+      sessionUnitPrice: 50000
+    },
+    trainerPayrollPanelMessage: null,
+    setTrainerPayrollPanelMessage,
+    trainerPayrollPanelError: null,
+    setTrainerPayrollPanelError,
+    clearTrainerPayrollFeedback,
+    submitTrainerPayrollFilters,
+    resetTrainerPayrollWorkspace
+  })
+}));
+
+vi.mock("./modules/useTrainerPayrollQuery", () => ({
+  useTrainerPayrollQuery: () => ({
+    trainerPayroll: {
+      settlementMonth: "2026-03",
+      sessionUnitPrice: 50000,
+      totalCompletedClassCount: 3,
+      totalPayrollAmount: 150000,
+      settlementStatus: "DRAFT",
+      confirmedAt: null,
+      rows: [
+        {
+          settlementId: null,
+          trainerUserId: 41,
+          trainerName: "정트레이너",
+          completedClassCount: 2,
+          sessionUnitPrice: 50000,
+          payrollAmount: 100000
+        },
+        {
+          settlementId: null,
+          trainerUserId: 42,
+          trainerName: "김트레이너",
+          completedClassCount: 1,
+          sessionUnitPrice: 50000,
+          payrollAmount: 50000
+        }
+      ]
+    },
+    trainerPayrollLoading: false,
+    trainerPayrollError: null,
+    trainerPayrollMessage: "ok",
+    refetchTrainerPayroll
+  })
+}));
+
 describe("SettlementsPage", () => {
   beforeEach(() => {
     mockSettlementFilters = {
@@ -122,14 +186,25 @@ describe("SettlementsPage", () => {
       productKeyword: "",
       trendGranularity: "DAILY"
     };
+    mockTrainerPayrollFilters = {
+      settlementMonth: "2026-03",
+      sessionUnitPrice: "50000"
+    };
     refetchSalesDashboard.mockReset();
     refetchSettlementReport.mockReset();
     refetchRecentAdjustments.mockReset();
+    refetchTrainerPayroll.mockReset();
     resetSettlementWorkspace.mockReset();
     clearSettlementFeedback.mockReset();
     setSettlementFilters.mockReset();
     setSettlementPanelMessage.mockReset();
     setSettlementPanelError.mockReset();
+    setTrainerPayrollFilters.mockReset();
+    setTrainerPayrollPanelMessage.mockReset();
+    setTrainerPayrollPanelError.mockReset();
+    clearTrainerPayrollFeedback.mockReset();
+    submitTrainerPayrollFilters.mockReset();
+    resetTrainerPayrollWorkspace.mockReset();
     vi.stubGlobal("matchMedia", vi.fn().mockImplementation((query) => ({
       matches: false,
       media: query,
@@ -171,7 +246,10 @@ describe("SettlementsPage", () => {
     fireEvent.click(await screen.findByRole("tab", { name: "트레이너 정산" }));
 
     expect(screen.getByRole("tab", { selected: true, name: "트레이너 정산" })).toBeTruthy();
-    expect(screen.getByText("트레이너 정산 조회 기능은 다음 구현 단위에서 연결됩니다.")).toBeTruthy();
+    expect(screen.getByText("월 정산 조회")).toBeTruthy();
+    expect(screen.getByText("월 정산 확정")).toBeTruthy();
+    expect(screen.getByText("정산서 출력")).toBeTruthy();
+    expect(screen.getByText("정트레이너")).toBeTruthy();
     expect(screen.queryByText("Invalid Date")).toBeNull();
   });
 

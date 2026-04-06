@@ -170,6 +170,75 @@ async function request<T>(
   return payload;
 }
 
+async function requestBlob(
+  path: string,
+  init?: RequestInit,
+  options?: { skipAuthRetry?: boolean; overrideAccessToken?: string | null },
+): Promise<{ blob: Blob; filename: string | null }> {
+  const headers = new Headers(init?.headers);
+  const accessToken =
+    options?.overrideAccessToken ?? apiAuthHooks?.getAccessToken();
+  if (accessToken) {
+    headers.set("Authorization", `Bearer ${accessToken}`);
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    headers,
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    let payload: ApiEnvelope<unknown> | null = null;
+    try {
+      payload = (await response.json()) as ApiEnvelope<unknown>;
+    } catch {
+      payload = null;
+    }
+
+    const isAuth401 =
+      response.status === 401 &&
+      !options?.skipAuthRetry &&
+      apiAuthHooks != null &&
+      !path.startsWith("/api/v1/auth/login") &&
+      !path.startsWith("/api/v1/auth/refresh") &&
+      !path.startsWith("/api/v1/auth/logout");
+
+    if (isAuth401) {
+      try {
+        const nextAccessToken = await refreshAccessTokenShared();
+        if (nextAccessToken) {
+          return requestBlob(path, init, {
+            skipAuthRetry: true,
+            overrideAccessToken: nextAccessToken,
+          });
+        }
+      } catch {
+        // Fall through to unauthorized handling.
+      }
+      apiAuthHooks?.onUnauthorized?.();
+    }
+
+    throw new ApiClientError(
+      payload?.message ?? `API request failed: ${response.status}`,
+      {
+        status: response.status,
+        code: payload?.error?.code,
+        detail: payload?.error?.detail,
+        traceId: payload?.traceId,
+      },
+    );
+  }
+
+  const contentDisposition = response.headers.get("content-disposition");
+  const fileNameMatch = contentDisposition?.match(/filename="?([^"]+)"?/i);
+
+  return {
+    blob: await response.blob(),
+    filename: fileNameMatch?.[1] ?? null
+  };
+}
+
 export function apiGet<T>(path: string): Promise<ApiEnvelope<T>> {
   return request<T>(path, { method: "GET" });
 }
@@ -208,4 +277,8 @@ export function apiDelete<T>(path: string): Promise<ApiEnvelope<T>> {
   return request<T>(path, {
     method: "DELETE",
   });
+}
+
+export function apiDownload(path: string): Promise<{ blob: Blob; filename: string | null }> {
+  return requestBlob(path, { method: "GET" });
 }

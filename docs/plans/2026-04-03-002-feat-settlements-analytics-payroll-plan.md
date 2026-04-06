@@ -1,7 +1,7 @@
 ---
 title: "feat: 정산 모듈 매출 분석 탭 및 트레이너 정산 탭 확장"
 type: feat
-status: active
+status: completed
 date: 2026-04-03
 origin: docs/brainstorms/2026-04-03-settlements-analytics-and-trainer-payroll-requirements.md
 ---
@@ -305,7 +305,7 @@ flowchart TB
 **Verification:**
 - 운영자가 최신 환불 이슈를 별도 화면 이동 없이 현재 탭에서 확인할 수 있다.
 
-- [ ] **Unit 5: 트레이너 정산 탭 조회 UX 완성**
+- [x] **Unit 5: 트레이너 정산 탭 조회 UX 완성**
 
 **Goal:** 현재 월별 계산 API를 실제 탭 UI와 연결해 트레이너별 수업 수와 급여 산정 결과를 조회할 수 있게 한다.
 
@@ -346,7 +346,7 @@ flowchart TB
 **Verification:**
 - `트레이너 정산` 탭에서 월별 예상 급여를 실제 화면에서 검토할 수 있다.
 
-- [ ] **Unit 6: 트레이너 정산 확정 영속화 및 상태 흐름 추가**
+- [x] **Unit 6: 트레이너 정산 확정 영속화 및 상태 흐름 추가**
 
 **Goal:** 조회 결과를 일회성 계산에서 끝내지 않고 확정 가능한 정산 엔티티/흐름으로 승격한다.
 
@@ -387,7 +387,7 @@ flowchart TB
 **Verification:**
 - 정산이 실제 persisted state를 가지며, 중복 없이 확정 흐름을 통과한다.
 
-- [ ] **Unit 7: 정산서 출력 계층 추가**
+- [x] **Unit 7: 정산서 출력 계층 추가**
 
 **Goal:** 확정된 트레이너 정산 결과를 운영 산출물로 사용할 수 있게 정산서 출력 기능을 추가한다.
 

@@ -1,5 +1,7 @@
 package com.gymcrm.settlement;
 
+import com.gymcrm.common.error.ApiException;
+import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.member.dto.request.MemberCreateRequest;
 import com.gymcrm.member.entity.Member;
 import com.gymcrm.member.service.MemberService;
@@ -8,6 +10,7 @@ import com.gymcrm.membership.service.MembershipPurchaseService;
 import com.gymcrm.product.entity.Product;
 import com.gymcrm.product.service.ProductService;
 import com.gymcrm.settlement.service.TrainerPayrollSettlementService;
+import com.gymcrm.settlement.service.TrainerSettlementLifecycleService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -23,6 +26,7 @@ import java.time.ZoneOffset;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @SpringBootTest(properties = {
         "DB_URL=jdbc:postgresql://localhost:5433/gymcrm_dev",
@@ -30,10 +34,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
         "DB_PASSWORD=gymcrm"
 })
 @ActiveProfiles("dev")
-class TrainerPayrollSettlementServiceIntegrationTest {
+class TrainerSettlementLifecycleServiceIntegrationTest {
 
     @Autowired
-    private TrainerPayrollSettlementService service;
+    private TrainerSettlementLifecycleService lifecycleService;
+
+    @Autowired
+    private TrainerPayrollSettlementService payrollSettlementService;
 
     @Autowired
     private MemberService memberService;
@@ -49,98 +56,107 @@ class TrainerPayrollSettlementServiceIntegrationTest {
 
     @Test
     @Transactional
-    void monthlyPayrollAggregatesCompletedPtSessionsByTrainerAndAppliesUnitPrice() {
-        YearMonth targetMonth = YearMonth.now(ZoneOffset.UTC).minusMonths(1);
+    void confirmMonthlySettlementPersistsRowsAndReflectsConfirmedStatusOnSubsequentQuery() {
+        YearMonth targetMonth = YearMonth.of(2026, 3);
         BigDecimal unitPrice = new BigDecimal("50000");
-
         MemberMembership membership1 = purchasePtMembership();
         MemberMembership membership2 = purchasePtMembership();
-        MemberMembership membership3 = purchasePtMembership();
-        MemberMembership membership4 = purchasePtMembership();
 
-        long trainerAKlass1 = insertSchedule("PT", "Trainer-A", targetMonth.atDay(5));
-        long trainerAKlass2 = insertSchedule("PT", "Trainer-A", targetMonth.atDay(12));
-        long trainerBKlass1 = insertSchedule("PT", "Trainer-B", targetMonth.atDay(19));
-        long trainerBGx = insertSchedule("GX", "Trainer-B", targetMonth.atDay(20));
+        long trainerSchedule1 = insertSchedule("PT", "Trainer-Confirm-A", targetMonth.atDay(5));
+        long trainerSchedule2 = insertSchedule("PT", "Trainer-Confirm-B", targetMonth.atDay(8));
 
-        insertReservation(membership1, trainerAKlass1, "COMPLETED", targetMonth.atDay(5));
-        insertReservation(membership2, trainerAKlass2, "COMPLETED", targetMonth.atDay(12));
-        insertReservation(membership3, trainerBKlass1, "COMPLETED", targetMonth.atDay(19));
-        insertReservation(membership4, trainerBGx, "COMPLETED", targetMonth.atDay(20)); // GX: should be excluded
-        insertReservation(membership4, trainerBKlass1, "CANCELLED", targetMonth.atDay(21)); // cancelled: excluded
+        insertReservation(membership1, trainerSchedule1, "COMPLETED", targetMonth.atDay(5));
+        insertReservation(membership2, trainerSchedule2, "COMPLETED", targetMonth.atDay(8));
 
-        TrainerPayrollSettlementService.MonthlyPayrollResult result = service.getMonthlyPayroll(
+        TrainerPayrollSettlementService.MonthlyPayrollResult confirmed = lifecycleService.confirmMonthlySettlement(
                 new TrainerPayrollSettlementService.MonthlyPayrollQuery(targetMonth, unitPrice)
         );
 
-        assertEquals(2, result.rows().size());
-        assertEquals(3L, result.totalCompletedClassCount());
-        assertEquals(0, new BigDecimal("150000").compareTo(result.totalPayrollAmount()));
+        assertEquals("CONFIRMED", confirmed.settlementStatus());
+        assertEquals(2, confirmed.rows().size());
+        assertEquals(2L, jdbcClient.sql("""
+                SELECT COUNT(*)
+                FROM trainer_settlements
+                WHERE center_id = 1
+                  AND settlement_month = :settlementMonth
+                  AND is_deleted = FALSE
+                """)
+                .param("settlementMonth", targetMonth.atDay(1))
+                .query(Long.class)
+                .single());
 
-        TrainerPayrollSettlementService.TrainerPayrollRow trainerA = result.rows().stream()
-                .filter(row -> row.trainerName().equals("Trainer-A"))
-                .findFirst()
-                .orElseThrow();
-        assertEquals(null, trainerA.settlementId());
-        assertEquals(2L, trainerA.completedClassCount());
-        assertEquals(0, new BigDecimal("100000").compareTo(trainerA.payrollAmount()));
+        TrainerPayrollSettlementService.MonthlyPayrollResult reloaded = payrollSettlementService.getMonthlyPayroll(
+                new TrainerPayrollSettlementService.MonthlyPayrollQuery(targetMonth, new BigDecimal("70000"))
+        );
 
-        TrainerPayrollSettlementService.TrainerPayrollRow trainerB = result.rows().stream()
-                .filter(row -> row.trainerName().equals("Trainer-B"))
-                .findFirst()
-                .orElseThrow();
-        assertEquals(1L, trainerB.completedClassCount());
-        assertEquals(0, new BigDecimal("50000").compareTo(trainerB.payrollAmount()));
+        assertEquals("CONFIRMED", reloaded.settlementStatus());
+        assertEquals(0, unitPrice.compareTo(reloaded.sessionUnitPrice()));
+        assertEquals(2, reloaded.rows().size());
     }
 
     @Test
     @Transactional
-    void monthlyPayrollUsesBusinessTimezoneMonthBoundaries() {
+    void confirmMonthlySettlementRejectsDuplicateConfirmation() {
         YearMonth targetMonth = YearMonth.of(2026, 3);
         BigDecimal unitPrice = new BigDecimal("50000");
-        String trainerName = "Trainer-KST-" + UUID.randomUUID().toString().substring(0, 6);
+        MemberMembership membership = purchasePtMembership();
+        long trainerSchedule = insertSchedule("PT", "Trainer-Confirm-Dupe", targetMonth.atDay(10));
+        insertReservation(membership, trainerSchedule, "COMPLETED", targetMonth.atDay(10));
 
-        MemberMembership includedMembership = purchasePtMembership();
-        MemberMembership excludedMembership = purchasePtMembership();
-
-        long includedSchedule = insertSchedule("PT", trainerName, LocalDate.of(2026, 3, 1));
-        long excludedSchedule = insertSchedule("PT", trainerName, LocalDate.of(2026, 4, 1));
-
-        insertReservationAt(includedMembership, includedSchedule, "COMPLETED",
-                OffsetDateTime.parse("2026-02-28T15:30:00Z"), null);
-        insertReservationAt(excludedMembership, excludedSchedule, "COMPLETED",
-                OffsetDateTime.parse("2026-03-31T15:30:00Z"), null);
-
-        TrainerPayrollSettlementService.MonthlyPayrollResult result = service.getMonthlyPayroll(
+        lifecycleService.confirmMonthlySettlement(
                 new TrainerPayrollSettlementService.MonthlyPayrollQuery(targetMonth, unitPrice)
         );
 
-        TrainerPayrollSettlementService.TrainerPayrollRow trainerRow = result.rows().stream()
-                .filter(row -> row.trainerName().equals(trainerName))
-                .findFirst()
-                .orElseThrow();
-        assertEquals(1L, trainerRow.completedClassCount());
-        assertEquals(0, unitPrice.compareTo(trainerRow.payrollAmount()));
+        ApiException exception = assertThrows(ApiException.class, () ->
+                lifecycleService.confirmMonthlySettlement(
+                        new TrainerPayrollSettlementService.MonthlyPayrollQuery(targetMonth, unitPrice)
+                )
+        );
+
+        assertEquals(ErrorCode.CONFLICT, exception.getErrorCode());
     }
 
     @Test
     @Transactional
-    void monthlyPayrollReturnsDraftStatusForUnconfirmedMonth() {
+    void confirmMonthlySettlementAllowsDifferentTrainerUsersWithSameDisplayName() {
         YearMonth targetMonth = YearMonth.of(2026, 3);
+        BigDecimal unitPrice = new BigDecimal("50000");
+        MemberMembership membership1 = purchasePtMembership();
+        MemberMembership membership2 = purchasePtMembership();
+        long trainerUserId1 = createTrainerUserWithDisplayName("동명이인 트레이너");
+        long trainerUserId2 = createTrainerUserWithDisplayName("동명이인 트레이너");
 
-        TrainerPayrollSettlementService.MonthlyPayrollResult result = service.getMonthlyPayroll(
-                new TrainerPayrollSettlementService.MonthlyPayrollQuery(targetMonth, new BigDecimal("50000"))
+        long trainerSchedule1 = insertSchedule("PT", "동명이인 트레이너", trainerUserId1, targetMonth.atDay(5));
+        long trainerSchedule2 = insertSchedule("PT", "동명이인 트레이너", trainerUserId2, targetMonth.atDay(8));
+
+        insertReservation(membership1, trainerSchedule1, "COMPLETED", targetMonth.atDay(5));
+        insertReservation(membership2, trainerSchedule2, "COMPLETED", targetMonth.atDay(8));
+
+        TrainerPayrollSettlementService.MonthlyPayrollResult confirmed = lifecycleService.confirmMonthlySettlement(
+                new TrainerPayrollSettlementService.MonthlyPayrollQuery(targetMonth, unitPrice)
         );
 
-        assertEquals("DRAFT", result.settlementStatus());
-        assertEquals(null, result.confirmedAt());
+        assertEquals("CONFIRMED", confirmed.settlementStatus());
+        assertEquals(2, confirmed.rows().size());
+        assertEquals(2L, jdbcClient.sql("""
+                SELECT COUNT(*)
+                FROM trainer_settlements
+                WHERE center_id = 1
+                  AND settlement_month = :settlementMonth
+                  AND trainer_name = :trainerName
+                  AND is_deleted = FALSE
+                """)
+                .param("settlementMonth", targetMonth.atDay(1))
+                .param("trainerName", "동명이인 트레이너")
+                .query(Long.class)
+                .single());
     }
 
     private MemberMembership purchasePtMembership() {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
         Member member = memberService.create(new MemberCreateRequest(
-                "SAL-PAY-" + suffix,
-                "010-5" + suffix.substring(0, 3) + "-" + suffix.substring(3, 7),
+                "SAL-LIFE-" + suffix,
+                "010-6" + suffix.substring(0, 3) + "-" + suffix.substring(3, 7),
                 null,
                 null,
                 null,
@@ -151,7 +167,7 @@ class TrainerPayrollSettlementServiceIntegrationTest {
                 null
         ));
         Product product = productService.create(new ProductService.ProductCreateRequest(
-                "SAL-PT-" + suffix,
+                "SAL-LIFE-PT-" + suffix,
                 "PT",
                 "COUNT",
                 new BigDecimal("100000"),
@@ -179,6 +195,15 @@ class TrainerPayrollSettlementServiceIntegrationTest {
 
     private long createTrainerUser() {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
+        return createTrainerUserWithDisplayName("Trainer " + suffix, "trainer-life-" + suffix);
+    }
+
+    private long createTrainerUserWithDisplayName(String displayName) {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        return createTrainerUserWithDisplayName(displayName, "trainer-life-" + suffix);
+    }
+
+    private long createTrainerUserWithDisplayName(String displayName, String loginId) {
         Long userId = jdbcClient.sql("""
                 INSERT INTO users (
                     center_id, login_id, password_hash, display_name, user_status,
@@ -189,9 +214,9 @@ class TrainerPayrollSettlementServiceIntegrationTest {
                 )
                 RETURNING user_id
                 """)
-                .param("loginId", "trainer-payroll-" + suffix)
+                .param("loginId", loginId)
                 .param("passwordHash", "noop")
-                .param("displayName", "Trainer " + suffix)
+                .param("displayName", displayName)
                 .query(Long.class)
                 .single();
         replaceUserRole(userId, "ROLE_TRAINER");
@@ -214,22 +239,27 @@ class TrainerPayrollSettlementServiceIntegrationTest {
     }
 
     private long insertSchedule(String scheduleType, String trainerName, LocalDate date) {
+        return insertSchedule(scheduleType, trainerName, null, date);
+    }
+
+    private long insertSchedule(String scheduleType, String trainerName, Long trainerUserId, LocalDate date) {
         OffsetDateTime startAt = date.atTime(10, 0).atOffset(ZoneOffset.UTC);
         OffsetDateTime endAt = date.atTime(11, 0).atOffset(ZoneOffset.UTC);
         return jdbcClient.sql("""
                 INSERT INTO trainer_schedules (
-                    center_id, schedule_type, trainer_name, slot_title,
+                    center_id, schedule_type, trainer_user_id, trainer_name, slot_title,
                     start_at, end_at, capacity, current_count, memo,
                     created_by, updated_by
                 )
                 VALUES (
-                    1, :scheduleType, :trainerName, :slotTitle,
+                    1, :scheduleType, :trainerUserId, :trainerName, :slotTitle,
                     :startAt, :endAt, 10, 0, NULL,
-                    0, 0
+                    1, 1
                 )
                 RETURNING schedule_id
                 """)
                 .param("scheduleType", scheduleType)
+                .param("trainerUserId", trainerUserId)
                 .param("trainerName", trainerName)
                 .param("slotTitle", scheduleType + " slot")
                 .param("startAt", startAt)
@@ -257,38 +287,7 @@ class TrainerPayrollSettlementServiceIntegrationTest {
                 VALUES (
                     1, :memberId, :membershipId, :scheduleId,
                     :reservationStatus, :reservedAt, :cancelledAt, :completedAt,
-                    0, 0
-                )
-                """)
-                .param("memberId", membership.memberId())
-                .param("membershipId", membership.membershipId())
-                .param("scheduleId", scheduleId)
-                .param("reservationStatus", reservationStatus)
-                .param("reservedAt", reservedAt)
-                .param("cancelledAt", cancelledAt)
-                .param("completedAt", completedAt)
-                .update();
-    }
-
-    private void insertReservationAt(
-            MemberMembership membership,
-            long scheduleId,
-            String reservationStatus,
-            OffsetDateTime completedAt,
-            OffsetDateTime cancelledAt
-    ) {
-        OffsetDateTime reservedAt = completedAt != null ? completedAt.minusHours(2) : cancelledAt.minusMinutes(30);
-
-        jdbcClient.sql("""
-                INSERT INTO reservations (
-                    center_id, member_id, membership_id, schedule_id,
-                    reservation_status, reserved_at, cancelled_at, completed_at,
-                    created_by, updated_by
-                )
-                VALUES (
-                    1, :memberId, :membershipId, :scheduleId,
-                    :reservationStatus, :reservedAt, :cancelledAt, :completedAt,
-                    0, 0
+                    1, 1
                 )
                 """)
                 .param("memberId", membership.memberId())

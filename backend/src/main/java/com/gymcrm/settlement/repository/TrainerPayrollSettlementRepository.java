@@ -17,6 +17,7 @@ public class TrainerPayrollSettlementRepository {
     public List<TrainerCompletedCountRow> findMonthlyCompletedPtCounts(QueryCommand command) {
         return jdbcClient.sql("""
                 SELECT
+                    s.trainer_user_id AS "trainerUserId",
                     s.trainer_name AS "trainerName",
                     COUNT(*) AS "completedClassCount"
                 FROM reservations r
@@ -28,7 +29,7 @@ public class TrainerPayrollSettlementRepository {
                   AND r.reservation_status = 'COMPLETED'
                   AND r.completed_at >= :startAt
                   AND r.completed_at < :endExclusiveAt
-                GROUP BY s.trainer_name
+                GROUP BY s.trainer_user_id, s.trainer_name
                 ORDER BY "completedClassCount" DESC, "trainerName" ASC
                 """)
                 .param("centerId", command.centerId())
@@ -46,6 +47,7 @@ public class TrainerPayrollSettlementRepository {
     }
 
     public record TrainerCompletedCountRow(
+            Long trainerUserId,
             String trainerName,
             Long completedClassCount
     ) {

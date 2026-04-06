@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   createMockMember,
   createMockMembership,
+  createMockTrainerSettlementConfirm,
+  downloadMockTrainerSettlementDocument,
   getMockResponse,
   patchMockMembership,
   processMockCrmQueue,
@@ -139,5 +141,41 @@ describe("mockData membership propagation", () => {
     expect(activeMembers.every((member) => member.memberStatus === "ACTIVE")).toBe(true);
     expect(inactiveMembers.length).toBeGreaterThan(0);
     expect(inactiveMembers.every((member) => member.memberStatus === "INACTIVE")).toBe(true);
+  });
+
+  it("preserves confirmed trainer settlement snapshots for previously confirmed months", async () => {
+    await createMockTrainerSettlementConfirm({
+      settlementMonth: "2026-03",
+      sessionUnitPrice: 50000
+    });
+    await createMockTrainerSettlementConfirm({
+      settlementMonth: "2026-04",
+      sessionUnitPrice: 60000
+    });
+
+    const marchReport = getMockResponse(
+      "/api/v1/settlements/trainer-payroll?settlementMonth=2026-03&sessionUnitPrice=50000"
+    )?.data as { settlementStatus: string; rows: Array<{ sessionUnitPrice: number }> };
+    const aprilReport = getMockResponse(
+      "/api/v1/settlements/trainer-payroll?settlementMonth=2026-04&sessionUnitPrice=60000"
+    )?.data as { settlementStatus: string; rows: Array<{ sessionUnitPrice: number }> };
+
+    expect(marchReport.settlementStatus).toBe("CONFIRMED");
+    expect(marchReport.rows.every((row) => row.sessionUnitPrice === 50000)).toBe(true);
+    expect(aprilReport.settlementStatus).toBe("CONFIRMED");
+    expect(aprilReport.rows.every((row) => row.sessionUnitPrice === 60000)).toBe(true);
+  });
+
+  it("exports a confirmed trainer settlement document without clearing other months", async () => {
+    await createMockTrainerSettlementConfirm({
+      settlementMonth: "2026-03",
+      sessionUnitPrice: 50000
+    });
+
+    const result = await downloadMockTrainerSettlementDocument("2026-03");
+
+    expect(result.ok).toBe(true);
+    expect(result.fileName).toBe("trainer-settlement-2026-03.csv");
+    expect(result.content).toContain("settlementMonth,trainerName");
   });
 });
