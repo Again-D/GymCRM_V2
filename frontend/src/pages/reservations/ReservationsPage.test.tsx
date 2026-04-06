@@ -6,7 +6,7 @@ import { ApiClientError, setMockApiModeForTests } from "../../api/client";
 import { resetMockData } from "../../api/mockData";
 import { SelectedMemberProvider } from "../members/modules/SelectedMemberContext";
 import { getReservationPanelErrorMessage } from "./modules/getReservationPanelErrorMessage";
-import ReservationsPage from "./ReservationsPage";
+import ReservationsPage, { formatBusinessClockTime } from "./ReservationsPage";
 import { FoundationProviders } from "../../app/providers";
 import { appQueryClient } from "../../app/queryClient";
 import { selectedMemberStore } from "../../app/selectedMemberStore";
@@ -78,6 +78,11 @@ describe("ReservationsPage", () => {
         "예약 생성에 실패했습니다.",
       ),
     ).toBe("예약 생성에 실패했습니다.");
+  });
+
+  it("formats PT candidate clock time in Asia/Seoul even when the source string is UTC", () => {
+    expect(formatBusinessClockTime("2026-03-16T01:00:00.000Z")).toBe("10:00");
+    expect(formatBusinessClockTime("2026-03-16T02:00:00.000Z")).toBe("11:00");
   });
 
   it("opens the new reservation modal from the workbench and creates a PT reservation", async () => {

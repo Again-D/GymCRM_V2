@@ -72,9 +72,18 @@ function formatDateTime(value: string | null) {
   });
 }
 
-function formatBusinessClockTime(value: string) {
-  const matched = value.match(/T(\d{2}:\d{2})/);
-  return matched ? matched[1] : dayjs(value).format("HH:mm");
+export function formatBusinessClockTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return dayjs(value).format("HH:mm");
+  }
+
+  return new Intl.DateTimeFormat("ko-KR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Seoul",
+  }).format(date);
 }
 
 function formatScheduleWindow(startAt: string, endAt: string) {
