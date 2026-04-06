@@ -7,13 +7,14 @@ import { toUserFacingErrorMessage } from "../../../app/uiError";
 import type { TrainerPayrollQuery, TrainerPayrollReport } from "./types";
 
 export function useTrainerPayrollQuery(queryInput: TrainerPayrollQuery | null) {
+  const isQueryEnabled = queryInput != null;
   const query = useQuery({
     queryKey: queryKeys.settlements.list({
       scope: "trainer-payroll",
       settlementMonth: queryInput?.settlementMonth ?? "",
       sessionUnitPrice: queryInput?.sessionUnitPrice ?? ""
     }),
-    enabled: queryInput != null,
+    enabled: isQueryEnabled,
     queryFn: async () => {
       if (!queryInput) {
         return {
@@ -38,11 +39,11 @@ export function useTrainerPayrollQuery(queryInput: TrainerPayrollQuery | null) {
 
   return useMemo(() => ({
     trainerPayroll: query.data?.data ?? null,
-    trainerPayrollLoading: query.isFetching || query.isPending,
+    trainerPayrollLoading: query.isFetching || (isQueryEnabled && query.isPending),
     trainerPayrollError: query.error
       ? toUserFacingErrorMessage(query.error, "트레이너 정산 조회에 실패했습니다.")
       : null,
     trainerPayrollMessage: query.data?.message ?? null,
     refetchTrainerPayroll: query.refetch
-  }), [query.data, query.error, query.isFetching, query.isPending, query.refetch]);
+  }), [isQueryEnabled, query.data, query.error, query.isFetching, query.isPending, query.refetch]);
 }

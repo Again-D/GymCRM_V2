@@ -72,10 +72,12 @@ describe("useTrainerPayrollQuery", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const queryClient = createTestQueryClient();
-    renderHook(() => useTrainerPayrollQuery(null), {
+    const { result } = renderHook(() => useTrainerPayrollQuery(null), {
       wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper>
     });
 
     expect(fetchMock).not.toHaveBeenCalled();
+    expect(result.current.trainerPayrollLoading).toBe(false);
+    expect(result.current.trainerPayroll).toBeNull();
   });
 });
