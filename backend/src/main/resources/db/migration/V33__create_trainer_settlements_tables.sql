@@ -30,7 +30,12 @@ CREATE TABLE IF NOT EXISTS trainer_settlements (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS uk_trainer_settlements_center_month_trainer
-    ON trainer_settlements (center_id, settlement_month, trainer_name)
+    ON trainer_settlements (
+        center_id,
+        settlement_month,
+        COALESCE(trainer_user_id, -1),
+        trainer_name
+    )
     WHERE is_deleted = FALSE;
 
 CREATE INDEX IF NOT EXISTS idx_trainer_settlements_center_month

@@ -116,6 +116,42 @@ class TrainerSettlementLifecycleServiceIntegrationTest {
         assertEquals(ErrorCode.CONFLICT, exception.getErrorCode());
     }
 
+    @Test
+    @Transactional
+    void confirmMonthlySettlementAllowsDifferentTrainerUsersWithSameDisplayName() {
+        YearMonth targetMonth = YearMonth.of(2026, 3);
+        BigDecimal unitPrice = new BigDecimal("50000");
+        MemberMembership membership1 = purchasePtMembership();
+        MemberMembership membership2 = purchasePtMembership();
+        long trainerUserId1 = createTrainerUserWithDisplayName("동명이인 트레이너");
+        long trainerUserId2 = createTrainerUserWithDisplayName("동명이인 트레이너");
+
+        long trainerSchedule1 = insertSchedule("PT", "동명이인 트레이너", trainerUserId1, targetMonth.atDay(5));
+        long trainerSchedule2 = insertSchedule("PT", "동명이인 트레이너", trainerUserId2, targetMonth.atDay(8));
+
+        insertReservation(membership1, trainerSchedule1, "COMPLETED", targetMonth.atDay(5));
+        insertReservation(membership2, trainerSchedule2, "COMPLETED", targetMonth.atDay(8));
+
+        TrainerPayrollSettlementService.MonthlyPayrollResult confirmed = lifecycleService.confirmMonthlySettlement(
+                new TrainerPayrollSettlementService.MonthlyPayrollQuery(targetMonth, unitPrice)
+        );
+
+        assertEquals("CONFIRMED", confirmed.settlementStatus());
+        assertEquals(2, confirmed.rows().size());
+        assertEquals(2L, jdbcClient.sql("""
+                SELECT COUNT(*)
+                FROM trainer_settlements
+                WHERE center_id = 1
+                  AND settlement_month = :settlementMonth
+                  AND trainer_name = :trainerName
+                  AND is_deleted = FALSE
+                """)
+                .param("settlementMonth", targetMonth.atDay(1))
+                .param("trainerName", "동명이인 트레이너")
+                .query(Long.class)
+                .single());
+    }
+
     private MemberMembership purchasePtMembership() {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
         Member member = memberService.create(new MemberCreateRequest(
@@ -159,6 +195,15 @@ class TrainerSettlementLifecycleServiceIntegrationTest {
 
     private long createTrainerUser() {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
+        return createTrainerUserWithDisplayName("Trainer " + suffix, "trainer-life-" + suffix);
+    }
+
+    private long createTrainerUserWithDisplayName(String displayName) {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        return createTrainerUserWithDisplayName(displayName, "trainer-life-" + suffix);
+    }
+
+    private long createTrainerUserWithDisplayName(String displayName, String loginId) {
         Long userId = jdbcClient.sql("""
                 INSERT INTO users (
                     center_id, login_id, password_hash, display_name, user_status,
@@ -169,9 +214,9 @@ class TrainerSettlementLifecycleServiceIntegrationTest {
                 )
                 RETURNING user_id
                 """)
-                .param("loginId", "trainer-life-" + suffix)
+                .param("loginId", loginId)
                 .param("passwordHash", "noop")
-                .param("displayName", "Trainer " + suffix)
+                .param("displayName", displayName)
                 .query(Long.class)
                 .single();
         replaceUserRole(userId, "ROLE_TRAINER");
@@ -194,22 +239,27 @@ class TrainerSettlementLifecycleServiceIntegrationTest {
     }
 
     private long insertSchedule(String scheduleType, String trainerName, LocalDate date) {
+        return insertSchedule(scheduleType, trainerName, null, date);
+    }
+
+    private long insertSchedule(String scheduleType, String trainerName, Long trainerUserId, LocalDate date) {
         OffsetDateTime startAt = date.atTime(10, 0).atOffset(ZoneOffset.UTC);
         OffsetDateTime endAt = date.atTime(11, 0).atOffset(ZoneOffset.UTC);
         return jdbcClient.sql("""
                 INSERT INTO trainer_schedules (
-                    center_id, schedule_type, trainer_name, slot_title,
+                    center_id, schedule_type, trainer_user_id, trainer_name, slot_title,
                     start_at, end_at, capacity, current_count, memo,
                     created_by, updated_by
                 )
                 VALUES (
-                    1, :scheduleType, :trainerName, :slotTitle,
+                    1, :scheduleType, :trainerUserId, :trainerName, :slotTitle,
                     :startAt, :endAt, 10, 0, NULL,
                     1, 1
                 )
                 RETURNING schedule_id
                 """)
                 .param("scheduleType", scheduleType)
+                .param("trainerUserId", trainerUserId)
                 .param("trainerName", trainerName)
                 .param("slotTitle", scheduleType + " slot")
                 .param("startAt", startAt)

@@ -1462,6 +1462,8 @@ export function resetMockData() {
   mockSettlementTransactions = cloneSettlementTransactions(
     initialSettlementTransactions,
   );
+  mockTrainerPayrollAggregates = initialTrainerPayrollAggregates.map((aggregate) => ({ ...aggregate }));
+  mockTrainerSettlementSnapshots = [];
   mockDataVersion = 0;
   membershipIdSeed = 99000;
   reservationIdSeed = 5002;
@@ -1476,6 +1478,7 @@ export function resetMockData() {
   trainerAvailabilityExceptionIdSeed = 11;
   gxRuleIdSeed = 1;
   gxExceptionIdSeed = 1;
+  trainerSettlementIdSeed = 5000;
 }
 
 export function createMockMember(input: {
@@ -2800,17 +2803,20 @@ export async function createMockTrainerSettlementConfirm(input: {
   }
 
   const confirmedAt = `${input.settlementMonth}-25T10:00:00+09:00`;
-  mockTrainerSettlementSnapshots = report.rows.map((row) => ({
-    settlementId: ++trainerSettlementIdSeed,
-    settlementMonth: input.settlementMonth,
-    trainerUserId: row.trainerUserId,
-    trainerName: row.trainerName,
-    completedClassCount: row.completedClassCount,
-    sessionUnitPrice: input.sessionUnitPrice,
-    payrollAmount: row.payrollAmount,
-    settlementStatus: "CONFIRMED",
-    confirmedAt
-  }));
+  mockTrainerSettlementSnapshots = [
+    ...mockTrainerSettlementSnapshots.filter((snapshot) => snapshot.settlementMonth !== input.settlementMonth),
+    ...report.rows.map((row) => ({
+      settlementId: ++trainerSettlementIdSeed,
+      settlementMonth: input.settlementMonth,
+      trainerUserId: row.trainerUserId,
+      trainerName: row.trainerName,
+      completedClassCount: row.completedClassCount,
+      sessionUnitPrice: input.sessionUnitPrice,
+      payrollAmount: row.payrollAmount,
+      settlementStatus: "CONFIRMED" as const,
+      confirmedAt
+    }))
+  ];
   mockDataVersion += 1;
 
   return {
