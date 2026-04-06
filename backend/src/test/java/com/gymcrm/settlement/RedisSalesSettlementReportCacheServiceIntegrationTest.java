@@ -61,9 +61,18 @@ class RedisSalesSettlementReportCacheServiceIntegrationTest {
                 LocalDate.of(2099, 7, 31),
                 "CARD",
                 "PT",
+                "DAILY",
                 new BigDecimal("100000"),
                 new BigDecimal("20000"),
                 new BigDecimal("80000"),
+                List.of(new SalesSettlementReportService.SalesTrendPoint(
+                        LocalDate.of(2099, 7, 1),
+                        "2099-07-01",
+                        new BigDecimal("100000"),
+                        new BigDecimal("20000"),
+                        new BigDecimal("80000"),
+                        2L
+                )),
                 List.of(new SalesSettlementReportService.SalesReportRow(
                         "PT-30",
                         "CARD",
@@ -76,13 +85,14 @@ class RedisSalesSettlementReportCacheServiceIntegrationTest {
 
         cacheService.put(1L, result);
 
-        assertThat(cacheService.get(1L, result.startDate(), result.endDate(), "CARD", "PT"))
+        assertThat(cacheService.get(1L, result.startDate(), result.endDate(), "CARD", "PT", "DAILY"))
                 .hasValueSatisfying(cached -> {
                     assertThat(cached.totalNetSales()).isEqualByComparingTo(result.totalNetSales());
+                    assertThat(cached.trendGranularity()).isEqualTo("DAILY");
                     assertThat(cached.rows()).hasSize(1);
                     assertThat(cached.rows().getFirst().productName()).isEqualTo("PT-30");
                 });
-        assertThat(cacheService.get(1L, result.startDate(), result.endDate(), "CARD", "GX")).isEmpty();
+        assertThat(cacheService.get(1L, result.startDate(), result.endDate(), "CARD", "GX", "DAILY")).isEmpty();
     }
 
     private RedisRuntimeProperties redisProps() {

@@ -55,6 +55,7 @@ class SalesDashboardServiceIntegrationTest {
         assertEquals(0, new BigDecimal("130000").compareTo(result.monthNetSales()));
         assertEquals(1L, result.newMemberCount());
         assertEquals(1L, result.expiringMemberCount());
+        assertEquals(1L, result.refundCount());
     }
 
     private long insertMember(LocalDate joinDate) {
@@ -87,7 +88,7 @@ class SalesDashboardServiceIntegrationTest {
                     created_by, updated_by
                 )
                 VALUES (
-                    1, :productName, 'PT', 'COUNT',
+                    1, :productName, 'MEMBERSHIP', 'COUNT',
                     100000, NULL, 10,
                     TRUE, FALSE, 'ACTIVE',
                     0, 0
@@ -111,7 +112,7 @@ class SalesDashboardServiceIntegrationTest {
                 )
                 VALUES (
                     1, :memberId, :productId, :status,
-                    'SAL-DASH-PRODUCT', 'PT', 'COUNT',
+                    'SAL-DASH-PRODUCT', 'MEMBERSHIP', 'COUNT',
                     100000, CURRENT_TIMESTAMP, :startDate, :endDate,
                     10, 10, 0,
                     0, 0,

@@ -37,9 +37,11 @@ describe("useSettlementReportQuery", () => {
           endDate: "2026-03-31",
           paymentMethod: "CARD",
           productKeyword: "PT",
+          trendGranularity: "DAILY",
           totalGrossSales: 100000,
           totalRefundAmount: 0,
           totalNetSales: 100000,
+          trend: [],
           rows: []
         },
         message: "ok",
@@ -54,7 +56,8 @@ describe("useSettlementReportQuery", () => {
       startDate: "2026-03-01",
       endDate: "2026-03-31",
       paymentMethod: "CARD",
-      productKeyword: "PT"
+      productKeyword: "PT",
+      trendGranularity: "DAILY"
     };
 
     const { result } = renderHook(() => useSettlementReportQuery(filters), {
@@ -80,6 +83,10 @@ describe("useSettlementReportQuery", () => {
       expect.stringMatching(/productKeyword=PT/),
       expect.anything()
     );
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringMatching(/trendGranularity=DAILY/),
+      expect.anything()
+    );
   });
 
   it("reuses cached results for the same filters", async () => {
@@ -90,7 +97,9 @@ describe("useSettlementReportQuery", () => {
         data: {
           startDate: "2026-03-01",
           endDate: "2026-03-31",
+          trendGranularity: "DAILY",
           totalGrossSales: 100000,
+          trend: [],
           rows: []
         },
         message: "ok"
@@ -103,7 +112,8 @@ describe("useSettlementReportQuery", () => {
       startDate: "2026-03-01",
       endDate: "2026-03-31",
       paymentMethod: "",
-      productKeyword: ""
+      productKeyword: "",
+      trendGranularity: "DAILY"
     };
 
     const { rerender, result } = renderHook(({ f }) => useSettlementReportQuery(f), {
@@ -130,7 +140,8 @@ describe("useSettlementReportQuery", () => {
       startDate: "2026-03-01",
       endDate: "2026-03-31",
       paymentMethod: "",
-      productKeyword: ""
+      productKeyword: "",
+      trendGranularity: "DAILY"
     };
 
     const { result, rerender } = renderHook(({ f }) => useSettlementReportQuery(f), {
@@ -145,10 +156,50 @@ describe("useSettlementReportQuery", () => {
         startDate: "2026-04-01",
         endDate: "2026-04-30",
         paymentMethod: "CARD",
-        productKeyword: "PT"
+        productKeyword: "PT",
+        trendGranularity: "MONTHLY"
       }
     });
 
     expect(result.current.refetchSettlementReport).toBe(firstRefetch);
+  });
+
+  it("uses a different request parameter when trend granularity changes", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: {
+          startDate: "2026-03-01",
+          endDate: "2026-03-31",
+          trendGranularity: "MONTHLY",
+          totalGrossSales: 100000,
+          trend: [],
+          rows: []
+        },
+        message: "ok"
+      })
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const queryClient = createTestQueryClient();
+    const { result } = renderHook(() => useSettlementReportQuery({
+      startDate: "2026-03-01",
+      endDate: "2026-03-31",
+      paymentMethod: "",
+      productKeyword: "",
+      trendGranularity: "MONTHLY"
+    }), {
+      wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper>,
+    });
+
+    await vi.waitFor(() => {
+      expect(result.current.settlementReport?.trendGranularity).toBe("MONTHLY");
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringMatching(/trendGranularity=MONTHLY/),
+      expect.anything()
+    );
   });
 });

@@ -9,16 +9,30 @@ import java.util.StringJoiner;
 public class SalesSettlementCsvExporter {
     public String export(SalesSettlementReportService.SalesReportResult report) {
         StringBuilder csv = new StringBuilder();
-        csv.append("startDate,endDate,paymentMethod,productKeyword,totalGrossSales,totalRefundAmount,totalNetSales\n");
+        csv.append("startDate,endDate,paymentMethod,productKeyword,trendGranularity,totalGrossSales,totalRefundAmount,totalNetSales\n");
         csv.append(join(
                 report.startDate().toString(),
                 report.endDate().toString(),
                 nullable(report.paymentMethod()),
                 nullable(report.productKeyword()),
+                nullable(report.trendGranularity()),
                 report.totalGrossSales().toPlainString(),
                 report.totalRefundAmount().toPlainString(),
                 report.totalNetSales().toPlainString()
         )).append('\n');
+
+        csv.append('\n');
+        csv.append("bucketStartDate,bucketLabel,grossSales,refundAmount,netSales,transactionCount\n");
+        for (SalesSettlementReportService.SalesTrendPoint point : report.trend()) {
+            csv.append(join(
+                    point.bucketStartDate().toString(),
+                    point.bucketLabel(),
+                    point.grossSales().toPlainString(),
+                    point.refundAmount().toPlainString(),
+                    point.netSales().toPlainString(),
+                    String.valueOf(point.transactionCount())
+            )).append('\n');
+        }
 
         csv.append('\n');
         csv.append("productName,paymentMethod,grossSales,refundAmount,netSales,transactionCount\n");

@@ -497,17 +497,14 @@ X-RateLimit-Reset: 1740001860
 
 | # | Method | URL | 설명 | 인증 | 권한 |
 |---|--------|-----|------|------|------|
-| 1 | `GET` | `/api/v1/payments` | 결제 내역 조회 | O | ADMIN, MANAGER |
-| 2 | `GET` | `/api/v1/payments/{paymentId}` | 결제 상세 조회 | O | ADMIN, MANAGER |
-| 3 | `POST` | `/api/v1/payments` | 결제 처리 (수기 등록) | O | ADMIN, MANAGER, DESK |
-| 4 | `POST` | `/api/v1/payments/{paymentId}/cancel` | 결제 취소 | O | ADMIN |
-| 5 | `GET` | `/api/v1/reports/revenue` | 매출 리포트 (일별/주별/월별) | O | ADMIN, MANAGER |
-| 6 | `GET` | `/api/v1/reports/revenue/summary` | 매출 요약 | O | ADMIN, MANAGER |
-| 7 | `GET` | `/api/v1/reports/products` | 상품별 판매 리포트 | O | ADMIN, MANAGER |
-| 8 | `GET` | `/api/v1/settlements` | 트레이너 정산 목록 | O | ADMIN, MANAGER |
-| 9 | `GET` | `/api/v1/settlements/{settlementId}` | 트레이너 정산 상세 | O | ADMIN, TRAINER(본인) |
-| 10 | `POST` | `/api/v1/settlements` | 정산 생성 (기간 지정) | O | ADMIN, MANAGER |
-| 11 | `POST` | `/api/v1/settlements/{settlementId}/confirm` | 정산 확정 | O | ADMIN, MANAGER |
+| 1 | `GET` | `/api/v1/settlements/sales-dashboard` | 운영 상황판용 매출 대시보드 조회 | O | ADMIN, MANAGER, DESK |
+| 2 | `GET` | `/api/v1/settlements/sales-report` | 기간별 매출/환불/순매출 및 추이 조회 | O | ADMIN, MANAGER, DESK |
+| 3 | `GET` | `/api/v1/settlements/sales-report/recent-adjustments` | 최근 환불 목록 조회 | O | ADMIN, MANAGER, DESK |
+| 4 | `GET` | `/api/v1/settlements/sales-report/export` | 매출 리포트 CSV 내보내기 | O | ADMIN, MANAGER, DESK |
+| 5 | `GET` | `/api/v1/settlements/trainer-payroll` | 트레이너 월별 급여 산정 조회 | O | ADMIN, MANAGER |
+| 6 | `GET` | `/api/v1/settlements/trainer-payroll/{trainerId}` | 트레이너 정산 상세 조회 | O | ADMIN, MANAGER, TRAINER |
+| 7 | `POST` | `/api/v1/settlements` | 정산 생성 (기간 지정) | O | ADMIN, MANAGER |
+| 8 | `POST` | `/api/v1/settlements/{settlementId}/confirm` | 정산 확정 | O | ADMIN, MANAGER |
 
 ### 3.8 CRM 메시지 API (`/api/v1/messages`)
 
@@ -1435,6 +1432,164 @@ GET /api/v1/reports/revenue?periodType=MONTHLY&startDate=2026-01-01&endDate=2026
 
 ---
 
+### 4.9.1 정산 운영 대시보드 API
+
+| 항목 | 내용 |
+|------|------|
+| **URL** | `GET /api/v1/settlements/sales-dashboard` |
+| **설명** | `/settlements` 매출 분석 탭 상단 KPI용 운영 상황판 데이터를 조회한다. |
+| **인증** | 필요 |
+| **권한** | ADMIN, MANAGER, DESK |
+
+**Query Parameters:**
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `baseDate` | String | X | 기준일 (`yyyy-MM-dd`). 미전달 시 오늘(Asia/Seoul) 기준 |
+| `expiringWithinDays` | Integer | X | 만료 예정 회원 집계 범위 (0~60, 기본값 7) |
+
+**Response Body (성공 - 200):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "baseDate": "2026-04-03",
+    "expiringWithinDays": 7,
+    "todayNetSales": 480000,
+    "monthNetSales": 7350000,
+    "newMemberCount": 3,
+    "expiringMemberCount": 5,
+    "refundCount": 2
+  },
+  "message": "매출 대시보드 조회 성공",
+  "timestamp": "2026-04-03T15:20:00+09:00"
+}
+```
+
+**비즈니스 규칙:**
+- KPI 기준일은 `baseDate` 하루와 해당 월의 누적 값으로 계산한다.
+- `refundCount`는 기준일에 발생한 환불(`payment_type='REFUND'`) 건수만 집계한다.
+- `todayNetSales`와 `monthNetSales`는 환불 금액을 차감한 순매출 기준이다.
+
+---
+
+### 4.9.2 정산 매출 리포트 API
+
+| 항목 | 내용 |
+|------|------|
+| **URL** | `GET /api/v1/settlements/sales-report` |
+| **설명** | 기간 내 상품/결제수단별 매출 집계와 일/주/월/연 추이를 함께 조회한다. |
+| **인증** | 필요 |
+| **권한** | ADMIN, MANAGER, DESK |
+
+**Query Parameters:**
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `startDate` | String | O | 조회 시작일 (`yyyy-MM-dd`) |
+| `endDate` | String | O | 조회 종료일 (`yyyy-MM-dd`) |
+| `paymentMethod` | String | X | `CASH`, `CARD`, `TRANSFER`, `ETC` 중 하나 |
+| `productKeyword` | String | X | 상품명 부분 검색 |
+| `trendGranularity` | String | X | `DAILY`, `WEEKLY`, `MONTHLY`, `YEARLY` 중 하나. 기본값 `DAILY` |
+
+**Response Body (성공 - 200):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "startDate": "2026-04-01",
+    "endDate": "2026-04-03",
+    "paymentMethod": "CARD",
+    "productKeyword": "PT",
+    "trendGranularity": "DAILY",
+    "totalGrossSales": 1200000,
+    "totalRefundAmount": 100000,
+    "totalNetSales": 1100000,
+    "trend": [
+      {
+        "bucketStartDate": "2026-04-01",
+        "bucketLabel": "2026-04-01",
+        "grossSales": 400000,
+        "refundAmount": 0,
+        "netSales": 400000,
+        "transactionCount": 4
+      }
+    ],
+    "rows": [
+      {
+        "productName": "PT 10회권",
+        "paymentMethod": "CARD",
+        "grossSales": 1000000,
+        "refundAmount": 100000,
+        "netSales": 900000,
+        "transactionCount": 8
+      }
+    ]
+  },
+  "message": "정산 리포트 조회 성공",
+  "timestamp": "2026-04-03T15:20:00+09:00"
+}
+```
+
+**비즈니스 규칙:**
+- 집계와 추이는 모두 Asia/Seoul 기준 날짜 버킷을 사용한다.
+- `rows`는 상품명 + 결제수단 단위로 집계된다.
+- `trend`는 `trendGranularity`에 따라 시작일 버킷(`bucketStartDate`)과 표시용 라벨(`bucketLabel`)을 함께 반환한다.
+- 집계 대상은 완료 결제(`payment_status='COMPLETED'`)의 구매/환불 레코드다.
+
+---
+
+### 4.9.3 최근 환불 목록 API
+
+| 항목 | 내용 |
+|------|------|
+| **URL** | `GET /api/v1/settlements/sales-report/recent-adjustments` |
+| **설명** | 선택 기간과 필터 범위 안에서 최근 환불 내역을 최신순으로 조회한다. |
+| **인증** | 필요 |
+| **권한** | ADMIN, MANAGER, DESK |
+
+**Query Parameters:**
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `startDate` | String | O | 조회 시작일 (`yyyy-MM-dd`) |
+| `endDate` | String | O | 조회 종료일 (`yyyy-MM-dd`) |
+| `paymentMethod` | String | X | `CASH`, `CARD`, `TRANSFER`, `ETC` 중 하나 |
+| `productKeyword` | String | X | 상품명 부분 검색 |
+| `limit` | Integer | X | 조회 건수 (1~20, 기본값 5) |
+
+**Response Body (성공 - 200):**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "paymentId": 981,
+      "adjustmentType": "REFUND",
+      "productName": "PT 10회권",
+      "memberName": "김민수",
+      "paymentMethod": "CARD",
+      "amount": 110000,
+      "paidAt": "2026-04-03T11:40:00+09:00",
+      "memo": "부분 환불",
+      "approvalRef": "APR-20260403-981"
+    }
+  ],
+  "message": "최근 환불 조회 성공",
+  "timestamp": "2026-04-03T15:20:00+09:00"
+}
+```
+
+**비즈니스 규칙:**
+- 목록은 `paidAt DESC, paymentId DESC` 순으로 정렬한다.
+- Phase 1 범위에서는 환불(`payment_type='REFUND'`) 내역만 제공한다.
+- 상세 감사용 취소 시각 이력이 도입되기 전까지 결제 취소는 본 목록의 집계 대상에 포함하지 않는다.
+
+---
+
 ### 4.10 트레이너 정산 생성 API
 
 | 항목 | 내용 |
@@ -1999,5 +2154,6 @@ X-Cache: HIT
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| v1.2.0 | 2026-04-03 | 정산 API 계약을 현재 구현 기준으로 동기화하여 `sales-dashboard`, 확장된 `sales-report`, `sales-report/recent-adjustments`, `sales-report/export`와 Phase 1 환불 기준을 명시 | Codex |
 | v1.1.0 | 2026-04-03 | 상품 API의 `allowHoldBypass` 필드와 회원권 홀딩 API의 `overrideLimits`/자동 재개 규칙을 현재 구현 기준으로 동기화하고, 상품 수정 메서드를 `PATCH`로 정정 | Codex |
 | v1.0.0 | 2026-02-20 | 최초 작성 | - |

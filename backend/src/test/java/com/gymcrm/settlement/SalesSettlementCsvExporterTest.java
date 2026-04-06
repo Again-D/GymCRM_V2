@@ -19,9 +19,18 @@ class SalesSettlementCsvExporterTest {
                 LocalDate.of(2026, 3, 31),
                 "CARD",
                 "PT",
+                "DAILY",
                 new BigDecimal("100000"),
                 new BigDecimal("20000"),
                 new BigDecimal("80000"),
+                List.of(new SalesSettlementReportService.SalesTrendPoint(
+                        LocalDate.of(2026, 3, 1),
+                        "2026-03-01",
+                        new BigDecimal("100000"),
+                        new BigDecimal("20000"),
+                        new BigDecimal("80000"),
+                        2L
+                )),
                 List.of(new SalesSettlementReportService.SalesReportRow(
                         "PT, Premium \"A\"",
                         "CARD",
@@ -34,8 +43,9 @@ class SalesSettlementCsvExporterTest {
 
         String csv = exporter.export(report);
 
-        assertTrue(csv.contains("startDate,endDate,paymentMethod,productKeyword,totalGrossSales,totalRefundAmount,totalNetSales"));
-        assertTrue(csv.contains("2026-03-01,2026-03-31,CARD,PT,100000,20000,80000"));
+        assertTrue(csv.contains("startDate,endDate,paymentMethod,productKeyword,trendGranularity,totalGrossSales,totalRefundAmount,totalNetSales"));
+        assertTrue(csv.contains("2026-03-01,2026-03-31,CARD,PT,DAILY,100000,20000,80000"));
+        assertTrue(csv.contains("bucketStartDate,bucketLabel,grossSales,refundAmount,netSales,transactionCount"));
         assertTrue(csv.contains("productName,paymentMethod,grossSales,refundAmount,netSales,transactionCount"));
         assertTrue(csv.contains("\"PT, Premium \"\"A\"\"\",CARD,100000,20000,80000,2"));
     }

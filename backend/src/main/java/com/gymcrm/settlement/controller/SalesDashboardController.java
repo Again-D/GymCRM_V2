@@ -44,7 +44,8 @@ public class SalesDashboardController {
             BigDecimal todayNetSales,
             BigDecimal monthNetSales,
             long newMemberCount,
-            long expiringMemberCount
+            long expiringMemberCount,
+            long refundCount
     ) {
         static SalesDashboardResponse from(SalesDashboardService.SalesDashboardResult result) {
             return new SalesDashboardResponse(
@@ -53,7 +54,8 @@ public class SalesDashboardController {
                     result.todayNetSales(),
                     result.monthNetSales(),
                     result.newMemberCount(),
-                    result.expiringMemberCount()
+                    result.expiringMemberCount(),
+                    result.refundCount()
             );
         }
     }

@@ -93,7 +93,7 @@ class SalesSettlementReportServiceIntegrationTest {
         ));
 
         SalesSettlementReportService.SalesReportResult report = reportService.getReport(
-                new SalesSettlementReportService.ReportQuery(reportDate, reportDate, null, keyword)
+                new SalesSettlementReportService.ReportQuery(reportDate, reportDate, null, keyword, "DAILY")
         );
 
         assertNotNull(report.totalGrossSales());
@@ -103,6 +103,7 @@ class SalesSettlementReportServiceIntegrationTest {
         assertTrue(report.totalRefundAmount().compareTo(BigDecimal.ZERO) > 0);
         assertEquals(0, report.totalGrossSales().subtract(report.totalRefundAmount()).compareTo(report.totalNetSales()));
         assertEquals(2, report.rows().size());
+        assertEquals(1, report.trend().size());
 
         SalesSettlementReportService.SalesReportRow cardRow = report.rows().stream()
                 .filter(row -> row.paymentMethod().equals("CARD"))
@@ -116,7 +117,7 @@ class SalesSettlementReportServiceIntegrationTest {
         assertEquals(0, cardRow.grossSales().subtract(cardRow.refundAmount()).compareTo(cardRow.netSales()));
 
         SalesSettlementReportService.SalesReportResult cardOnlyReport = reportService.getReport(
-                new SalesSettlementReportService.ReportQuery(reportDate, reportDate, "CARD", keyword + "-CARD")
+                new SalesSettlementReportService.ReportQuery(reportDate, reportDate, "CARD", keyword + "-CARD", "DAILY")
         );
         assertEquals(1, cardOnlyReport.rows().size());
         assertEquals("CARD", cardOnlyReport.rows().get(0).paymentMethod());
@@ -138,13 +139,105 @@ class SalesSettlementReportServiceIntegrationTest {
                 OffsetDateTime.parse("2026-03-01T15:30:00Z"));
 
         SalesSettlementReportService.SalesReportResult report = reportService.getReport(
-                new SalesSettlementReportService.ReportQuery(reportDate, reportDate, "CARD", keyword)
+                new SalesSettlementReportService.ReportQuery(reportDate, reportDate, "CARD", keyword, "DAILY")
         );
 
         assertEquals(1, report.rows().size());
         assertEquals(0, new BigDecimal("100000").compareTo(report.totalGrossSales()));
         assertEquals(0, BigDecimal.ZERO.compareTo(report.totalRefundAmount()));
         assertEquals(0, new BigDecimal("100000").compareTo(report.totalNetSales()));
+        assertEquals(1, report.trend().size());
+        assertEquals(reportDate, report.trend().get(0).bucketStartDate());
+    }
+
+    @Test
+    @Transactional
+    void recentAdjustmentsReturnsRefundsInLatestFirstOrder() {
+        LocalDate reportDate = OffsetDateTime.now(ZoneOffset.UTC).toLocalDate();
+        String keyword = "ADJ-SAL-" + UUID.randomUUID().toString().substring(0, 6);
+        Member member = createActiveMember();
+        Product product = createCountProduct(keyword, new BigDecimal("100000"));
+
+        MembershipPurchaseService.PurchaseResult purchase = purchaseService.purchase(new MembershipPurchaseService.PurchaseRequest(
+                member.memberId(),
+                product.productId(),
+                null,
+                LocalDate.now(),
+                null,
+                "CARD",
+                null,
+                null
+        ));
+
+        refundService.refund(new MembershipRefundService.RefundRequest(
+                purchase.membership().membershipId(),
+                LocalDate.now(),
+                "CARD",
+                "최근 환불 테스트",
+                null,
+                null
+        ));
+
+        var adjustments = reportService.getRecentAdjustments(
+                new SalesSettlementReportService.ReportQuery(reportDate, reportDate, "CARD", keyword, null),
+                5
+        );
+
+        assertEquals(1, adjustments.size());
+        assertEquals("REFUND", adjustments.get(0).adjustmentType());
+        assertTrue(adjustments.get(0).productName().contains(keyword));
+    }
+
+    @Test
+    @Transactional
+    void recentAdjustmentsUsesPaymentIdAsTieBreakerWhenPaidAtMatches() {
+        LocalDate reportDate = LocalDate.of(2026, 3, 20);
+        String keyword = "ADJ-TIE-" + UUID.randomUUID().toString().substring(0, 6);
+        Member member = createActiveMember();
+        Product product = createCountProduct(keyword, new BigDecimal("100000"));
+        long membershipId = insertMembership(member.memberId(), product.productId(), keyword, reportDate);
+        OffsetDateTime paidAt = OffsetDateTime.parse("2026-03-20T01:00:00Z");
+
+        insertPayment(member.memberId(), membershipId, "REFUND", "CARD", new BigDecimal("20000"), paidAt);
+        insertPayment(member.memberId(), membershipId, "REFUND", "CARD", new BigDecimal("15000"), paidAt);
+
+        var adjustments = reportService.getRecentAdjustments(
+                new SalesSettlementReportService.ReportQuery(reportDate, reportDate, "CARD", keyword, null),
+                5
+        );
+
+        assertEquals(2, adjustments.size());
+        assertTrue(adjustments.get(0).paymentId() > adjustments.get(1).paymentId());
+    }
+
+    @Test
+    @Transactional
+    void reportSupportsWeeklyMonthlyAndYearlyTrendBuckets() {
+        LocalDate reportDate = LocalDate.of(2026, 3, 1);
+        String keyword = "GRAN-" + UUID.randomUUID().toString().substring(0, 6);
+        Member member = createActiveMember();
+        Product product = createCountProduct(keyword, new BigDecimal("100000"));
+        long membershipId = insertMembership(member.memberId(), product.productId(), keyword, reportDate);
+
+        insertPayment(member.memberId(), membershipId, "PURCHASE", "CARD", new BigDecimal("100000"),
+                OffsetDateTime.parse("2026-03-03T03:00:00Z"));
+
+        SalesSettlementReportService.SalesReportResult weeklyReport = reportService.getReport(
+                new SalesSettlementReportService.ReportQuery(reportDate, reportDate.plusDays(30), "CARD", keyword, "WEEKLY")
+        );
+        SalesSettlementReportService.SalesReportResult monthlyReport = reportService.getReport(
+                new SalesSettlementReportService.ReportQuery(reportDate, reportDate.plusDays(30), "CARD", keyword, "MONTHLY")
+        );
+        SalesSettlementReportService.SalesReportResult yearlyReport = reportService.getReport(
+                new SalesSettlementReportService.ReportQuery(reportDate, reportDate.plusDays(30), "CARD", keyword, "YEARLY")
+        );
+
+        assertEquals(LocalDate.of(2026, 3, 2), weeklyReport.trend().get(0).bucketStartDate());
+        assertEquals("2026-03-02 주간", weeklyReport.trend().get(0).bucketLabel());
+        assertEquals(LocalDate.of(2026, 3, 1), monthlyReport.trend().get(0).bucketStartDate());
+        assertEquals("2026-03", monthlyReport.trend().get(0).bucketLabel());
+        assertEquals(LocalDate.of(2026, 1, 1), yearlyReport.trend().get(0).bucketStartDate());
+        assertEquals("2026", yearlyReport.trend().get(0).bucketLabel());
     }
 
     private Member createActiveMember() {
@@ -167,7 +260,7 @@ class SalesSettlementReportServiceIntegrationTest {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
         return productService.create(new ProductService.ProductCreateRequest(
                 prefix + "-" + suffix,
-                "PT",
+                "MEMBERSHIP",
                 "COUNT",
                 price,
                 null,

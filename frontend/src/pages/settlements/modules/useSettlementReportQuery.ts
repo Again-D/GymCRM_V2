@@ -12,7 +12,8 @@ export function useSettlementReportQuery(filters: SettlementReportFilters) {
       startDate: filters.startDate, 
       endDate: filters.endDate, 
       paymentMethod: filters.paymentMethod, 
-      productKeyword: filters.productKeyword?.trim() 
+      productKeyword: filters.productKeyword?.trim(),
+      trendGranularity: filters.trendGranularity
     }),
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -24,6 +25,7 @@ export function useSettlementReportQuery(filters: SettlementReportFilters) {
       if (filters.productKeyword?.trim()) {
         params.set("productKeyword", filters.productKeyword.trim());
       }
+      params.set("trendGranularity", filters.trendGranularity);
       const response = await apiGet<SettlementReport>(
         `/api/v1/settlements/sales-report?${params.toString()}`,
       );

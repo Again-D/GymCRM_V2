@@ -1,0 +1,30 @@
+import type { SettlementTabKey } from "./types";
+
+export type SettlementTabDefinition = {
+  key: SettlementTabKey;
+  label: string;
+  description: string;
+};
+
+export const settlementTabs: SettlementTabDefinition[] = [
+  {
+    key: "salesAnalytics",
+    label: "매출 분석",
+    description: "운영 상황판, 기간 추이, 최근 환불을 확인합니다."
+  },
+  {
+    key: "trainerPayroll",
+    label: "트레이너 정산",
+    description: "월별 조회, 정산 확정, 정산서 출력을 준비합니다."
+  }
+];
+
+export const DEFAULT_SETTLEMENT_TAB: SettlementTabKey = "salesAnalytics";
+
+export function isSettlementTabKey(value: string | null | undefined): value is SettlementTabKey {
+  return settlementTabs.some((tab) => tab.key === value);
+}
+
+export function resolveSettlementTab(value: string | null | undefined): SettlementTabKey {
+  return isSettlementTabKey(value) ? value : DEFAULT_SETTLEMENT_TAB;
+}

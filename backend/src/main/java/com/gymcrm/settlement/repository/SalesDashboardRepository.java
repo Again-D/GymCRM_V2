@@ -53,7 +53,15 @@ public class SalesDashboardRepository {
                           AND mm.end_date IS NOT NULL
                           AND mm.end_date >= :baseDate
                           AND mm.end_date <= :expiringEndDate
-                    ) AS "expiringMemberCount"
+                    ) AS "expiringMemberCount",
+                    (
+                        SELECT COUNT(*)
+                        FROM payments pr
+                        WHERE pr.center_id = :centerId
+                          AND pr.is_deleted = FALSE
+                          AND pr.payment_type = 'REFUND'
+                          AND (pr.paid_at AT TIME ZONE 'Asia/Seoul')::date = :baseDate
+                    ) AS "refundCount"
                 FROM payments p
                 WHERE p.center_id = :centerId
                   AND p.is_deleted = FALSE
@@ -81,7 +89,8 @@ public class SalesDashboardRepository {
             BigDecimal todayNetSales,
             BigDecimal monthNetSales,
             Long newMemberCount,
-            Long expiringMemberCount
+            Long expiringMemberCount,
+            Long refundCount
     ) {
     }
 }

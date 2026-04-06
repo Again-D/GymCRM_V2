@@ -20,8 +20,11 @@ import type {
 import type { ProductRecord } from "../pages/products/modules/types";
 import type { CrmHistoryRow, CrmSendStatus } from "../pages/crm/modules/types";
 import type {
+  SalesDashboard,
+  SettlementRecentAdjustment,
   SettlementPaymentMethod,
   SettlementReport,
+  SettlementTrendGranularity,
 } from "../pages/settlements/modules/types";
 import type { ReservationTargetSummary } from "../pages/reservations/modules/useReservationTargetsQuery";
 import type {
@@ -640,16 +643,21 @@ const initialCrmHistoryRows: CrmHistoryRow[] = [
 type SettlementTransaction = {
   transactionId: number;
   transactionDate: string;
+  memberId: number;
   productId: number;
   paymentMethod: Exclude<SettlementPaymentMethod, "">;
   grossSales: number;
   refundAmount: number;
+  canceledAmount?: number;
+  memo?: string | null;
+  approvalRef?: string | null;
 };
 
 const initialSettlementTransactions: SettlementTransaction[] = [
   {
     transactionId: 21001,
     transactionDate: "2026-03-01",
+    memberId: 101,
     productId: 1,
     paymentMethod: "CARD",
     grossSales: 180000,
@@ -658,6 +666,7 @@ const initialSettlementTransactions: SettlementTransaction[] = [
   {
     transactionId: 21002,
     transactionDate: "2026-03-03",
+    memberId: 102,
     productId: 2,
     paymentMethod: "CARD",
     grossSales: 550000,
@@ -666,14 +675,17 @@ const initialSettlementTransactions: SettlementTransaction[] = [
   {
     transactionId: 21003,
     transactionDate: "2026-03-05",
+    memberId: 101,
     productId: 2,
     paymentMethod: "TRANSFER",
     grossSales: 550000,
     refundAmount: 110000,
+    memo: "부분 환불",
   },
   {
     transactionId: 21004,
     transactionDate: "2026-03-08",
+    memberId: 103,
     productId: 1,
     paymentMethod: "CASH",
     grossSales: 180000,
@@ -682,18 +694,23 @@ const initialSettlementTransactions: SettlementTransaction[] = [
   {
     transactionId: 21005,
     transactionDate: "2026-03-11",
+    memberId: 102,
     productId: 3,
     paymentMethod: "ETC",
     grossSales: 220000,
     refundAmount: 220000,
+    canceledAmount: 220000,
+    memo: "당일 취소",
   },
   {
     transactionId: 21006,
     transactionDate: "2026-03-12",
+    memberId: 101,
     productId: 2,
     paymentMethod: "CARD",
     grossSales: 550000,
     refundAmount: 0,
+    approvalRef: "MOCK-APPROVAL-21006",
   },
 ];
 
@@ -825,7 +842,42 @@ function envelope<T>(data: T): ApiEnvelope<T> {
 }
 
 function todayText() {
-  return new Date().toISOString().slice(0, 10);
+  return formatDateInSeoul(new Date());
+}
+
+function parseDateParts(dateText: string) {
+  const [yearText, monthText, dayText] = dateText.split("-");
+  return {
+    year: Number(yearText),
+    month: Number(monthText),
+    day: Number(dayText)
+  };
+}
+
+function formatUtcDate(date: Date) {
+  const year = date.getUTCFullYear();
+  const month = `${date.getUTCMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getUTCDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatDateInSeoul(date: Date) {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  });
+  const parts = formatter.formatToParts(date);
+  const lookup = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${lookup.year}-${lookup.month}-${lookup.day}`;
+}
+
+function addDaysUtc(dateText: string, days: number) {
+  const { year, month, day } = parseDateParts(dateText);
+  const next = new Date(Date.UTC(year, month - 1, day));
+  next.setUTCDate(next.getUTCDate() + days);
+  return formatUtcDate(next);
 }
 
 function getVisibleMemberships(memberId: number) {
@@ -869,9 +921,7 @@ function deriveMembershipOperationalStatus(
 }
 
 function addDays(dateText: string, days: number) {
-  const next = new Date(`${dateText}T00:00:00`);
-  next.setDate(next.getDate() + days);
-  return next.toISOString().slice(0, 10);
+  return addDaysUtc(dateText, days);
 }
 
 function deriveMembershipExpiryDate(memberships: PurchasedMembership[]) {
@@ -1019,12 +1069,75 @@ function filterCrmHistory(url: URL) {
     .map((row) => ({ ...row }));
 }
 
+function formatBucketLabel(bucketStartDate: string, granularity: SettlementTrendGranularity) {
+  const { year, month, day } = parseDateParts(bucketStartDate);
+  if (granularity === "DAILY") {
+    return `${year}-${month}-${day}`;
+  }
+  if (granularity === "MONTHLY") {
+    return `${year}-${month}`;
+  }
+  if (granularity === "YEARLY") {
+    return `${year}`;
+  }
+  return `${bucketStartDate} 주간`;
+}
+
+function toBucketStartDate(dateText: string, granularity: SettlementTrendGranularity) {
+  if (granularity === "DAILY") {
+    return dateText;
+  }
+  if (granularity === "MONTHLY") {
+    return `${dateText.slice(0, 7)}-01`;
+  }
+  if (granularity === "YEARLY") {
+    return `${dateText.slice(0, 4)}-01-01`;
+  }
+
+  const { year, month, day } = parseDateParts(dateText);
+  const start = new Date(Date.UTC(year, month - 1, day));
+  const dayOfWeek = start.getUTCDay();
+  const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  start.setUTCDate(start.getUTCDate() + diff);
+  return formatUtcDate(start);
+}
+
+function filterSalesDashboard(url: URL): SalesDashboard {
+  const baseDate = url.searchParams.get("baseDate")?.trim() ?? todayText();
+  const parsedExpiringWithinDays = Number.parseInt(url.searchParams.get("expiringWithinDays") ?? "7", 10);
+  const expiringWithinDays = Number.isFinite(parsedExpiringWithinDays) ? parsedExpiringWithinDays : 7;
+  const monthPrefix = baseDate.slice(0, 7);
+
+  const todayTransactions = mockSettlementTransactions.filter((transaction) => transaction.transactionDate === baseDate);
+  const monthTransactions = mockSettlementTransactions.filter((transaction) => transaction.transactionDate.startsWith(monthPrefix));
+  const newMemberCount = mockMembers.filter((member) => member.joinDate === baseDate).length;
+  const expiringMemberCount = Array.from(mockMemberMemberships.values())
+    .flat()
+    .filter((membership) =>
+      membership.endDate != null &&
+      membership.endDate >= baseDate &&
+      membership.endDate <= addDaysUtc(baseDate, expiringWithinDays)
+    ).length;
+
+  return {
+    baseDate,
+    expiringWithinDays,
+    todayNetSales: todayTransactions.reduce((sum, transaction) => sum + transaction.grossSales - transaction.refundAmount, 0),
+    monthNetSales: monthTransactions.reduce((sum, transaction) => sum + transaction.grossSales - transaction.refundAmount, 0),
+    newMemberCount,
+    expiringMemberCount,
+    refundCount: todayTransactions.filter((transaction) => transaction.refundAmount > 0).length
+  };
+}
+
 function filterSettlementReport(url: URL): SettlementReport {
   const startDate = url.searchParams.get("startDate")?.trim() ?? todayText();
   const endDate = url.searchParams.get("endDate")?.trim() ?? todayText();
   const paymentMethod = (url.searchParams.get("paymentMethod")?.trim() ??
     "") as SettlementPaymentMethod;
   const productKeyword = url.searchParams.get("productKeyword")?.trim() ?? "";
+  const trendGranularity = (url.searchParams.get("trendGranularity")?.trim() ??
+    "DAILY") as SettlementTrendGranularity;
 
   const groupedRows = new Map<
     string,
@@ -1080,16 +1193,111 @@ function filterSettlementReport(url: URL): SettlementReport {
     return left.productName.localeCompare(right.productName, "ko");
   });
 
+  const groupedTrend = new Map<
+    string,
+    {
+      bucketStartDate: string;
+      bucketLabel: string;
+      grossSales: number;
+      refundAmount: number;
+      netSales: number;
+      transactionCount: number;
+    }
+  >();
+
+  for (const transaction of mockSettlementTransactions) {
+    if (transaction.transactionDate < startDate || transaction.transactionDate > endDate) {
+      continue;
+    }
+    if (paymentMethod && transaction.paymentMethod !== paymentMethod) {
+      continue;
+    }
+    const product = mockProducts.find((item) => item.productId === transaction.productId);
+    const productName = product?.productName ?? `상품 #${transaction.productId}`;
+    if (productKeyword && !productName.includes(productKeyword)) {
+      continue;
+    }
+
+    const bucketStartDate = toBucketStartDate(transaction.transactionDate, trendGranularity);
+    const bucketLabel = formatBucketLabel(bucketStartDate, trendGranularity);
+    const current = groupedTrend.get(bucketStartDate) ?? {
+      bucketStartDate,
+      bucketLabel,
+      grossSales: 0,
+      refundAmount: 0,
+      netSales: 0,
+      transactionCount: 0
+    };
+
+    current.grossSales += transaction.grossSales;
+    current.refundAmount += transaction.refundAmount;
+    current.netSales += transaction.grossSales - transaction.refundAmount;
+    current.transactionCount += 1;
+    groupedTrend.set(bucketStartDate, current);
+  }
+
+  const trend = Array.from(groupedTrend.values()).sort((left, right) =>
+    left.bucketStartDate.localeCompare(right.bucketStartDate)
+  );
+
   return {
     startDate,
     endDate,
     paymentMethod: paymentMethod || null,
     productKeyword: productKeyword || null,
+    trendGranularity,
     totalGrossSales: rows.reduce((sum, row) => sum + row.grossSales, 0),
     totalRefundAmount: rows.reduce((sum, row) => sum + row.refundAmount, 0),
     totalNetSales: rows.reduce((sum, row) => sum + row.netSales, 0),
+    trend,
     rows,
   };
+}
+
+function filterSettlementRecentAdjustments(url: URL): SettlementRecentAdjustment[] {
+  const startDate = url.searchParams.get("startDate")?.trim() ?? todayText();
+  const endDate = url.searchParams.get("endDate")?.trim() ?? todayText();
+  const paymentMethod = (url.searchParams.get("paymentMethod")?.trim() ?? "") as SettlementPaymentMethod;
+  const productKeyword = url.searchParams.get("productKeyword")?.trim() ?? "";
+  const limit = Number.parseInt(url.searchParams.get("limit") ?? "5", 10) || 5;
+
+  return mockSettlementTransactions
+    .filter((transaction) => transaction.transactionDate >= startDate && transaction.transactionDate <= endDate)
+    .filter((transaction) => !paymentMethod || transaction.paymentMethod === paymentMethod)
+    .map((transaction) => {
+      const product = mockProducts.find((item) => item.productId === transaction.productId);
+      const member = mockMembers.find((item) => item.memberId === transaction.memberId);
+      return {
+        transaction,
+        productName: product?.productName ?? `상품 #${transaction.productId}`,
+        memberName: member?.memberName ?? `회원 #${transaction.memberId}`
+      };
+    })
+    .filter(({ transaction, productName }) => !productKeyword || productName.includes(productKeyword))
+    .flatMap(({ transaction, productName, memberName }) => {
+      const rows: SettlementRecentAdjustment[] = [];
+      if (transaction.refundAmount > 0) {
+        rows.push({
+          paymentId: transaction.transactionId,
+          adjustmentType: "REFUND",
+          productName,
+          memberName,
+          paymentMethod: transaction.paymentMethod,
+          amount: transaction.refundAmount,
+          paidAt: `${transaction.transactionDate}T10:00:00+09:00`,
+          memo: transaction.memo ?? null,
+          approvalRef: transaction.approvalRef ?? null
+        });
+      }
+      return rows;
+    })
+    .sort((left, right) => {
+      if (left.paidAt !== right.paidAt) {
+        return right.paidAt.localeCompare(left.paidAt);
+      }
+      return right.paymentId - left.paymentId;
+    })
+    .slice(0, limit);
 }
 
 function filterMembers(url: URL) {
@@ -2438,6 +2646,14 @@ export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
 
   if (url.pathname === "/api/v1/settlements/sales-report") {
     return envelope(filterSettlementReport(url));
+  }
+
+  if (url.pathname === "/api/v1/settlements/sales-dashboard") {
+    return envelope(filterSalesDashboard(url));
+  }
+
+  if (url.pathname === "/api/v1/settlements/sales-report/recent-adjustments") {
+    return envelope(filterSettlementRecentAdjustments(url));
   }
 
   return null;

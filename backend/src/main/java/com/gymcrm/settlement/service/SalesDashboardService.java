@@ -61,7 +61,8 @@ public class SalesDashboardService {
                 nullSafe(row.todayNetSales()),
                 nullSafe(row.monthNetSales()),
                 row.newMemberCount() == null ? 0L : row.newMemberCount(),
-                row.expiringMemberCount() == null ? 0L : row.expiringMemberCount()
+                row.expiringMemberCount() == null ? 0L : row.expiringMemberCount(),
+                row.refundCount() == null ? 0L : row.refundCount()
         );
         salesDashboardCacheService.put(centerId, result);
         return result;
@@ -83,7 +84,8 @@ public class SalesDashboardService {
             BigDecimal todayNetSales,
             BigDecimal monthNetSales,
             long newMemberCount,
-            long expiringMemberCount
+            long expiringMemberCount,
+            long refundCount
     ) {
     }
 }
