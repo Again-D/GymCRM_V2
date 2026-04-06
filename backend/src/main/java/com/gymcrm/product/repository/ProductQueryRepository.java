@@ -32,6 +32,7 @@ public class ProductQueryRepository {
                         productEntity.allowHold,
                         productEntity.maxHoldDays,
                         productEntity.maxHoldCount,
+                        productEntity.allowHoldBypass,
                         productEntity.allowTransfer,
                         productEntity.productStatus,
                         productEntity.description,
