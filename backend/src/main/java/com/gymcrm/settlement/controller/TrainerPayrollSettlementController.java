@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
 import java.time.YearMonth;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 
 @Validated
@@ -57,7 +58,7 @@ public class TrainerPayrollSettlementController {
             BigDecimal sessionUnitPrice
     ) {
         TrainerPayrollSettlementService.MonthlyPayrollResult result = service.getMonthlyPayroll(
-                new TrainerPayrollSettlementService.MonthlyPayrollQuery(YearMonth.parse(settlementMonth), sessionUnitPrice)
+                new TrainerPayrollSettlementService.MonthlyPayrollQuery(parseSettlementMonth(settlementMonth), sessionUnitPrice)
         );
         return ApiResponse.success(MonthlyTrainerPayrollResponse.from(result), "트레이너 월간 정산 조회 성공");
     }
@@ -69,7 +70,7 @@ public class TrainerPayrollSettlementController {
     ) {
         TrainerPayrollSettlementService.MonthlyPayrollResult result = trainerSettlementLifecycleService.confirmMonthlySettlement(
                 new TrainerPayrollSettlementService.MonthlyPayrollQuery(
-                        YearMonth.parse(request.settlementMonth()),
+                        parseSettlementMonth(request.settlementMonth()),
                         request.sessionUnitPrice()
                 )
         );
@@ -83,7 +84,7 @@ public class TrainerPayrollSettlementController {
             @Pattern(regexp = "^\\d{4}-\\d{2}$", message = "settlementMonth must be YYYY-MM")
             String settlementMonth
     ) {
-        List<TrainerSettlement> settlements = trainerSettlementLifecycleService.getConfirmedSettlements(YearMonth.parse(settlementMonth));
+        List<TrainerSettlement> settlements = trainerSettlementLifecycleService.getConfirmedSettlements(parseSettlementMonth(settlementMonth));
         if (settlements.isEmpty()) {
             throw new ApiException(
                     ErrorCode.NOT_FOUND,
@@ -96,6 +97,14 @@ public class TrainerPayrollSettlementController {
                 .contentType(new MediaType("text", "csv"))
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(fileName).build().toString())
                 .body(csv);
+    }
+
+    private YearMonth parseSettlementMonth(String settlementMonth) {
+        try {
+            return YearMonth.parse(settlementMonth);
+        } catch (DateTimeParseException ex) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "settlementMonth must be YYYY-MM");
+        }
     }
 
     public record MonthlyTrainerPayrollResponse(
