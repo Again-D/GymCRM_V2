@@ -4,6 +4,7 @@ export type SettlementPaymentMethod = "" | "CASH" | "CARD" | "TRANSFER" | "ETC";
 export type SettlementTabKey = "salesAnalytics" | "trainerPayroll";
 export type SettlementTrendGranularity = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
 export type SettlementAdjustmentType = "REFUND";
+export type TrainerSettlementStatus = "DRAFT" | "CONFIRMED";
 
 export type SettlementReportFilters = {
   startDate: string;
@@ -66,6 +67,35 @@ export type SettlementRecentAdjustment = {
   approvalRef: string | null;
 };
 
+export type TrainerPayrollFilters = {
+  settlementMonth: string;
+  sessionUnitPrice: string;
+};
+
+export type TrainerPayrollQuery = {
+  settlementMonth: string;
+  sessionUnitPrice: number;
+};
+
+export type TrainerPayrollRow = {
+  settlementId: number | null;
+  trainerUserId: number | null;
+  trainerName: string;
+  completedClassCount: number;
+  sessionUnitPrice: number;
+  payrollAmount: number;
+};
+
+export type TrainerPayrollReport = {
+  settlementMonth: string;
+  sessionUnitPrice: number;
+  totalCompletedClassCount: number;
+  totalPayrollAmount: number;
+  settlementStatus: TrainerSettlementStatus;
+  confirmedAt: string | null;
+  rows: TrainerPayrollRow[];
+};
+
 export function createDefaultSettlementFilters(): SettlementReportFilters {
   const today = todayLocalDate();
   return {
@@ -74,5 +104,12 @@ export function createDefaultSettlementFilters(): SettlementReportFilters {
     paymentMethod: "",
     productKeyword: "",
     trendGranularity: "DAILY"
+  };
+}
+
+export function createDefaultTrainerPayrollFilters(baseDate = todayLocalDate()): TrainerPayrollFilters {
+  return {
+    settlementMonth: baseDate.slice(0, 7),
+    sessionUnitPrice: "50000"
   };
 }
