@@ -842,7 +842,42 @@ function envelope<T>(data: T): ApiEnvelope<T> {
 }
 
 function todayText() {
-  return new Date().toISOString().slice(0, 10);
+  return formatDateInSeoul(new Date());
+}
+
+function parseDateParts(dateText: string) {
+  const [yearText, monthText, dayText] = dateText.split("-");
+  return {
+    year: Number(yearText),
+    month: Number(monthText),
+    day: Number(dayText)
+  };
+}
+
+function formatUtcDate(date: Date) {
+  const year = date.getUTCFullYear();
+  const month = `${date.getUTCMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getUTCDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatDateInSeoul(date: Date) {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  });
+  const parts = formatter.formatToParts(date);
+  const lookup = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${lookup.year}-${lookup.month}-${lookup.day}`;
+}
+
+function addDaysUtc(dateText: string, days: number) {
+  const { year, month, day } = parseDateParts(dateText);
+  const next = new Date(Date.UTC(year, month - 1, day));
+  next.setUTCDate(next.getUTCDate() + days);
+  return formatUtcDate(next);
 }
 
 function getVisibleMemberships(memberId: number) {
@@ -886,9 +921,7 @@ function deriveMembershipOperationalStatus(
 }
 
 function addDays(dateText: string, days: number) {
-  const next = new Date(`${dateText}T00:00:00`);
-  next.setDate(next.getDate() + days);
-  return next.toISOString().slice(0, 10);
+  return addDaysUtc(dateText, days);
 }
 
 function deriveMembershipExpiryDate(memberships: PurchasedMembership[]) {
@@ -1036,10 +1069,8 @@ function filterCrmHistory(url: URL) {
     .map((row) => ({ ...row }));
 }
 
-function formatBucketLabel(date: Date, granularity: SettlementTrendGranularity) {
-  const year = date.getFullYear();
-  const month = `${date.getMonth() + 1}`.padStart(2, "0");
-  const day = `${date.getDate()}`.padStart(2, "0");
+function formatBucketLabel(bucketStartDate: string, granularity: SettlementTrendGranularity) {
+  const { year, month, day } = parseDateParts(bucketStartDate);
   if (granularity === "DAILY") {
     return `${year}-${month}-${day}`;
   }
@@ -1049,38 +1080,32 @@ function formatBucketLabel(date: Date, granularity: SettlementTrendGranularity) 
   if (granularity === "YEARLY") {
     return `${year}`;
   }
-
-  const start = new Date(date);
-  const dayOfWeek = start.getDay();
-  const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-  start.setDate(start.getDate() + diff);
-  const bucketMonth = `${start.getMonth() + 1}`.padStart(2, "0");
-  const bucketDay = `${start.getDate()}`.padStart(2, "0");
-  return `${start.getFullYear()}-${bucketMonth}-${bucketDay} 주간`;
+  return `${bucketStartDate} 주간`;
 }
 
 function toBucketStartDate(dateText: string, granularity: SettlementTrendGranularity) {
-  const date = new Date(`${dateText}T00:00:00+09:00`);
   if (granularity === "DAILY") {
     return dateText;
   }
   if (granularity === "MONTHLY") {
-    return `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, "0")}-01`;
+    return `${dateText.slice(0, 7)}-01`;
   }
   if (granularity === "YEARLY") {
-    return `${date.getFullYear()}-01-01`;
+    return `${dateText.slice(0, 4)}-01-01`;
   }
 
-  const start = new Date(date);
-  const dayOfWeek = start.getDay();
+  const { year, month, day } = parseDateParts(dateText);
+  const start = new Date(Date.UTC(year, month - 1, day));
+  const dayOfWeek = start.getUTCDay();
   const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-  start.setDate(start.getDate() + diff);
-  return `${start.getFullYear()}-${`${start.getMonth() + 1}`.padStart(2, "0")}-${`${start.getDate()}`.padStart(2, "0")}`;
+  start.setUTCDate(start.getUTCDate() + diff);
+  return formatUtcDate(start);
 }
 
 function filterSalesDashboard(url: URL): SalesDashboard {
   const baseDate = url.searchParams.get("baseDate")?.trim() ?? todayText();
-  const expiringWithinDays = Number.parseInt(url.searchParams.get("expiringWithinDays") ?? "7", 10) || 7;
+  const parsedExpiringWithinDays = Number.parseInt(url.searchParams.get("expiringWithinDays") ?? "7", 10);
+  const expiringWithinDays = Number.isFinite(parsedExpiringWithinDays) ? parsedExpiringWithinDays : 7;
   const monthPrefix = baseDate.slice(0, 7);
 
   const todayTransactions = mockSettlementTransactions.filter((transaction) => transaction.transactionDate === baseDate);
@@ -1091,9 +1116,7 @@ function filterSalesDashboard(url: URL): SalesDashboard {
     .filter((membership) =>
       membership.endDate != null &&
       membership.endDate >= baseDate &&
-      membership.endDate <= new Date(new Date(`${baseDate}T00:00:00+09:00`).getTime() + expiringWithinDays * 86400000)
-        .toISOString()
-        .slice(0, 10)
+      membership.endDate <= addDaysUtc(baseDate, expiringWithinDays)
     ).length;
 
   return {
@@ -1196,7 +1219,7 @@ function filterSettlementReport(url: URL): SettlementReport {
     }
 
     const bucketStartDate = toBucketStartDate(transaction.transactionDate, trendGranularity);
-    const bucketLabel = formatBucketLabel(new Date(`${bucketStartDate}T00:00:00+09:00`), trendGranularity);
+    const bucketLabel = formatBucketLabel(bucketStartDate, trendGranularity);
     const current = groupedTrend.get(bucketStartDate) ?? {
       bucketStartDate,
       bucketLabel,

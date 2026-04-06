@@ -90,6 +90,25 @@ describe("mockData membership propagation", () => {
     expect(recentAdjustments.every((row) => row.adjustmentType === "REFUND")).toBe(true);
   });
 
+  it("preserves expiringWithinDays=0 for the dashboard window", () => {
+    const dashboard = getMockResponse(
+      "/api/v1/settlements/sales-dashboard?baseDate=2026-03-11&expiringWithinDays=0"
+    )?.data as { expiringWithinDays: number; expiringMemberCount: number };
+
+    expect(dashboard.expiringWithinDays).toBe(0);
+    expect(dashboard.expiringMemberCount).toBe(0);
+  });
+
+  it("groups weekly settlement trends by Seoul business week regardless of host timezone", () => {
+    const report = getMockResponse(
+      "/api/v1/settlements/sales-report?startDate=2026-03-01&endDate=2026-03-31&paymentMethod=CARD&productKeyword=PT&trendGranularity=WEEKLY"
+    )?.data as SettlementReport;
+
+    expect(report.trend.length).toBeGreaterThan(0);
+    expect(report.trend.every((point) => point.bucketLabel.endsWith("주간"))).toBe(true);
+    expect(report.trend.some((point) => point.bucketStartDate === "2026-03-09")).toBe(true);
+  });
+
   it("creates and updates a member through mock helpers", () => {
     const created = createMockMember({
       memberName: "신규 모의회원",

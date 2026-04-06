@@ -350,10 +350,7 @@ export default function SettlementsPage() {
                 </Space>
               }
               extra={
-                <Button icon={<ReloadOutlined />} onClick={() => {
-                  resetSettlementWorkspace();
-                  void reloadAll();
-                }}>
+                <Button icon={<ReloadOutlined />} onClick={resetSettlementWorkspace}>
                   필터 초기화
                 </Button>
               }
