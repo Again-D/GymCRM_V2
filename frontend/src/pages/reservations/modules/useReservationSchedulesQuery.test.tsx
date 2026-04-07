@@ -26,7 +26,7 @@ describe("useReservationSchedulesQuery", () => {
     setMockApiModeForTests(false);
   });
 
-  it("loads reservation schedules", async () => {
+  it("loads reservation schedules from the API response as-is", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-03-12T09:30:00+09:00"));
     const fetchMock = vi.fn().mockResolvedValue({
@@ -34,16 +34,6 @@ describe("useReservationSchedulesQuery", () => {
       json: async () => ({
         success: true,
         data: [
-          {
-            scheduleId: 7001,
-            scheduleType: "PT",
-            trainerName: "정트레이너",
-            slotTitle: "오전 PT A",
-            startAt: "2026-03-12T09:00:00+09:00",
-            endAt: "2026-03-12T09:50:00+09:00",
-            capacity: 1,
-            currentCount: 1
-          },
           {
             scheduleId: 7002,
             scheduleType: "GX",
@@ -75,7 +65,64 @@ describe("useReservationSchedulesQuery", () => {
       expect(result.current.reservationSchedules).toHaveLength(1);
     });
     expect(result.current.reservationSchedules[0]?.scheduleId).toBe(7002);
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/api/v1/reservations/schedules"),
+      expect.anything(),
+    );
     vi.useRealTimers();
+  });
+
+  it("requests schedule enrichment ids and preserves matching schedules in the response", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: [
+          {
+            scheduleId: 7001,
+            scheduleType: "PT",
+            trainerName: "정트레이너",
+            slotTitle: "오전 PT A",
+            startAt: "2026-03-12T09:00:00+09:00",
+            endAt: "2026-03-12T09:50:00+09:00",
+            capacity: 1,
+            currentCount: 1
+          },
+          {
+            scheduleId: 7101,
+            scheduleType: "GX",
+            trainerName: "한코치",
+            slotTitle: "저녁 GX C",
+            startAt: "2026-03-10T19:00:00+09:00",
+            endAt: "2026-03-10T19:50:00+09:00",
+            capacity: 12,
+            currentCount: 7
+          }
+        ],
+        message: "ok",
+        timestamp: "2026-03-12T00:00:00Z",
+        traceId: "trace-2"
+      })
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const queryClient = createTestQueryClient();
+    const { result } = renderHook(() => useReservationSchedulesQuery(), {
+      wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper>,
+    });
+
+    await act(async () => {
+      await result.current.loadReservationSchedules([7101, 7001, 7101]);
+    });
+
+    await vi.waitFor(() => {
+      expect(result.current.reservationSchedules).toHaveLength(2);
+    });
+    expect(result.current.reservationSchedules.map((schedule) => schedule.scheduleId)).toEqual([7001, 7101]);
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/api/v1/reservations/schedules?scheduleIds=7001&scheduleIds=7101"),
+      expect.anything(),
+    );
   });
 
   // Ignored late response test as TanStack Query handles request ID-like concurrency internally.

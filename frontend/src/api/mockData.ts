@@ -1791,6 +1791,11 @@ export function createMockPtReservation(input: {
   });
 }
 
+function isMockScheduleVisibleByDefault(schedule: ReservationScheduleSummary) {
+  const startAt = new Date(schedule.startAt).getTime();
+  return Number.isFinite(startAt) && startAt > Date.now();
+}
+
 export function patchMockReservation(
   memberId: number,
   reservationId: number,
@@ -2703,9 +2708,38 @@ export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
     return envelope(targets);
   }
 
-  if (url.pathname === "/api/v1/reservations/schedules") {
+  if (url.pathname === "/api/v1/reservations") {
+    const memberId = Number(url.searchParams.get("memberId"));
+    const scheduleId = Number(url.searchParams.get("scheduleId"));
+    const status = url.searchParams.get("status")?.trim().toUpperCase() ?? "";
+
+    const reservations = Number.isInteger(memberId) && memberId > 0
+      ? (mockReservationsByMemberId.get(memberId) ?? [])
+      : Array.from(mockReservationsByMemberId.values()).flat();
+
     return envelope(
-      mockReservationSchedules.map((schedule) => ({ ...schedule })),
+      reservations
+        .filter((reservation) => !Number.isInteger(scheduleId) || scheduleId <= 0 || reservation.scheduleId === scheduleId)
+        .filter((reservation) => !status || reservation.reservationStatus === status)
+        .map((reservation) => ({ ...reservation })),
+    );
+  }
+
+  if (url.pathname === "/api/v1/reservations/schedules") {
+    const requestedScheduleIds = Array.from(
+      new Set(
+        url.searchParams
+          .getAll("scheduleIds")
+          .map((value) => Number(value))
+          .filter((value) => Number.isInteger(value) && value > 0),
+      ),
+    );
+    const visibleSchedules = mockReservationSchedules.filter((schedule) =>
+      isMockScheduleVisibleByDefault(schedule) ||
+      requestedScheduleIds.includes(schedule.scheduleId),
+    );
+    return envelope(
+      visibleSchedules.map((schedule) => ({ ...schedule })),
     );
   }
 

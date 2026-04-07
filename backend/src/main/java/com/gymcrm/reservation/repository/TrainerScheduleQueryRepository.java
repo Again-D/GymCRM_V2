@@ -7,8 +7,10 @@ import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Repository;
 
 import java.time.OffsetDateTime;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static com.gymcrm.reservation.entity.QTrainerScheduleEntity.trainerScheduleEntity;
 
@@ -34,6 +36,30 @@ public class TrainerScheduleQueryRepository {
                 .where(
                         trainerScheduleEntity.centerId.eq(centerId),
                         trainerScheduleEntity.isDeleted.isFalse()
+                )
+                .orderBy(trainerScheduleEntity.startAt.asc(), trainerScheduleEntity.scheduleId.asc())
+                .fetch()
+                .stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
+    public List<TrainerSchedule> findAllByIds(Long centerId, List<Long> scheduleIds) {
+        Set<Long> normalizedIds = scheduleIds == null
+                ? Set.of()
+                : scheduleIds.stream()
+                .filter(id -> id != null && id > 0)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        if (normalizedIds.isEmpty()) {
+            return List.of();
+        }
+
+        return queryFactory
+                .selectFrom(trainerScheduleEntity)
+                .where(
+                        trainerScheduleEntity.centerId.eq(centerId),
+                        trainerScheduleEntity.isDeleted.isFalse(),
+                        trainerScheduleEntity.scheduleId.in(normalizedIds)
                 )
                 .orderBy(trainerScheduleEntity.startAt.asc(), trainerScheduleEntity.scheduleId.asc())
                 .fetch()

@@ -37,6 +37,11 @@ public class TrainerScheduleRepository {
         return trainerScheduleQueryRepository.findAll(centerId);
     }
 
+    public List<TrainerSchedule> findAllByIds(Long centerId, List<Long> scheduleIds) {
+        entityManager.clear();
+        return trainerScheduleQueryRepository.findAllByIds(centerId, scheduleIds);
+    }
+
     @Transactional
     public Optional<TrainerSchedule> incrementCurrentCountIfAvailable(Long scheduleId, Long actorUserId) {
         return trainerScheduleQueryRepository.incrementCurrentCountIfAvailable(scheduleId, actorUserId);

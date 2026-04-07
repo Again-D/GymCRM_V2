@@ -1228,6 +1228,74 @@ GET /api/v1/members?keyword=홍길동&status=ACTIVE&sort=name&order=asc&page=1&s
 
 ---
 
+### 4.7.1 예약 스케줄 목록 조회 API
+
+| 항목 | 내용 |
+|------|------|
+| **URL** | `GET /api/v1/reservations/schedules` |
+| **설명** | 예약 생성용 미래 스케줄 목록을 조회한다. 필요 시 특정 `scheduleIds`를 함께 전달해 워크벤치에서 이미 생성된 예약의 일정 정보도 보강 조회할 수 있다. |
+| **인증** | 필요 |
+| **권한** | PROTOTYPE, CENTER_ADMIN, MANAGER, DESK, TRAINER |
+
+**Query Parameters:**
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `scheduleIds` | Long[] | X | 현재 기본 목록에 없더라도 함께 복원해야 하는 스케줄 ID 목록. 같은 키를 반복해서 전달한다. |
+
+**Request Example:**
+
+```http
+GET /api/v1/reservations/schedules?scheduleIds=7101&scheduleIds=7102
+Authorization: Bearer {accessToken}
+```
+
+**Response Body (성공 - 200):**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "scheduleId": 7002,
+      "centerId": 1,
+      "trainerUserId": 42,
+      "scheduleType": "PT",
+      "trainerName": "김트레이너",
+      "slotTitle": "오후 PT B",
+      "startAt": "2026-03-12T15:00:00+09:00",
+      "endAt": "2026-03-12T15:50:00+09:00",
+      "capacity": 1,
+      "currentCount": 0,
+      "memo": null
+    },
+    {
+      "scheduleId": 7101,
+      "centerId": 1,
+      "trainerUserId": null,
+      "scheduleType": "GX",
+      "trainerName": "한코치",
+      "slotTitle": "저녁 GX C",
+      "startAt": "2026-03-10T19:00:00+09:00",
+      "endAt": "2026-03-10T19:50:00+09:00",
+      "capacity": 12,
+      "currentCount": 7,
+      "memo": null
+    }
+  ],
+  "message": "예약 스케줄 목록 조회 성공",
+  "timestamp": "2026-04-07T11:00:00+09:00"
+}
+```
+
+**비즈니스 규칙:**
+- `scheduleIds`가 없으면 현재 시각 이후의 미래 스케줄만 반환한다.
+- `scheduleIds`가 있으면 기본 미래 스케줄 목록에 요청한 ID와 일치하는 스케줄을 합집합으로 추가한다.
+- 존재하지 않거나 삭제된 스케줄 ID는 무시하며 오류를 발생시키지 않는다.
+- 응답은 `startAt` 오름차순, `scheduleId` 오름차순으로 정렬한다.
+
+---
+
 ### 4.8 QR 코드 체크인 API
 
 | 항목 | 내용 |
@@ -2153,6 +2221,7 @@ X-Cache: HIT
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| v1.4.0 | 2026-04-07 | 예약 스케줄 목록 API에 선택적 `scheduleIds` 보강 조회 계약을 추가해 예약 워크벤치의 일정 복원을 지원하도록 문서를 동기화 | Codex |
 | v1.3.0 | 2026-04-06 | 트레이너 정산 API를 현재 구현 기준으로 동기화하여 `/trainer-payroll` 조회의 확정 상태 필드, `/trainer-payroll/confirm` 확정 저장, `/trainer-payroll/document` CSV 출력 계약을 반영 | Codex |
 | v1.2.0 | 2026-04-03 | 정산 API 계약을 현재 구현 기준으로 동기화하여 `sales-dashboard`, 확장된 `sales-report`, `sales-report/recent-adjustments`, `sales-report/export`와 Phase 1 환불 기준을 명시 | Codex |
 | v1.1.0 | 2026-04-03 | 상품 API의 `allowHoldBypass` 필드와 회원권 홀딩 API의 `overrideLimits`/자동 재개 규칙을 현재 구현 기준으로 동기화하고, 상품 수정 메서드를 `PATCH`로 정정 | Codex |

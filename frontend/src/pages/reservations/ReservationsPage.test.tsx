@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AuthStateProvider } from "../../app/auth";
 import { ApiClientError, setMockApiModeForTests } from "../../api/client";
-import { resetMockData } from "../../api/mockData";
+import { patchMockReservation, resetMockData } from "../../api/mockData";
 import { SelectedMemberProvider } from "../members/modules/SelectedMemberContext";
 import { getReservationPanelErrorMessage } from "./modules/getReservationPanelErrorMessage";
 import ReservationsPage, { formatBusinessClockTime } from "./ReservationsPage";
@@ -175,6 +175,51 @@ describe("ReservationsPage", () => {
     expect(await screen.findByText("PT는 트레이너 가능 시간에서 60분 블록으로 예약합니다.")).toBeTruthy();
     expect(await screen.findByText("담당 트레이너 기본값: 정트레이너")).toBeTruthy();
     expect((submitButton as HTMLButtonElement).disabled).toBe(true);
+  }, 15000);
+
+  it("recovers past reservation schedule details through schedule id enrichment", async () => {
+    vi.spyOn(dateUtils, "todayLocalDate").mockReturnValue("2026-03-16");
+    vi.spyOn(Date, "now").mockReturnValue(new Date("2026-03-16T09:00:00+09:00").getTime());
+
+    render(
+      <FoundationProviders>
+        <SelectedMemberProvider>
+          <ReservationsPage />
+        </SelectedMemberProvider>
+      </FoundationProviders>
+    );
+
+    const memberRow = await screen.findByText("박서연");
+    fireEvent.click(within(memberRow.closest("tr") as HTMLTableRowElement).getByRole("button", { name: "선택 후 조회" }));
+
+    const workbench = await screen.findByRole("dialog", { name: /예약 워크벤치: 박서연/ });
+    expect(await within(workbench).findByText("2026.03.12 19:00 ~ 19:50")).toBeTruthy();
+    expect(within(workbench).getByText("GX · 한코치 · 저녁 GX C")).toBeTruthy();
+    expect(within(workbench).queryByText("삭제되었거나 조회 불가한 일정입니다.")).toBeNull();
+  }, 15000);
+
+  it("shows a descriptive fallback when the reservation schedule cannot be restored", async () => {
+    vi.spyOn(dateUtils, "todayLocalDate").mockReturnValue("2026-03-16");
+    vi.spyOn(Date, "now").mockReturnValue(new Date("2026-03-16T09:00:00+09:00").getTime());
+    patchMockReservation(101, 5001, (reservation) => ({
+      ...reservation,
+      scheduleId: 999999,
+    }));
+
+    render(
+      <FoundationProviders>
+        <SelectedMemberProvider>
+          <ReservationsPage />
+        </SelectedMemberProvider>
+      </FoundationProviders>
+    );
+
+    const memberRow = await screen.findByText("김민수");
+    fireEvent.click(within(memberRow.closest("tr") as HTMLTableRowElement).getByRole("button", { name: "선택 후 조회" }));
+
+    const workbench = await screen.findByRole("dialog", { name: /예약 워크벤치: 김민수/ });
+    expect(await within(workbench).findByText("삭제되었거나 조회 불가한 일정입니다.")).toBeTruthy();
+    expect(within(workbench).getByText("-")).toBeTruthy();
   }, 15000);
 
 });

@@ -25,7 +25,10 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class ReservationService {
@@ -154,12 +157,29 @@ public class ReservationService {
     }
 
     @Transactional(readOnly = true)
-    public List<TrainerSchedule> listSchedules() {
+    public List<TrainerSchedule> listSchedules(List<Long> scheduleIds) {
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-        return trainerScheduleRepository.findAll(currentUserProvider.currentCenterId()).stream()
-                .filter(schedule -> schedule.startAt().atZoneSameInstant(BUSINESS_ZONE)
-                        .isAfter(now.atZoneSameInstant(BUSINESS_ZONE)))
+        Long centerId = currentUserProvider.currentCenterId();
+        Map<Long, TrainerSchedule> schedulesById = new LinkedHashMap<>();
+
+        trainerScheduleRepository.findAll(centerId).stream()
+                .filter(schedule -> isFutureSchedule(schedule, now))
+                .forEach(schedule -> schedulesById.put(schedule.scheduleId(), schedule));
+
+        trainerScheduleRepository.findAllByIds(centerId, scheduleIds).forEach(
+                schedule -> schedulesById.putIfAbsent(schedule.scheduleId(), schedule)
+        );
+
+        return schedulesById.values().stream()
+                .sorted(Comparator
+                        .comparing(TrainerSchedule::startAt)
+                        .thenComparing(TrainerSchedule::scheduleId))
                 .toList();
+    }
+
+    private boolean isFutureSchedule(TrainerSchedule schedule, OffsetDateTime now) {
+        return schedule.startAt().atZoneSameInstant(BUSINESS_ZONE)
+                .isAfter(now.atZoneSameInstant(BUSINESS_ZONE));
     }
 
     @Transactional
