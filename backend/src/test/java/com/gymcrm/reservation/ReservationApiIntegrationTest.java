@@ -239,6 +239,21 @@ class ReservationApiIntegrationTest {
     }
 
     @Test
+    void reservationSchedulesCanIncludeRequestedPastScheduleIds() throws Exception {
+        String adminToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
+        TrainerSchedule futureSchedule = createFutureSchedule("PT", 2);
+        TrainerSchedule pastSchedule = createPastSchedule("GX", 10);
+
+        mockMvc.perform(get("/api/v1/reservations/schedules")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .param("scheduleIds", String.valueOf(pastSchedule.scheduleId()))
+                        .param("scheduleIds", String.valueOf(futureSchedule.scheduleId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[*].scheduleId", hasItem(futureSchedule.scheduleId().intValue())))
+                .andExpect(jsonPath("$.data[*].scheduleId", hasItem(pastSchedule.scheduleId().intValue())));
+    }
+
+    @Test
     void trainerRoleOnlySeesAssignedReservationTargetsAndCannotCreateForOthers() throws Exception {
         ensureTrainerUser();
         String trainerToken = loginAndGetAccessToken(TRAINER_LOGIN_ID, TRAINER_PASSWORD);

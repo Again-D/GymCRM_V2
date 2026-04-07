@@ -75,8 +75,10 @@ public class ReservationController {
 
     @GetMapping("/schedules")
     @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER)
-    public ApiResponse<List<ReservationScheduleResponse>> listSchedules() {
-        List<ReservationScheduleResponse> items = reservationService.listSchedules().stream()
+    public ApiResponse<List<ReservationScheduleResponse>> listSchedules(
+            @RequestParam(required = false) List<Long> scheduleIds
+    ) {
+        List<ReservationScheduleResponse> items = reservationService.listSchedules(scheduleIds).stream()
                 .map(ReservationScheduleResponse::from)
                 .toList();
         return ApiResponse.success(items, "예약 스케줄 목록 조회 성공");

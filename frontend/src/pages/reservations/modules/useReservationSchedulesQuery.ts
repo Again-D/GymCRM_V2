@@ -6,32 +6,68 @@ import { queryKeys, queryPolicies } from "../../../app/queryHelpers";
 import { toUserFacingErrorMessage } from "../../../app/uiError";
 import type { ReservationScheduleSummary } from "../../members/modules/types";
 
+function normalizeScheduleIds(scheduleIds?: number[]) {
+  return Array.from(
+    new Set(
+      (scheduleIds ?? []).filter(
+        (scheduleId): scheduleId is number =>
+          Number.isInteger(scheduleId) && scheduleId > 0,
+      ),
+    ),
+  ).sort((a, b) => a - b);
+}
+
 export function useReservationSchedulesQuery() {
-  const [isEnabled, setIsEnabled] = useState(false);
+  const [requestState, setRequestState] = useState<{
+    isEnabled: boolean;
+    scheduleIds: number[];
+  }>({
+    isEnabled: false,
+    scheduleIds: [],
+  });
 
   const query = useQuery({
-    queryKey: queryKeys.reservations.list({ scope: "schedules" }),
+    queryKey: queryKeys.reservations.list({
+      scope: "schedules",
+      scheduleIds: requestState.scheduleIds,
+    }),
     queryFn: async () => {
-      const response = await apiGet<ReservationScheduleSummary[]>(
-        "/api/v1/reservations/schedules",
-      );
-      const now = Date.now();
-      return response.data.filter((schedule) => {
-        const startAt = new Date(schedule.startAt).getTime();
-        return Number.isFinite(startAt) && startAt > now;
+      const params = new URLSearchParams();
+      requestState.scheduleIds.forEach((scheduleId) => {
+        params.append("scheduleIds", String(scheduleId));
       });
+      const response = await apiGet<ReservationScheduleSummary[]>(
+        `/api/v1/reservations/schedules${params.size > 0 ? `?${params.toString()}` : ""}`,
+      );
+      return Array.isArray(response.data) ? response.data : [];
     },
-    enabled: isEnabled,
+    enabled: requestState.isEnabled,
     staleTime: queryPolicies.list.staleTime,
     gcTime: queryPolicies.list.gcTime,
   });
 
-  const loadReservationSchedules = useCallback(async () => {
-    setIsEnabled(true);
+  const loadReservationSchedules = useCallback(async (scheduleIds?: number[]) => {
+    const nextScheduleIds = normalizeScheduleIds(scheduleIds);
+    setRequestState((prev) => {
+      if (
+        prev.isEnabled &&
+        prev.scheduleIds.length === nextScheduleIds.length &&
+        prev.scheduleIds.every((scheduleId, index) => scheduleId === nextScheduleIds[index])
+      ) {
+        return prev;
+      }
+      return {
+        isEnabled: true,
+        scheduleIds: nextScheduleIds,
+      };
+    });
   }, []);
 
   const resetReservationSchedulesQuery = useCallback(() => {
-    setIsEnabled(false);
+    setRequestState({
+      isEnabled: false,
+      scheduleIds: [],
+    });
   }, []);
 
   return {

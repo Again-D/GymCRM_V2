@@ -211,6 +211,18 @@ export default function ReservationsPage() {
     resetDeps: [selectedMemberId, selectedMemberReservations.length]
   });
 
+  const workbenchScheduleIds = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          selectedMemberReservations
+            .map((reservation) => reservation.scheduleId)
+            .filter((scheduleId) => Number.isInteger(scheduleId) && scheduleId > 0),
+        ),
+      ).sort((a, b) => a - b),
+    [selectedMemberReservations],
+  );
+
   const reservableMemberships = selectedMemberMemberships.filter((membership) =>
     isMembershipReservableOn(membership, businessDateText)
   );
@@ -289,6 +301,10 @@ export default function ReservationsPage() {
       resetReservationSchedulesQuery();
     };
   }, [loadReservationSchedules, resetReservationSchedulesQuery]);
+
+  useEffect(() => {
+    void loadReservationSchedules(workbenchScheduleIds);
+  }, [loadReservationSchedules, workbenchScheduleIds]);
 
   useEffect(() => {
     if (selectedMemberId == null) {
@@ -560,7 +576,7 @@ export default function ReservationsPage() {
         const schedule = reservationScheduleById.get(reservation.scheduleId);
         const scheduleSummary = schedule
           ? `${schedule.scheduleType} · ${schedule.trainerName} · ${schedule.slotTitle}`
-          : "현재 예약 기준 일정 정보를 확인할 수 없습니다.";
+          : "삭제되었거나 조회 불가한 일정입니다.";
 
         return (
           <Space direction="vertical" size={2}>
