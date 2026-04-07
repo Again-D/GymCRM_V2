@@ -6,7 +6,7 @@ import { ApiClientError, setMockApiModeForTests } from "../../api/client";
 import { resetMockData } from "../../api/mockData";
 import { SelectedMemberProvider } from "../members/modules/SelectedMemberContext";
 import { getReservationPanelErrorMessage } from "./modules/getReservationPanelErrorMessage";
-import ReservationsPage from "./ReservationsPage";
+import ReservationsPage, { formatBusinessClockTime } from "./ReservationsPage";
 import { FoundationProviders } from "../../app/providers";
 import { appQueryClient } from "../../app/queryClient";
 import { selectedMemberStore } from "../../app/selectedMemberStore";
@@ -80,6 +80,11 @@ describe("ReservationsPage", () => {
     ).toBe("예약 생성에 실패했습니다.");
   });
 
+  it("formats PT candidate clock time in Asia/Seoul even when the source string is UTC", () => {
+    expect(formatBusinessClockTime("2026-03-16T01:00:00.000Z")).toBe("10:00");
+    expect(formatBusinessClockTime("2026-03-16T02:00:00.000Z")).toBe("11:00");
+  });
+
   it("opens the new reservation modal from the workbench and creates a PT reservation", async () => {
     vi.spyOn(dateUtils, "todayLocalDate").mockReturnValue("2026-03-16");
     vi.spyOn(Date, "now").mockReturnValue(new Date("2026-03-16T09:00:00+09:00").getTime());
@@ -126,6 +131,23 @@ describe("ReservationsPage", () => {
     fireEvent.click(submitButton);
 
     expect(await screen.findByText(/예약 #\d+이\(가\) 생성되었습니다\./)).toBeTruthy();
+    await waitFor(() => {
+      expect(
+        screen.getAllByRole("dialog").some((dialog) =>
+          within(dialog).queryByText("현재 예약 내역") != null,
+        ),
+      ).toBe(true);
+    });
+    const workbenchDialog = screen
+      .getAllByRole("dialog")
+      .find((dialog) => within(dialog).queryByText("현재 예약 내역") != null) as HTMLElement;
+    expect(await within(workbenchDialog).findByText("2026.03.16 10:00 ~ 11:00")).toBeTruthy();
+    expect(await within(workbenchDialog).findByText("PT · 정트레이너 · PT 예약")).toBeTruthy();
+    expect(
+      await within(workbenchDialog).findAllByText((_, element) =>
+        element?.textContent?.startsWith("예약 생성:") ?? false,
+      ),
+    ).not.toHaveLength(0);
   }, 15000);
 
   it("shows PT guidance and keeps submit disabled until required PT fields are selected", async () => {
@@ -154,4 +176,5 @@ describe("ReservationsPage", () => {
     expect(await screen.findByText("담당 트레이너 기본값: 정트레이너")).toBeTruthy();
     expect((submitButton as HTMLButtonElement).disabled).toBe(true);
   }, 15000);
+
 });
