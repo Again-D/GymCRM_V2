@@ -143,6 +143,20 @@ describe("mockData membership propagation", () => {
     expect(inactiveMembers.every((member) => member.memberStatus === "INACTIVE")).toBe(true);
   });
 
+  it("filters reservation list responses by memberId and status", () => {
+    const confirmedReservations = getMockResponse(
+      "/api/v1/reservations?memberId=101&status=CONFIRMED",
+    )?.data as Array<{ reservationId: number; membershipId: number; reservationStatus: string }>;
+    const cancelledReservations = getMockResponse(
+      "/api/v1/reservations?memberId=101&status=CANCELLED",
+    )?.data as Array<{ reservationId: number; membershipId: number; reservationStatus: string }>;
+
+    expect(confirmedReservations).toHaveLength(1);
+    expect(confirmedReservations[0]?.reservationId).toBe(5001);
+    expect(confirmedReservations[0]?.reservationStatus).toBe("CONFIRMED");
+    expect(cancelledReservations).toHaveLength(0);
+  });
+
   it("preserves confirmed trainer settlement snapshots for previously confirmed months", async () => {
     await createMockTrainerSettlementConfirm({
       settlementMonth: "2026-03",
