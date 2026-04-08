@@ -8,7 +8,7 @@ import { queryKeys, queryPolicies } from "../../../app/queryHelpers";
 export type TrainerOption = {
   userId: number;
   centerId: number;
-  displayName: string;
+  userName: string;
 };
 
 export function useTrainerOptionsQuery() {

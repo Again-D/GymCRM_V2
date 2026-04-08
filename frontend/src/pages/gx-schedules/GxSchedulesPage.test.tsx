@@ -53,7 +53,7 @@ const mockSnapshot = {
 const mockTrainers = [
   {
     userId: 41,
-    displayName: "Yoga Master",
+    userName: "Yoga Master",
   }
 ];
 

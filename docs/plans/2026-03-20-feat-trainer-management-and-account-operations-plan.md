@@ -36,7 +36,7 @@ origin: docs/brainstorms/2026-03-20-trainer-management-and-scope-brainstorm.md
 
 - 회원권은 `assignedTrainerId`로 트레이너를 연결할 수 있다.
 - 예약/회원 조회는 `ROLE_TRAINER`일 때 일부 범위 제한이 이미 들어가 있다.
-- `/api/v1/auth/trainers`는 활성 트레이너 목록을 돌려주지만, 응답은 단순 `loginId/displayName` 수준이다.
+- `/api/v1/auth/trainers`는 활성 트레이너 목록을 돌려주지만, 응답은 단순 `loginId/userName` 수준이다.
 - 트레이너 계정 생성 API와 트레이너 관리 전용 화면은 없다.
 - `users.phone`은 설계 문서에 있으나 현재 엔티티/구현에는 반영되지 않았다.
 
@@ -163,7 +163,7 @@ erDiagram
         bigint user_id PK
         bigint center_id FK
         varchar login_id
-        varchar display_name
+        varchar user_name
         varchar role_code
         varchar user_status
         varchar phone
@@ -249,7 +249,7 @@ Success criteria:
 - Desk can read but not mutate.
 - Center boundary checks happen in service/repository paths, not only controller annotations.
 - DTO tiers are explicit:
-  - picker DTO may include `userId`, `displayName`
+  - picker DTO may include `userId`, `userName`
   - admin DTO may include `loginId`
   - desk DTO must exclude `loginId`, `passwordHash`, `accessRevokedAfter`, `roleCode`, token/session fields
 
@@ -257,7 +257,7 @@ Success criteria:
 
 - Add query projection for trainer management list:
   - `userId`
-  - `displayName`
+  - `userName`
   - `userStatus`
   - `phone`
   - `assignedMemberCount`

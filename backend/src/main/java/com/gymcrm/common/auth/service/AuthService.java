@@ -178,11 +178,11 @@ public class AuthService {
             Long userId,
             Long centerId,
             String loginId,
-            String displayName,
+            String userName,
             String roleCode
     ) {
         static UserSession from(AuthUser user) {
-            return new UserSession(user.userId(), user.centerId(), user.loginId(), user.displayName(), user.roleCode());
+            return new UserSession(user.userId(), user.centerId(), user.loginId(), user.userName(), user.roleCode());
         }
     }
 }

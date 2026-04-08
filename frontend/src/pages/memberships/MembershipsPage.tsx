@@ -417,7 +417,7 @@ export default function MembershipsPage() {
                 value={purchaseForm.assignedTrainerId}
                 onChange={(value) => setPurchaseForm((prev) => ({ ...prev, assignedTrainerId: value }))}
                 options={trainerOptions.map((trainer) => ({
-                  label: trainer.displayName,
+                  label: trainer.userName,
                   value: String(trainer.userId)
                 }))}
               />

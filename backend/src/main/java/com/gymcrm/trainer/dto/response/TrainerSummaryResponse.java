@@ -5,7 +5,7 @@ import com.gymcrm.trainer.entity.TrainerSummary;
 public record TrainerSummaryResponse(
             Long userId,
             Long centerId,
-            String displayName,
+            String userName,
             String userStatus,
             String phone,
             Long assignedMemberCount,
@@ -15,7 +15,7 @@ public record TrainerSummaryResponse(
             return new TrainerSummaryResponse(
                     trainer.userId(),
                     trainer.centerId(),
-                    trainer.displayName(),
+                    trainer.userName(),
                     trainer.userStatus(),
                     trainer.phone(),
                     trainer.assignedMemberCount(),

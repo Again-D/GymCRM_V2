@@ -505,6 +505,8 @@ X-RateLimit-Reset: 1740001860
 | 6 | `GET` | `/api/v1/settlements/trainer-payroll` | 트레이너 월별 급여 조회. 확정 월은 저장된 스냅샷과 `settlementStatus`/`confirmedAt`를 함께 반환 | O | ADMIN, MANAGER, DESK |
 | 7 | `POST` | `/api/v1/settlements/trainer-payroll/confirm` | 월별 트레이너 정산 일괄 확정 및 스냅샷 저장 | O | ADMIN, MANAGER, DESK |
 | 8 | `GET` | `/api/v1/settlements/trainer-payroll/document` | 확정된 월 정산 PDF 정산서 다운로드 | O | ADMIN, MANAGER, DESK |
+| 9 | `POST` | `/api/v1/settlements` | 지정 기간의 트레이너 정산 생성 | O | ADMIN |
+| 10 | `POST` | `/api/v1/settlements/{settlementId}/confirm` | 생성된 정산 배치를 확정 | O | ADMIN |
 
 ### 3.8 CRM 메시지 API (`/api/v1/messages`)
 
@@ -1833,6 +1835,132 @@ Binary file download with:
 
 ---
 
+### 4.10 트레이너 정산 생성 API
+
+| 항목 | 내용 |
+|------|------|
+| **URL** | `POST /api/v1/settlements` |
+| **설명** | 지정 기간의 트레이너 수업 실적을 집계하여 정산 내역을 생성한다. |
+| **인증** | 필요 |
+| **권한** | ADMIN |
+
+**Request Body:**
+
+```json
+{
+  "trainerId": "TRN-001",
+  "periodStart": "2026-02-01",
+  "periodEnd": "2026-02-28"
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `trainerId` | String | O | 정산 대상 트레이너 ID (전체 정산 시 `ALL`) |
+| `periodStart` | String | O | 정산 시작일 (`yyyy-MM-dd`) |
+| `periodEnd` | String | O | 정산 종료일 (`yyyy-MM-dd`) |
+
+**Response Body (성공 - 201):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "settlementId": "STL-202602-TRN001",
+    "trainer": {
+      "trainerId": "TRN-001",
+      "name": "박트레이너"
+    },
+    "period": {
+      "start": "2026-02-01",
+      "end": "2026-02-28"
+    },
+    "summary": {
+      "totalSessions": 48,
+      "completedSessions": 45,
+      "cancelledSessions": 2,
+      "noShowSessions": 1,
+      "ptSessions": 40,
+      "gxSessions": 8
+    },
+    "calculation": {
+      "ptRatePerSession": 25000,
+      "gxRatePerSession": 15000,
+      "ptAmount": 1000000,
+      "gxAmount": 120000,
+      "bonus": 50000,
+      "bonusReason": "월 목표 달성 인센티브",
+      "deduction": 0,
+      "deductionReason": null,
+      "totalAmount": 1170000
+    },
+    "status": "DRAFT",
+    "createdAt": "2026-02-20T10:00:00+09:00"
+  },
+  "message": "정산이 성공적으로 생성되었습니다.",
+  "timestamp": "2026-02-20T10:00:00+09:00"
+}
+```
+
+**비즈니스 규칙:**
+- 동일 트레이너의 동일 기간에 대해 중복 정산을 생성할 수 없다.
+- 정산 상태 흐름: `DRAFT`(생성) -> `CONFIRMED`(확정) -> `PAID`(지급완료).
+- `CONFIRMED` 상태 이후에는 수정이 불가하다.
+- 수업 횟수는 `COMPLETED` 상태의 예약만 집계한다 (취소, 노쇼 제외).
+- 트레이너별 단가(Rate)는 트레이너 정보에 미리 설정된 값을 사용한다.
+- `trainerId`에 `ALL`을 전달하면 모든 트레이너에 대해 일괄 정산을 생성한다.
+
+**구현/해석 보강 메모:**
+- 내부 persistence는 `settlements`(center-month batch) + `settlement_details`(트레이너별 detail) 구조를 사용한다.
+- 같은 센터/같은 월의 정산 생성 요청은 동일한 `settlementId` 배치를 생성 또는 재사용할 수 있으며, 개별 트레이너 생성은 해당 배치 아래 trainer detail을 추가하는 방식으로 해석한다.
+- `trainerId=ALL`은 해당 센터/기간 배치 아래 모든 트레이너 detail을 일괄 생성하는 의미다.
+- 1차 구현에서는 `periodStart`가 해당 월 1일이고 `periodEnd`가 해당 월 말일인 “동일 월 전체 기간”만 허용한다.
+- 현재 구현의 `settlementId`는 공개 코드 문자열이 아니라 `settlements.settlement_id`의 numeric PK를 그대로 반환한다.
+- 현재 구현의 `trainerId=ALL` 응답은 배치 전체 합계 1건을 반환하며, 이미 존재하는 trainer detail은 건너뛰고 없는 detail만 추가 생성한다.
+- 1차 구현의 계산 필드 중 `gx*`, `bonus*`, `deduction*`는 아직 `0` 또는 `null` 고정값이다.
+- 트레이너별 단가는 trainer 관리 API에서 `ptSessionUnitPrice`, `gxSessionUnitPrice`로 관리한다.
+- `settlementId`는 확정 및 문서 출력 흐름의 기준 식별자이며, trainer별 개별 전달이 필요한 경우 `settlementId + trainerId` 조합으로 문서를 식별할 수 있다.
+
+---
+
+### 4.10.1 트레이너 정산 확정 API
+
+| 항목 | 내용 |
+|------|------|
+| **URL** | `POST /api/v1/settlements/{settlementId}/confirm` |
+| **설명** | 생성된 정산 배치를 확정한다. |
+| **인증** | 필요 |
+| **권한** | ADMIN |
+
+**Path Parameters:**
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `settlementId` | Long | O | 확정 대상 정산 배치 식별자 (`settlements.settlement_id`) |
+
+**Response Body (성공 - 200):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "settlementId": "STL-202602-TRN001",
+    "status": "CONFIRMED",
+    "confirmedAt": "2026-02-20T11:00:00+09:00"
+  },
+  "message": "정산이 성공적으로 확정되었습니다.",
+  "timestamp": "2026-02-20T11:00:00+09:00"
+}
+```
+
+**비즈니스 규칙:**
+- `DRAFT` 상태의 정산만 확정할 수 있다.
+- 확정 이후에는 같은 정산 배치 및 그 하위 trainer detail을 수정할 수 없다.
+- 월별 운영용 `/api/v1/settlements/trainer-payroll/confirm`는 기존 스냅샷 흐름 호환을 위한 endpoint이며, 생성형 정산의 canonical 확정 endpoint는 본 API다.
+- 1차 구현에서는 확정 시 `settlement_details`의 PT detail을 기존 `trainer_settlements` 월별 스냅샷으로 브리지 저장해 PDF/운영 흐름 호환을 유지한다.
+
+---
+
 ### 4.11 CRM 자동 발송 규칙 생성 API
 
 | 항목 | 내용 |
@@ -2320,6 +2448,8 @@ X-Cache: HIT
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| v1.9.0 | 2026-04-08 | 사용자/트레이너 이름 계약을 `displayName`에서 `userName`으로 정리하고, `users.user_name` 컬럼명 변경 및 생성형 정산 응답의 `trainer.name` 계약을 문서 기준으로 동기화 | Codex |
+| v1.8.0 | 2026-04-08 | 원본 `4.10 트레이너 정산 생성 API`를 복원하고, `trainerId=ALL` 해석, center-month batch/detail persistence 연결, `/settlements/{settlementId}/confirm` canonical 확정 계약을 추가 | Codex |
 | v1.7.0 | 2026-04-08 | `/settlements`를 역할별로 재정렬해 트레이너 전용 월간 PT 실적 미니뷰와 `trainer-payroll/my-summary` 조회 계약을 추가하고, 운영 권한은 기존 월간 정산 집계를 유지하도록 동기화 | Codex |
 | v1.6.0 | 2026-04-08 | 원본 요구사항 기준에 맞춰 트레이너의 `/settlements` 접근을 제거하고, 정산 API를 운영 권한 전용 계약으로 다시 정렬 | Codex |
 | v1.5.0 | 2026-04-08 | 정산 문서 정책을 현재 구현 기준으로 동기화하여 `sales-report/export`의 XLSX 다운로드 계약, `trainer-payroll`의 PDF 출력 계약을 반영 | Codex |

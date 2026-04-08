@@ -98,18 +98,18 @@ export default function GxSchedulesPage() {
       return [];
     }
     if (isTrainer) {
-      return [{ userId: authUser.userId, displayName: authUser.username }];
+      return [{ userId: authUser.userId, userName: authUser.username }];
     }
     return trainers.map((trainer) => ({
       userId: trainer.userId,
-      displayName: trainer.displayName,
+      userName: trainer.userName,
     }));
   }, [authUser, isTrainer, trainers]);
 
   const trainerNameByUserId = useMemo(
     () =>
       new Map(
-        trainerOptions.map((trainer) => [trainer.userId, trainer.displayName] as const),
+        trainerOptions.map((trainer) => [trainer.userId, trainer.userName] as const),
       ),
     [trainerOptions],
   );
@@ -662,7 +662,7 @@ export default function GxSchedulesPage() {
               loading={trainersLoading}
               value={ruleForm.trainerUserId || undefined}
               onChange={(value) => updateRuleFormField("trainerUserId", value)}
-              options={trainerOptions.map(t => ({ label: t.displayName, value: t.userId }))}
+              options={trainerOptions.map(t => ({ label: t.userName, value: t.userId }))}
             />
           </Form.Item>
 
@@ -808,7 +808,7 @@ export default function GxSchedulesPage() {
                           curr ? { ...curr, overrideTrainerUserId: value } : curr,
                         )
                       }
-                      options={trainerOptions.map(t => ({ label: t.displayName, value: t.userId }))}
+                      options={trainerOptions.map(t => ({ label: t.userName, value: t.userId }))}
                       disabled={isTrainer}
                     />
                   </Form.Item>

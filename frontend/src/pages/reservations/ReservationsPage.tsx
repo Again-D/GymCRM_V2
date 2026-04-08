@@ -248,12 +248,12 @@ export default function ReservationsPage() {
     if (isTrainerActor && authUser) {
       return [{
         userId: authUser.userId,
-        displayName: authUser.username,
+        userName: authUser.username,
       }];
     }
     return trainers.map((trainer) => ({
       userId: trainer.userId,
-      displayName: trainer.displayName,
+      userName: trainer.userName,
     }));
   }, [authUser, isTrainerActor, trainers]);
   
@@ -879,13 +879,13 @@ export default function ReservationsPage() {
                           ptCandidateStartAt: "",
                         }))}
                         options={trainerOptions.map(t => ({
-                          label: t.displayName,
+                          label: t.userName,
                           value: String(t.userId)
                         }))}
                       />
                       {selectedTrainerOption ? (
                         <Text type="secondary" style={{ fontSize: "0.75rem", marginTop: 4, display: "block" }}>
-                          담당 트레이너 기본값: {selectedTrainerOption.displayName}
+                          담당 트레이너 기본값: {selectedTrainerOption.userName}
                         </Text>
                       ) : null}
                     </Form.Item>

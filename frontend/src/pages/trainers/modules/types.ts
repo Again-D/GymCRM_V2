@@ -1,7 +1,7 @@
 export type TrainerSummary = {
   userId: number;
   centerId: number;
-  displayName: string;
+  userName: string;
   userStatus: "ACTIVE" | "INACTIVE";
   phone: string | null;
   assignedMemberCount: number;
@@ -30,7 +30,7 @@ export type TrainerFormState = {
   centerId: number;
   loginId: string;
   password: string;
-  displayName: string;
+  userName: string;
   phone: string;
 };
 
@@ -47,7 +47,7 @@ export function createEmptyTrainerForm(centerId = 1): TrainerFormState {
     centerId,
     loginId: "",
     password: "",
-    displayName: "",
+    userName: "",
     phone: "",
   };
 }
@@ -57,7 +57,7 @@ export function createTrainerFormFromDetail(detail: TrainerDetail): TrainerFormS
     centerId: detail.centerId,
     loginId: detail.loginId ?? "",
     password: "",
-    displayName: detail.displayName,
+    userName: detail.userName,
     phone: detail.phone ?? "",
   };
 }

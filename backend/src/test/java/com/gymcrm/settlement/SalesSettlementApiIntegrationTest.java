@@ -343,6 +343,146 @@ class SalesSettlementApiIntegrationTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    @Transactional
+    void adminCanCreateDraftTrainerSettlementForSingleTrainer() throws Exception {
+        String adminToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
+        YearMonth targetMonth = YearMonth.of(2099, 10);
+
+        long trainerUserId = userIdByLogin(TRAINER_LOGIN_ID);
+        long memberId = insertMember(targetMonth.atDay(1));
+        long productId = insertProduct("TRAINER-CREATE-" + UUID.randomUUID().toString().substring(0, 6));
+        long membershipId = insertMembership(memberId, productId, "Trainer Create PT", targetMonth.atDay(1), targetMonth.atEndOfMonth());
+
+        setTrainerSettlementRate(trainerUserId, new BigDecimal("50000"), null);
+        long trainerSchedule = insertTrainerSchedule("Trainer Settlement Self", trainerUserId, targetMonth.atDay(5));
+        insertCompletedReservation(membershipId, memberId, trainerSchedule, targetMonth.atDay(5));
+
+        mockMvc.perform(post("/api/v1/settlements")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "trainerId": "%s",
+                                  "periodStart": "%s",
+                                  "periodEnd": "%s"
+                                }
+                                """.formatted(trainerUserId, targetMonth.atDay(1), targetMonth.atEndOfMonth())))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.trainer.trainerId").value(String.valueOf(trainerUserId)))
+                .andExpect(jsonPath("$.data.summary.completedSessions").value(1))
+                .andExpect(jsonPath("$.data.calculation.ptRatePerSession").value(50000))
+                .andExpect(jsonPath("$.data.calculation.totalAmount").value(50000))
+                .andExpect(jsonPath("$.data.status").value("DRAFT"));
+
+        assertEquals(1L, jdbcClient.sql("""
+                SELECT COUNT(*)
+                FROM settlements
+                WHERE center_id = :centerId
+                  AND settlement_year = :settlementYear
+                  AND settlement_month = :settlementMonth
+                  AND is_deleted = FALSE
+                """)
+                .param("centerId", CENTER_ID)
+                .param("settlementYear", targetMonth.getYear())
+                .param("settlementMonth", targetMonth.getMonthValue())
+                .query(Long.class)
+                .single());
+        assertEquals(1L, jdbcClient.sql("""
+                SELECT COUNT(*)
+                FROM settlement_details
+                """)
+                .query(Long.class)
+                .single());
+    }
+
+    @Test
+    @Transactional
+    void adminCanCreateDraftTrainerSettlementForAllTrainersAndConfirmBatch() throws Exception {
+        String adminToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
+        YearMonth targetMonth = YearMonth.of(2099, 11);
+
+        long trainerUserId = userIdByLogin(TRAINER_LOGIN_ID);
+        long otherTrainerUserId = userIdByLogin(OTHER_TRAINER_LOGIN_ID);
+        long memberId = insertMember(targetMonth.atDay(1));
+        long productId = insertProduct("TRAINER-ALL-" + UUID.randomUUID().toString().substring(0, 6));
+        long membershipId = insertMembership(memberId, productId, "Trainer All PT", targetMonth.atDay(1), targetMonth.atEndOfMonth());
+
+        setTrainerSettlementRate(trainerUserId, new BigDecimal("50000"), null);
+        setTrainerSettlementRate(otherTrainerUserId, new BigDecimal("70000"), null);
+
+        long trainerSchedule = insertTrainerSchedule("Trainer Settlement Self", trainerUserId, targetMonth.atDay(6));
+        long otherTrainerSchedule = insertTrainerSchedule("Trainer Settlement Other", otherTrainerUserId, targetMonth.atDay(8));
+        insertCompletedReservation(membershipId, memberId, trainerSchedule, targetMonth.atDay(6));
+        insertCompletedReservation(membershipId, memberId, otherTrainerSchedule, targetMonth.atDay(8));
+
+        MvcResult createResult = mockMvc.perform(post("/api/v1/settlements")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "trainerId": "ALL",
+                                  "periodStart": "%s",
+                                  "periodEnd": "%s"
+                                }
+                                """.formatted(targetMonth.atDay(1), targetMonth.atEndOfMonth())))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.trainer.trainerId").value("ALL"))
+                .andExpect(jsonPath("$.data.summary.completedSessions").value(2))
+                .andReturn();
+
+        JsonNode created = objectMapper.readTree(createResult.getResponse().getContentAsString());
+        long settlementId = created.path("data").path("settlementId").asLong();
+
+        mockMvc.perform(post("/api/v1/settlements/{settlementId}/confirm", settlementId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.settlementId").value(settlementId))
+                .andExpect(jsonPath("$.data.status").value("CONFIRMED"));
+
+        assertEquals("CONFIRMED", jdbcClient.sql("""
+                SELECT status
+                FROM settlements
+                WHERE settlement_id = :settlementId
+                """)
+                .param("settlementId", settlementId)
+                .query(String.class)
+                .single());
+        assertEquals(2L, jdbcClient.sql("""
+                SELECT COUNT(*)
+                FROM trainer_settlements
+                WHERE center_id = :centerId
+                  AND settlement_month = :settlementMonth
+                  AND is_deleted = FALSE
+                """)
+                .param("centerId", CENTER_ID)
+                .param("settlementMonth", targetMonth.atDay(1))
+                .query(Long.class)
+                .single());
+    }
+
+    @Test
+    void createTrainerSettlementRejectsNonMonthlyPeriodAtHttpBoundary() throws Exception {
+        String adminToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
+
+        mockMvc.perform(post("/api/v1/settlements")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "trainerId": "ALL",
+                                  "periodStart": "2099-11-02",
+                                  "periodEnd": "2099-11-30"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
+    }
+
     private long insertMember(LocalDate joinDate) {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
         return jdbcClient.sql("""
@@ -362,6 +502,21 @@ class SalesSettlementApiIntegrationTest {
                 .param("joinDate", joinDate)
                 .query(Long.class)
                 .single();
+    }
+
+    private void setTrainerSettlementRate(Long trainerUserId, BigDecimal ptSessionUnitPrice, BigDecimal gxSessionUnitPrice) {
+        jdbcClient.sql("""
+                UPDATE users
+                SET pt_session_unit_price = :ptSessionUnitPrice,
+                    gx_session_unit_price = :gxSessionUnitPrice,
+                    updated_at = CURRENT_TIMESTAMP,
+                    updated_by = 1
+                WHERE user_id = :trainerUserId
+                """)
+                .param("trainerUserId", trainerUserId)
+                .param("ptSessionUnitPrice", ptSessionUnitPrice)
+                .param("gxSessionUnitPrice", gxSessionUnitPrice)
+                .update();
     }
 
     private long insertProduct(String keyword) {
@@ -505,7 +660,7 @@ class SalesSettlementApiIntegrationTest {
             jdbcClient.sql("""
                     UPDATE users
                     SET password_hash = :passwordHash,
-                        display_name = :displayName,
+                        user_name = :displayName,
                         user_status = 'ACTIVE',
                         access_revoked_after = NULL,
                         updated_at = CURRENT_TIMESTAMP,
@@ -521,7 +676,7 @@ class SalesSettlementApiIntegrationTest {
 
         Long userId = jdbcClient.sql("""
                 INSERT INTO users (
-                    center_id, login_id, password_hash, display_name, user_status,
+                    center_id, login_id, password_hash, user_name, user_status,
                     is_deleted, created_at, created_by, updated_at, updated_by
                 ) VALUES (
                     :centerId, :loginId, :passwordHash, :displayName, 'ACTIVE',

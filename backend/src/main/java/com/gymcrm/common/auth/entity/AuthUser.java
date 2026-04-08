@@ -7,7 +7,7 @@ public record AuthUser(
         Long centerId,
         String loginId,
         String passwordHash,
-        String displayName,
+        String userName,
         String phone,
         String roleCode,
         String userStatus,

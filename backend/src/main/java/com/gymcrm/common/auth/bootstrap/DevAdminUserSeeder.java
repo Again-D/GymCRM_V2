@@ -27,7 +27,7 @@ public class DevAdminUserSeeder implements ApplicationRunner {
     private final boolean seedEnabled;
     private final long centerId;
     private final String loginId;
-    private final String displayName;
+    private final String userName;
     private final String initialPassword;
 
     public DevAdminUserSeeder(
@@ -38,7 +38,7 @@ public class DevAdminUserSeeder implements ApplicationRunner {
             @Value("${app.security.dev-admin.seed-enabled:true}") boolean seedEnabled,
             @Value("${app.security.dev-admin.center-id:1}") long centerId,
             @Value("${app.security.dev-admin.login-id:center-admin}") String loginId,
-            @Value("${app.security.dev-admin.display-name:Center Admin}") String displayName,
+            @Value("${app.security.dev-admin.display-name:Center Admin}") String userName,
             @Value("${app.security.dev-admin.initial-password:dev-admin-1234!}") String initialPassword
     ) {
         this.securityModeSettings = securityModeSettings;
@@ -48,7 +48,7 @@ public class DevAdminUserSeeder implements ApplicationRunner {
         this.seedEnabled = seedEnabled;
         this.centerId = centerId;
         this.loginId = loginId;
-        this.displayName = displayName;
+        this.userName = userName;
         this.initialPassword = initialPassword;
     }
 
@@ -70,11 +70,11 @@ public class DevAdminUserSeeder implements ApplicationRunner {
 
         Long userId = jdbcClient.sql("""
                 INSERT INTO users (
-                    center_id, login_id, password_hash, display_name, user_status,
+                    center_id, login_id, password_hash, user_name, user_status,
                     created_by, updated_by
                 )
                 VALUES (
-                    :centerId, :loginId, :passwordHash, :displayName, 'ACTIVE',
+                    :centerId, :loginId, :passwordHash, :userName, 'ACTIVE',
                     0, 0
                 )
                 RETURNING user_id
@@ -82,7 +82,7 @@ public class DevAdminUserSeeder implements ApplicationRunner {
                 .param("centerId", centerId)
                 .param("loginId", loginId.trim())
                 .param("passwordHash", passwordEncoder.encode(initialPassword))
-                .param("displayName", displayName.trim())
+                .param("userName", userName.trim())
                 .query(Long.class)
                 .single();
 

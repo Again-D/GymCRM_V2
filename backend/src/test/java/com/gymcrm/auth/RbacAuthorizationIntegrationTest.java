@@ -313,7 +313,7 @@ class RbacAuthorizationIntegrationTest {
         int updated = jdbcClient.sql("""
                 UPDATE users
                 SET password_hash = :passwordHash,
-                    display_name = :displayName,
+                    user_name = :displayName,
                     user_status = 'ACTIVE',
                     is_deleted = FALSE,
                     deleted_at = NULL,
@@ -346,7 +346,7 @@ class RbacAuthorizationIntegrationTest {
 
         Long userId = jdbcClient.sql("""
                 INSERT INTO users (
-                    center_id, login_id, password_hash, display_name, user_status,
+                    center_id, login_id, password_hash, user_name, user_status,
                     created_by, updated_by
                 )
                 VALUES (

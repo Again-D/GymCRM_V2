@@ -17,6 +17,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.math.BigDecimal;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.hasItem;
@@ -102,15 +103,15 @@ class TrainerManagementApiIntegrationTest {
         mockMvc.perform(get("/api/v1/trainers")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[*].displayName", hasItem("집계 트레이너")))
-                .andExpect(jsonPath("$.data[?(@.displayName=='집계 트레이너')].assignedMemberCount").value(hasItem(1)))
-                .andExpect(jsonPath("$.data[?(@.displayName=='집계 트레이너')].todayConfirmedReservationCount").value(hasItem(1)));
+                .andExpect(jsonPath("$.data[*].userName", hasItem("집계 트레이너")))
+                .andExpect(jsonPath("$.data[?(@.userName=='집계 트레이너')].assignedMemberCount").value(hasItem(1)))
+                .andExpect(jsonPath("$.data[?(@.userName=='집계 트레이너')].todayConfirmedReservationCount").value(hasItem(1)));
 
         String deskToken = loginAndGetAccessToken("desk-trainer-mgmt", "desk-pass-1234!");
         mockMvc.perform(get("/api/v1/trainers/{userId}", trainerUserId)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + deskToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.displayName").value("집계 트레이너"))
+                .andExpect(jsonPath("$.data.userName").value("집계 트레이너"))
                 .andExpect(jsonPath("$.data.loginId").doesNotExist())
                 .andExpect(jsonPath("$.data.assignedMembers[0].memberId").value(memberId));
     }
@@ -164,7 +165,7 @@ class TrainerManagementApiIntegrationTest {
                                   "centerId": 2,
                                   "loginId": "cross-center-create",
                                   "password": "cross-center-1234!",
-                                  "displayName": "Cross Center",
+                                  "userName": "Cross Center",
                                   "phone": "010-5555-6666"
                                 }
                                 """))
@@ -186,7 +187,7 @@ class TrainerManagementApiIntegrationTest {
                                   "centerId": 2,
                                   "loginId": "%s",
                                   "password": "super-cross-1234!",
-                                  "displayName": "Super Cross Trainer",
+                                  "userName": "Super Cross Trainer",
                                   "phone": "010-4444-5555"
                                 }
                                 """.formatted(createLoginId)))
@@ -200,7 +201,7 @@ class TrainerManagementApiIntegrationTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + superAdminToken)
                         .param("centerId", "2"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[*].displayName", hasItem("Super Cross Trainer")));
+                .andExpect(jsonPath("$.data[*].userName", hasItem("Super Cross Trainer")));
 
         mockMvc.perform(get("/api/v1/trainers/{userId}", trainerUserId)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + superAdminToken))
@@ -213,12 +214,12 @@ class TrainerManagementApiIntegrationTest {
                         .content("""
                                 {
                                   "loginId": "%s",
-                                  "displayName": "Super Cross Trainer Updated",
+                                  "userName": "Super Cross Trainer Updated",
                                   "phone": "010-6666-7777"
                                 }
                                 """.formatted(updatedLoginId)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.displayName").value("Super Cross Trainer Updated"))
+                .andExpect(jsonPath("$.data.userName").value("Super Cross Trainer Updated"))
                 .andExpect(jsonPath("$.data.phone").value("010-6666-7777"));
 
         mockMvc.perform(patch("/api/v1/trainers/{userId}/status", trainerUserId)
@@ -231,6 +232,78 @@ class TrainerManagementApiIntegrationTest {
                 .andExpect(jsonPath("$.data.userStatus").value("INACTIVE"));
     }
 
+    @Test
+    void centerAdminCanCreateAndUpdateTrainerSettlementRates() throws Exception {
+        String adminToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
+        String loginId = "trainer-rate-" + shortId();
+
+        MvcResult createResult = mockMvc.perform(post("/api/v1/trainers")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "centerId": 1,
+                                  "loginId": "%s",
+                                  "password": "trainer-rate-1234!",
+                                  "userName": "정산 단가 트레이너",
+                                  "phone": "010-1111-2222",
+                                  "ptSessionUnitPrice": 55000,
+                                  "gxSessionUnitPrice": 22000
+                                }
+                                """.formatted(loginId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.userName").value("정산 단가 트레이너"))
+                .andExpect(jsonPath("$.data.ptSessionUnitPrice").value(55000))
+                .andExpect(jsonPath("$.data.gxSessionUnitPrice").value(22000))
+                .andReturn();
+
+        long trainerUserId = jsonLong(createResult, "/data/userId");
+
+        mockMvc.perform(get("/api/v1/trainers/{userId}", trainerUserId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.ptSessionUnitPrice").value(55000))
+                .andExpect(jsonPath("$.data.gxSessionUnitPrice").value(22000));
+
+        mockMvc.perform(patch("/api/v1/trainers/{userId}", trainerUserId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "loginId": "%s",
+                                  "userName": "정산 단가 트레이너 수정",
+                                  "phone": "010-3333-4444",
+                                  "ptSessionUnitPrice": 66000,
+                                  "gxSessionUnitPrice": 33000
+                                }
+                                """.formatted(loginId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.userName").value("정산 단가 트레이너 수정"))
+                .andExpect(jsonPath("$.data.ptSessionUnitPrice").value(66000))
+                .andExpect(jsonPath("$.data.gxSessionUnitPrice").value(33000));
+
+        BigDecimal persistedPtRate = jdbcClient.sql("""
+                SELECT pt_session_unit_price
+                FROM users
+                WHERE user_id = :trainerUserId
+                """)
+                .param("trainerUserId", trainerUserId)
+                .query(BigDecimal.class)
+                .single();
+
+        BigDecimal persistedGxRate = jdbcClient.sql("""
+                SELECT gx_session_unit_price
+                FROM users
+                WHERE user_id = :trainerUserId
+                """)
+                .param("trainerUserId", trainerUserId)
+                .query(BigDecimal.class)
+                .single();
+
+        org.junit.jupiter.api.Assertions.assertEquals(new BigDecimal("66000.00"), persistedPtRate);
+        org.junit.jupiter.api.Assertions.assertEquals(new BigDecimal("33000.00"), persistedGxRate);
+    }
+
     private long createTrainer(String adminToken, String loginId, String displayName) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/v1/trainers")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
@@ -240,7 +313,7 @@ class TrainerManagementApiIntegrationTest {
                                   "centerId": 1,
                                   "loginId": "%s",
                                   "password": "trainer-create-1234!",
-                                  "displayName": "%s",
+                                  "userName": "%s",
                                   "phone": "010-1234-5678"
                                 }
                                 """.formatted(loginId, displayName)))
@@ -391,7 +464,7 @@ class TrainerManagementApiIntegrationTest {
         int updated = jdbcClient.sql("""
                 UPDATE users
                 SET password_hash = :passwordHash,
-                    display_name = :displayName,
+                    user_name = :displayName,
                     phone = '010-1111-2222',
                     user_status = 'ACTIVE',
                     is_deleted = FALSE,
@@ -413,7 +486,7 @@ class TrainerManagementApiIntegrationTest {
         if (updated == 0) {
             userId = jdbcClient.sql("""
                     INSERT INTO users (
-                        center_id, login_id, password_hash, display_name, phone, user_status,
+                        center_id, login_id, password_hash, user_name, phone, user_status,
                         created_by, updated_by
                     )
                     VALUES (

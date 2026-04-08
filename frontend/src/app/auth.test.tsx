@@ -91,7 +91,7 @@ describe("AuthStateProvider bootstrap", () => {
           user: {
             userId: 7,
             loginId: "center-admin",
-            displayName: "센터 관리자",
+            userName: "센터 관리자",
             primaryRole: "ROLE_CENTER_ADMIN",
             roles: ["ROLE_CENTER_ADMIN"]
           }
@@ -155,7 +155,7 @@ describe("AuthStateProvider bootstrap", () => {
           user: {
             userId: 11,
             loginId: "center-admin",
-            displayName: "센터 관리자",
+            userName: "센터 관리자",
             primaryRole: "ROLE_CENTER_ADMIN",
             roles: ["ROLE_CENTER_ADMIN"]
           }
@@ -209,7 +209,7 @@ describe("AuthStateProvider bootstrap", () => {
           user: {
             userId: 11,
             loginId: "center-admin",
-            displayName: "센터 관리자",
+            userName: "센터 관리자",
             primaryRole: "ROLE_CENTER_ADMIN",
             roles: ["ROLE_CENTER_ADMIN"]
           }

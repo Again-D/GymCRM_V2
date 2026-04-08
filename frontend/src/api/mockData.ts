@@ -87,7 +87,7 @@ type MockTrainerRecord = {
   userId: number;
   centerId: number;
   loginId: string;
-  displayName: string;
+  userName: string;
   phone: string | null;
   userStatus: "ACTIVE" | "INACTIVE";
 };
@@ -147,7 +147,7 @@ let mockTrainers: MockTrainerRecord[] = [
     userId: 41,
     centerId: 1,
     loginId: "trainer-a",
-    displayName: "정트레이너",
+    userName: "정트레이너",
     phone: "010-1111-2222",
     userStatus: "ACTIVE",
   },
@@ -155,7 +155,7 @@ let mockTrainers: MockTrainerRecord[] = [
     userId: 42,
     centerId: 1,
     loginId: "trainer-b",
-    displayName: "김트레이너",
+    userName: "김트레이너",
     phone: "010-3333-4444",
     userStatus: "ACTIVE",
   },
@@ -1435,7 +1435,7 @@ function filterTrainerMonthlyPtSummary(url: URL): TrainerMonthlyPtSummary {
   return {
     settlementMonth,
     trainerUserId: trainerUserId ?? row?.trainerUserId ?? 0,
-    trainerName: row?.trainerName ?? fallbackTrainer?.displayName ?? "트레이너",
+    trainerName: row?.trainerName ?? fallbackTrainer?.userName ?? "트레이너",
     completedClassCount: report.totalCompletedClassCount
   };
 }
@@ -1811,7 +1811,7 @@ export function createMockPtReservation(input: {
     scheduleId: scheduleIdSeed,
     scheduleType: "PT",
     trainerUserId: input.trainerUserId,
-    trainerName: trainer?.displayName ?? `트레이너 #${input.trainerUserId}`,
+    trainerName: trainer?.userName ?? `트레이너 #${input.trainerUserId}`,
     slotTitle: "PT 예약",
     startAt: startAt.toISOString(),
     endAt: endAt.toISOString(),
@@ -2183,7 +2183,7 @@ function buildMockTrainerSummary(trainer: MockTrainerRecord): TrainerSummary {
   return {
     userId: trainer.userId,
     centerId: trainer.centerId,
-    displayName: trainer.displayName,
+    userName: trainer.userName,
     userStatus: trainer.userStatus,
     phone: trainer.phone,
     assignedMemberCount: new Set(assignedMemberIds).size,
@@ -2230,7 +2230,7 @@ function filterTrainers(url: URL) {
         return true;
       }
       return (
-        trainer.displayName.includes(keyword) ||
+        trainer.userName.includes(keyword) ||
         trainer.loginId.includes(keyword) ||
         (trainer.phone ?? "").includes(keyword)
       );
@@ -2247,7 +2247,7 @@ export function createMockTrainer(input: {
   centerId: number;
   loginId: string;
   password: string;
-  displayName: string;
+  userName: string;
   phone: string | null;
 }) {
   trainerIdSeed += 1;
@@ -2255,7 +2255,7 @@ export function createMockTrainer(input: {
     userId: trainerIdSeed,
     centerId: input.centerId,
     loginId: input.loginId,
-    displayName: input.displayName,
+    userName: input.userName,
     phone: input.phone,
     userStatus: "ACTIVE",
   };
@@ -2272,7 +2272,7 @@ export function updateMockTrainer(
   userId: number,
   input: {
     loginId: string;
-    displayName: string;
+    userName: string;
     phone: string | null;
   },
 ) {
@@ -2284,7 +2284,7 @@ export function updateMockTrainer(
     nextTrainer = {
       ...trainer,
       loginId: input.loginId,
-      displayName: input.displayName,
+      userName: input.userName,
       phone: input.phone,
     };
     return nextTrainer;
@@ -2525,7 +2525,7 @@ function buildMockGxScheduleSnapshot(
           sourceRuleId: rule.ruleId,
           sourceExceptionId: exception?.exceptionId ?? null,
           trainerUserId,
-          trainerName: trainer?.displayName ?? `트레이너 #${trainerUserId}`,
+          trainerName: trainer?.userName ?? `트레이너 #${trainerUserId}`,
           className: rule.className,
           startAt: `${date}T${startTime}+09:00`,
           endAt: `${date}T${endTime}+09:00`,
@@ -2697,7 +2697,7 @@ export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
         .map((trainer) => ({
           userId: trainer.userId,
           centerId: trainer.centerId,
-          displayName: trainer.displayName,
+          userName: trainer.userName,
         })),
     );
   }

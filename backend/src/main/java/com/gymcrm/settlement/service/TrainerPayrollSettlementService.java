@@ -120,7 +120,7 @@ public class TrainerPayrollSettlementService {
         long completedClassCount = rows.stream()
                 .mapToLong(TrainerPayrollSettlementRepository.TrainerCompletedCountRow::completedClassCount)
                 .sum();
-        String trainerName = rows.isEmpty() ? actor.displayName() : rows.get(0).trainerName();
+        String trainerName = rows.isEmpty() ? actor.userName() : rows.get(0).trainerName();
 
         return new TrainerMonthlyPtSummaryResult(
                 settlementMonth,

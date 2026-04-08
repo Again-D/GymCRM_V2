@@ -171,7 +171,7 @@ public class AuthController {
             Long userId,
             Long centerId,
             String loginId,
-            String displayName,
+            String userName,
             String roleCode
     ) {
         static AuthMeResponse from(AuthService.UserSession session) {
@@ -179,7 +179,7 @@ public class AuthController {
                     session.userId(),
                     session.centerId(),
                     session.loginId(),
-                    session.displayName(),
+                    session.userName(),
                     session.roleCode()
                 );
         }
@@ -194,10 +194,10 @@ public class AuthController {
     public record TrainerSummaryResponse(
             Long userId,
             Long centerId,
-            String displayName
+            String userName
     ) {
         static TrainerSummaryResponse from(AuthUser user) {
-            return new TrainerSummaryResponse(user.userId(), user.centerId(), user.displayName());
+            return new TrainerSummaryResponse(user.userId(), user.centerId(), user.userName());
         }
     }
 

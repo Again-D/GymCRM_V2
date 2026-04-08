@@ -206,7 +206,7 @@ class TrainerSettlementLifecycleServiceIntegrationTest {
     private long createTrainerUserWithDisplayName(String displayName, String loginId) {
         Long userId = jdbcClient.sql("""
                 INSERT INTO users (
-                    center_id, login_id, password_hash, display_name, user_status,
+                    center_id, login_id, password_hash, user_name, user_status,
                     is_deleted, created_at, created_by, updated_at, updated_by
                 ) VALUES (
                     1, :loginId, :passwordHash, :displayName, 'ACTIVE',

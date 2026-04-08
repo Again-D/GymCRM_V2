@@ -46,7 +46,7 @@ origin: docs/brainstorms/2026-03-27-member-trainer-assignment-brainstorm.md
 
 ### 2. 트레이너 선택 데이터는 기존 lightweight surface를 우선 재사용
 
-가능하면 기존 트레이너 picker/list surface를 사용해 회원권 등록 모달의 선택 옵션을 채운다. 다만 구매 모달이 의존하는 계약은 최소 DTO로 고정한다. 필요한 필드는 `userId`, `displayName`이며, 그 외 계정성 정보는 구매 흐름에 싣지 않는다. 새 전용 API는 기존 응답이 이 최소 계약을 못 맞출 때만 추가한다.
+가능하면 기존 트레이너 picker/list surface를 사용해 회원권 등록 모달의 선택 옵션을 채운다. 다만 구매 모달이 의존하는 계약은 최소 DTO로 고정한다. 필요한 필드는 `userId`, `userName`이며, 그 외 계정성 정보는 구매 흐름에 싣지 않는다. 새 전용 API는 기존 응답이 이 최소 계약을 못 맞출 때만 추가한다.
 
 우선 검토 대상:
 
@@ -56,7 +56,7 @@ origin: docs/brainstorms/2026-03-27-member-trainer-assignment-brainstorm.md
 원칙은 두 가지다.
 
 - 목록 조회를 위해 trainer admin detail API를 끌어오지 않는다.
-- trainer picker는 least-privilege 계약(`userId`, `displayName`)으로 고정하고, `loginId` 같은 계정 식별자는 포함하지 않는다.
+- trainer picker는 least-privilege 계약(`userId`, `userName`)으로 고정하고, `loginId` 같은 계정 식별자는 포함하지 않는다.
 
 ### 3. PT 회원권 구매 정책을 서버에서 강제
 
@@ -92,7 +92,7 @@ origin: docs/brainstorms/2026-03-27-member-trainer-assignment-brainstorm.md
 - 중복 PT 회원권 차단은 비종결 PT 상태(`ACTIVE`, `HOLDING`)를 대상으로 정의한다. `HOLDING`은 운영상 여전히 살아 있는 PT 회원권이므로 단일 PT 슬롯을 점유한다고 본다.
 - 동시성 안전성을 위해 read-before-write 검증만으로 끝내지 않는다. partial unique index 같은 저장소 invariant를 우선 검토하고, 불가할 때만 명시적 member-scoped lock 대안을 사용한다.
 - 트레이너 목록 로드는 최소 권한 surface를 사용해야 한다. 회원권 구매 모달이 trainer management detail에 의존하면 과한 데이터와 권한 coupling이 생긴다.
-- trainer picker는 `userId`, `displayName`만 보장하는 최소 응답 계약을 plan에서 먼저 고정한다. 기존 `/api/v1/auth/trainers`를 재사용하더라도 이 계약에 맞는 축소 응답 또는 adapter가 필요하다.
+- trainer picker는 `userId`, `userName`만 보장하는 최소 응답 계약을 plan에서 먼저 고정한다. 기존 `/api/v1/auth/trainers`를 재사용하더라도 이 계약에 맞는 축소 응답 또는 adapter가 필요하다.
 - mock/live parity도 챙겨야 한다. 테스트 및 mock 데이터 경로에서 trainer picker와 assigned trainer 저장 흐름이 어긋나면 프론트 회귀가 생긴다.
 
 ## System-Wide Impact
@@ -151,7 +151,7 @@ origin: docs/brainstorms/2026-03-27-member-trainer-assignment-brainstorm.md
 - [x] PT가 아닌 상품 구매는 기존 동작을 유지하며 담당 트레이너 없이도 생성 가능하다.
 - [x] 담당 트레이너가 저장된 PT 회원권은 기존 trainer-scoped reservation target / reservation ownership 흐름과 충돌하지 않는다.
 - [x] PT 중복 차단은 동시 요청에서도 깨지지 않도록 persistence invariant 또는 동등한 concurrency-safe guard로 보장된다.
-- [x] trainer picker 데이터 계약은 구매 흐름에 필요한 최소 필드(`userId`, `displayName`)로 고정된다.
+- [x] trainer picker 데이터 계약은 구매 흐름에 필요한 최소 필드(`userId`, `userName`)로 고정된다.
 - [x] 관련 통합 테스트와 프론트 테스트가 추가 또는 갱신된다.
 - [x] API 설계 문서와 실제 정책 간 불일치가 있다면 이번 변경 범위에 맞게 문서가 갱신된다.
 
@@ -219,7 +219,7 @@ ORDER BY non_terminal_pt_count DESC, center_id, member_id;
 - `PurchaseFormState`에 `assignedTrainerId` 추가
 - 회원권 등록 모달에 trainer select 추가
 - 상품 선택에 따라 PT/non-PT UI와 validation 분기
-- trainer picker는 `userId`, `displayName` 최소 계약 기준으로 소비
+- trainer picker는 `userId`, `userName` 최소 계약 기준으로 소비
 - `createMembership()` live payload와 mock path 모두 `assignedTrainerId` 반영
 
 ### Testing

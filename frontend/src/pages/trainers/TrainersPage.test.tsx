@@ -62,7 +62,7 @@ describe("TrainersPage", () => {
           data: {
             userId: 41,
             centerId: 2,
-            displayName: "정트레이너",
+            userName: "정트레이너",
             loginId: "trainer-a",
             userStatus: "ACTIVE",
             phone: "010-1111-2222",
@@ -86,7 +86,7 @@ describe("TrainersPage", () => {
           data: {
             userId: 52,
             centerId: body.centerId,
-            displayName: body.displayName,
+            userName: body.userName,
             loginId: body.loginId,
             userStatus: "ACTIVE",
             phone: body.phone ?? null,
@@ -109,7 +109,7 @@ describe("TrainersPage", () => {
           {
             userId: 41,
             centerId: 2,
-            displayName: "정트레이너",
+            userName: "정트레이너",
             userStatus: "ACTIVE",
             phone: "010-1111-2222",
             assignedMemberCount: 1,
@@ -271,7 +271,7 @@ describe("TrainersPage", () => {
             centerId: 2,
             loginId: "trainer-b",
             password: "Password123!",
-            displayName: "김트레이너",
+            userName: "김트레이너",
             phone: null,
           }),
         }),

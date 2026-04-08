@@ -54,7 +54,7 @@ type AuthTokenResponse = {
     userId: number;
     centerId: number;
     loginId: string;
-    displayName: string;
+    userName: string;
     primaryRole?: string;
     roles?: string[];
     roleCode?: string;
@@ -242,7 +242,7 @@ function normalizeLiveUser(user: AuthTokenResponse["user"] | null): PrototypeAut
   return {
     userId: user.userId,
     centerId: user.centerId,
-    username: user.displayName || user.loginId,
+    username: user.userName || user.loginId,
     primaryRole: normalizedRoles.primaryRole,
     roles: normalizedRoles.roles
   };
