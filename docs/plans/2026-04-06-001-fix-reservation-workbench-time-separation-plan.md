@@ -1,7 +1,7 @@
 ---
 title: fix: Stabilize reservation workbench schedule context
 type: fix
-status: active
+status: completed
 date: 2026-04-07
 origin: docs/brainstorms/2026-04-06-reservation-workbench-time-separation-requirements.md
 ---
@@ -99,7 +99,7 @@ flowchart TB
 
 ## Implementation Units
 
-- [ ] **Unit 1: Extend reservation schedule reads for targeted `scheduleId` enrichment**
+- [x] **Unit 1: Extend reservation schedule reads for targeted `scheduleId` enrichment**
 
 **Goal:** Add optional `scheduleIds` support to the existing reservation schedule API while preserving the current no-parameter future-only behavior.
 
@@ -138,7 +138,7 @@ flowchart TB
 - Existing no-parameter clients remain behaviorally unchanged.
 - The API can recover reservation-linked schedule rows that are absent from the normal future schedule list.
 
-- [ ] **Unit 2: Update frontend schedule loading to request reservation-linked enrichment**
+- [x] **Unit 2: Update frontend schedule loading to request reservation-linked enrichment**
 
 **Goal:** Teach the reservation page to ask the shared schedule query for reservation-linked `scheduleId` enrichment while preserving booking and GX/PT schedule selection behavior.
 
@@ -175,7 +175,7 @@ flowchart TB
 - The reservation page continues to support booking flows without regression.
 - Workbench-linked missing schedules can be recovered through the shared schedule query path.
 
-- [ ] **Unit 3: Improve workbench fallback handling and page-level regression coverage**
+- [x] **Unit 3: Improve workbench fallback handling and page-level regression coverage**
 
 **Goal:** Use the enriched schedule dataset to reduce fallback rows and make the remaining unresolved rows more explanatory for operators.
 
@@ -208,7 +208,7 @@ flowchart TB
 - Operators see schedule metadata for most linked reservations, not just currently future ones.
 - Remaining unresolved rows communicate likely cause more clearly than the previous generic fallback.
 
-- [ ] **Unit 4: Document the extended schedule query contract and default-reader safety**
+- [x] **Unit 4: Document the extended schedule query contract and default-reader safety**
 
 **Goal:** Keep the canonical API contract aligned with the new optional `scheduleIds` enrichment behavior and explicitly preserve the no-parameter default semantics for existing consumers.
 
