@@ -1,5 +1,7 @@
 package com.gymcrm.settlement.service;
 
+import com.gymcrm.common.auth.entity.AuthUser;
+import com.gymcrm.common.auth.repository.AuthUserRepository;
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
@@ -16,18 +18,22 @@ import java.util.List;
 @Service
 public class TrainerSettlementLifecycleService {
     private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Seoul");
+    private static final String ROLE_TRAINER = "ROLE_TRAINER";
 
     private final TrainerSettlementRepository trainerSettlementRepository;
     private final TrainerPayrollSettlementService trainerPayrollSettlementService;
+    private final AuthUserRepository authUserRepository;
     private final CurrentUserProvider currentUserProvider;
 
     public TrainerSettlementLifecycleService(
             TrainerSettlementRepository trainerSettlementRepository,
             TrainerPayrollSettlementService trainerPayrollSettlementService,
+            AuthUserRepository authUserRepository,
             CurrentUserProvider currentUserProvider
     ) {
         this.trainerSettlementRepository = trainerSettlementRepository;
         this.trainerPayrollSettlementService = trainerPayrollSettlementService;
+        this.authUserRepository = authUserRepository;
         this.currentUserProvider = currentUserProvider;
     }
 
@@ -72,9 +78,26 @@ public class TrainerSettlementLifecycleService {
 
     @Transactional(readOnly = true)
     public List<TrainerSettlement> getConfirmedSettlements(YearMonth settlementMonth) {
-        return trainerSettlementRepository.findConfirmedByCenterIdAndSettlementMonth(
+        List<TrainerSettlement> settlements = trainerSettlementRepository.findConfirmedByCenterIdAndSettlementMonth(
                 currentUserProvider.currentCenterId(),
                 settlementMonth.atDay(1)
         );
+        AuthUser actor = currentActorOrNull();
+        if (actor == null || !ROLE_TRAINER.equals(actor.roleCode())) {
+            return settlements;
+        }
+        return settlements.stream()
+                .filter(settlement -> actor.userId().equals(settlement.trainerUserId()))
+                .toList();
+    }
+
+    private AuthUser currentActorOrNull() {
+        try {
+            return authUserRepository.findActiveById(currentUserProvider.currentUserId())
+                    .filter(AuthUser::isActive)
+                    .orElse(null);
+        } catch (IllegalStateException ex) {
+            return null;
+        }
     }
 }

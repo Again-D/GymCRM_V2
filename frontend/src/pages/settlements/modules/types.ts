@@ -5,6 +5,7 @@ export type SettlementTabKey = "salesAnalytics" | "trainerPayroll";
 export type SettlementTrendGranularity = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
 export type SettlementAdjustmentType = "REFUND";
 export type TrainerSettlementStatus = "DRAFT" | "CONFIRMED";
+export const DEFAULT_TRAINER_PAYROLL_SESSION_UNIT_PRICE = 50000;
 
 export type SettlementReportFilters = {
   startDate: string;
@@ -96,6 +97,13 @@ export type TrainerPayrollReport = {
   rows: TrainerPayrollRow[];
 };
 
+export type TrainerMonthlyPtSummary = {
+  settlementMonth: string;
+  trainerUserId: number;
+  trainerName: string;
+  completedClassCount: number;
+};
+
 export function createDefaultSettlementFilters(): SettlementReportFilters {
   const today = todayLocalDate();
   return {
@@ -110,6 +118,6 @@ export function createDefaultSettlementFilters(): SettlementReportFilters {
 export function createDefaultTrainerPayrollFilters(baseDate = todayLocalDate()): TrainerPayrollFilters {
   return {
     settlementMonth: baseDate.slice(0, 7),
-    sessionUnitPrice: "50000"
+    sessionUnitPrice: String(DEFAULT_TRAINER_PAYROLL_SESSION_UNIT_PRICE)
   };
 }

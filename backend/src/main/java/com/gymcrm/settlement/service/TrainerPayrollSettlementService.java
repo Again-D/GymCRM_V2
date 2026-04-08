@@ -1,5 +1,7 @@
 package com.gymcrm.settlement.service;
 
+import com.gymcrm.common.auth.entity.AuthUser;
+import com.gymcrm.common.auth.repository.AuthUserRepository;
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
@@ -18,28 +20,40 @@ import java.util.List;
 @Service
 public class TrainerPayrollSettlementService {
     private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Seoul");
+    private static final String ROLE_TRAINER = "ROLE_TRAINER";
+    private static final BigDecimal DEFAULT_TRAINER_READONLY_SESSION_UNIT_PRICE = new BigDecimal("50000");
 
     private final TrainerPayrollSettlementRepository repository;
     private final TrainerSettlementRepository trainerSettlementRepository;
+    private final AuthUserRepository authUserRepository;
     private final CurrentUserProvider currentUserProvider;
 
     public TrainerPayrollSettlementService(
             TrainerPayrollSettlementRepository repository,
             TrainerSettlementRepository trainerSettlementRepository,
+            AuthUserRepository authUserRepository,
             CurrentUserProvider currentUserProvider
     ) {
         this.repository = repository;
         this.trainerSettlementRepository = trainerSettlementRepository;
+        this.authUserRepository = authUserRepository;
         this.currentUserProvider = currentUserProvider;
     }
 
     @Transactional(readOnly = true)
     public MonthlyPayrollResult getMonthlyPayroll(MonthlyPayrollQuery query) {
-        validateQuery(query);
+        ActorScope actorScope = resolveActorScope();
+        MonthlyPayrollQuery scopedQuery = normalizeQueryForActor(query, actorScope);
+        validateQuery(scopedQuery);
         List<TrainerSettlement> confirmedSettlements = trainerSettlementRepository.findConfirmedByCenterIdAndSettlementMonth(
                 currentUserProvider.currentCenterId(),
-                query.settlementMonth().atDay(1)
+                scopedQuery.settlementMonth().atDay(1)
         );
+        if (actorScope.trainerUserId() != null) {
+            confirmedSettlements = confirmedSettlements.stream()
+                    .filter(settlement -> actorScope.trainerUserId().equals(settlement.trainerUserId()))
+                    .toList();
+        }
         if (!confirmedSettlements.isEmpty()) {
             List<TrainerPayrollRow> confirmedRows = confirmedSettlements.stream()
                     .map(settlement -> new TrainerPayrollRow(
@@ -60,8 +74,8 @@ public class TrainerPayrollSettlementService {
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
             return new MonthlyPayrollResult(
-                    query.settlementMonth(),
-                    confirmedRows.isEmpty() ? query.sessionUnitPrice() : confirmedRows.get(0).sessionUnitPrice(),
+                    scopedQuery.settlementMonth(),
+                    confirmedRows.isEmpty() ? scopedQuery.sessionUnitPrice() : confirmedRows.get(0).sessionUnitPrice(),
                     totalCompletedClassCount,
                     totalPayrollAmount,
                     "CONFIRMED",
@@ -69,16 +83,54 @@ public class TrainerPayrollSettlementService {
                     confirmedRows
             );
         }
-        return calculateMonthlyPayroll(query);
+        return calculateDraftMonthlyPayroll(scopedQuery, actorScope);
     }
 
     @Transactional(readOnly = true)
     public MonthlyPayrollResult calculateMonthlyPayroll(MonthlyPayrollQuery query) {
-        validateQuery(query);
-        return calculateDraftMonthlyPayroll(query);
+        ActorScope actorScope = resolveActorScope();
+        MonthlyPayrollQuery scopedQuery = normalizeQueryForActor(query, actorScope);
+        validateQuery(scopedQuery);
+        return calculateDraftMonthlyPayroll(scopedQuery, actorScope);
     }
 
-    private MonthlyPayrollResult calculateDraftMonthlyPayroll(MonthlyPayrollQuery query) {
+    @Transactional(readOnly = true)
+    public TrainerMonthlyPtSummaryResult getCurrentTrainerMonthlyPtSummary(YearMonth settlementMonth) {
+        if (settlementMonth == null) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "settlementMonth is required");
+        }
+
+        AuthUser actor = currentActorOrNull();
+        if (actor == null || !ROLE_TRAINER.equals(actor.roleCode())) {
+            throw new ApiException(ErrorCode.ACCESS_DENIED, "트레이너만 본인 월간 PT 실적을 조회할 수 있습니다.");
+        }
+
+        OffsetDateTime startAt = settlementMonth.atDay(1).atStartOfDay(BUSINESS_ZONE).toOffsetDateTime();
+        OffsetDateTime endExclusiveAt = settlementMonth.plusMonths(1).atDay(1).atStartOfDay(BUSINESS_ZONE).toOffsetDateTime();
+
+        List<TrainerPayrollSettlementRepository.TrainerCompletedCountRow> rows = repository.findMonthlyCompletedPtCounts(
+                new TrainerPayrollSettlementRepository.QueryCommand(
+                        currentUserProvider.currentCenterId(),
+                        startAt,
+                        endExclusiveAt,
+                        actor.userId()
+                )
+        );
+
+        long completedClassCount = rows.stream()
+                .mapToLong(TrainerPayrollSettlementRepository.TrainerCompletedCountRow::completedClassCount)
+                .sum();
+        String trainerName = rows.isEmpty() ? actor.displayName() : rows.get(0).trainerName();
+
+        return new TrainerMonthlyPtSummaryResult(
+                settlementMonth,
+                actor.userId(),
+                trainerName,
+                completedClassCount
+        );
+    }
+
+    private MonthlyPayrollResult calculateDraftMonthlyPayroll(MonthlyPayrollQuery query, ActorScope actorScope) {
         if (query.settlementMonth() == null) {
             throw new ApiException(ErrorCode.VALIDATION_ERROR, "settlementMonth is required");
         }
@@ -96,7 +148,8 @@ public class TrainerPayrollSettlementService {
                 new TrainerPayrollSettlementRepository.QueryCommand(
                         currentUserProvider.currentCenterId(),
                         startAt,
-                        endExclusiveAt
+                        endExclusiveAt,
+                        actorScope.trainerUserId()
                 )
         );
 
@@ -141,6 +194,44 @@ public class TrainerPayrollSettlementService {
         }
     }
 
+    private MonthlyPayrollQuery normalizeQueryForActor(MonthlyPayrollQuery query, ActorScope actorScope) {
+        if (actorScope.trainerUserId() == null) {
+            return query;
+        }
+        return new MonthlyPayrollQuery(
+                query.settlementMonth(),
+                DEFAULT_TRAINER_READONLY_SESSION_UNIT_PRICE
+        );
+    }
+
+    private ActorScope resolveActorScope() {
+        AuthUser actor = currentActorOrNull();
+        if (actor == null || !ROLE_TRAINER.equals(actor.roleCode())) {
+            return ActorScope.unrestricted();
+        }
+        return ActorScope.forTrainer(actor.userId());
+    }
+
+    private AuthUser currentActorOrNull() {
+        try {
+            return authUserRepository.findActiveById(currentUserProvider.currentUserId())
+                    .filter(AuthUser::isActive)
+                    .orElse(null);
+        } catch (IllegalStateException ex) {
+            return null;
+        }
+    }
+
+    private record ActorScope(Long trainerUserId) {
+        static ActorScope unrestricted() {
+            return new ActorScope(null);
+        }
+
+        static ActorScope forTrainer(Long trainerUserId) {
+            return new ActorScope(trainerUserId);
+        }
+    }
+
     public record MonthlyPayrollQuery(
             YearMonth settlementMonth,
             BigDecimal sessionUnitPrice
@@ -165,6 +256,14 @@ public class TrainerPayrollSettlementService {
             long completedClassCount,
             BigDecimal sessionUnitPrice,
             BigDecimal payrollAmount
+    ) {
+    }
+
+    public record TrainerMonthlyPtSummaryResult(
+            YearMonth settlementMonth,
+            Long trainerUserId,
+            String trainerName,
+            long completedClassCount
     ) {
     }
 }

@@ -78,9 +78,12 @@ public class SalesSettlementReportController {
         return ApiResponse.success(rows, "최근 환불 조회 성공");
     }
 
-    @GetMapping(value = "/sales-report/export", produces = "text/csv")
+    @GetMapping(
+            value = "/sales-report/export",
+            produces = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
     @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
-    public ResponseEntity<String> exportSalesReportCsv(
+    public ResponseEntity<byte[]> exportSalesReportCsv(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             @RequestParam(required = false)
@@ -94,13 +97,13 @@ public class SalesSettlementReportController {
         SalesSettlementReportService.SalesReportResult result = reportService.getReport(
                 new SalesSettlementReportService.ReportQuery(startDate, endDate, paymentMethod, productKeyword, trendGranularity)
         );
-        String fileName = "sales-report-%s-to-%s.csv".formatted(startDate, endDate);
-        String csv = csvExporter.export(result);
+        String fileName = "sales-report-%s-to-%s.xlsx".formatted(startDate, endDate);
+        byte[] workbook = csvExporter.export(result);
 
         return ResponseEntity.ok()
-                .contentType(new MediaType("text", "csv"))
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(fileName).build().toString())
-                .body(csv);
+                .body(workbook);
     }
 
     public record SalesReportResponse(

@@ -500,10 +500,11 @@ X-RateLimit-Reset: 1740001860
 | 1 | `GET` | `/api/v1/settlements/sales-dashboard` | 운영 상황판용 매출 대시보드 조회 | O | ADMIN, MANAGER, DESK |
 | 2 | `GET` | `/api/v1/settlements/sales-report` | 기간별 매출/환불/순매출 및 추이 조회 | O | ADMIN, MANAGER, DESK |
 | 3 | `GET` | `/api/v1/settlements/sales-report/recent-adjustments` | 최근 환불 목록 조회 | O | ADMIN, MANAGER, DESK |
-| 4 | `GET` | `/api/v1/settlements/sales-report/export` | 매출 리포트 CSV 내보내기 | O | ADMIN, MANAGER, DESK |
-| 5 | `GET` | `/api/v1/settlements/trainer-payroll` | 트레이너 월별 급여 조회. 확정된 월이면 저장된 스냅샷과 `settlementStatus`/`confirmedAt`를 함께 반환 | O | ADMIN, MANAGER, DESK |
-| 6 | `POST` | `/api/v1/settlements/trainer-payroll/confirm` | 월별 트레이너 정산 일괄 확정 및 스냅샷 저장 | O | ADMIN, MANAGER, DESK |
-| 7 | `GET` | `/api/v1/settlements/trainer-payroll/document` | 확정된 월 정산 CSV 정산서 다운로드 | O | ADMIN, MANAGER, DESK |
+| 4 | `GET` | `/api/v1/settlements/sales-report/export` | 매출 리포트 Excel(`.xlsx`) 다운로드 | O | ADMIN, MANAGER, DESK |
+| 5 | `GET` | `/api/v1/settlements/trainer-payroll/my-summary` | 트레이너 본인 월간 완료 PT 수업 수 요약 조회 | O | TRAINER |
+| 6 | `GET` | `/api/v1/settlements/trainer-payroll` | 트레이너 월별 급여 조회. 확정 월은 저장된 스냅샷과 `settlementStatus`/`confirmedAt`를 함께 반환 | O | ADMIN, MANAGER, DESK |
+| 7 | `POST` | `/api/v1/settlements/trainer-payroll/confirm` | 월별 트레이너 정산 일괄 확정 및 스냅샷 저장 | O | ADMIN, MANAGER, DESK |
+| 8 | `GET` | `/api/v1/settlements/trainer-payroll/document` | 확정된 월 정산 PDF 정산서 다운로드 | O | ADMIN, MANAGER, DESK |
 
 ### 3.8 CRM 메시지 API (`/api/v1/messages`)
 
@@ -1657,80 +1658,178 @@ GET /api/v1/reports/revenue?periodType=MONTHLY&startDate=2026-01-01&endDate=2026
 
 ---
 
-### 4.10 트레이너 정산 생성 API
+### 4.9.4 매출 리포트 Export API
 
 | 항목 | 내용 |
 |------|------|
-| **URL** | `POST /api/v1/settlements` |
-| **설명** | 지정 기간의 트레이너 수업 실적을 집계하여 정산 내역을 생성한다. |
+| **URL** | `GET /api/v1/settlements/sales-report/export` |
+| **설명** | 매출 분석 탭의 현재 필터 기준으로 운영 보고서형 Excel(`.xlsx`) 파일을 다운로드한다. |
 | **인증** | 필요 |
-| **권한** | ADMIN |
+| **권한** | ADMIN, MANAGER, DESK |
 
-**Request Body:**
-
-```json
-{
-  "trainerId": "TRN-001",
-  "periodStart": "2026-02-01",
-  "periodEnd": "2026-02-28"
-}
-```
+**Query Parameters:**
 
 | 필드 | 타입 | 필수 | 설명 |
 |------|------|------|------|
-| `trainerId` | String | O | 정산 대상 트레이너 ID (전체 정산 시 `ALL`) |
-| `periodStart` | String | O | 정산 시작일 (yyyy-MM-dd) |
-| `periodEnd` | String | O | 정산 종료일 (yyyy-MM-dd) |
+| `startDate` | String | O | 조회 시작일 (`yyyy-MM-dd`) |
+| `endDate` | String | O | 조회 종료일 (`yyyy-MM-dd`) |
+| `paymentMethod` | String | X | `CASH`, `CARD`, `TRANSFER`, `ETC` 중 하나 |
+| `productKeyword` | String | X | 상품명 부분 검색 |
+| `trendGranularity` | String | X | `DAILY`, `WEEKLY`, `MONTHLY`, `YEARLY` 중 하나. 기본값 `DAILY` |
 
-**Response Body (성공 - 201):**
+**Response (성공 - 200):**
+
+Binary file download with:
+- `Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
+- `Content-Disposition: attachment; filename="sales-report-YYYY-MM-DD-to-YYYY-MM-DD.xlsx"`
+
+**비즈니스 규칙:**
+- 파일은 `Summary`, `Trend`, `Details` 시트로 구성된다.
+- `Summary` 시트에는 조회 조건과 총매출/총 환불/순매출 요약이 포함된다.
+- `Trend` 시트에는 추이 버킷별 총매출/환불/순매출/거래 수가 포함된다.
+- `Details` 시트에는 상품명과 결제수단 기준 상세 집계가 포함된다.
+- 조회 validation 규칙은 `GET /api/v1/settlements/sales-report`와 동일하다.
+
+---
+
+### 4.9.5 트레이너 본인 월간 PT 실적 요약 API
+
+| 항목 | 내용 |
+|------|------|
+| **URL** | `GET /api/v1/settlements/trainer-payroll/my-summary` |
+| **설명** | 트레이너가 `/settlements` 전용 미니뷰에서 본인 월간 완료 PT 수업 횟수만 조회한다. |
+| **인증** | 필요 |
+| **권한** | TRAINER |
+
+**Query Parameters:**
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `settlementMonth` | String | O | 조회 월 (`yyyy-MM`) |
+
+**Response Body (성공 - 200):**
 
 ```json
 {
   "success": true,
   "data": {
-    "settlementId": "STL-202602-TRN001",
-    "trainer": {
-      "trainerId": "TRN-001",
-      "name": "박트레이너"
-    },
-    "period": {
-      "start": "2026-02-01",
-      "end": "2026-02-28"
-    },
-    "summary": {
-      "totalSessions": 48,
-      "completedSessions": 45,
-      "cancelledSessions": 2,
-      "noShowSessions": 1,
-      "ptSessions": 40,
-      "gxSessions": 8
-    },
-    "calculation": {
-      "ptRatePerSession": 25000,
-      "gxRatePerSession": 15000,
-      "ptAmount": 1000000,
-      "gxAmount": 120000,
-      "bonus": 50000,
-      "bonusReason": "월 목표 달성 인센티브",
-      "deduction": 0,
-      "deductionReason": null,
-      "totalAmount": 1170000
-    },
-    "status": "DRAFT",
-    "createdAt": "2026-02-20T10:00:00+09:00"
+    "settlementMonth": "2026-04",
+    "trainerUserId": 41,
+    "trainerName": "정트레이너",
+    "completedClassCount": 12
   },
-  "message": "정산이 성공적으로 생성되었습니다.",
-  "timestamp": "2026-02-20T10:00:00+09:00"
+  "message": "트레이너 월간 PT 실적 조회 성공",
+  "timestamp": "2026-04-25T10:00:00+09:00"
 }
 ```
 
 **비즈니스 규칙:**
-- 동일 트레이너의 동일 기간에 대해 중복 정산을 생성할 수 없다.
-- 정산 상태 흐름: `DRAFT`(생성) -> `CONFIRMED`(확정) -> `PAID`(지급완료).
-- `CONFIRMED` 상태 이후에는 수정이 불가하다.
-- 수업 횟수는 `COMPLETED` 상태의 예약만 집계한다 (취소, 노쇼 제외).
-- 트레이너별 단가(Rate)는 트레이너 정보에 미리 설정된 값을 사용한다.
-- `trainerId`에 `ALL`을 전달하면 모든 트레이너에 대해 일괄 정산을 생성한다.
+- 트레이너는 본인 완료 PT 수업 수만 조회할 수 있다.
+- 이 응답에는 세션 단가, 예상 급여, 정산 확정 상태, 정산 문서 정보가 포함되지 않는다.
+- 월별 집계 기준은 운영 권한이 보는 `GET /api/v1/settlements/trainer-payroll`과 동일한 완료 PT 수업 기준을 따른다.
+
+---
+
+### 4.9.6 트레이너 월 정산 조회 API
+
+| 항목 | 내용 |
+|------|------|
+| **URL** | `GET /api/v1/settlements/trainer-payroll` |
+| **설명** | 정산 월 기준 트레이너별 완료 수업 수와 급여 산정 결과를 조회한다. |
+| **인증** | 필요 |
+| **권한** | ADMIN, MANAGER, DESK |
+
+**Query Parameters:**
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `settlementMonth` | String | O | 정산 월 (`yyyy-MM`) |
+| `sessionUnitPrice` | Integer | O | 관리자/데스크 조회 시 사용할 세션 단가 |
+
+**Response Body (성공 - 200):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "settlementMonth": "2026-04",
+    "sessionUnitPrice": 50000,
+    "totalCompletedClassCount": 12,
+    "totalPayrollAmount": 600000,
+    "settlementStatus": "CONFIRMED",
+    "confirmedAt": "2026-04-25T10:00:00+09:00",
+    "rows": [
+      {
+        "settlementId": 5001,
+        "trainerUserId": 41,
+        "trainerName": "정트레이너",
+        "completedClassCount": 12,
+        "sessionUnitPrice": 50000,
+        "payrollAmount": 600000
+      }
+    ]
+  },
+  "message": "트레이너 정산 조회 성공",
+  "timestamp": "2026-04-25T10:00:00+09:00"
+}
+```
+
+**비즈니스 규칙:**
+- 관리자/매니저/데스크는 월 전체 트레이너 row를 조회할 수 있다.
+- 확정된 월은 저장된 스냅샷을 우선 반환하고 `settlementStatus`와 `confirmedAt`를 함께 제공한다.
+
+---
+
+### 4.9.7 트레이너 정산 확정 API
+
+| 항목 | 내용 |
+|------|------|
+| **URL** | `POST /api/v1/settlements/trainer-payroll/confirm` |
+| **설명** | 월별 트레이너 정산을 확정하고 스냅샷을 저장한다. |
+| **인증** | 필요 |
+| **권한** | ADMIN, MANAGER, DESK |
+
+**Request Body:**
+
+```json
+{
+  "settlementMonth": "2026-04",
+  "sessionUnitPrice": 50000
+}
+```
+
+**비즈니스 규칙:**
+- 같은 월 정산은 한 번만 확정할 수 있다.
+- 트레이너는 이 endpoint를 호출할 수 없다.
+- 확정 시점의 row와 단가를 스냅샷으로 저장하고 이후 조회/문서 출력은 해당 스냅샷을 재사용한다.
+
+---
+
+### 4.9.8 트레이너 정산 문서 다운로드 API
+
+| 항목 | 내용 |
+|------|------|
+| **URL** | `GET /api/v1/settlements/trainer-payroll/document` |
+| **설명** | 확정된 월 정산 문서를 PDF 파일로 다운로드한다. |
+| **인증** | 필요 |
+| **권한** | ADMIN, MANAGER, DESK |
+
+**Query Parameters:**
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `settlementMonth` | String | O | 정산 월 (`yyyy-MM`) |
+
+**Response (성공 - 200):**
+
+Binary file download with:
+- `Content-Type: application/pdf`
+- `Content-Disposition: attachment; filename="trainer-settlement-YYYY-MM.pdf"`
+
+**비즈니스 규칙:**
+- 확정된 월 정산만 문서로 출력할 수 있다.
+- 관리자/매니저/데스크는 월 전체 정산 문서를 출력할 수 있다.
+- PDF에는 정산 월, 트레이너명, 완료 수업 수, 세션 단가, 정산 금액, 확정 정보가 포함된다.
 
 ---
 
@@ -2221,6 +2320,9 @@ X-Cache: HIT
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| v1.7.0 | 2026-04-08 | `/settlements`를 역할별로 재정렬해 트레이너 전용 월간 PT 실적 미니뷰와 `trainer-payroll/my-summary` 조회 계약을 추가하고, 운영 권한은 기존 월간 정산 집계를 유지하도록 동기화 | Codex |
+| v1.6.0 | 2026-04-08 | 원본 요구사항 기준에 맞춰 트레이너의 `/settlements` 접근을 제거하고, 정산 API를 운영 권한 전용 계약으로 다시 정렬 | Codex |
+| v1.5.0 | 2026-04-08 | 정산 문서 정책을 현재 구현 기준으로 동기화하여 `sales-report/export`의 XLSX 다운로드 계약, `trainer-payroll`의 PDF 출력 계약을 반영 | Codex |
 | v1.4.0 | 2026-04-07 | 예약 스케줄 목록 API에 선택적 `scheduleIds` 보강 조회 계약을 추가해 예약 워크벤치의 일정 복원을 지원하도록 문서를 동기화 | Codex |
 | v1.3.0 | 2026-04-06 | 트레이너 정산 API를 현재 구현 기준으로 동기화하여 `/trainer-payroll` 조회의 확정 상태 필드, `/trainer-payroll/confirm` 확정 저장, `/trainer-payroll/document` CSV 출력 계약을 반영 | Codex |
 | v1.2.0 | 2026-04-03 | 정산 API 계약을 현재 구현 기준으로 동기화하여 `sales-dashboard`, 확장된 `sales-report`, `sales-report/recent-adjustments`, `sales-report/export`와 Phase 1 환불 기준을 명시 | Codex |

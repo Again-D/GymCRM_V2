@@ -19,12 +19,16 @@ import type {
 } from "../pages/lockers/modules/types";
 import type { ProductRecord } from "../pages/products/modules/types";
 import type { CrmHistoryRow, CrmSendStatus } from "../pages/crm/modules/types";
+import {
+  DEFAULT_TRAINER_PAYROLL_SESSION_UNIT_PRICE,
+} from "../pages/settlements/modules/types";
 import type {
   SalesDashboard,
   SettlementRecentAdjustment,
   SettlementPaymentMethod,
   SettlementReport,
   SettlementTrendGranularity,
+  TrainerMonthlyPtSummary,
   TrainerPayrollReport,
   TrainerPayrollRow,
   TrainerSettlementStatus,
@@ -1411,7 +1415,50 @@ function buildTrainerPayrollReport(settlementMonth: string, sessionUnitPrice: nu
 function filterTrainerPayroll(url: URL): TrainerPayrollReport {
   const settlementMonth = url.searchParams.get("settlementMonth")?.trim() ?? todayText().slice(0, 7);
   const sessionUnitPrice = Number(url.searchParams.get("sessionUnitPrice") ?? "50000");
-  return buildTrainerPayrollReport(settlementMonth, sessionUnitPrice);
+  const scopedTrainerUserId = parseOptionalTrainerUserId(url.searchParams.get("trainerUserId"));
+  return scopeTrainerPayrollReport(
+    buildTrainerPayrollReport(settlementMonth, sessionUnitPrice),
+    scopedTrainerUserId
+  );
+}
+
+function filterTrainerMonthlyPtSummary(url: URL): TrainerMonthlyPtSummary {
+  const settlementMonth = url.searchParams.get("settlementMonth")?.trim() ?? todayText().slice(0, 7);
+  const trainerUserId = parseOptionalTrainerUserId(url.searchParams.get("trainerUserId"));
+  const report = scopeTrainerPayrollReport(
+    buildTrainerPayrollReport(settlementMonth, DEFAULT_TRAINER_PAYROLL_SESSION_UNIT_PRICE),
+    trainerUserId
+  );
+  const row = report.rows[0];
+  const fallbackTrainer = mockTrainers.find((trainer) => trainer.userId === trainerUserId);
+
+  return {
+    settlementMonth,
+    trainerUserId: trainerUserId ?? row?.trainerUserId ?? 0,
+    trainerName: row?.trainerName ?? fallbackTrainer?.displayName ?? "트레이너",
+    completedClassCount: report.totalCompletedClassCount
+  };
+}
+
+function parseOptionalTrainerUserId(value: string | null) {
+  if (!value) {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function scopeTrainerPayrollReport(report: TrainerPayrollReport, trainerUserId: number | null) {
+  if (trainerUserId == null) {
+    return report;
+  }
+  const rows = report.rows.filter((row) => row.trainerUserId === trainerUserId);
+  return {
+    ...report,
+    totalCompletedClassCount: rows.reduce((sum, row) => sum + row.completedClassCount, 0),
+    totalPayrollAmount: rows.reduce((sum, row) => sum + row.payrollAmount, 0),
+    rows
+  } satisfies TrainerPayrollReport;
 }
 
 function filterMembers(url: URL) {
@@ -2811,6 +2858,10 @@ export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
     return envelope(filterTrainerPayroll(url));
   }
 
+  if (url.pathname === "/api/v1/settlements/trainer-payroll/my-summary") {
+    return envelope(filterTrainerMonthlyPtSummary(url));
+  }
+
   return null;
 }
 
@@ -2859,8 +2910,14 @@ export async function createMockTrainerSettlementConfirm(input: {
   };
 }
 
-export async function downloadMockTrainerSettlementDocument(settlementMonth: string) {
-  const report = buildTrainerPayrollReport(settlementMonth, 50000);
+export async function downloadMockTrainerSettlementDocument(
+  settlementMonth: string,
+  trainerUserId: number | null = null
+) {
+  const report = scopeTrainerPayrollReport(
+    buildTrainerPayrollReport(settlementMonth, 50000),
+    trainerUserId
+  );
   if (report.settlementStatus !== "CONFIRMED") {
     return {
       ok: false,
@@ -2869,24 +2926,104 @@ export async function downloadMockTrainerSettlementDocument(settlementMonth: str
       content: null
     };
   }
+  if (report.rows.length === 0) {
+    return {
+      ok: false,
+      message: "출력할 본인 정산서가 없습니다.",
+      fileName: null,
+      content: null
+    };
+  }
 
-  const content = [
-    "settlementMonth,trainerName,completedClassCount,sessionUnitPrice,payrollAmount",
-    ...report.rows.map((row) =>
-      [
-        settlementMonth,
-        row.trainerName,
-        String(row.completedClassCount),
-        String(row.sessionUnitPrice),
-        String(row.payrollAmount)
-      ].join(",")
-    )
-  ].join("\n");
+  const content = createMockPdfDocument([
+    `Settlement Month: ${settlementMonth}`,
+    ...report.rows.flatMap((row, index) => [
+      `Trainer ${index + 1}: ${row.trainerName}`,
+      `Completed Classes: ${row.completedClassCount}`,
+      `Session Unit Price: ${row.sessionUnitPrice}`,
+      `Payroll Amount: ${row.payrollAmount}`
+    ])
+  ]);
 
   return {
     ok: true,
-    fileName: `trainer-settlement-${settlementMonth}.csv`,
+    fileName: `trainer-settlement-${settlementMonth}.pdf`,
     content,
     message: "mock 정산서를 생성했습니다."
   };
+}
+
+export async function downloadMockSalesSettlementReport(filters: {
+  startDate: string;
+  endDate: string;
+  paymentMethod: string;
+  productKeyword: string;
+  trendGranularity: string;
+}) {
+  const query = new URLSearchParams({
+    startDate: filters.startDate,
+    endDate: filters.endDate,
+    trendGranularity: filters.trendGranularity
+  });
+  if (filters.paymentMethod) {
+    query.set("paymentMethod", filters.paymentMethod);
+  }
+  if (filters.productKeyword) {
+    query.set("productKeyword", filters.productKeyword);
+  }
+
+  const report = filterSettlementReport(
+    new URL(`/api/v1/settlements/sales-report?${query.toString()}`, "http://local.mock")
+  );
+
+  return {
+    ok: true,
+    fileName: `sales-report-${filters.startDate}-to-${filters.endDate}.xlsx`,
+    content: createMockXlsxDocument([
+      "Sheet: Summary",
+      `Start Date: ${report.startDate}`,
+      `End Date: ${report.endDate}`,
+      `Trend Granularity: ${report.trendGranularity}`,
+      `Total Net Sales: ${report.totalNetSales}`,
+      "Sheet: Trend",
+      ...report.trend.map(
+        (point) =>
+          `${point.bucketLabel} | gross=${point.grossSales} refund=${point.refundAmount} net=${point.netSales}`
+      ),
+      "Sheet: Details",
+      ...report.rows.map(
+        (row) =>
+          `${row.productName} | ${row.paymentMethod} | gross=${row.grossSales} refund=${row.refundAmount} net=${row.netSales}`
+      )
+    ])
+  };
+}
+
+function createMockPdfDocument(lines: string[]) {
+  return [
+    "%PDF-1.4",
+    ...lines.map((line) => `% ${line}`),
+    "1 0 obj",
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "endobj",
+    "2 0 obj",
+    "<< /Type /Pages /Count 1 /Kids [3 0 R] >>",
+    "endobj",
+    "3 0 obj",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+    "endobj",
+    "trailer",
+    "<< /Root 1 0 R >>",
+    "%%EOF"
+  ].join("\n");
+}
+
+function createMockXlsxDocument(lines: string[]) {
+  const encoder = new TextEncoder();
+  const header = encoder.encode("PK\u0003\u0004MOCK-XLSX\n");
+  const body = encoder.encode(lines.join("\n"));
+  const merged = new Uint8Array(header.length + body.length);
+  merged.set(header, 0);
+  merged.set(body, header.length);
+  return merged;
 }

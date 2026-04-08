@@ -63,6 +63,18 @@ public class TrainerPayrollSettlementController {
         return ApiResponse.success(MonthlyTrainerPayrollResponse.from(result), "트레이너 월간 정산 조회 성공");
     }
 
+    @GetMapping("/trainer-payroll/my-summary")
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_TRAINER)
+    public ApiResponse<TrainerMonthlyPtSummaryResponse> getCurrentTrainerMonthlyPtSummary(
+            @RequestParam
+            @Pattern(regexp = "^\\d{4}-\\d{2}$", message = "settlementMonth must be YYYY-MM")
+            String settlementMonth
+    ) {
+        TrainerPayrollSettlementService.TrainerMonthlyPtSummaryResult result =
+                service.getCurrentTrainerMonthlyPtSummary(parseSettlementMonth(settlementMonth));
+        return ApiResponse.success(TrainerMonthlyPtSummaryResponse.from(result), "트레이너 월간 PT 실적 조회 성공");
+    }
+
     @PostMapping("/trainer-payroll/confirm")
     @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
     public ApiResponse<MonthlyTrainerPayrollResponse> confirmMonthlyTrainerPayroll(
@@ -77,9 +89,9 @@ public class TrainerPayrollSettlementController {
         return ApiResponse.success(MonthlyTrainerPayrollResponse.from(result), "트레이너 월간 정산 확정 성공");
     }
 
-    @GetMapping(value = "/trainer-payroll/document", produces = "text/csv")
+    @GetMapping(value = "/trainer-payroll/document", produces = MediaType.APPLICATION_PDF_VALUE)
     @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
-    public ResponseEntity<String> exportMonthlyTrainerSettlementDocument(
+    public ResponseEntity<byte[]> exportMonthlyTrainerSettlementDocument(
             @RequestParam
             @Pattern(regexp = "^\\d{4}-\\d{2}$", message = "settlementMonth must be YYYY-MM")
             String settlementMonth
@@ -91,12 +103,12 @@ public class TrainerPayrollSettlementController {
                     "확정된 트레이너 정산을 찾을 수 없습니다. settlementMonth=" + settlementMonth
             );
         }
-        String fileName = "trainer-settlement-%s.csv".formatted(settlementMonth);
-        String csv = trainerSettlementDocumentExporter.export(settlements);
+        String fileName = "trainer-settlement-%s.pdf".formatted(settlementMonth);
+        byte[] pdf = trainerSettlementDocumentExporter.export(settlements);
         return ResponseEntity.ok()
-                .contentType(new MediaType("text", "csv"))
+                .contentType(MediaType.APPLICATION_PDF)
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(fileName).build().toString())
-                .body(csv);
+                .body(pdf);
     }
 
     private YearMonth parseSettlementMonth(String settlementMonth) {
@@ -153,6 +165,22 @@ public class TrainerPayrollSettlementController {
                     row.completedClassCount(),
                     row.sessionUnitPrice(),
                     row.payrollAmount()
+            );
+        }
+    }
+
+    public record TrainerMonthlyPtSummaryResponse(
+            String settlementMonth,
+            Long trainerUserId,
+            String trainerName,
+            long completedClassCount
+    ) {
+        static TrainerMonthlyPtSummaryResponse from(TrainerPayrollSettlementService.TrainerMonthlyPtSummaryResult result) {
+            return new TrainerMonthlyPtSummaryResponse(
+                    result.settlementMonth().toString(),
+                    result.trainerUserId(),
+                    result.trainerName(),
+                    result.completedClassCount()
             );
         }
     }
