@@ -66,7 +66,7 @@ class AuthOperationalAccessRevokeIntegrationTest {
         targetPassword = "target-pass-1234!";
         targetUserId = jdbcClient.sql("""
                 INSERT INTO users (
-                    center_id, login_id, password_hash, display_name, user_status,
+                    center_id, login_id, password_hash, user_name, user_status,
                     created_at, created_by, updated_at, updated_by
                 )
                 VALUES (

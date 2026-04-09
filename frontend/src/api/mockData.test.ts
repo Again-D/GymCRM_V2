@@ -4,6 +4,7 @@ import {
   createMockMember,
   createMockMembership,
   createMockTrainerSettlementConfirm,
+  downloadMockSalesSettlementReport,
   downloadMockTrainerSettlementDocument,
   getMockResponse,
   patchMockMembership,
@@ -189,7 +190,33 @@ describe("mockData membership propagation", () => {
     const result = await downloadMockTrainerSettlementDocument("2026-03");
 
     expect(result.ok).toBe(true);
-    expect(result.fileName).toBe("trainer-settlement-2026-03.csv");
-    expect(result.content).toContain("settlementMonth,trainerName");
+    expect(result.fileName).toBe("trainer-settlement-2026-03.pdf");
+    expect(result.content).toContain("%PDF-1.4");
   });
+
+  it("exports a sales settlement report with xlsx filename contract", async () => {
+    const result = await downloadMockSalesSettlementReport({
+      startDate: "2026-03-01",
+      endDate: "2026-03-31",
+      paymentMethod: "CARD",
+      productKeyword: "PT",
+      trendGranularity: "DAILY"
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.fileName).toBe("sales-report-2026-03-01-to-2026-03-31.xlsx");
+    expect(result.content[0]).toBe(0x50);
+    expect(result.content[1]).toBe(0x4b);
+  });
+
+  it("returns trainer monthly pt summary for the requested trainer user", () => {
+    const summary = getMockResponse(
+      "/api/v1/settlements/trainer-payroll/my-summary?settlementMonth=2026-03&trainerUserId=41"
+    )?.data as { trainerUserId: number; trainerName: string; completedClassCount: number };
+
+    expect(summary.trainerUserId).toBe(41);
+    expect(summary.trainerName).toBe("정트레이너");
+    expect(summary.completedClassCount).toBeGreaterThan(0);
+  });
+
 });

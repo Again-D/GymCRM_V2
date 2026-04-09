@@ -164,16 +164,16 @@ class AuthControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data").isArray())
-                .andExpect(jsonPath("$.data[*].displayName", hasItem("Trainer User")))
+                .andExpect(jsonPath("$.data[*].userName", hasItem("Trainer User")))
                 .andExpect(jsonPath("$.data[*].loginId").doesNotExist())
-                .andExpect(jsonPath("$.data[*].displayName").value(org.hamcrest.Matchers.not(hasItem("Desk User"))));
+                .andExpect(jsonPath("$.data[*].userName").value(org.hamcrest.Matchers.not(hasItem("Desk User"))));
     }
 
     private void ensureTrainerUser() {
         int updated = jdbcClient.sql("""
                 UPDATE users
                 SET password_hash = :passwordHash,
-                    display_name = :displayName,
+                    user_name = :displayName,
                     user_status = 'ACTIVE',
                     is_deleted = FALSE,
                     deleted_at = NULL,
@@ -191,7 +191,7 @@ class AuthControllerIntegrationTest {
         if (updated == 0) {
             trainerUserId = jdbcClient.sql("""
                     INSERT INTO users (
-                        center_id, login_id, password_hash, display_name, user_status,
+                        center_id, login_id, password_hash, user_name, user_status,
                         created_by, updated_by
                     )
                     VALUES (
@@ -231,7 +231,7 @@ class AuthControllerIntegrationTest {
         int updated = jdbcClient.sql("""
                 UPDATE users
                 SET password_hash = :passwordHash,
-                    display_name = :displayName,
+                    user_name = :displayName,
                     user_status = 'ACTIVE',
                     is_deleted = FALSE,
                     deleted_at = NULL,
@@ -249,7 +249,7 @@ class AuthControllerIntegrationTest {
         if (updated == 0) {
             deskUserId = jdbcClient.sql("""
                     INSERT INTO users (
-                        center_id, login_id, password_hash, display_name, user_status,
+                        center_id, login_id, password_hash, user_name, user_status,
                         created_by, updated_by
                     )
                     VALUES (

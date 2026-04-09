@@ -206,7 +206,7 @@ erDiagram
       bigint center_id FK
       varchar login_id "UNIQUE per center"
       varchar password_hash
-      varchar display_name
+      varchar user_name
       varchar role_code "ROLE_CENTER_ADMIN | ROLE_DESK"
       varchar user_status "ACTIVE | INACTIVE"
       timestamptz last_login_at

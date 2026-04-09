@@ -325,7 +325,7 @@ public class GxScheduleService {
                             : rule.capacity();
                     desired.put(cursor, new DesiredGeneratedSchedule(
                             trainer.userId(),
-                            trainer.displayName(),
+                            trainer.userName(),
                             rule.className(),
                             toBusinessOffsetDateTime(cursor, startTime),
                             toBusinessOffsetDateTime(cursor, endTime),

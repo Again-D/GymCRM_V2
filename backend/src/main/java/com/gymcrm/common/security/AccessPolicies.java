@@ -12,4 +12,8 @@ public final class AccessPolicies {
 
     public static final String PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER =
             "@securityModeSettings.isPrototypeMode() or hasAnyRole('SUPER_ADMIN','CENTER_ADMIN','MANAGER','DESK','TRAINER')";
+
+    public static final String PROTOTYPE_OR_TRAINER =
+            "@securityModeSettings.isPrototypeMode() or hasRole('TRAINER')";
+
 }

@@ -65,8 +65,10 @@ public class TrainerController {
                 request.centerId(),
                 request.loginId(),
                 request.password(),
-                request.displayName(),
-                request.phone()
+                request.userName(),
+                request.phone(),
+                request.ptSessionUnitPrice(),
+                request.gxSessionUnitPrice()
         ));
         return ApiResponse.success(TrainerAdminDetailResponse.from(detail), "트레이너 계정을 등록했습니다.");
     }
@@ -76,8 +78,10 @@ public class TrainerController {
     public ApiResponse<TrainerAdminDetailResponse> update(@PathVariable Long userId, @Valid @RequestBody UpdateTrainerRequest request) {
         TrainerDetail detail = trainerService.update(userId, new TrainerService.UpdateTrainerCommand(
                 request.loginId(),
-                request.displayName(),
-                request.phone()
+                request.userName(),
+                request.phone(),
+                request.ptSessionUnitPrice(),
+                request.gxSessionUnitPrice()
         ));
         return ApiResponse.success(TrainerAdminDetailResponse.from(detail), "트레이너 정보를 수정했습니다.");
     }

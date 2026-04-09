@@ -1,19 +1,21 @@
 package com.gymcrm.settlement;
 
 import com.gymcrm.settlement.service.SalesSettlementReportService;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 
+import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class SalesSettlementCsvExporterTest {
     private final SalesSettlementCsvExporter exporter = new SalesSettlementCsvExporter();
 
     @Test
-    void exportIncludesSummaryAndRowsWithCsvEscaping() {
+    void exportIncludesSummaryAndRowsInWorkbookSheets() throws Exception {
         SalesSettlementReportService.SalesReportResult report = new SalesSettlementReportService.SalesReportResult(
                 LocalDate.of(2026, 3, 1),
                 LocalDate.of(2026, 3, 31),
@@ -41,12 +43,21 @@ class SalesSettlementCsvExporterTest {
                 ))
         );
 
-        String csv = exporter.export(report);
+        byte[] workbookBytes = exporter.export(report);
 
-        assertTrue(csv.contains("startDate,endDate,paymentMethod,productKeyword,trendGranularity,totalGrossSales,totalRefundAmount,totalNetSales"));
-        assertTrue(csv.contains("2026-03-01,2026-03-31,CARD,PT,DAILY,100000,20000,80000"));
-        assertTrue(csv.contains("bucketStartDate,bucketLabel,grossSales,refundAmount,netSales,transactionCount"));
-        assertTrue(csv.contains("productName,paymentMethod,grossSales,refundAmount,netSales,transactionCount"));
-        assertTrue(csv.contains("\"PT, Premium \"\"A\"\"\",CARD,100000,20000,80000,2"));
+        try (XSSFWorkbook workbook = new XSSFWorkbook(new ByteArrayInputStream(workbookBytes))) {
+            assertEquals("매출 정산 리포트", workbook.getSheet("Summary").getRow(0).getCell(0).getStringCellValue());
+            assertEquals("시작일", workbook.getSheet("Summary").getRow(2).getCell(0).getStringCellValue());
+            assertEquals("2026-03-01", workbook.getSheet("Summary").getRow(2).getCell(1).getStringCellValue());
+            assertEquals(80000D, workbook.getSheet("Summary").getRow(11).getCell(1).getNumericCellValue());
+
+            assertEquals("버킷 라벨", workbook.getSheet("Trend").getRow(0).getCell(1).getStringCellValue());
+            assertEquals("2026-03-01", workbook.getSheet("Trend").getRow(1).getCell(1).getStringCellValue());
+            assertEquals(2D, workbook.getSheet("Trend").getRow(1).getCell(5).getNumericCellValue());
+
+            assertEquals("상품명", workbook.getSheet("Details").getRow(0).getCell(0).getStringCellValue());
+            assertEquals("PT, Premium \"A\"", workbook.getSheet("Details").getRow(1).getCell(0).getStringCellValue());
+            assertEquals("CARD", workbook.getSheet("Details").getRow(1).getCell(1).getStringCellValue());
+        }
     }
 }

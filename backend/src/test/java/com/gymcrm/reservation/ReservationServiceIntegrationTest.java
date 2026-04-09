@@ -40,6 +40,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @ActiveProfiles("dev")
 class ReservationServiceIntegrationTest {
     private static final long CENTER_ID = 1L;
+    private static final String TRAINER_LOGIN_ID = "reservation-trainer";
 
     @Autowired
     private ReservationService reservationService;
@@ -418,7 +419,7 @@ class ReservationServiceIntegrationTest {
         return membershipPurchaseService.purchase(new MembershipPurchaseService.PurchaseRequest(
                 member.memberId(),
                 product.productId(),
-                null,
+                ensureTrainerUser(),
                 LocalDate.now(),
                 product.priceAmount(),
                 "CARD",
@@ -453,5 +454,73 @@ class ReservationServiceIntegrationTest {
                 null,
                 null
         )).membership();
+    }
+
+    private Long ensureTrainerUser() {
+        Long existingUserId = jdbcClient.sql("""
+                SELECT user_id
+                FROM users
+                WHERE center_id = :centerId
+                  AND login_id = :loginId
+                  AND is_deleted = FALSE
+                """)
+                .param("centerId", CENTER_ID)
+                .param("loginId", TRAINER_LOGIN_ID)
+                .query(Long.class)
+                .optional()
+                .orElse(null);
+
+        if (existingUserId != null) {
+            ensureTrainerRole(existingUserId);
+            return existingUserId;
+        }
+
+        Long userId = jdbcClient.sql("""
+                INSERT INTO users (
+                    center_id, login_id, password_hash, user_name, user_status,
+                    created_by, updated_by
+                )
+                VALUES (
+                    :centerId, :loginId, :passwordHash, :userName, 'ACTIVE',
+                    0, 0
+                )
+                RETURNING user_id
+                """)
+                .param("centerId", CENTER_ID)
+                .param("loginId", TRAINER_LOGIN_ID)
+                .param("passwordHash", "{noop}unused")
+                .param("userName", "Reservation Trainer")
+                .query(Long.class)
+                .single();
+        ensureTrainerRole(userId);
+        return userId;
+    }
+
+    private void ensureTrainerRole(Long userId) {
+        jdbcClient.sql("""
+                UPDATE users
+                SET user_status = 'ACTIVE',
+                    user_name = :userName,
+                    is_deleted = FALSE,
+                    deleted_at = NULL,
+                    deleted_by = NULL,
+                    updated_at = CURRENT_TIMESTAMP,
+                    updated_by = 0
+                WHERE user_id = :userId
+                """)
+                .param("userId", userId)
+                .param("userName", "Reservation Trainer")
+                .update();
+        jdbcClient.sql("DELETE FROM user_roles WHERE user_id = :userId")
+                .param("userId", userId)
+                .update();
+        jdbcClient.sql("""
+                INSERT INTO user_roles (user_id, role_id, created_by)
+                SELECT :userId, role_id, 0
+                FROM roles
+                WHERE role_code = 'ROLE_TRAINER'
+                """)
+                .param("userId", userId)
+                .update();
     }
 }

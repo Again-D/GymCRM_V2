@@ -32,6 +32,8 @@ import {
 import dayjs from "dayjs";
 
 import { apiDownload, apiPost, isMockApiMode } from "../../api/client";
+import { useAuthState } from "../../app/auth";
+import { hasRole } from "../../app/roles";
 import { toUserFacingErrorMessage } from "../../app/uiError";
 import { todayLocalDate } from "../../shared/date";
 import { usePagination } from "../../shared/hooks/usePagination";
@@ -41,6 +43,7 @@ import { useSalesDashboardQuery } from "./modules/useSalesDashboardQuery";
 import { useSettlementPrototypeState } from "./modules/useSettlementPrototypeState";
 import { useSettlementRecentAdjustmentsQuery } from "./modules/useSettlementRecentAdjustmentsQuery";
 import { useSettlementReportQuery } from "./modules/useSettlementReportQuery";
+import { useTrainerMonthlyPtSummaryQuery } from "./modules/useTrainerMonthlyPtSummaryQuery";
 import { useTrainerPayrollPrototypeState } from "./modules/useTrainerPayrollPrototypeState";
 import { useTrainerPayrollQuery } from "./modules/useTrainerPayrollQuery";
 import type {
@@ -53,6 +56,7 @@ import type {
   TrainerPayrollReport,
   TrainerPayrollRow
 } from "./modules/types";
+import { DEFAULT_TRAINER_PAYROLL_SESSION_UNIT_PRICE } from "./modules/types";
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -139,8 +143,101 @@ function triggerBrowserDownload(blob: Blob, filename: string) {
   URL.revokeObjectURL(downloadUrl);
 }
 
-export default function SettlementsPage() {
+function TrainerSettlementsMiniView() {
+  const [settlementMonth, setSettlementMonth] = useState(todayLocalDate().slice(0, 7));
+  const {
+    trainerMonthlyPtSummary,
+    trainerMonthlyPtSummaryLoading,
+    trainerMonthlyPtSummaryError
+  } = useTrainerMonthlyPtSummaryQuery(settlementMonth);
+
+  return (
+    <Flex vertical gap={24}>
+      <Card>
+        <Flex justify="space-between" align="start" wrap="wrap" gap={16}>
+          <Space direction="vertical" size={4}>
+            <Text className={styles.eyebrow}>Settlement Console</Text>
+            <Title level={2} className={styles.heroTitle}>내 월간 PT 실적</Title>
+            <Paragraph type="secondary" className={styles.heroDescription}>
+              트레이너 계정에서는 정산 업무 대신 본인 월간 완료 PT 수업 횟수만 확인할 수 있습니다.
+            </Paragraph>
+          </Space>
+          <Tag color="purple">트레이너 전용 미니뷰</Tag>
+        </Flex>
+      </Card>
+
+      <Row gutter={[16, 16]}>
+        <Col xs={24} lg={8}>
+          <Card
+            title="조회 기준"
+            extra={<Tag color="blue">PT 완료 수업</Tag>}
+          >
+            <Form layout="vertical">
+              <Form.Item label="조회 월">
+                <Input
+                  aria-label="트레이너 실적 조회 월 입력"
+                  value={settlementMonth}
+                  onChange={(event) => setSettlementMonth(event.target.value)}
+                  placeholder="YYYY-MM"
+                />
+              </Form.Item>
+            </Form>
+            {trainerMonthlyPtSummaryError && (
+              <Alert type="error" showIcon message={trainerMonthlyPtSummaryError} />
+            )}
+          </Card>
+        </Col>
+
+        <Col xs={24} lg={16}>
+          <Card title="내 월간 완료 PT 수업 수">
+            <Flex vertical gap={16}>
+              <Row gutter={[12, 12]} className={styles.statsGridCompact}>
+                <Col xs={12} md={8}>
+                  <Card size="small">
+                    <Statistic
+                      title="조회 월"
+                      value={trainerMonthlyPtSummary?.settlementMonth ?? settlementMonth}
+                      valueStyle={{ fontSize: "1rem", fontWeight: 700 }}
+                    />
+                  </Card>
+                </Col>
+                <Col xs={12} md={8}>
+                  <Card size="small" loading={trainerMonthlyPtSummaryLoading}>
+                    <Statistic
+                      title="완료 PT 수업 수"
+                      value={trainerMonthlyPtSummary?.completedClassCount ?? 0}
+                      valueStyle={{ fontSize: "1rem", fontWeight: 700 }}
+                    />
+                  </Card>
+                </Col>
+                <Col xs={24} md={8}>
+                  <Card size="small" loading={trainerMonthlyPtSummaryLoading}>
+                    <Statistic
+                      title="대상 트레이너"
+                      value={trainerMonthlyPtSummary?.trainerName ?? "-"}
+                      valueStyle={{ fontSize: "1rem", fontWeight: 700 }}
+                    />
+                  </Card>
+                </Col>
+              </Row>
+
+              <Alert
+                type="info"
+                showIcon
+                message="급여 계산, 정산 확정, 정산서 출력은 센터 운영 권한에서만 처리합니다."
+              />
+            </Flex>
+          </Card>
+        </Col>
+      </Row>
+    </Flex>
+  );
+}
+
+function SettlementsManagerView() {
   const { token } = theme.useToken();
+  const { authUser } = useAuthState();
+  const isTrainerActor = false;
   const dashboardBaseDate = todayLocalDate();
   const [activeTab, setActiveTab] = useState<SettlementTabKey>(DEFAULT_SETTLEMENT_TAB);
   const {
@@ -198,6 +295,7 @@ export default function SettlementsPage() {
     trainerPayrollMessage,
     refetchTrainerPayroll
   } = useTrainerPayrollQuery(submittedTrainerPayrollQuery);
+  const [salesReportDownloading, setSalesReportDownloading] = useState(false);
   const [trainerPayrollConfirming, setTrainerPayrollConfirming] = useState(false);
   const [trainerPayrollDownloading, setTrainerPayrollDownloading] = useState(false);
 
@@ -376,6 +474,10 @@ export default function SettlementsPage() {
     }
   ];
 
+  const trainerPayrollIntro = isTrainerActor
+    ? "같은 정산 탭을 사용하되, 본인 월간 수업 수와 시스템 기준 예상 급여, 본인 확정 정산서만 읽기 전용으로 확인합니다."
+    : "월별 수업 완료 수와 세션 단가를 기준으로 급여를 조회하고, 검토가 끝나면 월 단위로 확정 및 정산서 출력을 진행합니다.";
+
   const dashboardStats = useMemo(() => createDashboardStats(salesDashboard, token), [salesDashboard, token]);
 
   const submitTrainerPayrollQuery = useCallback(async () => {
@@ -394,7 +496,11 @@ export default function SettlementsPage() {
 
   const handleTrainerPayrollConfirm = useCallback(async () => {
     if (!submittedTrainerPayrollQuery) {
-      setTrainerPayrollPanelError("정산 월과 세션 단가를 입력한 뒤 먼저 조회해 주세요.");
+      setTrainerPayrollPanelError(
+        isTrainerActor
+          ? "정산 월을 선택한 뒤 먼저 조회해 주세요."
+          : "정산 월과 세션 단가를 입력한 뒤 먼저 조회해 주세요."
+      );
       return;
     }
 
@@ -438,20 +544,23 @@ export default function SettlementsPage() {
     try {
       if (isMockApiMode()) {
         const result = await import("../../api/mockData").then(({ downloadMockTrainerSettlementDocument }) =>
-          downloadMockTrainerSettlementDocument(trainerPayroll.settlementMonth)
+          downloadMockTrainerSettlementDocument(
+            trainerPayroll.settlementMonth,
+            isTrainerActor ? (authUser?.userId ?? null) : null
+          )
         );
         if (!result.ok || result.content == null || result.fileName == null) {
           setTrainerPayrollPanelError(result.message ?? "정산서 출력에 실패했습니다.");
           return;
         }
-        triggerBrowserDownload(new Blob([result.content], { type: "text/csv;charset=utf-8" }), result.fileName);
+        triggerBrowserDownload(new Blob([result.content], { type: "application/pdf" }), result.fileName);
       } else {
         const result = await apiDownload(
           `/api/v1/settlements/trainer-payroll/document?settlementMonth=${trainerPayroll.settlementMonth}`
         );
-        triggerBrowserDownload(result.blob, result.filename ?? `trainer-settlement-${trainerPayroll.settlementMonth}.csv`);
+        triggerBrowserDownload(result.blob, result.filename ?? `trainer-settlement-${trainerPayroll.settlementMonth}.pdf`);
       }
-      setTrainerPayrollPanelMessage("정산서 다운로드를 시작했습니다.");
+      setTrainerPayrollPanelMessage("PDF 정산서 다운로드를 시작했습니다.");
     } catch (error) {
       setTrainerPayrollPanelError(toUserFacingErrorMessage(error, "정산서 출력에 실패했습니다."));
     } finally {
@@ -461,7 +570,58 @@ export default function SettlementsPage() {
     clearTrainerPayrollFeedback,
     setTrainerPayrollPanelError,
     setTrainerPayrollPanelMessage,
+    authUser?.userId,
+    isTrainerActor,
     trainerPayroll
+  ]);
+
+  const handleSalesReportDownload = useCallback(async () => {
+    clearSettlementFeedback();
+    setSalesReportDownloading(true);
+    try {
+      if (isMockApiMode()) {
+        const result = await import("../../api/mockData").then(({ downloadMockSalesSettlementReport }) =>
+          downloadMockSalesSettlementReport(settlementFilters)
+        );
+        if (!result.ok || result.content == null || result.fileName == null) {
+          setSettlementPanelError("매출 리포트 다운로드에 실패했습니다.");
+          return;
+        }
+        triggerBrowserDownload(
+          new Blob([result.content], {
+            type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          }),
+          result.fileName
+        );
+      } else {
+        const query = new URLSearchParams({
+          startDate: settlementFilters.startDate,
+          endDate: settlementFilters.endDate,
+          trendGranularity: settlementFilters.trendGranularity
+        });
+        if (settlementFilters.paymentMethod) {
+          query.set("paymentMethod", settlementFilters.paymentMethod);
+        }
+        if (settlementFilters.productKeyword) {
+          query.set("productKeyword", settlementFilters.productKeyword);
+        }
+        const result = await apiDownload(`/api/v1/settlements/sales-report/export?${query.toString()}`);
+        triggerBrowserDownload(
+          result.blob,
+          result.filename ?? `sales-report-${settlementFilters.startDate}-to-${settlementFilters.endDate}.xlsx`
+        );
+      }
+      setSettlementPanelMessage("Excel 리포트 다운로드를 시작했습니다.");
+    } catch (error) {
+      setSettlementPanelError(toUserFacingErrorMessage(error, "매출 리포트 다운로드에 실패했습니다."));
+    } finally {
+      setSalesReportDownloading(false);
+    }
+  }, [
+    clearSettlementFeedback,
+    settlementFilters,
+    setSettlementPanelError,
+    setSettlementPanelMessage
   ]);
 
   const tabItems = settlementTabs.map((tab) => ({
@@ -633,6 +793,15 @@ export default function SettlementsPage() {
                   </Text>
                 </Space>
               }
+              extra={
+                <Button
+                  type="primary"
+                  onClick={() => void handleSalesReportDownload()}
+                  loading={salesReportDownloading}
+                >
+                  Excel 다운로드
+                </Button>
+              }
             >
               <Row gutter={[12, 12]} className={styles.statsGridCompact}>
                 {[
@@ -733,12 +902,12 @@ export default function SettlementsPage() {
           <Space direction="vertical" size={4}>
             <Title level={4} style={{ margin: 0 }}>트레이너 정산</Title>
             <Paragraph type="secondary" style={{ margin: 0 }}>
-              월별 수업 완료 수와 세션 단가를 기준으로 급여를 조회하고, 검토가 끝나면 월 단위로 확정 및 정산서 출력을 진행합니다.
+              {trainerPayrollIntro}
             </Paragraph>
           </Space>
           <Row gutter={[16, 16]}>
             <Col xs={24} lg={8}>
-              <Card size="small" title="정산 기준">
+              <Card size="small" title={isTrainerActor ? "조회 기준" : "정산 기준"}>
                 <Form layout="vertical" onFinish={() => void submitTrainerPayrollQuery()}>
                   <Flex vertical gap={12}>
                     <Form.Item label="정산 월">
@@ -754,19 +923,27 @@ export default function SettlementsPage() {
                         placeholder="YYYY-MM"
                       />
                     </Form.Item>
-                    <Form.Item label="세션 단가">
-                      <Input
-                        aria-label="세션 단가 입력"
-                        value={trainerPayrollFilters.sessionUnitPrice}
-                        onChange={(event) => {
-                          setTrainerPayrollFilters((prev) => ({
-                            ...prev,
-                            sessionUnitPrice: event.target.value
-                          }));
-                        }}
-                        placeholder="예: 50000"
+                    {isTrainerActor ? (
+                      <Alert
+                        type="info"
+                        showIcon
+                        message={`시스템 기준 세션 단가 ${formatCurrency(DEFAULT_TRAINER_PAYROLL_SESSION_UNIT_PRICE)}가 읽기 전용으로 적용됩니다.`}
                       />
-                    </Form.Item>
+                    ) : (
+                      <Form.Item label="세션 단가">
+                        <Input
+                          aria-label="세션 단가 입력"
+                          value={trainerPayrollFilters.sessionUnitPrice}
+                          onChange={(event) => {
+                            setTrainerPayrollFilters((prev) => ({
+                              ...prev,
+                              sessionUnitPrice: event.target.value
+                            }));
+                          }}
+                          placeholder="예: 50000"
+                        />
+                      </Form.Item>
+                    )}
                     <Space>
                       <Button htmlType="submit" type="primary" loading={trainerPayrollLoading}>
                         월 정산 조회
@@ -789,13 +966,15 @@ export default function SettlementsPage() {
                 title="정산 결과"
                 extra={
                   <Space>
-                    <Button
-                      onClick={() => void handleTrainerPayrollConfirm()}
-                      loading={trainerPayrollConfirming}
-                      disabled={!trainerPayroll || trainerPayroll.rows.length === 0 || trainerPayroll.settlementStatus === "CONFIRMED"}
-                    >
-                      월 정산 확정
-                    </Button>
+                    {!isTrainerActor && (
+                      <Button
+                        onClick={() => void handleTrainerPayrollConfirm()}
+                        loading={trainerPayrollConfirming}
+                        disabled={!trainerPayroll || trainerPayroll.rows.length === 0 || trainerPayroll.settlementStatus === "CONFIRMED"}
+                      >
+                        월 정산 확정
+                      </Button>
+                    )}
                     <Button
                       type="primary"
                       onClick={() => void handleTrainerSettlementDocumentDownload()}
@@ -811,8 +990,8 @@ export default function SettlementsPage() {
                   <Row gutter={[12, 12]} className={styles.statsGridCompact}>
                     {[
                       { label: "정산 월", value: trainerPayroll?.settlementMonth ?? trainerPayrollFilters.settlementMonth },
-                      { label: "총 완료 수업", value: trainerPayroll?.totalCompletedClassCount ?? 0 },
-                      { label: "총 급여", value: formatCurrency(trainerPayroll?.totalPayrollAmount ?? 0) },
+                      { label: isTrainerActor ? "내 완료 수업" : "총 완료 수업", value: trainerPayroll?.totalCompletedClassCount ?? 0 },
+                      { label: isTrainerActor ? "내 예상 급여" : "총 급여", value: formatCurrency(trainerPayroll?.totalPayrollAmount ?? 0) },
                       { label: "상태", value: trainerPayroll?.settlementStatus === "CONFIRMED" ? "확정됨" : "조회 전 / 초안" }
                     ].map((stat) => (
                       <Col xs={12} md={6} key={stat.label}>
@@ -881,4 +1060,14 @@ export default function SettlementsPage() {
       />
     </Flex>
   );
+}
+
+export default function SettlementsPage() {
+  const { authUser } = useAuthState();
+
+  if (hasRole(authUser, "ROLE_TRAINER")) {
+    return <TrainerSettlementsMiniView />;
+  }
+
+  return <SettlementsManagerView />;
 }

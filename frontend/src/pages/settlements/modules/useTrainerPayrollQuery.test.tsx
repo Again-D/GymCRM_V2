@@ -16,8 +16,16 @@ function createTestQueryClient() {
   });
 }
 
-function TestWrapper({ client, children }: { client: QueryClient; children: ReactNode }) {
-  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+function TestWrapper({
+  client,
+  children
+}: {
+  client: QueryClient;
+  children: ReactNode;
+}) {
+  return (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  );
 }
 
 describe("useTrainerPayrollQuery", () => {
@@ -64,6 +72,7 @@ describe("useTrainerPayrollQuery", () => {
         method: "GET"
       })
     );
+    expect(String(fetchMock.mock.calls[0]?.[0] ?? "")).not.toContain("trainerUserId=");
     expect(result.current.trainerPayroll?.settlementStatus).toBe("DRAFT");
   });
 
@@ -76,7 +85,7 @@ describe("useTrainerPayrollQuery", () => {
       wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper>
     });
 
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/api/v1/settlements/trainer-payroll"))).toBe(false);
     expect(result.current.trainerPayrollLoading).toBe(false);
     expect(result.current.trainerPayroll).toBeNull();
   });

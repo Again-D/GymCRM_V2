@@ -169,7 +169,7 @@ public class PtReservationService {
                 actor.centerId(),
                 trainer.userId(),
                 "PT",
-                trainer.displayName(),
+                trainer.userName(),
                 "PT 예약",
                 startAt,
                 endAt,

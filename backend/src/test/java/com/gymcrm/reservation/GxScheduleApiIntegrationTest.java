@@ -331,7 +331,7 @@ class GxScheduleApiIntegrationTest {
             jdbcClient.sql("""
                     UPDATE users
                     SET password_hash = :passwordHash,
-                        display_name = :displayName,
+                        user_name = :displayName,
                         user_status = 'ACTIVE',
                         is_deleted = FALSE,
                         deleted_at = NULL,
@@ -350,7 +350,7 @@ class GxScheduleApiIntegrationTest {
 
         Long userId = jdbcClient.sql("""
                 INSERT INTO users (
-                    center_id, login_id, password_hash, display_name, user_status,
+                    center_id, login_id, password_hash, user_name, user_status,
                     created_by, updated_by
                 )
                 VALUES (
@@ -367,7 +367,7 @@ class GxScheduleApiIntegrationTest {
                 .single();
         jdbcClient.sql("""
                 UPDATE users
-                SET display_name = :displayName
+                SET user_name = :displayName
                 WHERE user_id = :userId
                 """)
                 .param("displayName", displayName)

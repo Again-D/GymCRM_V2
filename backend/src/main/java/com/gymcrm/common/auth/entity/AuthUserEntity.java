@@ -21,11 +21,17 @@ public class AuthUserEntity {
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
-    @Column(name = "display_name", nullable = false)
-    private String displayName;
+    @Column(name = "user_name", nullable = false)
+    private String userName;
 
     @Column(name = "phone")
     private String phone;
+
+    @Column(name = "pt_session_unit_price")
+    private java.math.BigDecimal ptSessionUnitPrice;
+
+    @Column(name = "gx_session_unit_price")
+    private java.math.BigDecimal gxSessionUnitPrice;
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
@@ -76,10 +82,14 @@ public class AuthUserEntity {
     public void setLoginId(String loginId) { this.loginId = loginId; }
     public String getPasswordHash() { return passwordHash; }
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
-    public String getDisplayName() { return displayName; }
-    public void setDisplayName(String displayName) { this.displayName = displayName; }
+    public String getUserName() { return userName; }
+    public void setUserName(String userName) { this.userName = userName; }
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }
+    public java.math.BigDecimal getPtSessionUnitPrice() { return ptSessionUnitPrice; }
+    public void setPtSessionUnitPrice(java.math.BigDecimal ptSessionUnitPrice) { this.ptSessionUnitPrice = ptSessionUnitPrice; }
+    public java.math.BigDecimal getGxSessionUnitPrice() { return gxSessionUnitPrice; }
+    public void setGxSessionUnitPrice(java.math.BigDecimal gxSessionUnitPrice) { this.gxSessionUnitPrice = gxSessionUnitPrice; }
     public Set<RoleEntity> getRoles() { return roles; }
     public void setRoles(Set<RoleEntity> roles) { this.roles = roles; }
     public String getUserStatus() { return userStatus; }

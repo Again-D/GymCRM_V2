@@ -68,8 +68,10 @@ public class AuthUserRepository {
         entity.setCenterId(command.centerId());
         entity.setLoginId(command.loginId());
         entity.setPasswordHash(command.passwordHash());
-        entity.setDisplayName(command.displayName());
+        entity.setUserName(command.userName());
         entity.setPhone(command.phone());
+        entity.setPtSessionUnitPrice(command.ptSessionUnitPrice());
+        entity.setGxSessionUnitPrice(command.gxSessionUnitPrice());
         entity.setRoles(new LinkedHashSet<>(List.of(requireRole(command.roleCode()))));
         entity.setUserStatus(command.userStatus());
         entity.setCreatedAt(OffsetDateTime.now());
@@ -86,8 +88,10 @@ public class AuthUserRepository {
             return null;
         }
         entity.setLoginId(command.loginId());
-        entity.setDisplayName(command.displayName());
+        entity.setUserName(command.userName());
         entity.setPhone(command.phone());
+        entity.setPtSessionUnitPrice(command.ptSessionUnitPrice());
+        entity.setGxSessionUnitPrice(command.gxSessionUnitPrice());
         entity.setUpdatedAt(OffsetDateTime.now());
         entity.setUpdatedBy(command.actorUserId());
         return toDomain(authUserJpaRepository.saveAndFlush(entity));
@@ -151,7 +155,7 @@ public class AuthUserRepository {
                 entity.getCenterId(),
                 entity.getLoginId(),
                 entity.getPasswordHash(),
-                entity.getDisplayName(),
+                entity.getUserName(),
                 entity.getPhone(),
                 entity.getRoles().stream().map(RoleEntity::getRoleCode).findFirst().orElse(null),
                 entity.getUserStatus(),
@@ -169,8 +173,10 @@ public class AuthUserRepository {
             Long centerId,
             String loginId,
             String passwordHash,
-            String displayName,
+            String userName,
             String phone,
+            java.math.BigDecimal ptSessionUnitPrice,
+            java.math.BigDecimal gxSessionUnitPrice,
             String roleCode,
             String userStatus,
             Long actorUserId
@@ -180,8 +186,10 @@ public class AuthUserRepository {
     public record AuthUserProfileUpdateCommand(
             Long userId,
             String loginId,
-            String displayName,
+            String userName,
             String phone,
+            java.math.BigDecimal ptSessionUnitPrice,
+            java.math.BigDecimal gxSessionUnitPrice,
             Long actorUserId
     ) {
     }

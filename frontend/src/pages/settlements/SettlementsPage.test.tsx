@@ -1,9 +1,25 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { FoundationProviders } from "../../app/providers";
 import SettlementsPage from "./SettlementsPage";
 import type { SettlementReportFilters, TrainerPayrollFilters } from "./modules/types";
+
+const clientMocks = vi.hoisted(() => ({
+  apiDownload: vi.fn(),
+  apiPost: vi.fn(),
+  mockApiMode: true
+}));
+
+vi.mock("../../api/client", async () => {
+  const actual = await vi.importActual<typeof import("../../api/client")>("../../api/client");
+  return {
+    ...actual,
+    apiDownload: clientMocks.apiDownload,
+    apiPost: clientMocks.apiPost,
+    isMockApiMode: () => clientMocks.mockApiMode
+  };
+});
 
 const refetchSalesDashboard = vi.fn();
 const refetchSettlementReport = vi.fn();
@@ -20,6 +36,7 @@ const setTrainerPayrollPanelError = vi.fn();
 const clearTrainerPayrollFeedback = vi.fn();
 const submitTrainerPayrollFilters = vi.fn();
 const resetTrainerPayrollWorkspace = vi.fn();
+const refetchTrainerMonthlyPtSummary = vi.fn();
 
 let mockSettlementFilters: SettlementReportFilters = {
   startDate: "2026-03-01",
@@ -177,6 +194,21 @@ vi.mock("./modules/useTrainerPayrollQuery", () => ({
   })
 }));
 
+vi.mock("./modules/useTrainerMonthlyPtSummaryQuery", () => ({
+  useTrainerMonthlyPtSummaryQuery: () => ({
+    trainerMonthlyPtSummary: {
+      settlementMonth: "2026-03",
+      trainerUserId: 41,
+      trainerName: "정트레이너",
+      completedClassCount: 2
+    },
+    trainerMonthlyPtSummaryLoading: false,
+    trainerMonthlyPtSummaryError: null,
+    trainerMonthlyPtSummaryMessage: "ok",
+    refetchTrainerMonthlyPtSummary
+  })
+}));
+
 describe("SettlementsPage", () => {
   beforeEach(() => {
     mockSettlementFilters = {
@@ -205,6 +237,10 @@ describe("SettlementsPage", () => {
     clearTrainerPayrollFeedback.mockReset();
     submitTrainerPayrollFilters.mockReset();
     resetTrainerPayrollWorkspace.mockReset();
+    refetchTrainerMonthlyPtSummary.mockReset();
+    clientMocks.apiDownload.mockReset();
+    clientMocks.apiPost.mockReset();
+    clientMocks.mockApiMode = true;
     vi.stubGlobal("matchMedia", vi.fn().mockImplementation((query) => ({
       matches: false,
       media: query,
@@ -215,6 +251,10 @@ describe("SettlementsPage", () => {
       removeEventListener: vi.fn(),
       dispatchEvent: vi.fn(),
     })));
+    vi.stubGlobal("URL", Object.assign(URL, {
+      createObjectURL: vi.fn(() => "blob:mock"),
+      revokeObjectURL: vi.fn()
+    }));
   });
 
   afterEach(() => {
@@ -253,6 +293,30 @@ describe("SettlementsPage", () => {
     expect(screen.queryByText("Invalid Date")).toBeNull();
   });
 
+  it("renders trainer mini view with monthly pt summary for trainer actors", async () => {
+    render(
+      <FoundationProviders
+        authValue={{
+          authUser: {
+            userId: 41,
+            centerId: 1,
+            username: "trainer-a",
+            primaryRole: "ROLE_TRAINER",
+            roles: ["ROLE_TRAINER"]
+          }
+        }}
+      >
+        <SettlementsPage />
+      </FoundationProviders>
+    );
+
+    expect(screen.getByText("내 월간 PT 실적")).toBeTruthy();
+    expect(screen.getByText("트레이너 전용 미니뷰")).toBeTruthy();
+    expect(screen.getByText("완료 PT 수업 수")).toBeTruthy();
+    expect(screen.getByText("정트레이너")).toBeTruthy();
+    expect(screen.queryByRole("tab", { name: "매출 분석" })).toBeNull();
+  });
+
   it("does not force an immediate refetch before reset state is applied", async () => {
     render(
       <FoundationProviders>
@@ -266,5 +330,29 @@ describe("SettlementsPage", () => {
     expect(refetchSalesDashboard).not.toHaveBeenCalled();
     expect(refetchSettlementReport).not.toHaveBeenCalled();
     expect(refetchRecentAdjustments).not.toHaveBeenCalled();
+  });
+
+  it("downloads sales report as xlsx with current filters", async () => {
+    clientMocks.mockApiMode = false;
+    clientMocks.apiDownload.mockResolvedValue({
+      blob: new Blob(["xlsx"], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      }),
+      filename: "sales-report-2026-03-01-to-2026-03-31.xlsx"
+    });
+
+    render(
+      <FoundationProviders>
+        <SettlementsPage />
+      </FoundationProviders>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Excel 다운로드" }));
+
+    await waitFor(() => {
+      expect(clientMocks.apiDownload).toHaveBeenCalledWith(
+        "/api/v1/settlements/sales-report/export?startDate=2026-03-01&endDate=2026-03-31&trendGranularity=DAILY"
+      );
+    });
   });
 });

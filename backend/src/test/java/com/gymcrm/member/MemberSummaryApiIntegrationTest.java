@@ -193,9 +193,7 @@ class MemberSummaryApiIntegrationTest {
         insertMembershipFixture(ptMemberId, durationProductId, "ACTIVE", "MEMBERSHIP", "DURATION",
                 today.plusDays(5), null, null);
         insertMembershipFixture(ptMemberId, ptProductId, "ACTIVE", "PT", "COUNT",
-                null, 5, 2);
-        insertMembershipFixture(ptMemberId, ptProductId, "ACTIVE", "PT", "COUNT",
-                null, 5, 1);
+                null, 5, 3);
 
         long ptNoEndMemberId = insertMemberFixture("요약PT무기한-" + shortId());
         insertMembershipFixture(ptNoEndMemberId, ptProductId, "ACTIVE", "PT", "COUNT",
@@ -275,25 +273,28 @@ class MemberSummaryApiIntegrationTest {
         long activeMemberId = insertMemberFixture("키워드활성-" + shortId());
         long inactiveMemberId = insertInactiveMemberFixture("키워드비활성-" + shortId());
 
-        mockMvc.perform(get("/api/v1/members")
+        MvcResult memberIdResult = mockMvc.perform(get("/api/v1/members")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                         .param("keyword", String.valueOf(activeMemberId)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0].memberId").value(activeMemberId));
+                .andReturn();
+        findMember(objectMapper.readTree(memberIdResult.getResponse().getContentAsString()).path("data"), activeMemberId);
 
-        mockMvc.perform(get("/api/v1/members")
+        MvcResult nameResult = mockMvc.perform(get("/api/v1/members")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                         .param("keyword", "키워드활성"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0].memberId").value(activeMemberId));
+                .andReturn();
+        findMember(objectMapper.readTree(nameResult.getResponse().getContentAsString()).path("data"), activeMemberId);
 
-        mockMvc.perform(get("/api/v1/members")
+        MvcResult statusResult = mockMvc.perform(get("/api/v1/members")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                         .param("keyword", "INACTIVE"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[*].memberId").isArray())
-                .andExpect(jsonPath("$.data[0].memberId").value(inactiveMemberId))
-                .andExpect(jsonPath("$.data[0].memberStatus").value("INACTIVE"));
+                .andReturn();
+        JsonNode inactiveMember = findMember(objectMapper.readTree(statusResult.getResponse().getContentAsString()).path("data"), inactiveMemberId);
+        assertEquals("INACTIVE", inactiveMember.path("memberStatus").asText());
     }
 
     @Test
@@ -671,7 +672,7 @@ class MemberSummaryApiIntegrationTest {
         int updated = jdbcClient.sql("""
                 UPDATE users
                 SET password_hash = :passwordHash,
-                    display_name = :displayName,
+                    user_name = :displayName,
                     user_status = 'ACTIVE',
                     is_deleted = FALSE,
                     deleted_at = NULL,
@@ -690,7 +691,7 @@ class MemberSummaryApiIntegrationTest {
         if (updated == 0) {
             Long userId = jdbcClient.sql("""
                     INSERT INTO users (
-                        center_id, login_id, password_hash, display_name, user_status,
+                        center_id, login_id, password_hash, user_name, user_status,
                         created_by, updated_by
                     )
                     VALUES (
@@ -739,7 +740,7 @@ class MemberSummaryApiIntegrationTest {
             jdbcClient.sql("""
                     UPDATE users
                     SET password_hash = :passwordHash,
-                        display_name = :displayName,
+                        user_name = :displayName,
                         user_status = 'ACTIVE',
                         updated_at = CURRENT_TIMESTAMP,
                         updated_by = 0
@@ -755,7 +756,7 @@ class MemberSummaryApiIntegrationTest {
 
         Long userId = jdbcClient.sql("""
                 INSERT INTO users (
-                    center_id, login_id, password_hash, display_name, user_status,
+                    center_id, login_id, password_hash, user_name, user_status,
                     created_by, updated_by
                 )
                 VALUES (

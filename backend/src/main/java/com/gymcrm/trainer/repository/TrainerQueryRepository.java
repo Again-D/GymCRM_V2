@@ -51,7 +51,7 @@ public class TrainerQueryRepository {
               AND (CAST(:status AS VARCHAR) IS NULL OR u.user_status = CAST(:status AS VARCHAR))
               AND (
                     CAST(:keywordPattern AS VARCHAR) IS NULL
-                    OR u.display_name ILIKE CAST(:keywordPattern AS VARCHAR)
+                    OR u.user_name ILIKE CAST(:keywordPattern AS VARCHAR)
                     OR u.login_id ILIKE CAST(:keywordPattern AS VARCHAR)
                     OR COALESCE(u.phone, '') ILIKE CAST(:keywordPattern AS VARCHAR)
               )
@@ -68,13 +68,13 @@ public class TrainerQueryRepository {
                 SELECT
                     u.user_id AS "userId",
                     u.center_id AS "centerId",
-                    u.display_name AS "displayName",
+                    u.user_name AS "userName",
                     u.user_status AS "userStatus",
                     u.phone AS "phone",
                     COALESCE(assigned_counts.assigned_member_count, 0) AS "assignedMemberCount",
                     COALESCE(reservation_counts.today_confirmed_reservation_count, 0) AS "todayConfirmedReservationCount"
                 """ + TRAINER_AGGREGATE_FROM + """
-                ORDER BY u.user_status ASC, u.display_name ASC, u.user_id ASC
+                ORDER BY u.user_status ASC, u.user_name ASC, u.user_id ASC
                 """)
                 .param("centerId", centerId)
                 .param("status", normalizeBlank(status))
@@ -90,9 +90,11 @@ public class TrainerQueryRepository {
                     u.user_id AS "userId",
                     u.center_id AS "centerId",
                     u.login_id AS "loginId",
-                    u.display_name AS "displayName",
+                    u.user_name AS "userName",
                     u.user_status AS "userStatus",
                     u.phone AS "phone",
+                    u.pt_session_unit_price AS "ptSessionUnitPrice",
+                    u.gx_session_unit_price AS "gxSessionUnitPrice",
                     COALESCE(assigned_counts.assigned_member_count, 0) AS "assignedMemberCount",
                     COALESCE(reservation_counts.today_confirmed_reservation_count, 0) AS "todayConfirmedReservationCount"
                 FROM users u
@@ -186,7 +188,7 @@ public class TrainerQueryRepository {
     public record TrainerSummaryRow(
             Long userId,
             Long centerId,
-            String displayName,
+            String userName,
             String userStatus,
             String phone,
             Long assignedMemberCount,
@@ -198,9 +200,11 @@ public class TrainerQueryRepository {
             Long userId,
             Long centerId,
             String loginId,
-            String displayName,
+            String userName,
             String userStatus,
             String phone,
+            java.math.BigDecimal ptSessionUnitPrice,
+            java.math.BigDecimal gxSessionUnitPrice,
             Long assignedMemberCount,
             Long todayConfirmedReservationCount
     ) {

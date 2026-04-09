@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -59,7 +60,7 @@ public class TrainerService {
                 .map(row -> new TrainerSummary(
                         row.userId(),
                         row.centerId(),
-                        row.displayName(),
+                        row.userName(),
                         row.userStatus(),
                         row.phone(),
                         row.assignedMemberCount(),
@@ -91,9 +92,11 @@ public class TrainerService {
                 row.userId(),
                 row.centerId(),
                 row.loginId(),
-                row.displayName(),
+                row.userName(),
                 row.userStatus(),
                 row.phone(),
+                row.ptSessionUnitPrice(),
+                row.gxSessionUnitPrice(),
                 row.assignedMemberCount(),
                 row.todayConfirmedReservationCount(),
                 assignedMembers,
@@ -108,16 +111,22 @@ public class TrainerService {
         Long centerId = resolveActorCenter(actor, command.centerId());
         String loginId = requireText(command.loginId(), "loginId");
         String password = requireText(command.password(), "password");
-        String displayName = requireText(command.displayName(), "displayName");
+        String userName = requireText(command.userName(), "userName");
         String phone = normalizeNullable(command.phone());
+        BigDecimal ptSessionUnitPrice = command.ptSessionUnitPrice();
+        BigDecimal gxSessionUnitPrice = command.gxSessionUnitPrice();
+        validateRate(ptSessionUnitPrice, "ptSessionUnitPrice");
+        validateRate(gxSessionUnitPrice, "gxSessionUnitPrice");
 
         try {
             AuthUser created = authUserRepository.insert(new AuthUserRepository.AuthUserCreateCommand(
                     centerId,
                     loginId,
                     passwordEncoder.encode(password),
-                    displayName,
+                    userName,
                     phone,
+                    ptSessionUnitPrice,
+                    gxSessionUnitPrice,
                     ROLE_TRAINER,
                     STATUS_ACTIVE,
                     actor.userId()
@@ -134,15 +143,21 @@ public class TrainerService {
         ensureManageAccess(actor);
         AuthUser trainer = requireTrainer(actor, trainerUserId);
         String loginId = requireText(command.loginId(), "loginId");
-        String displayName = requireText(command.displayName(), "displayName");
+        String userName = requireText(command.userName(), "userName");
         String phone = normalizeNullable(command.phone());
+        BigDecimal ptSessionUnitPrice = command.ptSessionUnitPrice();
+        BigDecimal gxSessionUnitPrice = command.gxSessionUnitPrice();
+        validateRate(ptSessionUnitPrice, "ptSessionUnitPrice");
+        validateRate(gxSessionUnitPrice, "gxSessionUnitPrice");
 
         try {
             AuthUser updated = authUserRepository.updateProfile(new AuthUserRepository.AuthUserProfileUpdateCommand(
                     trainer.userId(),
                     loginId,
-                    displayName,
+                    userName,
                     phone,
+                    ptSessionUnitPrice,
+                    gxSessionUnitPrice,
                     actor.userId()
             ));
             if (updated == null) {
@@ -244,6 +259,12 @@ public class TrainerService {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
+    private void validateRate(BigDecimal value, String fieldName) {
+        if (value != null && value.compareTo(BigDecimal.ZERO) < 0) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, fieldName + " must be >= 0");
+        }
+    }
+
     private ApiException mapWriteException(DataAccessException ex) {
         String message = ex.getMostSpecificCause() != null ? ex.getMostSpecificCause().getMessage() : ex.getMessage();
         if (message != null && message.contains("uk_users_center_login_active")) {
@@ -256,14 +277,18 @@ public class TrainerService {
             Long centerId,
             String loginId,
             String password,
-            String displayName,
-            String phone
+            String userName,
+            String phone,
+            BigDecimal ptSessionUnitPrice,
+            BigDecimal gxSessionUnitPrice
     ) {
     }
     public record UpdateTrainerCommand(
             String loginId,
-            String displayName,
-            String phone
+            String userName,
+            String phone,
+            BigDecimal ptSessionUnitPrice,
+            BigDecimal gxSessionUnitPrice
     ) {
     }
 

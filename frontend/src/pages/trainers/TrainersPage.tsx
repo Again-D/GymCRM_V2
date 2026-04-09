@@ -195,13 +195,13 @@ export default function TrainersPage() {
   async function submitTrainerForm() {
     clearFeedback();
     const loginId = trainerForm.loginId.trim();
-    const displayName = trainerForm.displayName.trim();
+    const userName = trainerForm.userName.trim();
 
     if (!loginId) {
       setTrainerFormError("로그인 ID를 입력해야 합니다.");
       return;
     }
-    if (!displayName) {
+    if (!userName) {
       setTrainerFormError("트레이너 이름을 입력해야 합니다.");
       return;
     }
@@ -220,7 +220,7 @@ export default function TrainersPage() {
             centerId: trainerForm.centerId,
             loginId,
             password: trainerForm.password,
-            displayName,
+            userName,
             phone: asNullableText(trainerForm.phone),
           });
           setTrainerPanelMessage("트레이너 계정을 등록했습니다.");
@@ -229,7 +229,7 @@ export default function TrainersPage() {
           detail = selectedTrainer
             ? updateMockTrainer(selectedTrainer.userId, {
                 loginId,
-                displayName,
+                userName,
                 phone: asNullableText(trainerForm.phone),
               })
             : null;
@@ -240,7 +240,7 @@ export default function TrainersPage() {
           centerId: trainerForm.centerId,
           loginId,
           password: trainerForm.password,
-          displayName,
+          userName,
           phone: asNullableText(trainerForm.phone),
         });
         detail = response.data;
@@ -250,7 +250,7 @@ export default function TrainersPage() {
           `/api/v1/trainers/${selectedTrainer?.userId}`,
           {
             loginId,
-            displayName,
+            userName,
             phone: asNullableText(trainerForm.phone),
           },
         );
@@ -325,10 +325,10 @@ export default function TrainersPage() {
   const trainerColumns: ColumnsType<(typeof trainers)[number]> = [
     {
       title: "이름",
-      key: "displayName",
+      key: "userName",
       render: (_, trainer) => (
         <Space direction="vertical" size={2}>
-          <Text strong style={{ fontSize: "0.95rem" }}>{trainer.displayName}</Text>
+          <Text strong style={{ fontSize: "0.95rem" }}>{trainer.userName}</Text>
           <Text type="secondary" style={{ fontSize: "0.75rem" }}>
             #{trainer.userId}
           </Text>
@@ -579,7 +579,7 @@ export default function TrainersPage() {
       <Modal
         open={detailOpen}
         onCancel={() => setDetailOpen(false)}
-        title={selectedTrainer ? <Space><SolutionOutlined />{selectedTrainer.displayName} 상세 정보</Space> : "트레이너 상세"}
+        title={selectedTrainer ? <Space><SolutionOutlined />{selectedTrainer.userName} 상세 정보</Space> : "트레이너 상세"}
         width={900}
         footer={[<Button key="close" onClick={() => setDetailOpen(false)}>닫기</Button>]}
       >
@@ -590,7 +590,7 @@ export default function TrainersPage() {
             <>
               <Card size="small">
                 <Descriptions column={2} bordered size="small">
-                  <Descriptions.Item label="이름">{selectedTrainer.displayName}</Descriptions.Item>
+                  <Descriptions.Item label="이름">{selectedTrainer.userName}</Descriptions.Item>
                   <Descriptions.Item label="상태">
                     <Tag color={selectedTrainer.userStatus === "ACTIVE" ? "success" : "default"}>
                       {selectedTrainer.userStatus === "ACTIVE" ? "활성" : "비활성"}
@@ -764,8 +764,8 @@ export default function TrainersPage() {
             <Col span={12}>
               <Form.Item label="이름" required>
                 <Input
-                  value={trainerForm.displayName}
-                  onChange={(e) => setTrainerForm(prev => ({ ...prev, displayName: e.target.value }))}
+                  value={trainerForm.userName}
+                  onChange={(e) => setTrainerForm(prev => ({ ...prev, userName: e.target.value }))}
                   placeholder="트레이너 성명"
                 />
               </Form.Item>

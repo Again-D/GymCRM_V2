@@ -101,7 +101,7 @@ erDiagram
         bigint center_id FK
         varchar login_id
         varchar password_hash
-        varchar display_name
+        varchar user_name
         varchar phone
         varchar user_status
         timestamptz access_revoked_after
