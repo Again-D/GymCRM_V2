@@ -1,6 +1,7 @@
 package com.gymcrm.settlement;
 
 import com.gymcrm.settlement.entity.TrainerSettlement;
+import com.gymcrm.settlement.service.TrainerSettlementDocumentService;
 import org.junit.jupiter.api.Test;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.text.PDFTextStripper;
@@ -8,6 +9,7 @@ import org.apache.pdfbox.text.PDFTextStripper;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.YearMonth;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -45,10 +47,39 @@ class TrainerSettlementDocumentExporterTest {
             assertTrue(text.contains("Trainer Settlement Statement"));
             assertTrue(text.contains("Settlement Month: 2026-03"));
             assertTrue(text.contains("Trainer Alpha"));
-            assertTrue(text.contains("Completed Classes: 12"));
-            assertTrue(text.contains("Session Unit Price: 50000"));
-            assertTrue(text.contains("Payroll Amount: 600000"));
+            assertTrue(text.contains("PT Completed Classes: 12"));
+            assertTrue(text.contains("PT Session Unit Price: 50000"));
+            assertTrue(text.contains("PT Amount: 600000"));
+            assertTrue(text.contains("Total Amount: 600000"));
             assertTrue(text.contains("Confirmed At: 2026-03-25T10:00:00+09:00"));
+        }
+    }
+
+    @Test
+    void addsAdditionalPdfPagesWhenRowsOverflowSinglePage() throws Exception {
+        List<TrainerSettlementDocumentService.TrainerSettlementDocument> documents = java.util.stream.IntStream.rangeClosed(1, 20)
+                .mapToObj(index -> new TrainerSettlementDocumentService.TrainerSettlementDocument(
+                        (long) index,
+                        YearMonth.of(2026, 3),
+                        "CONFIRMED",
+                        OffsetDateTime.parse("2026-03-25T10:00:00+09:00"),
+                        1L,
+                        (long) index,
+                        "Trainer " + index,
+                        new TrainerSettlementDocumentService.DocumentLine(10, new BigDecimal("50000"), new BigDecimal("500000")),
+                        new TrainerSettlementDocumentService.DocumentLine(2, new BigDecimal("30000"), new BigDecimal("60000")),
+                        BigDecimal.ZERO,
+                        BigDecimal.ZERO,
+                        new BigDecimal("560000")
+                ))
+                .toList();
+
+        byte[] pdf = exporter.exportDocuments(documents);
+
+        try (var document = Loader.loadPDF(pdf)) {
+            assertTrue(document.getNumberOfPages() > 1);
+            String text = new PDFTextStripper().getText(document);
+            assertTrue(text.contains("Trainer 20"));
         }
     }
 }

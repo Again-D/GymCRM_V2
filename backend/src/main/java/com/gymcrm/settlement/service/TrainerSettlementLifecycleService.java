@@ -138,6 +138,7 @@ public class TrainerSettlementLifecycleService {
 
         trainerSettlementRepository.insertAll(
                 details.stream()
+                        // Legacy monthly payroll snapshot remains PT-only for backward compatibility.
                         .filter(detail -> SettlementLessonType.PT.name().equals(detail.lessonType()))
                         .map(detail -> new TrainerSettlementRepository.TrainerSettlementCreateCommand(
                                 settlement.centerId(),

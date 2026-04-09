@@ -21,7 +21,10 @@ import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 
 @Service
 public class TrainerSettlementCreationService {
@@ -58,7 +61,7 @@ public class TrainerSettlementCreationService {
         OffsetDateTime monthStartAt = periodStart.atStartOfDay(BUSINESS_ZONE).toOffsetDateTime();
         OffsetDateTime monthEndExclusiveAt = periodEnd.plusDays(1).atStartOfDay(BUSINESS_ZONE).toOffsetDateTime();
         List<TrainerSettlementSourceRepository.TrainerSettlementSourceRow> sourceRows =
-                trainerSettlementSourceRepository.findCompletedPtSources(centerId, monthStartAt, monthEndExclusiveAt, trainerUserId);
+                trainerSettlementSourceRepository.findSettlementMetrics(centerId, monthStartAt, monthEndExclusiveAt, trainerUserId);
 
         if (sourceRows.isEmpty()) {
             throw new ApiException(ErrorCode.BUSINESS_RULE, "생성할 트레이너 정산 데이터가 없습니다.");
@@ -77,7 +80,6 @@ public class TrainerSettlementCreationService {
                 settlement,
                 sourceRows,
                 existingDetails,
-                trainerUserId == null,
                 actorUserId
         );
         if (createCommands.isEmpty()) {
@@ -89,18 +91,17 @@ public class TrainerSettlementCreationService {
         Settlement updatedSettlement = refreshSettlementTotals(settlement, allDetails, actorUserId);
 
         if (trainerUserId == null) {
-            return toAllTrainerResult(updatedSettlement, allDetails, periodStart, periodEnd);
+            return toAllTrainerResult(updatedSettlement, allDetails, sourceRows, periodStart, periodEnd);
         }
 
-        SettlementDetail createdDetail = allDetails.stream()
-                .filter(detail -> trainerUserId.equals(detail.userId()) && SettlementLessonType.PT.name().equals(detail.lessonType()))
-                .findFirst()
-                .orElseThrow();
+        List<SettlementDetail> createdDetails = allDetails.stream()
+                .filter(detail -> trainerUserId.equals(detail.userId()))
+                .toList();
         TrainerSettlementSourceRepository.TrainerSettlementSourceRow sourceRow = sourceRows.stream()
                 .filter(row -> trainerUserId.equals(row.trainerUserId()))
                 .findFirst()
                 .orElseThrow();
-        return toSingleTrainerResult(updatedSettlement, createdDetail, sourceRow, periodStart, periodEnd);
+        return toSingleTrainerResult(updatedSettlement, createdDetails, sourceRow, periodStart, periodEnd);
     }
 
     private Settlement createDraftSettlement(Long centerId, Long actorUserId, YearMonth yearMonth) {
@@ -124,37 +125,55 @@ public class TrainerSettlementCreationService {
             Settlement settlement,
             List<TrainerSettlementSourceRepository.TrainerSettlementSourceRow> sourceRows,
             List<SettlementDetail> existingDetails,
-            boolean allTrainerRequest,
             Long actorUserId
     ) {
         OffsetDateTime now = OffsetDateTime.now(BUSINESS_ZONE);
         List<SettlementDetailRepository.CreateCommand> commands = new ArrayList<>();
         for (TrainerSettlementSourceRepository.TrainerSettlementSourceRow sourceRow : sourceRows) {
-            boolean exists = existingDetails.stream()
-                    .anyMatch(detail -> detail.userId().equals(sourceRow.trainerUserId())
-                            && SettlementLessonType.PT.name().equals(detail.lessonType()));
-            if (exists && !allTrainerRequest) {
-                throw new ApiException(ErrorCode.CONFLICT, "이미 같은 기간의 트레이너 정산이 생성되어 있습니다. trainerId=" + sourceRow.trainerUserId());
+            Set<String> existingLessonTypes = existingDetails.stream()
+                    .filter(detail -> detail.userId().equals(sourceRow.trainerUserId()))
+                    .map(SettlementDetail::lessonType)
+                    .collect(java.util.stream.Collectors.toCollection(HashSet::new));
+
+            long ptSessions = safeLong(sourceRow.ptCompletedClassCount());
+            if (ptSessions > 0 && !existingLessonTypes.contains(SettlementLessonType.PT.name())) {
+                BigDecimal ptAmount = sourceRow.ptSessionUnitPrice()
+                        .multiply(BigDecimal.valueOf(ptSessions));
+                commands.add(new SettlementDetailRepository.CreateCommand(
+                        settlement.settlementId(),
+                        sourceRow.trainerUserId(),
+                        SettlementLessonType.PT.name(),
+                        Math.toIntExact(ptSessions),
+                        sourceRow.ptSessionUnitPrice(),
+                        ptAmount,
+                        BigDecimal.ZERO,
+                        BigDecimal.ZERO,
+                        ptAmount,
+                        null,
+                        now,
+                        actorUserId
+                ));
             }
-            if (exists) {
-                continue;
+
+            long gxSessions = safeLong(sourceRow.gxCompletedClassCount());
+            if (gxSessions > 0 && !existingLessonTypes.contains(SettlementLessonType.GX.name())) {
+                BigDecimal gxAmount = sourceRow.gxSessionUnitPrice()
+                        .multiply(BigDecimal.valueOf(gxSessions));
+                commands.add(new SettlementDetailRepository.CreateCommand(
+                        settlement.settlementId(),
+                        sourceRow.trainerUserId(),
+                        SettlementLessonType.GX.name(),
+                        Math.toIntExact(gxSessions),
+                        sourceRow.gxSessionUnitPrice(),
+                        gxAmount,
+                        BigDecimal.ZERO,
+                        BigDecimal.ZERO,
+                        gxAmount,
+                        null,
+                        now,
+                        actorUserId
+                ));
             }
-            BigDecimal amount = sourceRow.ptSessionUnitPrice()
-                    .multiply(BigDecimal.valueOf(sourceRow.completedClassCount()));
-            commands.add(new SettlementDetailRepository.CreateCommand(
-                    settlement.settlementId(),
-                    sourceRow.trainerUserId(),
-                    SettlementLessonType.PT.name(),
-                    Math.toIntExact(sourceRow.completedClassCount()),
-                    sourceRow.ptSessionUnitPrice(),
-                    amount,
-                    BigDecimal.ZERO,
-                    BigDecimal.ZERO,
-                    amount,
-                    null,
-                    now,
-                    actorUserId
-            ));
         }
         return commands;
     }
@@ -180,32 +199,42 @@ public class TrainerSettlementCreationService {
 
     private CreateSettlementResult toSingleTrainerResult(
             Settlement settlement,
-            SettlementDetail detail,
+            List<SettlementDetail> details,
             TrainerSettlementSourceRepository.TrainerSettlementSourceRow sourceRow,
             LocalDate periodStart,
             LocalDate periodEnd
     ) {
+        SettlementDetail ptDetail = findDetail(details, SettlementLessonType.PT.name());
+        SettlementDetail gxDetail = findDetail(details, SettlementLessonType.GX.name());
+        BigDecimal ptAmount = ptDetail == null ? BigDecimal.ZERO : ptDetail.amount();
+        BigDecimal gxAmount = gxDetail == null ? BigDecimal.ZERO : gxDetail.amount();
+        BigDecimal totalAmount = ptAmount.add(gxAmount);
+        long ptSessions = safeLong(sourceRow.ptSessionCount());
+        long gxSessions = safeLong(sourceRow.gxSessionCount());
+        long completedSessions = safeLong(sourceRow.ptCompletedClassCount()) + safeLong(sourceRow.gxCompletedClassCount());
+        long cancelledSessions = safeLong(sourceRow.cancelledClassCount());
+        long noShowSessions = safeLong(sourceRow.noShowClassCount());
         return new CreateSettlementResult(
                 settlement.settlementId(),
                 String.valueOf(sourceRow.trainerUserId()),
                 sourceRow.userName(),
                 periodStart,
                 periodEnd,
-                detail.lessonCount(),
-                detail.lessonCount(),
-                0,
-                0,
-                detail.lessonCount(),
-                0,
-                detail.unitPrice(),
-                BigDecimal.ZERO,
-                detail.amount(),
-                BigDecimal.ZERO,
-                BigDecimal.ZERO,
-                null,
+                ptSessions + gxSessions,
+                completedSessions,
+                cancelledSessions,
+                noShowSessions,
+                ptSessions,
+                gxSessions,
+                ptDetail == null ? sourceRow.ptSessionUnitPrice() : ptDetail.unitPrice(),
+                gxDetail == null ? sourceRow.gxSessionUnitPrice() : gxDetail.unitPrice(),
+                ptAmount,
+                gxAmount,
                 BigDecimal.ZERO,
                 null,
-                detail.netAmount(),
+                BigDecimal.ZERO,
+                null,
+                totalAmount,
                 settlement.status(),
                 settlement.createdAt()
         );
@@ -214,6 +243,7 @@ public class TrainerSettlementCreationService {
     private CreateSettlementResult toAllTrainerResult(
             Settlement settlement,
             List<SettlementDetail> details,
+            List<TrainerSettlementSourceRepository.TrainerSettlementSourceRow> sourceRows,
             LocalDate periodStart,
             LocalDate periodEnd
     ) {
@@ -221,12 +251,45 @@ public class TrainerSettlementCreationService {
                 .filter(detail -> SettlementLessonType.PT.name().equals(detail.lessonType()))
                 .sorted(Comparator.comparing(SettlementDetail::userId))
                 .toList();
-        BigDecimal ptRatePerSession = ptDetails.isEmpty() ? BigDecimal.ZERO : ptDetails.get(0).unitPrice();
-        BigDecimal totalAmount = ptDetails.stream()
+        List<SettlementDetail> gxDetails = details.stream()
+                .filter(detail -> SettlementLessonType.GX.name().equals(detail.lessonType()))
+                .sorted(Comparator.comparing(SettlementDetail::userId))
+                .toList();
+        BigDecimal ptAmount = ptDetails.stream()
                 .map(SettlementDetail::netAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        long totalSessions = ptDetails.stream()
+        BigDecimal gxAmount = gxDetails.stream()
+                .map(SettlementDetail::netAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalAmount = ptDetails.stream()
+                .map(SettlementDetail::netAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .add(gxAmount);
+        long ptSessions = sourceRows.stream()
+                .map(TrainerSettlementSourceRepository.TrainerSettlementSourceRow::ptSessionCount)
+                .filter(Objects::nonNull)
+                .mapToLong(Long::longValue)
+                .sum();
+        long gxSessions = sourceRows.stream()
+                .map(TrainerSettlementSourceRepository.TrainerSettlementSourceRow::gxSessionCount)
+                .filter(Objects::nonNull)
+                .mapToLong(Long::longValue)
+                .sum();
+        long completedSessions = ptDetails.stream()
                 .mapToLong(SettlementDetail::lessonCount)
+                .sum()
+                + gxDetails.stream()
+                .mapToLong(SettlementDetail::lessonCount)
+                .sum();
+        long cancelledSessions = sourceRows.stream()
+                .map(TrainerSettlementSourceRepository.TrainerSettlementSourceRow::cancelledClassCount)
+                .filter(Objects::nonNull)
+                .mapToLong(Long::longValue)
+                .sum();
+        long noShowSessions = sourceRows.stream()
+                .map(TrainerSettlementSourceRepository.TrainerSettlementSourceRow::noShowClassCount)
+                .filter(Objects::nonNull)
+                .mapToLong(Long::longValue)
                 .sum();
         return new CreateSettlementResult(
                 settlement.settlementId(),
@@ -234,16 +297,16 @@ public class TrainerSettlementCreationService {
                 "전체 트레이너",
                 periodStart,
                 periodEnd,
-                totalSessions,
-                totalSessions,
-                0,
-                0,
-                totalSessions,
-                0,
-                ptRatePerSession,
-                BigDecimal.ZERO,
-                totalAmount,
-                BigDecimal.ZERO,
+                ptSessions + gxSessions,
+                completedSessions,
+                cancelledSessions,
+                noShowSessions,
+                ptSessions,
+                gxSessions,
+                null,
+                null,
+                ptAmount,
+                gxAmount,
                 BigDecimal.ZERO,
                 null,
                 BigDecimal.ZERO,
@@ -252,6 +315,17 @@ public class TrainerSettlementCreationService {
                 settlement.status(),
                 settlement.createdAt()
         );
+    }
+
+    private SettlementDetail findDetail(List<SettlementDetail> details, String lessonType) {
+        return details.stream()
+                .filter(detail -> lessonType.equals(detail.lessonType()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private long safeLong(Long value) {
+        return value == null ? 0L : value;
     }
 
     private void ensureDraftSettlement(Settlement settlement) {
@@ -261,10 +335,16 @@ public class TrainerSettlementCreationService {
     }
 
     private void validateSettlementRateConfigured(TrainerSettlementSourceRepository.TrainerSettlementSourceRow row) {
-        if (row.ptSessionUnitPrice() == null) {
+        if (safeLong(row.ptCompletedClassCount()) > 0 && row.ptSessionUnitPrice() == null) {
             throw new ApiException(
                     ErrorCode.BUSINESS_RULE,
-                    "트레이너 정산 단가가 설정되지 않았습니다. trainerId=" + row.trainerUserId()
+                    "트레이너 PT 정산 단가가 설정되지 않았습니다. trainerId=" + row.trainerUserId()
+            );
+        }
+        if (safeLong(row.gxCompletedClassCount()) > 0 && row.gxSessionUnitPrice() == null) {
+            throw new ApiException(
+                    ErrorCode.BUSINESS_RULE,
+                    "트레이너 GX 정산 단가가 설정되지 않았습니다. trainerId=" + row.trainerUserId()
             );
         }
     }

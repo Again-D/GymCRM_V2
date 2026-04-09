@@ -28,6 +28,13 @@ public class SettlementDetailRepository {
                 .toList();
     }
 
+    public List<SettlementDetail> findBySettlementIdAndUserId(Long settlementId, Long userId) {
+        return settlementDetailJpaRepository.findBySettlementIdAndUserIdOrderByLessonTypeAsc(settlementId, userId)
+                .stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
     public Optional<SettlementDetail> findBySettlementIdAndUserIdAndLessonType(Long settlementId, Long userId, String lessonType) {
         return settlementDetailJpaRepository.findBySettlementIdAndUserIdAndLessonType(settlementId, userId, lessonType)
                 .map(this::toDomain);

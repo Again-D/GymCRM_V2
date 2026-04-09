@@ -1,6 +1,7 @@
 package com.gymcrm.settlement;
 
 import com.gymcrm.settlement.entity.TrainerSettlement;
+import com.gymcrm.settlement.service.TrainerSettlementDocumentService;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -34,11 +35,20 @@ public class TrainerSettlementDocumentExporter {
     );
 
     public byte[] export(List<TrainerSettlement> settlements) {
+        List<TrainerSettlementDocumentService.TrainerSettlementDocument> documents = settlements.stream()
+                .map(this::toDocument)
+                .toList();
+        return exportDocuments(documents);
+    }
+
+    public byte[] export(TrainerSettlementDocumentService.TrainerSettlementDocument document) {
+        return exportDocuments(List.of(document));
+    }
+
+    public byte[] exportDocuments(List<TrainerSettlementDocumentService.TrainerSettlementDocument> documents) {
         try (PDDocument document = new PDDocument();
              ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-            PDPage page = new PDPage(PDRectangle.A4);
-            document.addPage(page);
-            writePage(document, page, settlements);
+            writePages(document, documents);
             document.save(outputStream);
             return outputStream.toByteArray();
         } catch (IOException ex) {
@@ -46,17 +56,31 @@ public class TrainerSettlementDocumentExporter {
         }
     }
 
-    private void writePage(PDDocument document, PDPage page, List<TrainerSettlement> settlements) throws IOException {
+    private void writePages(PDDocument document, List<TrainerSettlementDocumentService.TrainerSettlementDocument> documents) throws IOException {
         FontBundle fontBundle = resolveFonts(document);
-        List<String> lines = buildLines(settlements);
+        List<String> lines = buildLines(documents);
+        int lineIndex = 0;
 
-        try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
-            float y = page.getMediaBox().getUpperRightY() - PAGE_MARGIN;
+        while (lineIndex < lines.size() || lines.isEmpty()) {
+            PDPage page = new PDPage(PDRectangle.A4);
+            document.addPage(page);
 
-            y = writeLine(contentStream, fontBundle.titleFont(), TITLE_FONT_SIZE, y, "Trainer Settlement Statement", fontBundle.sanitizeUnsupportedText());
-            y -= 6f;
-            for (String line : lines) {
-                y = writeLine(contentStream, fontBundle.bodyFont(), BODY_FONT_SIZE, y, line, fontBundle.sanitizeUnsupportedText());
+            try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
+                float y = page.getMediaBox().getUpperRightY() - PAGE_MARGIN;
+                float minY = PAGE_MARGIN + LINE_HEIGHT;
+
+                y = writeLine(contentStream, fontBundle.titleFont(), TITLE_FONT_SIZE, y, "Trainer Settlement Statement", fontBundle.sanitizeUnsupportedText());
+                y -= 6f;
+
+                if (lines.isEmpty()) {
+                    writeLine(contentStream, fontBundle.bodyFont(), BODY_FONT_SIZE, y, "No confirmed trainer settlement rows.", fontBundle.sanitizeUnsupportedText());
+                    break;
+                }
+
+                while (lineIndex < lines.size() && y >= minY) {
+                    y = writeLine(contentStream, fontBundle.bodyFont(), BODY_FONT_SIZE, y, lines.get(lineIndex), fontBundle.sanitizeUnsupportedText());
+                    lineIndex += 1;
+                }
             }
         }
     }
@@ -77,33 +101,59 @@ public class TrainerSettlementDocumentExporter {
         return y - LINE_HEIGHT;
     }
 
-    private List<String> buildLines(List<TrainerSettlement> settlements) {
+    private List<String> buildLines(List<TrainerSettlementDocumentService.TrainerSettlementDocument> documents) {
         List<String> lines = new ArrayList<>();
-        if (settlements.isEmpty()) {
-            lines.add("No confirmed trainer settlement rows.");
+        if (documents.isEmpty()) {
             return lines;
         }
 
-        TrainerSettlement first = settlements.get(0);
+        TrainerSettlementDocumentService.TrainerSettlementDocument first = documents.get(0);
         lines.add("Settlement Month: " + first.settlementMonth().getYear() + "-" + String.format("%02d", first.settlementMonth().getMonthValue()));
         lines.add("Settlement Status: " + first.settlementStatus());
         lines.add("Confirmed At: " + DATE_TIME_FORMATTER.format(first.confirmedAt()));
         lines.add("Confirmed By: " + first.confirmedBy());
-        lines.add("Rows: " + settlements.size());
+        lines.add("Rows: " + documents.size());
         lines.add("");
 
         int index = 1;
-        for (TrainerSettlement settlement : settlements) {
+        for (TrainerSettlementDocumentService.TrainerSettlementDocument settlement : documents) {
             lines.add("Trainer " + index);
             lines.add("Trainer Name: " + settlement.trainerName());
             lines.add("Trainer User ID: " + nullableLong(settlement.trainerUserId()));
-            lines.add("Completed Classes: " + settlement.completedClassCount());
-            lines.add("Session Unit Price: " + settlement.sessionUnitPrice().toPlainString());
-            lines.add("Payroll Amount: " + settlement.payrollAmount().toPlainString());
+            lines.add("PT Completed Classes: " + settlement.pt().lessonCount());
+            lines.add("PT Session Unit Price: " + settlement.pt().unitPrice().toPlainString());
+            lines.add("PT Amount: " + settlement.pt().amount().toPlainString());
+            lines.add("GX Completed Classes: " + settlement.gx().lessonCount());
+            lines.add("GX Session Unit Price: " + settlement.gx().unitPrice().toPlainString());
+            lines.add("GX Amount: " + settlement.gx().amount().toPlainString());
+            lines.add("Bonus Amount: " + settlement.bonusAmount().toPlainString());
+            lines.add("Deduction Amount: " + settlement.deductionAmount().toPlainString());
+            lines.add("Total Amount: " + settlement.totalAmount().toPlainString());
             lines.add("");
             index += 1;
         }
         return lines;
+    }
+
+    private TrainerSettlementDocumentService.TrainerSettlementDocument toDocument(TrainerSettlement settlement) {
+        return new TrainerSettlementDocumentService.TrainerSettlementDocument(
+                settlement.settlementId(),
+                java.time.YearMonth.of(settlement.settlementMonth().getYear(), settlement.settlementMonth().getMonthValue()),
+                settlement.settlementStatus(),
+                settlement.confirmedAt(),
+                settlement.confirmedBy(),
+                settlement.trainerUserId(),
+                settlement.trainerName(),
+                new TrainerSettlementDocumentService.DocumentLine(
+                        Math.toIntExact(settlement.completedClassCount()),
+                        settlement.sessionUnitPrice(),
+                        settlement.payrollAmount()
+                ),
+                new TrainerSettlementDocumentService.DocumentLine(0, java.math.BigDecimal.ZERO, java.math.BigDecimal.ZERO),
+                java.math.BigDecimal.ZERO,
+                java.math.BigDecimal.ZERO,
+                settlement.payrollAmount()
+        );
     }
 
     private String nullableLong(Long value) {

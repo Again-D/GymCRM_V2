@@ -7,6 +7,7 @@ import com.gymcrm.common.security.AccessPolicies;
 import com.gymcrm.settlement.TrainerSettlementDocumentExporter;
 import com.gymcrm.settlement.entity.TrainerSettlement;
 import com.gymcrm.settlement.service.TrainerPayrollSettlementService;
+import com.gymcrm.settlement.service.TrainerSettlementDocumentService;
 import com.gymcrm.settlement.service.TrainerSettlementLifecycleService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
@@ -36,15 +37,18 @@ public class TrainerPayrollSettlementController {
     private final TrainerPayrollSettlementService service;
     private final TrainerSettlementLifecycleService trainerSettlementLifecycleService;
     private final TrainerSettlementDocumentExporter trainerSettlementDocumentExporter;
+    private final TrainerSettlementDocumentService trainerSettlementDocumentService;
 
     public TrainerPayrollSettlementController(
             TrainerPayrollSettlementService service,
             TrainerSettlementLifecycleService trainerSettlementLifecycleService,
-            TrainerSettlementDocumentExporter trainerSettlementDocumentExporter
+            TrainerSettlementDocumentExporter trainerSettlementDocumentExporter,
+            TrainerSettlementDocumentService trainerSettlementDocumentService
     ) {
         this.service = service;
         this.trainerSettlementLifecycleService = trainerSettlementLifecycleService;
         this.trainerSettlementDocumentExporter = trainerSettlementDocumentExporter;
+        this.trainerSettlementDocumentService = trainerSettlementDocumentService;
     }
 
     @GetMapping("/trainer-payroll")
@@ -96,15 +100,26 @@ public class TrainerPayrollSettlementController {
             @Pattern(regexp = "^\\d{4}-\\d{2}$", message = "settlementMonth must be YYYY-MM")
             String settlementMonth
     ) {
-        List<TrainerSettlement> settlements = trainerSettlementLifecycleService.getConfirmedSettlements(parseSettlementMonth(settlementMonth));
-        if (settlements.isEmpty()) {
-            throw new ApiException(
-                    ErrorCode.NOT_FOUND,
-                    "확정된 트레이너 정산을 찾을 수 없습니다. settlementMonth=" + settlementMonth
-            );
-        }
+        List<TrainerSettlementDocumentService.TrainerSettlementDocument> settlements =
+                trainerSettlementDocumentService.getConfirmedTrainerDocuments(parseSettlementMonth(settlementMonth));
         String fileName = "trainer-settlement-%s.pdf".formatted(settlementMonth);
-        byte[] pdf = trainerSettlementDocumentExporter.export(settlements);
+        byte[] pdf = trainerSettlementDocumentExporter.exportDocuments(settlements);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(fileName).build().toString())
+                .body(pdf);
+    }
+
+    @GetMapping(value = "/{settlementId}/trainers/{trainerId}/document", produces = MediaType.APPLICATION_PDF_VALUE)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    public ResponseEntity<byte[]> exportCanonicalTrainerSettlementDocument(
+            @org.springframework.web.bind.annotation.PathVariable Long settlementId,
+            @org.springframework.web.bind.annotation.PathVariable Long trainerId
+    ) {
+        TrainerSettlementDocumentService.TrainerSettlementDocument document =
+                trainerSettlementDocumentService.getConfirmedTrainerDocument(settlementId, trainerId);
+        String fileName = "settlement-%d-trainer-%d.pdf".formatted(settlementId, trainerId);
+        byte[] pdf = trainerSettlementDocumentExporter.export(document);
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_PDF)
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(fileName).build().toString())
