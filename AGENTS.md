@@ -80,11 +80,13 @@ Read this first when deciding branch strategy, file placement, validation, and d
 - Open the backend structure rules doc when deciding whether code belongs in `common`, a feature package, or a legacy module boundary.
 - Open `docs/04_API_설계서.md` when API contract, payload shape, response envelope, status code, or API-facing business rule changes are in scope.
 - Use the architecture document as explanatory context, not as a stronger rule source than this file.
+- Open `docs/03_데이터베이스_설계서.md` when database schema changes are in scope.
 
 ## Supporting References
 - Branch/work rules: [docs/agent-branch-and-work-rules.md](/Users/abc/projects/GymCRM_V2/docs/agent-branch-and-work-rules.md)
 - Backend structure rules: [docs/backend-structure-rules.md](/Users/abc/projects/GymCRM_V2/docs/backend-structure-rules.md)
 - API reference: [docs/04_API_설계서.md](/Users/abc/projects/GymCRM_V2/docs/04_API_%EC%84%A4%EA%B3%84%EC%84%9C.md)
 - Architecture reference: [docs/02_시스템_아키텍처_설계서.md](/Users/abc/projects/GymCRM_V2/docs/02_%EC%8B%9C%EC%8A%A4%ED%85%9C_%EC%95%84%ED%82%A4%ED%85%8D%EC%B2%98_%EC%84%A4%EA%B3%84%EC%84%9C.md)
+- Database structure reference: [docs/03_데이터베이스_설계서.md](/Users/abc/projects/GymCRM_V2/docs/03_%EB%8D%B0%EC%9D%B4%ED%84%8C%EB%B2%A0%EC%9D%B4%EC%8A%A4_%EC%84%A4%EA%B3%84%EC%84%9C.md)
 
 Use the supporting docs for explanation and examples. If they conflict with this file about agent behavior, follow this file.
