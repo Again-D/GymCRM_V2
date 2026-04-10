@@ -501,13 +501,15 @@ X-RateLimit-Reset: 1740001860
 | 2 | `GET` | `/api/v1/settlements/sales-report` | 기간별 매출/환불/순매출 및 추이 조회 | O | ADMIN, MANAGER, DESK |
 | 3 | `GET` | `/api/v1/settlements/sales-report/recent-adjustments` | 최근 환불 목록 조회 | O | ADMIN, MANAGER, DESK |
 | 4 | `GET` | `/api/v1/settlements/sales-report/export` | 매출 리포트 Excel(`.xlsx`) 다운로드 | O | ADMIN, MANAGER, DESK |
-| 5 | `GET` | `/api/v1/settlements/trainer-payroll/my-summary` | 트레이너 본인 월간 완료 PT 수업 수 요약 조회 | O | TRAINER |
-| 6 | `GET` | `/api/v1/settlements/trainer-payroll` | 트레이너 월별 급여 조회. 확정 월은 저장된 스냅샷과 `settlementStatus`/`confirmedAt`를 함께 반환 | O | ADMIN, MANAGER, DESK |
-| 7 | `POST` | `/api/v1/settlements/trainer-payroll/confirm` | 월별 트레이너 정산 일괄 확정 및 스냅샷 저장 | O | ADMIN, MANAGER, DESK |
-| 8 | `GET` | `/api/v1/settlements/trainer-payroll/document` | 확정된 월 정산 PDF 정산서 다운로드 (legacy monthly bridge) | O | ADMIN, MANAGER, DESK |
-| 9 | `POST` | `/api/v1/settlements` | 지정 기간의 트레이너 정산 생성 | O | ADMIN |
-| 10 | `POST` | `/api/v1/settlements/{settlementId}/confirm` | 생성된 정산 배치를 확정 | O | ADMIN |
-| 11 | `GET` | `/api/v1/settlements/{settlementId}/trainers/{trainerId}/document` | 생성형 정산 배치의 개별 트레이너 PDF 정산서 다운로드 (canonical) | O | ADMIN, MANAGER, DESK |
+| 5 | `GET` | `/api/v1/settlements/trainer-payroll/my-summary` | 트레이너 본인 월간 완료 PT 수업 수 요약 조회 (legacy mini summary) | O | TRAINER |
+| 6 | `GET` | `/api/v1/settlements/trainer-payroll` | 운영용 legacy 월 정산 조회. 확정 월은 `trainer_settlements` snapshot, 미확정 월은 조회 시점 PT draft 계산을 반환 | O | ADMIN, MANAGER, DESK |
+| 7 | `GET` | `/api/v1/settlements/preview` | 운영자용 월 기준 트레이너 정산 preview 조회 (`settlementMonth` canonical, period 입력은 호환 레이어) | O | ADMIN, MANAGER, DESK |
+| 8 | `GET` | `/api/v1/settlements/trainer-payroll/my-preview` | 트레이너 본인 월 기준 정산 preview 조회 (`settlementMonth` canonical) | O | TRAINER |
+| 9 | `POST` | `/api/v1/settlements/trainer-payroll/confirm` | legacy 월 정산 일괄 확정 및 snapshot 저장 | O | ADMIN, MANAGER, DESK |
+| 10 | `GET` | `/api/v1/settlements/trainer-payroll/document` | 확정된 월 정산 PDF 정산서 다운로드 (legacy monthly bridge) | O | ADMIN, MANAGER, DESK |
+| 11 | `POST` | `/api/v1/settlements` | 지정 월의 트레이너 정산 DRAFT 생성 또는 월 단위 기존 DRAFT 재사용 | O | ADMIN |
+| 12 | `POST` | `/api/v1/settlements/{settlementId}/confirm` | 생성된 월 기반 정산 배치를 확정 | O | ADMIN |
+| 13 | `GET` | `/api/v1/settlements/{settlementId}/trainers/{trainerId}/document` | canonical 정산 배치의 개별 트레이너 PDF 정산서 다운로드 | O | ADMIN, MANAGER, DESK |
 
 ### 3.8 CRM 메시지 API (`/api/v1/messages`)
 
@@ -1695,12 +1697,12 @@ Binary file download with:
 
 ---
 
-### 4.9.5 트레이너 본인 월간 PT 실적 요약 API
+### 4.9.5 트레이너 본인 월간 PT 실적 요약 API (Legacy)
 
 | 항목 | 내용 |
 |------|------|
 | **URL** | `GET /api/v1/settlements/trainer-payroll/my-summary` |
-| **설명** | 트레이너가 `/settlements` 전용 미니뷰에서 본인 월간 완료 PT 수업 횟수만 조회한다. |
+| **설명** | 트레이너가 legacy 월간 미니뷰에서 본인 완료 PT 수업 횟수만 조회한다. 기간 기반 preview 도입 이후에도 하위 호환을 위해 유지한다. |
 | **인증** | 필요 |
 | **권한** | TRAINER |
 
@@ -1733,12 +1735,12 @@ Binary file download with:
 
 ---
 
-### 4.9.6 트레이너 월 정산 조회 API
+### 4.9.6 트레이너 월 정산 조회 API (Legacy)
 
 | 항목 | 내용 |
 |------|------|
 | **URL** | `GET /api/v1/settlements/trainer-payroll` |
-| **설명** | 정산 월 기준 트레이너별 완료 수업 수와 급여 산정 결과를 조회한다. |
+| **설명** | 운영용 legacy 월 정산 조회 API다. 확정 월은 `trainer_settlements` snapshot을, 미확정 월은 조회 시점 PT-only draft 계산을 반환한다. period workflow의 canonical source-of-truth는 아니다. |
 | **인증** | 필요 |
 | **권한** | ADMIN, MANAGER, DESK |
 
@@ -1747,7 +1749,7 @@ Binary file download with:
 | 필드 | 타입 | 필수 | 설명 |
 |------|------|------|------|
 | `settlementMonth` | String | O | 정산 월 (`yyyy-MM`) |
-| `sessionUnitPrice` | Integer | O | 관리자/데스크 조회 시 사용할 세션 단가 |
+| `sessionUnitPrice` | Integer | O | 미확정 월 draft 계산에 사용할 PT 세션 단가 |
 
 **Response Body (성공 - 200):**
 
@@ -1779,16 +1781,123 @@ Binary file download with:
 
 **비즈니스 규칙:**
 - 관리자/매니저/데스크는 월 전체 트레이너 row를 조회할 수 있다.
-- 확정된 월은 저장된 스냅샷을 우선 반환하고 `settlementStatus`와 `confirmedAt`를 함께 제공한다.
+- 확정된 월은 저장된 `trainer_settlements` snapshot을 우선 반환하고 `settlementStatus`와 `confirmedAt`를 함께 제공한다.
+- 미확정 월은 PT completed 클래스만 기준으로 조회 시점 draft 계산을 수행한다.
+- 기간 기반 preview/create/confirm과는 별도 surface이며, 새 workflow의 source-of-truth는 `settlements` / `settlement_details` canonical batch/detail이다.
 
 ---
 
-### 4.9.7 트레이너 정산 확정 API
+### 4.9.7 운영자 월 기준 트레이너 정산 preview API
+
+| 항목 | 내용 |
+|------|------|
+| **URL** | `GET /api/v1/settlements/preview` |
+| **설명** | 운영자가 지정 월과 대상 범위(`ALL` 또는 개별 트레이너) 기준으로 정산 preview를 조회한다. 조회만 수행하며 저장된 정산 리소스를 자동 생성하지 않는다. |
+| **인증** | 필요 |
+| **권한** | ADMIN, MANAGER, DESK |
+
+**Query Parameters:**
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `trainerId` | String | O | `ALL` 또는 대상 트레이너 `user_id` 문자열 |
+| `settlementMonth` | String | O | 정산 월 (`yyyy-MM`) |
+| `periodStart` | String | X | deprecated compatibility input (`yyyy-MM-dd`) |
+| `periodEnd` | String | X | deprecated compatibility input (`yyyy-MM-dd`) |
+
+**Response Body (성공 - 200):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "settlementMonth": "2026-04",
+    "scope": {
+      "trainerId": "ALL",
+      "trainerName": "전체 트레이너"
+    },
+    "period": {
+      "start": "2026-04-01",
+      "end": "2026-04-30"
+    },
+    "summary": {
+      "totalSessions": 21,
+      "completedSessions": 18,
+      "cancelledSessions": 2,
+      "noShowSessions": 1,
+      "totalAmount": 1230000,
+      "hasRateWarnings": false
+    },
+    "conflict": {
+      "hasConflict": false,
+      "createAllowed": true
+    },
+    "rows": [
+      {
+        "trainerUserId": 41,
+        "trainerName": "정트레이너",
+        "totalSessions": 12,
+        "completedSessions": 10,
+        "cancelledSessions": 1,
+        "noShowSessions": 1,
+        "ptSessions": 8,
+        "gxSessions": 4,
+        "ptRatePerSession": 50000,
+        "gxRatePerSession": 30000,
+        "ptAmount": 400000,
+        "gxAmount": 120000,
+        "totalAmount": 520000,
+        "hasRateWarning": false,
+        "rateWarningMessage": null
+      }
+    ]
+  },
+  "message": "트레이너 정산 preview 조회 성공",
+  "timestamp": "2026-04-25T10:00:00+09:00"
+}
+```
+
+**비즈니스 규칙:**
+- preview는 조회 전용이며 저장된 settlement를 자동 생성하지 않는다.
+- canonical 입력은 `settlementMonth`이며, 서버가 `period.start/end`를 월초/월말로 파생해 응답한다.
+- compatibility로 `periodStart/periodEnd`를 받을 때는 같은 달의 월초/월말 조합만 허용한다.
+- `trainerId=ALL`은 센터 전체 범위를, 숫자 문자열은 개별 트레이너 범위를 의미한다.
+- `summary.totalAmount`와 각 row amount는 저장 단가가 모두 준비된 경우에만 계산된다. 단가가 없으면 필드는 `null` 또는 생략될 수 있다.
+- `conflict.hasConflict=true`는 같은 center/year/month 기준의 `CONFIRMED` canonical settlement가 이미 존재함을 의미한다.
+- `conflict.createAllowed=false`는 overlap conflict 또는 단가 누락 등으로 현재 preview를 DRAFT 생성으로 승격할 수 없음을 의미한다.
+
+---
+
+### 4.9.8 트레이너 본인 월 기준 정산 preview API
+
+| 항목 | 내용 |
+|------|------|
+| **URL** | `GET /api/v1/settlements/trainer-payroll/my-preview` |
+| **설명** | 트레이너가 본인 월 기준 수업 집계와 예상 정산 결과를 조회한다. |
+| **인증** | 필요 |
+| **권한** | TRAINER |
+
+**Query Parameters:**
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `settlementMonth` | String | O | 정산 월 (`yyyy-MM`) |
+| `periodStart` | String | X | deprecated compatibility input (`yyyy-MM-dd`) |
+| `periodEnd` | String | X | deprecated compatibility input (`yyyy-MM-dd`) |
+
+**비즈니스 규칙:**
+- 트레이너는 본인 범위만 조회할 수 있으며 `trainerId`를 직접 전달하지 않는다.
+- 응답 계약은 운영자용 `GET /api/v1/settlements/preview`와 동일한 `scope/period/summary/conflict/rows` 구조를 따른다.
+- 트레이너에게는 preview만 제공되며 생성, 확정, PDF 출력 권한은 없다.
+
+---
+
+### 4.9.9 트레이너 정산 확정 API (Legacy)
 
 | 항목 | 내용 |
 |------|------|
 | **URL** | `POST /api/v1/settlements/trainer-payroll/confirm` |
-| **설명** | 월별 트레이너 정산을 확정하고 스냅샷을 저장한다. |
+| **설명** | 월별 PT-only 운영 정산을 확정하고 `trainer_settlements` snapshot을 저장한다. period workflow 이전 운영 surface와 하위 호환을 위해 유지한다. |
 | **인증** | 필요 |
 | **권한** | ADMIN, MANAGER, DESK |
 
@@ -1805,15 +1914,16 @@ Binary file download with:
 - 같은 월 정산은 한 번만 확정할 수 있다.
 - 트레이너는 이 endpoint를 호출할 수 없다.
 - 확정 시점의 row와 단가를 스냅샷으로 저장하고 이후 조회/문서 출력은 해당 스냅샷을 재사용한다.
+- canonical period settlement를 자동 생성하거나 재사용하지 않는다.
 
 ---
 
-### 4.9.8 트레이너 정산 문서 다운로드 API (Legacy Monthly Bridge)
+### 4.9.10 트레이너 정산 문서 다운로드 API (Legacy Monthly Bridge)
 
 | 항목 | 내용 |
 |------|------|
 | **URL** | `GET /api/v1/settlements/trainer-payroll/document` |
-| **설명** | 확정된 월 정산 문서를 PDF 파일로 다운로드한다. 운영용 월별 bridge endpoint이며 내부 문서 조립은 canonical 정산 배치를 재사용한다. |
+| **설명** | 확정된 월 정산 문서를 PDF 파일로 다운로드한다. 운영용 월별 bridge endpoint이며, 먼저 월 전체 `ALL` canonical settlement를 찾고 없으면 legacy `trainer_settlements` snapshot으로 fallback 한다. |
 | **인증** | 필요 |
 | **권한** | ADMIN, MANAGER, DESK |
 
@@ -1832,8 +1942,9 @@ Binary file download with:
 **비즈니스 규칙:**
 - 확정된 월 정산만 문서로 출력할 수 있다.
 - 관리자/매니저/데스크는 월 전체 정산 문서를 출력할 수 있다.
-- PDF에는 정산 월, 트레이너명, PT/GX 집계, 보너스/차감, 총 정산 금액, 확정 정보가 포함된다.
-- 이 endpoint는 레거시 운영 surface를 유지하기 위한 bridge이며, source-of-truth는 `settlements` + `settlement_details` canonical batch/detail이다.
+- 월 전체 `ALL` canonical settlement가 존재하면 `settlements` + `settlement_details`를 source-of-truth로 사용한다.
+- canonical batch가 없고 legacy snapshot만 있으면 `trainer_settlements` row를 PT-only 문서로 fallback 렌더링한다.
+- 단일 트레이너 canonical settlement 또는 부분 기간 canonical settlement는 이 bridge의 대상이 아니다.
 
 ---
 
@@ -1842,7 +1953,7 @@ Binary file download with:
 | 항목 | 내용 |
 |------|------|
 | **URL** | `POST /api/v1/settlements` |
-| **설명** | 지정 기간의 트레이너 수업 실적을 집계하여 정산 내역을 생성한다. |
+| **설명** | 지정 월의 트레이너 수업 실적을 집계하여 canonical settlement DRAFT를 생성하거나 월 단위 기존 DRAFT를 재사용한다. |
 | **인증** | 필요 |
 | **권한** | ADMIN |
 
@@ -1850,17 +1961,17 @@ Binary file download with:
 
 ```json
 {
-  "trainerId": "TRN-001",
-  "periodStart": "2026-02-01",
-  "periodEnd": "2026-02-28"
+  "trainerId": "41",
+  "settlementMonth": "2026-02"
 }
 ```
 
 | 필드 | 타입 | 필수 | 설명 |
 |------|------|------|------|
 | `trainerId` | String | O | 정산 대상 트레이너 ID (전체 정산 시 `ALL`) |
-| `periodStart` | String | O | 정산 시작일 (`yyyy-MM-dd`) |
-| `periodEnd` | String | O | 정산 종료일 (`yyyy-MM-dd`) |
+| `settlementMonth` | String | O | 정산 월 (`yyyy-MM`) |
+| `periodStart` | String | X | deprecated compatibility input (`yyyy-MM-dd`) |
+| `periodEnd` | String | X | deprecated compatibility input (`yyyy-MM-dd`) |
 
 **Response Body (성공 - 201):**
 
@@ -1868,9 +1979,10 @@ Binary file download with:
 {
   "success": true,
   "data": {
-    "settlementId": "STL-202602-TRN001",
+    "settlementId": 9001,
+    "settlementMonth": "2026-02",
     "trainer": {
-      "trainerId": "TRN-001",
+      "trainerId": "41",
       "name": "박트레이너"
     },
     "period": {
@@ -1890,11 +2002,11 @@ Binary file download with:
       "gxRatePerSession": 15000,
       "ptAmount": 1000000,
       "gxAmount": 120000,
-      "bonus": 50000,
-      "bonusReason": "월 목표 달성 인센티브",
+      "bonus": 0,
+      "bonusReason": null,
       "deduction": 0,
       "deductionReason": null,
-      "totalAmount": 1170000
+      "totalAmount": 1120000
     },
     "status": "DRAFT",
     "createdAt": "2026-02-20T10:00:00+09:00"
@@ -1905,8 +2017,9 @@ Binary file download with:
 ```
 
 **비즈니스 규칙:**
-- 동일 트레이너의 동일 기간에 대해 중복 정산을 생성할 수 없다.
-- 정산 상태 흐름: `DRAFT`(생성) -> `CONFIRMED`(확정) -> `PAID`(지급완료).
+- 같은 월의 `DRAFT` settlement가 있으면 같은 `settlementId`를 재사용하고 누락된 detail만 보강한다.
+- 같은 월의 `CONFIRMED` settlement가 있으면 생성할 수 없다.
+- 정산 상태 흐름은 현재 구현 기준으로 `DRAFT -> CONFIRMED`다. `PAID`/`CANCELLED`는 아직 canonical workflow에서 사용하지 않는다.
 - `CONFIRMED` 상태 이후에는 수정이 불가하다.
 - `ptSessions`는 정산 기간 안에서 최종 상태가 집계 대상(`COMPLETED`, `CANCELLED`, `NO_SHOW`)인 PT 세션의 총 개수다.
 - `gxSessions`는 정산 기간 안에서 최종 상태가 집계 대상(`COMPLETED`, `CANCELLED`, `NO_SHOW`)인 GX 세션의 총 개수다.
@@ -1918,12 +2031,11 @@ Binary file download with:
 - `totalSessions`는 `ptSessions + gxSessions`와 동일한 의미다.
 - amount 계산은 `COMPLETED` 상태의 PT/GX만 반영하고, 취소/노쇼는 summary count로만 노출한다.
 - `trainerId`에 `ALL`을 전달하면 모든 트레이너에 대해 일괄 정산을 생성한다.
+- 단가가 누락된 트레이너가 포함되면 business rule error를 반환하며 생성이 차단된다.
+- compatibility `periodStart/periodEnd` 입력은 같은 달 월초/월말 조합만 허용된다.
 
 **구현/해석 보강 메모:**
-- 내부 persistence는 `settlements`(center-month batch) + `settlement_details`(트레이너별 detail) 구조를 사용한다.
-- 같은 센터/같은 월의 정산 생성 요청은 동일한 `settlementId` 배치를 생성 또는 재사용할 수 있으며, 개별 트레이너 생성은 해당 배치 아래 trainer detail을 추가하는 방식으로 해석한다.
-- `trainerId=ALL`은 해당 센터/기간 배치 아래 모든 트레이너 detail을 일괄 생성하는 의미다.
-- 1차 구현에서는 `periodStart`가 해당 월 1일이고 `periodEnd`가 해당 월 말일인 “동일 월 전체 기간”만 허용한다.
+- 내부 persistence는 `settlements`(center + settlement_year + settlement_month canonical header) + `settlement_details`(trainer + lesson_type detail) 구조를 사용한다.
 - 현재 구현의 `settlementId`는 공개 코드 문자열이 아니라 `settlements.settlement_id`의 numeric PK를 그대로 반환한다.
 - 현재 구현의 `trainerId=ALL` 응답은 배치 전체 합계 1건을 반환하며, 이미 존재하는 trainer detail은 건너뛰고 없는 detail만 추가 생성한다.
 - 현재 구현은 PT/GX를 lesson type별 canonical `settlement_details` row로 저장하고, `settlements.total_amount`는 PT+GX completed amount 합계로 유지한다.
@@ -1954,7 +2066,7 @@ Binary file download with:
 {
   "success": true,
   "data": {
-    "settlementId": "STL-202602-TRN001",
+    "settlementId": 9001,
     "status": "CONFIRMED",
     "confirmedAt": "2026-02-20T11:00:00+09:00"
   },
@@ -1966,8 +2078,9 @@ Binary file download with:
 **비즈니스 규칙:**
 - `DRAFT` 상태의 정산만 확정할 수 있다.
 - 확정 이후에는 같은 정산 배치 및 그 하위 trainer detail을 수정할 수 없다.
-- 월별 운영용 `/api/v1/settlements/trainer-payroll/confirm`는 기존 스냅샷 흐름 호환을 위한 endpoint이며, 생성형 정산의 canonical 확정 endpoint는 본 API다.
-- 현재 구현에서는 확정 시 canonical `settlement_details`의 PT detail만 기존 `trainer_settlements` 월별 스냅샷으로 브리지 저장해 운영용 월간 급여/PDF 흐름 호환을 유지한다.
+- 같은 범위와 겹치는 다른 `CONFIRMED` settlement가 있으면 확정할 수 없다.
+- 월별 운영용 `/api/v1/settlements/trainer-payroll/confirm`는 legacy snapshot endpoint이며, canonical 확정 endpoint는 본 API다.
+- 현재 구현에서는 월 canonical settlement 확정 시 PT detail을 `trainer_settlements` 월별 snapshot으로 브리지 저장한다.
 - GX, bonus, deduction과 같은 확장 metrics의 source-of-truth는 계속 canonical `settlements` / `settlement_details`다.
 
 ---
@@ -1999,7 +2112,7 @@ Binary file download with:
 - `settlementId`는 현재 사용자 center scope 안에 있어야 한다.
 - 요청한 `trainerId`에 해당하는 canonical `settlement_details`가 없으면 `NOT_FOUND`를 반환한다.
 - 문서 내용은 `settlements` + `settlement_details` canonical batch/detail을 source-of-truth로 사용하며, `trainer_settlements` snapshot 존재 여부와 무관하게 생성된다.
-- PDF에는 정산 월, 정산 상태, 확정 정보, trainer 식별 정보, PT/GX 집계, 보너스/차감, 총 정산 금액이 포함된다.
+- PDF에는 정산 월, 실제 정산 기간(`periodStart ~ periodEnd`), 정산 상태, 확정 정보, trainer 식별 정보, PT/GX 집계, 보너스/차감, 총 정산 금액이 포함된다.
 
 ---
 
@@ -2490,6 +2603,8 @@ X-Cache: HIT
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| v1.13.0 | 2026-04-10 | 정산 계약을 monthly canonical 모델로 롤백해 `/settlements/preview`, `/trainer-payroll/my-preview`, `POST /settlements`의 canonical 입력을 `settlementMonth`로 재정렬하고 `periodStart/periodEnd`는 월 전체 호환 입력으로 강등 | Codex |
+| v1.12.0 | 2026-04-10 | 기간 기반 trainer settlement workflow를 문서 기준 계약으로 승격해 `/settlements/preview`, `/trainer-payroll/my-preview`, period/scope canonical 생성·확정 규칙, legacy monthly bridge fallback 규칙을 현재 구현과 동기화 | Codex |
 | v1.11.0 | 2026-04-08 | 생성형 트레이너 정산 응답의 PT/GX/취소/노쇼 집계 semantics와 GX amount 계산을 현재 구현 기준으로 동기화하고, confirm 시 legacy snapshot이 PT-only bridge임을 명시 | Codex |
 | v1.10.0 | 2026-04-08 | 생성형 정산용 canonical 문서 endpoint `/settlements/{settlementId}/trainers/{trainerId}/document`를 추가하고, 기존 `/trainer-payroll/document`를 legacy monthly bridge로 재정의해 문서 출력 source-of-truth를 `settlements`/`settlement_details` 기준으로 동기화 | Codex |
 | v1.9.0 | 2026-04-08 | 사용자/트레이너 이름 계약을 `displayName`에서 `userName`으로 정리하고, `users.user_name` 컬럼명 변경 및 생성형 정산 응답의 `trainer.name` 계약을 문서 기준으로 동기화 | Codex |

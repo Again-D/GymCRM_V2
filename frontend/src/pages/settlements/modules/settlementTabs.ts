@@ -15,7 +15,7 @@ export const settlementTabs: SettlementTabDefinition[] = [
   {
     key: "trainerPayroll",
     label: "트레이너 정산",
-    description: "월별 조회, 정산 확정, 정산서 출력을 준비합니다."
+    description: "기간 기준 preview와 정산 작업을 분리해 관리합니다."
   }
 ];
 

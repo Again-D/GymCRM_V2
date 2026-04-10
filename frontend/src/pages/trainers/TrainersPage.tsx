@@ -56,6 +56,25 @@ function asNullableText(value: string) {
   return trimmed ? trimmed : null;
 }
 
+function parseOptionalUnitPrice(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const parsed = Number(trimmed);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return Number.NaN;
+  }
+  return Math.floor(parsed);
+}
+
+function formatUnitPrice(value: number | null) {
+  if (value == null) {
+    return "미설정";
+  }
+  return `${new Intl.NumberFormat("ko-KR").format(value)}원`;
+}
+
 export default function TrainersPage() {
   const { authUser, isMockMode } = useAuthState();
   const defaultCenterId = authUser?.centerId ?? 1;
@@ -210,6 +229,14 @@ export default function TrainersPage() {
       return;
     }
 
+    const ptSessionUnitPrice = parseOptionalUnitPrice(trainerForm.ptSessionUnitPrice);
+    const gxSessionUnitPrice = parseOptionalUnitPrice(trainerForm.gxSessionUnitPrice);
+
+    if (Number.isNaN(ptSessionUnitPrice) || Number.isNaN(gxSessionUnitPrice)) {
+      setTrainerFormError("PT/GX 단가는 0 이상의 숫자만 입력할 수 있습니다.");
+      return;
+    }
+
     setTrainerFormSubmitting(true);
     try {
       let detail: TrainerDetail | null = null;
@@ -222,15 +249,19 @@ export default function TrainersPage() {
             password: trainerForm.password,
             userName,
             phone: asNullableText(trainerForm.phone),
+            ptSessionUnitPrice,
+            gxSessionUnitPrice,
           });
           setTrainerPanelMessage("트레이너 계정을 등록했습니다.");
         } else {
           const { updateMockTrainer } = await import("../../api/mockData");
           detail = selectedTrainer
             ? updateMockTrainer(selectedTrainer.userId, {
-                loginId,
-                userName,
-                phone: asNullableText(trainerForm.phone),
+              loginId,
+              userName,
+              phone: asNullableText(trainerForm.phone),
+              ptSessionUnitPrice,
+              gxSessionUnitPrice,
               })
             : null;
           setTrainerPanelMessage("트레이너 정보를 수정했습니다.");
@@ -242,6 +273,8 @@ export default function TrainersPage() {
           password: trainerForm.password,
           userName,
           phone: asNullableText(trainerForm.phone),
+          ptSessionUnitPrice,
+          gxSessionUnitPrice,
         });
         detail = response.data;
         setTrainerPanelMessage(response.message);
@@ -252,6 +285,8 @@ export default function TrainersPage() {
             loginId,
             userName,
             phone: asNullableText(trainerForm.phone),
+            ptSessionUnitPrice,
+            gxSessionUnitPrice,
           },
         );
         detail = response.data;
@@ -600,6 +635,8 @@ export default function TrainersPage() {
                   <Descriptions.Item label="담당 회원">{selectedTrainer.assignedMemberCount}명</Descriptions.Item>
                   <Descriptions.Item label="오늘 예약">{selectedTrainer.todayConfirmedReservationCount}건</Descriptions.Item>
                   <Descriptions.Item label="로그인 ID">{selectedTrainer.loginId || "-"}</Descriptions.Item>
+                  <Descriptions.Item label="PT 회당 단가">{formatUnitPrice(selectedTrainer.ptSessionUnitPrice)}</Descriptions.Item>
+                  <Descriptions.Item label="GX 회당 단가">{formatUnitPrice(selectedTrainer.gxSessionUnitPrice)}</Descriptions.Item>
                 </Descriptions>
               </Card>
 
@@ -776,6 +813,31 @@ export default function TrainersPage() {
                   value={trainerForm.phone}
                   onChange={(e) => setTrainerForm(prev => ({ ...prev, phone: e.target.value }))}
                   placeholder="010-..."
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="PT 회당 단가">
+                <Input
+                  type="number"
+                  min={0}
+                  value={trainerForm.ptSessionUnitPrice}
+                  onChange={(e) => setTrainerForm((prev) => ({ ...prev, ptSessionUnitPrice: e.target.value }))}
+                  placeholder="예: 50000"
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="GX 회당 단가">
+                <Input
+                  type="number"
+                  min={0}
+                  value={trainerForm.gxSessionUnitPrice}
+                  onChange={(e) => setTrainerForm((prev) => ({ ...prev, gxSessionUnitPrice: e.target.value }))}
+                  placeholder="예: 30000"
                 />
               </Form.Item>
             </Col>

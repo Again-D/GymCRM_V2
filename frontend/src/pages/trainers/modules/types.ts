@@ -17,6 +17,8 @@ export type TrainerAssignedMember = {
 
 export type TrainerDetail = TrainerSummary & {
   loginId?: string | null;
+  ptSessionUnitPrice: number | null;
+  gxSessionUnitPrice: number | null;
   assignedMembers: TrainerAssignedMember[];
 };
 
@@ -32,6 +34,8 @@ export type TrainerFormState = {
   password: string;
   userName: string;
   phone: string;
+  ptSessionUnitPrice: string;
+  gxSessionUnitPrice: string;
 };
 
 export function createDefaultTrainerFilters(centerId = 1): TrainerFilters {
@@ -49,6 +53,8 @@ export function createEmptyTrainerForm(centerId = 1): TrainerFormState {
     password: "",
     userName: "",
     phone: "",
+    ptSessionUnitPrice: "",
+    gxSessionUnitPrice: "",
   };
 }
 
@@ -59,5 +65,9 @@ export function createTrainerFormFromDetail(detail: TrainerDetail): TrainerFormS
     password: "",
     userName: detail.userName,
     phone: detail.phone ?? "",
+    ptSessionUnitPrice:
+      detail.ptSessionUnitPrice == null ? "" : String(detail.ptSessionUnitPrice),
+    gxSessionUnitPrice:
+      detail.gxSessionUnitPrice == null ? "" : String(detail.gxSessionUnitPrice),
   };
 }

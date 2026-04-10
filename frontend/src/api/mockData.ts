@@ -31,7 +31,11 @@ import type {
   TrainerMonthlyPtSummary,
   TrainerPayrollReport,
   TrainerPayrollRow,
+  TrainerSettlementPreviewQuery,
+  TrainerSettlementPreviewReport,
+  TrainerSettlementPreviewRow,
   TrainerSettlementStatus,
+  TrainerSettlementWorkspace,
 } from "../pages/settlements/modules/types";
 import type { ReservationTargetSummary } from "../pages/reservations/modules/useReservationTargetsQuery";
 import type {
@@ -89,6 +93,8 @@ type MockTrainerRecord = {
   loginId: string;
   userName: string;
   phone: string | null;
+  ptSessionUnitPrice: number | null;
+  gxSessionUnitPrice: number | null;
   userStatus: "ACTIVE" | "INACTIVE";
 };
 
@@ -149,6 +155,8 @@ let mockTrainers: MockTrainerRecord[] = [
     loginId: "trainer-a",
     userName: "정트레이너",
     phone: "010-1111-2222",
+    ptSessionUnitPrice: 50000,
+    gxSessionUnitPrice: 30000,
     userStatus: "ACTIVE",
   },
   {
@@ -157,6 +165,8 @@ let mockTrainers: MockTrainerRecord[] = [
     loginId: "trainer-b",
     userName: "김트레이너",
     phone: "010-3333-4444",
+    ptSessionUnitPrice: 70000,
+    gxSessionUnitPrice: null,
     userStatus: "ACTIVE",
   },
 ];
@@ -679,6 +689,17 @@ type MockTrainerSettlementSnapshot = {
   confirmedAt: string;
 };
 
+type MockPeriodSettlementRecord = {
+  settlementId: number;
+  trainerId: string;
+  trainerName: string;
+  settlementMonth: string;
+  status: TrainerSettlementStatus;
+  createdAt: string;
+  confirmedAt: string | null;
+  rows: TrainerSettlementPreviewRow[];
+};
+
 const initialSettlementTransactions: SettlementTransaction[] = [
   {
     transactionId: 21001,
@@ -784,6 +805,7 @@ let mockSettlementTransactions = initialSettlementTransactions.map(
 );
 let mockTrainerPayrollAggregates = initialTrainerPayrollAggregates.map((aggregate) => ({ ...aggregate }));
 let mockTrainerSettlementSnapshots: MockTrainerSettlementSnapshot[] = [];
+let mockPeriodSettlements: MockPeriodSettlementRecord[] = [];
 let mockDataVersion = 0;
 let membershipIdSeed = 99000;
 let reservationIdSeed = 5002;
@@ -795,6 +817,7 @@ let productIdSeed = 200;
 let crmMessageEventIdSeed = 12050;
 let memberIdSeed = 103;
 let trainerSettlementIdSeed = 5000;
+let periodSettlementIdSeed = 9000;
 
 function cloneMembers(source: MemberSummary[]) {
   return source.map((member) => ({ ...member }));
@@ -1461,6 +1484,100 @@ function scopeTrainerPayrollReport(report: TrainerPayrollReport, trainerUserId: 
   } satisfies TrainerPayrollReport;
 }
 
+function getMockTrainerRates(trainerUserId: number) {
+  const trainer = mockTrainers.find((item) => item.userId === trainerUserId);
+  return {
+    ptRatePerSession: trainer?.ptSessionUnitPrice ?? null,
+    gxRatePerSession: trainer?.gxSessionUnitPrice ?? null,
+  };
+}
+
+function daysInMonth(monthText: string) {
+  const year = Number(monthText.slice(0, 4));
+  const month = Number(monthText.slice(5, 7));
+  return new Date(year, month, 0).getDate();
+}
+
+function buildTrainerSettlementPreview(query: TrainerSettlementPreviewQuery): TrainerSettlementPreviewReport {
+  const settlementMonth = query.settlementMonth;
+
+  const baseRows = scopeTrainerPayrollReport(
+    buildTrainerPayrollReport(settlementMonth, DEFAULT_TRAINER_PAYROLL_SESSION_UNIT_PRICE),
+    query.trainerId === "ALL" ? null : Number(query.trainerId)
+  ).rows;
+
+  const rows: TrainerSettlementPreviewRow[] = baseRows.map((row) => {
+    const rates = getMockTrainerRates(row.trainerUserId ?? 0);
+    const completedSessions = Math.max(0, row.completedClassCount);
+    const ptSessions = completedSessions;
+    const gxSessions = 0;
+    const totalSessions = completedSessions;
+    const hasRateWarning = rates.ptRatePerSession == null || rates.gxRatePerSession == null;
+    const ptAmount = rates.ptRatePerSession == null ? null : ptSessions * rates.ptRatePerSession;
+    const gxAmount = rates.gxRatePerSession == null ? null : gxSessions * rates.gxRatePerSession;
+    const totalAmount =
+      ptAmount == null || gxAmount == null ? null : ptAmount + gxAmount;
+    return {
+      trainerUserId: row.trainerUserId ?? 0,
+      trainerName: row.trainerName,
+      totalSessions,
+      completedSessions,
+      cancelledSessions: 0,
+      noShowSessions: 0,
+      ptSessions,
+      gxSessions,
+      ptRatePerSession: rates.ptRatePerSession,
+      gxRatePerSession: rates.gxRatePerSession,
+      ptAmount,
+      gxAmount,
+      totalAmount,
+      hasRateWarning,
+      rateWarningMessage: hasRateWarning
+        ? "PT/GX 단가가 미설정입니다. 트레이너 관리에서 설정하세요."
+        : null
+    };
+  });
+
+  const hasConflict = mockPeriodSettlements.some((settlement) =>
+    settlement.status === "CONFIRMED" &&
+    settlement.settlementMonth === query.settlementMonth
+  );
+  const periodStart = `${settlementMonth}-01`;
+  const periodEnd = `${settlementMonth}-${String(daysInMonth(settlementMonth)).padStart(2, "0")}`;
+
+  return {
+    settlementMonth,
+    scope: {
+      trainerId: query.trainerId,
+      trainerName: query.trainerId === "ALL"
+        ? "전체 트레이너"
+        : rows[0]?.trainerName ?? `트레이너 #${query.trainerId}`
+    },
+    period: {
+      start: periodStart,
+      end: periodEnd
+    },
+    summary: {
+      totalSessions: rows.reduce((sum, row) => sum + row.totalSessions, 0),
+      completedSessions: rows.reduce((sum, row) => sum + row.completedSessions, 0),
+      cancelledSessions: rows.reduce((sum, row) => sum + row.cancelledSessions, 0),
+      noShowSessions: rows.reduce((sum, row) => sum + row.noShowSessions, 0),
+      totalAmount: rows.some((row) => row.totalAmount == null)
+        ? null
+        : rows.reduce((sum, row) => sum + (row.totalAmount ?? 0), 0),
+      hasRateWarnings: rows.some((row) => row.hasRateWarning)
+    },
+    conflict: {
+      hasConflict,
+      createAllowed:
+        rows.some((row) => row.completedSessions > 0) &&
+        !hasConflict &&
+        !rows.some((row) => row.hasRateWarning)
+    },
+    rows
+  };
+}
+
 function filterMembers(url: URL) {
   const name = url.searchParams.get("name")?.trim() ?? "";
   const phone = url.searchParams.get("phone")?.trim() ?? "";
@@ -1511,6 +1628,7 @@ export function resetMockData() {
   );
   mockTrainerPayrollAggregates = initialTrainerPayrollAggregates.map((aggregate) => ({ ...aggregate }));
   mockTrainerSettlementSnapshots = [];
+  mockPeriodSettlements = [];
   mockDataVersion = 0;
   membershipIdSeed = 99000;
   reservationIdSeed = 5002;
@@ -1526,6 +1644,7 @@ export function resetMockData() {
   gxRuleIdSeed = 1;
   gxExceptionIdSeed = 1;
   trainerSettlementIdSeed = 5000;
+  periodSettlementIdSeed = 9000;
 }
 
 export function createMockMember(input: {
@@ -2215,6 +2334,8 @@ function buildMockTrainerDetail(trainer: MockTrainerRecord): TrainerDetail {
   return {
     ...summary,
     loginId: trainer.loginId,
+    ptSessionUnitPrice: trainer.ptSessionUnitPrice,
+    gxSessionUnitPrice: trainer.gxSessionUnitPrice,
     assignedMembers,
   };
 }
@@ -2249,6 +2370,8 @@ export function createMockTrainer(input: {
   password: string;
   userName: string;
   phone: string | null;
+  ptSessionUnitPrice: number | null;
+  gxSessionUnitPrice: number | null;
 }) {
   trainerIdSeed += 1;
   const nextTrainer: MockTrainerRecord = {
@@ -2257,6 +2380,8 @@ export function createMockTrainer(input: {
     loginId: input.loginId,
     userName: input.userName,
     phone: input.phone,
+    ptSessionUnitPrice: input.ptSessionUnitPrice,
+    gxSessionUnitPrice: input.gxSessionUnitPrice,
     userStatus: "ACTIVE",
   };
   mockTrainers = [nextTrainer, ...mockTrainers];
@@ -2274,6 +2399,8 @@ export function updateMockTrainer(
     loginId: string;
     userName: string;
     phone: string | null;
+    ptSessionUnitPrice: number | null;
+    gxSessionUnitPrice: number | null;
   },
 ) {
   let nextTrainer: MockTrainerRecord | null = null;
@@ -2286,6 +2413,8 @@ export function updateMockTrainer(
       loginId: input.loginId,
       userName: input.userName,
       phone: input.phone,
+      ptSessionUnitPrice: input.ptSessionUnitPrice,
+      gxSessionUnitPrice: input.gxSessionUnitPrice,
     };
     return nextTrainer;
   });
@@ -2862,6 +2991,20 @@ export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
     return envelope(filterTrainerMonthlyPtSummary(url));
   }
 
+  if (url.pathname === "/api/v1/settlements/preview") {
+    return envelope(buildTrainerSettlementPreview({
+      trainerId: url.searchParams.get("trainerId")?.trim() || "ALL",
+      settlementMonth: url.searchParams.get("settlementMonth")?.trim() ?? todayText().slice(0, 7)
+    }));
+  }
+
+  if (url.pathname === "/api/v1/settlements/trainer-payroll/my-preview") {
+    return envelope(buildTrainerSettlementPreview({
+      trainerId: "41",
+      settlementMonth: url.searchParams.get("settlementMonth")?.trim() ?? todayText().slice(0, 7)
+    }));
+  }
+
   return null;
 }
 
@@ -2907,6 +3050,156 @@ export async function createMockTrainerSettlementConfirm(input: {
   return {
     ok: true,
     message: "mock 트레이너 정산이 확정되었습니다."
+  };
+}
+
+function toMockWorkspace(settlement: MockPeriodSettlementRecord): TrainerSettlementWorkspace {
+  const periodStart = `${settlement.settlementMonth}-01`;
+  const periodEnd = `${settlement.settlementMonth}-${String(daysInMonth(settlement.settlementMonth)).padStart(2, "0")}`;
+  const totalSessions = settlement.rows.reduce((sum, row) => sum + row.totalSessions, 0);
+  const completedSessions = settlement.rows.reduce((sum, row) => sum + row.completedSessions, 0);
+  const cancelledSessions = settlement.rows.reduce((sum, row) => sum + row.cancelledSessions, 0);
+  const noShowSessions = settlement.rows.reduce((sum, row) => sum + row.noShowSessions, 0);
+  const ptSessions = settlement.rows.reduce((sum, row) => sum + row.ptSessions, 0);
+  const gxSessions = settlement.rows.reduce((sum, row) => sum + row.gxSessions, 0);
+  const ptAmount = settlement.rows.reduce((sum, row) => sum + (row.ptAmount ?? 0), 0);
+  const gxAmount = settlement.rows.reduce((sum, row) => sum + (row.gxAmount ?? 0), 0);
+
+  return {
+    settlementId: settlement.settlementId,
+    trainer: {
+      trainerId: settlement.trainerId,
+      name: settlement.trainerName
+    },
+    period: {
+      start: periodStart,
+      end: periodEnd
+    },
+    summary: {
+      totalSessions,
+      completedSessions,
+      cancelledSessions,
+      noShowSessions,
+      ptSessions,
+      gxSessions
+    },
+    calculation: {
+      ptRatePerSession: settlement.rows[0]?.ptRatePerSession ?? null,
+      gxRatePerSession: settlement.rows[0]?.gxRatePerSession ?? null,
+      ptAmount,
+      gxAmount,
+      bonus: 0,
+      bonusReason: null,
+      deduction: 0,
+      deductionReason: null,
+      totalAmount: ptAmount + gxAmount
+    },
+    status: settlement.status,
+    createdAt: settlement.createdAt,
+    confirmedAt: settlement.confirmedAt
+  };
+}
+
+export async function createMockTrainerSettlementCreate(input: TrainerSettlementPreviewQuery) {
+  const preview = buildTrainerSettlementPreview(input);
+  if (!preview.conflict.createAllowed) {
+    return {
+      ok: false,
+      message: preview.conflict.hasConflict
+        ? "확정된 정산 기간과 겹치는 정산은 생성할 수 없습니다."
+        : "생성할 트레이너 정산 데이터가 없습니다."
+    };
+  }
+
+  const existing = mockPeriodSettlements.find((settlement) =>
+    settlement.trainerId === input.trainerId &&
+    settlement.settlementMonth === input.settlementMonth &&
+    settlement.status === "DRAFT"
+  );
+  if (existing) {
+    return {
+      ok: true,
+      data: toMockWorkspace(existing),
+      message: "기존 mock 정산 초안을 재사용했습니다."
+    };
+  }
+
+  const created: MockPeriodSettlementRecord = {
+    settlementId: ++periodSettlementIdSeed,
+    trainerId: input.trainerId,
+    trainerName: preview.scope.trainerName,
+    settlementMonth: input.settlementMonth,
+    status: "DRAFT",
+    createdAt: `${todayText()}T10:00:00+09:00`,
+    confirmedAt: null,
+    rows: preview.rows
+  };
+
+  mockPeriodSettlements = [...mockPeriodSettlements, created];
+  mockDataVersion += 1;
+
+  return {
+    ok: true,
+    data: toMockWorkspace(created),
+    message: "mock 기간 정산 초안을 생성했습니다."
+  };
+}
+
+export async function confirmMockTrainerSettlement(settlementId: number) {
+  const target = mockPeriodSettlements.find((settlement) => settlement.settlementId === settlementId);
+  if (!target) {
+    return {
+      ok: false,
+      message: "정산을 찾을 수 없습니다."
+    };
+  }
+
+  target.status = "CONFIRMED";
+  target.confirmedAt = target.confirmedAt ?? `${todayText()}T10:00:00+09:00`;
+  mockDataVersion += 1;
+
+  return {
+    ok: true,
+    data: {
+      settlementId,
+      status: "CONFIRMED" as const,
+      confirmedAt: target.confirmedAt
+    },
+    message: "mock 기간 정산을 확정했습니다."
+  };
+}
+
+export async function downloadMockCanonicalTrainerSettlementDocument(settlementId: number, trainerId: string) {
+  const target = mockPeriodSettlements.find((settlement) => settlement.settlementId === settlementId);
+  if (!target || target.status !== "CONFIRMED") {
+    return {
+      ok: false,
+      message: "확정된 정산만 출력할 수 있습니다.",
+      fileName: null,
+      content: null
+    };
+  }
+
+  const row = target.rows.find((item) => String(item.trainerUserId) === trainerId);
+  if (!row) {
+    return {
+      ok: false,
+      message: "출력할 정산서 대상을 찾을 수 없습니다.",
+      fileName: null,
+      content: null
+    };
+  }
+
+  return {
+    ok: true,
+    fileName: `settlement-${settlementId}-trainer-${trainerId}.pdf`,
+    content: createMockPdfDocument([
+      `Settlement Period: ${target.settlementMonth}-01 ~ ${target.settlementMonth}-${String(daysInMonth(target.settlementMonth)).padStart(2, "0")}`,
+      `Trainer: ${row.trainerName}`,
+      `Completed Classes: ${row.completedSessions}`,
+      `Total Amount: ${row.totalAmount ?? 0}`
+    ]),
+    message: "mock 정산서를 생성했습니다."
   };
 }
 

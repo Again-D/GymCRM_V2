@@ -5,10 +5,12 @@ import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.AccessPolicies;
 import com.gymcrm.settlement.TrainerSettlementDocumentExporter;
+import com.gymcrm.settlement.dto.response.PreviewTrainerSettlementResponse;
 import com.gymcrm.settlement.entity.TrainerSettlement;
 import com.gymcrm.settlement.service.TrainerPayrollSettlementService;
 import com.gymcrm.settlement.service.TrainerSettlementDocumentService;
 import com.gymcrm.settlement.service.TrainerSettlementLifecycleService;
+import com.gymcrm.settlement.service.TrainerSettlementPreviewService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Pattern;
@@ -38,17 +40,20 @@ public class TrainerPayrollSettlementController {
     private final TrainerSettlementLifecycleService trainerSettlementLifecycleService;
     private final TrainerSettlementDocumentExporter trainerSettlementDocumentExporter;
     private final TrainerSettlementDocumentService trainerSettlementDocumentService;
+    private final TrainerSettlementPreviewService trainerSettlementPreviewService;
 
     public TrainerPayrollSettlementController(
             TrainerPayrollSettlementService service,
             TrainerSettlementLifecycleService trainerSettlementLifecycleService,
             TrainerSettlementDocumentExporter trainerSettlementDocumentExporter,
-            TrainerSettlementDocumentService trainerSettlementDocumentService
+            TrainerSettlementDocumentService trainerSettlementDocumentService,
+            TrainerSettlementPreviewService trainerSettlementPreviewService
     ) {
         this.service = service;
         this.trainerSettlementLifecycleService = trainerSettlementLifecycleService;
         this.trainerSettlementDocumentExporter = trainerSettlementDocumentExporter;
         this.trainerSettlementDocumentService = trainerSettlementDocumentService;
+        this.trainerSettlementPreviewService = trainerSettlementPreviewService;
     }
 
     @GetMapping("/trainer-payroll")
@@ -79,6 +84,27 @@ public class TrainerPayrollSettlementController {
         return ApiResponse.success(TrainerMonthlyPtSummaryResponse.from(result), "트레이너 월간 PT 실적 조회 성공");
     }
 
+    @GetMapping("/trainer-payroll/my-preview")
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_TRAINER)
+    public ApiResponse<PreviewTrainerSettlementResponse> getCurrentTrainerPeriodPreview(
+            @RequestParam(required = false, defaultValue = "")
+            @Pattern(regexp = "^$|^\\d{4}-\\d{2}$", message = "settlementMonth must be YYYY-MM")
+            String settlementMonth,
+            @RequestParam(required = false, defaultValue = "")
+            @Pattern(regexp = "^$|^\\d{4}-\\d{2}-\\d{2}$", message = "periodStart must be yyyy-MM-dd")
+            String periodStart,
+            @RequestParam(required = false, defaultValue = "")
+            @Pattern(regexp = "^$|^\\d{4}-\\d{2}-\\d{2}$", message = "periodEnd must be yyyy-MM-dd")
+            String periodEnd
+    ) {
+        return ApiResponse.success(
+                PreviewTrainerSettlementResponse.from(
+                        trainerSettlementPreviewService.previewForCurrentTrainer(settlementMonth, periodStart, periodEnd)
+                ),
+                "트레이너 기간 정산 preview 조회 성공"
+        );
+    }
+
     @PostMapping("/trainer-payroll/confirm")
     @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
     public ApiResponse<MonthlyTrainerPayrollResponse> confirmMonthlyTrainerPayroll(
@@ -101,7 +127,7 @@ public class TrainerPayrollSettlementController {
             String settlementMonth
     ) {
         List<TrainerSettlementDocumentService.TrainerSettlementDocument> settlements =
-                trainerSettlementDocumentService.getConfirmedTrainerDocuments(parseSettlementMonth(settlementMonth));
+                trainerSettlementDocumentService.getMonthlyBridgeDocuments(parseSettlementMonth(settlementMonth));
         String fileName = "trainer-settlement-%s.pdf".formatted(settlementMonth);
         byte[] pdf = trainerSettlementDocumentExporter.exportDocuments(settlements);
         return ResponseEntity.ok()
