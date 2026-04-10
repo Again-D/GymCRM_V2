@@ -5,6 +5,8 @@ export type SettlementTabKey = "salesAnalytics" | "trainerPayroll";
 export type SettlementTrendGranularity = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
 export type SettlementAdjustmentType = "REFUND";
 export type TrainerSettlementStatus = "DRAFT" | "CONFIRMED";
+export type TrainerSettlementScope = "ALL" | string;
+export type TrainerSettlementPresetKey = "thisMonth" | "lastMonth";
 export const DEFAULT_TRAINER_PAYROLL_SESSION_UNIT_PRICE = 50000;
 
 export type SettlementReportFilters = {
@@ -68,6 +70,90 @@ export type SettlementRecentAdjustment = {
   approvalRef: string | null;
 };
 
+export type TrainerSettlementPreviewFilters = {
+  trainerId: TrainerSettlementScope;
+  settlementMonth: string;
+};
+
+export type TrainerSettlementPreviewQuery = TrainerSettlementPreviewFilters;
+
+export type TrainerSettlementPreviewRow = {
+  trainerUserId: number;
+  trainerName: string;
+  totalSessions: number;
+  completedSessions: number;
+  cancelledSessions: number;
+  noShowSessions: number;
+  ptSessions: number;
+  gxSessions: number;
+  ptRatePerSession: number | null;
+  gxRatePerSession: number | null;
+  ptAmount: number | null;
+  gxAmount: number | null;
+  totalAmount: number | null;
+  hasRateWarning: boolean;
+  rateWarningMessage: string | null;
+};
+
+export type TrainerSettlementPreviewReport = {
+  settlementMonth: string;
+  scope: {
+    trainerId: TrainerSettlementScope;
+    trainerName: string;
+  };
+  period: {
+    start: string;
+    end: string;
+  };
+  summary: {
+    totalSessions: number;
+    completedSessions: number;
+    cancelledSessions: number;
+    noShowSessions: number;
+    totalAmount: number | null;
+    hasRateWarnings: boolean;
+  };
+  conflict: {
+    hasConflict: boolean;
+    createAllowed: boolean;
+  };
+  rows: TrainerSettlementPreviewRow[];
+};
+
+export type TrainerSettlementWorkspace = {
+  settlementId: number;
+  trainer: {
+    trainerId: TrainerSettlementScope;
+    name: string;
+  };
+  period: {
+    start: string;
+    end: string;
+  };
+  summary: {
+    totalSessions: number;
+    completedSessions: number;
+    cancelledSessions: number;
+    noShowSessions: number;
+    ptSessions: number;
+    gxSessions: number;
+  };
+  calculation: {
+    ptRatePerSession: number | null;
+    gxRatePerSession: number | null;
+    ptAmount: number | null;
+    gxAmount: number | null;
+    bonus: number;
+    bonusReason: string | null;
+    deduction: number;
+    deductionReason: string | null;
+    totalAmount: number;
+  };
+  status: TrainerSettlementStatus;
+  createdAt: string;
+  confirmedAt: string | null;
+};
+
 export type TrainerPayrollFilters = {
   settlementMonth: string;
   sessionUnitPrice: string;
@@ -112,6 +198,13 @@ export function createDefaultSettlementFilters(): SettlementReportFilters {
     paymentMethod: "",
     productKeyword: "",
     trendGranularity: "DAILY"
+  };
+}
+
+export function createDefaultTrainerSettlementPreviewFilters(baseDate = todayLocalDate()): TrainerSettlementPreviewFilters {
+  return {
+    trainerId: "ALL",
+    settlementMonth: baseDate.slice(0, 7)
   };
 }
 

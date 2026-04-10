@@ -18,10 +18,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
-import java.time.YearMonth;
 import java.time.ZoneId;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class TrainerSettlementLifecycleService {
@@ -35,6 +37,7 @@ public class TrainerSettlementLifecycleService {
     private final TrainerSettlementSourceRepository trainerSettlementSourceRepository;
     private final AuthUserRepository authUserRepository;
     private final CurrentUserProvider currentUserProvider;
+    private final SettlementConflictService settlementConflictService;
 
     public TrainerSettlementLifecycleService(
             TrainerSettlementRepository trainerSettlementRepository,
@@ -43,7 +46,8 @@ public class TrainerSettlementLifecycleService {
             SettlementDetailRepository settlementDetailRepository,
             TrainerSettlementSourceRepository trainerSettlementSourceRepository,
             AuthUserRepository authUserRepository,
-            CurrentUserProvider currentUserProvider
+            CurrentUserProvider currentUserProvider,
+            SettlementConflictService settlementConflictService
     ) {
         this.trainerSettlementRepository = trainerSettlementRepository;
         this.trainerPayrollSettlementService = trainerPayrollSettlementService;
@@ -52,6 +56,7 @@ public class TrainerSettlementLifecycleService {
         this.trainerSettlementSourceRepository = trainerSettlementSourceRepository;
         this.authUserRepository = authUserRepository;
         this.currentUserProvider = currentUserProvider;
+        this.settlementConflictService = settlementConflictService;
     }
 
     @Transactional
@@ -122,12 +127,13 @@ public class TrainerSettlementLifecycleService {
             throw new ApiException(ErrorCode.BUSINESS_RULE, "확정할 정산 상세가 없습니다. settlementId=" + settlementId);
         }
 
-        if (trainerSettlementRepository.existsConfirmedByCenterIdAndSettlementMonth(
+        settlementConflictService.ensureNoConfirmedMonthConflict(
                 settlement.centerId(),
-                settlement.settlementDate()
-        )) {
-            throw new ApiException(ErrorCode.CONFLICT, "이미 확정된 월 정산 스냅샷이 존재합니다. settlementMonth=" + settlement.settlementDate());
-        }
+                YearMonth.from(settlement.periodStart()),
+                settlement.settlementId()
+        );
+
+        ensureNoLegacyMonthlySnapshotConflict(settlement, details);
 
         OffsetDateTime confirmedAt = OffsetDateTime.now(BUSINESS_ZONE);
         Long actorUserId = currentUserProvider.currentUserId();
@@ -135,14 +141,16 @@ public class TrainerSettlementLifecycleService {
                 settlement.centerId(),
                 details.stream().map(SettlementDetail::userId).toList()
         );
+        boolean shouldWriteLegacyMonthlySnapshot = true;
 
         trainerSettlementRepository.insertAll(
                 details.stream()
                         // Legacy monthly payroll snapshot remains PT-only for backward compatibility.
                         .filter(detail -> SettlementLessonType.PT.name().equals(detail.lessonType()))
+                        .filter(detail -> shouldWriteLegacyMonthlySnapshot)
                         .map(detail -> new TrainerSettlementRepository.TrainerSettlementCreateCommand(
                                 settlement.centerId(),
-                                settlement.settlementDate(),
+                                settlement.periodStart().withDayOfMonth(1),
                                 detail.userId(),
                                 trainerNames.getOrDefault(detail.userId(), "Unknown Trainer"),
                                 (long) detail.lessonCount(),
@@ -157,7 +165,7 @@ public class TrainerSettlementLifecycleService {
                         .toList()
         );
 
-        settlementRepository.updateSummaryAndStatus(new SettlementRepository.UpdateCommand(
+                settlementRepository.updateSummaryAndStatus(new SettlementRepository.UpdateCommand(
                 settlement.settlementId(),
                 settlement.totalLessonCount(),
                 settlement.totalAmount(),
@@ -169,6 +177,26 @@ public class TrainerSettlementLifecycleService {
         ));
 
         return new ConfirmSettlementResult(settlementId, SettlementStatus.CONFIRMED.name(), confirmedAt);
+    }
+
+    private void ensureNoLegacyMonthlySnapshotConflict(Settlement settlement, List<SettlementDetail> details) {
+        Set<Long> confirmedTrainerIds = trainerSettlementRepository.findConfirmedByCenterIdAndSettlementMonth(
+                        settlement.centerId(),
+                        settlement.periodStart()
+                ).stream()
+                .map(TrainerSettlement::trainerUserId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        boolean hasConflict = details.stream()
+                .map(SettlementDetail::userId)
+                .anyMatch(confirmedTrainerIds::contains);
+        if (!hasConflict) {
+            return;
+        }
+        throw new ApiException(
+                ErrorCode.CONFLICT,
+                "이미 확정된 월 정산 스냅샷이 존재합니다. settlementMonth=" + settlement.periodStart()
+        );
     }
 
     private AuthUser currentActorOrNull() {

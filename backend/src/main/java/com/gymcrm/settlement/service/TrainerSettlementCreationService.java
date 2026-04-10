@@ -35,24 +35,27 @@ public class TrainerSettlementCreationService {
     private final SettlementDetailRepository settlementDetailRepository;
     private final TrainerSettlementSourceRepository trainerSettlementSourceRepository;
     private final CurrentUserProvider currentUserProvider;
+    private final SettlementConflictService settlementConflictService;
 
     public TrainerSettlementCreationService(
             SettlementRepository settlementRepository,
             SettlementDetailRepository settlementDetailRepository,
             TrainerSettlementSourceRepository trainerSettlementSourceRepository,
-            CurrentUserProvider currentUserProvider
+            CurrentUserProvider currentUserProvider,
+            SettlementConflictService settlementConflictService
     ) {
         this.settlementRepository = settlementRepository;
         this.settlementDetailRepository = settlementDetailRepository;
         this.trainerSettlementSourceRepository = trainerSettlementSourceRepository;
         this.currentUserProvider = currentUserProvider;
+        this.settlementConflictService = settlementConflictService;
     }
 
     @Transactional
     public CreateSettlementResult create(CreateSettlementCommand command) {
-        LocalDate periodStart = parseDate(command.periodStart(), "periodStart");
-        LocalDate periodEnd = parseDate(command.periodEnd(), "periodEnd");
-        validatePeriod(periodStart, periodEnd);
+        YearMonth settlementMonth = resolveSettlementMonth(command.settlementMonth(), command.periodStart(), command.periodEnd());
+        LocalDate periodStart = settlementMonth.atDay(1);
+        LocalDate periodEnd = settlementMonth.atEndOfMonth();
 
         Long centerId = currentUserProvider.currentCenterId();
         Long actorUserId = currentUserProvider.currentUserId();
@@ -69,9 +72,18 @@ public class TrainerSettlementCreationService {
 
         sourceRows.forEach(this::validateSettlementRateConfigured);
 
-        YearMonth yearMonth = YearMonth.from(periodStart);
-        Settlement settlement = settlementRepository.findActiveByCenterAndYearMonth(centerId, yearMonth.getYear(), yearMonth.getMonthValue())
-                .orElseGet(() -> createDraftSettlement(centerId, actorUserId, yearMonth));
+        settlementConflictService.ensureNoConfirmedMonthConflict(
+                centerId,
+                settlementMonth,
+                null
+        );
+
+        Settlement settlement = settlementRepository.findActiveByCenterAndYearMonth(
+                        centerId,
+                        settlementMonth.getYear(),
+                        settlementMonth.getMonthValue()
+                )
+                .orElseGet(() -> createDraftSettlement(centerId, actorUserId, settlementMonth));
 
         ensureDraftSettlement(settlement);
 
@@ -91,7 +103,7 @@ public class TrainerSettlementCreationService {
         Settlement updatedSettlement = refreshSettlementTotals(settlement, allDetails, actorUserId);
 
         if (trainerUserId == null) {
-            return toAllTrainerResult(updatedSettlement, allDetails, sourceRows, periodStart, periodEnd);
+            return toAllTrainerResult(updatedSettlement, allDetails, sourceRows, periodStart, periodEnd, settlementMonth);
         }
 
         List<SettlementDetail> createdDetails = allDetails.stream()
@@ -101,19 +113,22 @@ public class TrainerSettlementCreationService {
                 .filter(row -> trainerUserId.equals(row.trainerUserId()))
                 .findFirst()
                 .orElseThrow();
-        return toSingleTrainerResult(updatedSettlement, createdDetails, sourceRow, periodStart, periodEnd);
+        return toSingleTrainerResult(updatedSettlement, createdDetails, sourceRow, periodStart, periodEnd, settlementMonth);
     }
 
-    private Settlement createDraftSettlement(Long centerId, Long actorUserId, YearMonth yearMonth) {
+    private Settlement createDraftSettlement(
+            Long centerId,
+            Long actorUserId,
+            YearMonth settlementMonth
+    ) {
         OffsetDateTime now = OffsetDateTime.now(BUSINESS_ZONE);
         return settlementRepository.create(new SettlementRepository.CreateCommand(
                 centerId,
-                yearMonth.getYear(),
-                yearMonth.getMonthValue(),
+                settlementMonth.getYear(),
+                settlementMonth.getMonthValue(),
                 0,
                 BigDecimal.ZERO,
                 SettlementStatus.DRAFT.name(),
-                yearMonth.atDay(1),
                 null,
                 null,
                 now,
@@ -202,7 +217,8 @@ public class TrainerSettlementCreationService {
             List<SettlementDetail> details,
             TrainerSettlementSourceRepository.TrainerSettlementSourceRow sourceRow,
             LocalDate periodStart,
-            LocalDate periodEnd
+            LocalDate periodEnd,
+            YearMonth settlementMonth
     ) {
         SettlementDetail ptDetail = findDetail(details, SettlementLessonType.PT.name());
         SettlementDetail gxDetail = findDetail(details, SettlementLessonType.GX.name());
@@ -218,6 +234,7 @@ public class TrainerSettlementCreationService {
                 settlement.settlementId(),
                 String.valueOf(sourceRow.trainerUserId()),
                 sourceRow.userName(),
+                settlementMonth,
                 periodStart,
                 periodEnd,
                 ptSessions + gxSessions,
@@ -245,7 +262,8 @@ public class TrainerSettlementCreationService {
             List<SettlementDetail> details,
             List<TrainerSettlementSourceRepository.TrainerSettlementSourceRow> sourceRows,
             LocalDate periodStart,
-            LocalDate periodEnd
+            LocalDate periodEnd,
+            YearMonth settlementMonth
     ) {
         List<SettlementDetail> ptDetails = details.stream()
                 .filter(detail -> SettlementLessonType.PT.name().equals(detail.lessonType()))
@@ -295,6 +313,7 @@ public class TrainerSettlementCreationService {
                 settlement.settlementId(),
                 TRAINER_ID_ALL,
                 "전체 트레이너",
+                settlementMonth,
                 periodStart,
                 periodEnd,
                 ptSessions + gxSessions,
@@ -368,23 +387,32 @@ public class TrainerSettlementCreationService {
         }
     }
 
-    private void validatePeriod(LocalDate periodStart, LocalDate periodEnd) {
+    private YearMonth resolveSettlementMonth(String settlementMonthValue, String periodStartValue, String periodEndValue) {
+        if (settlementMonthValue != null && !settlementMonthValue.isBlank()) {
+            try {
+                return YearMonth.parse(settlementMonthValue);
+            } catch (DateTimeParseException ex) {
+                throw new ApiException(ErrorCode.VALIDATION_ERROR, "settlementMonth must be YYYY-MM");
+            }
+        }
+        if (periodStartValue == null || periodStartValue.isBlank() || periodEndValue == null || periodEndValue.isBlank()) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "settlementMonth is required");
+        }
+        LocalDate periodStart = parseDate(periodStartValue, "periodStart");
+        LocalDate periodEnd = parseDate(periodEndValue, "periodEnd");
         if (periodEnd.isBefore(periodStart)) {
             throw new ApiException(ErrorCode.VALIDATION_ERROR, "periodEnd must be on or after periodStart");
         }
-        YearMonth yearMonth = YearMonth.from(periodStart);
-        if (!YearMonth.from(periodEnd).equals(yearMonth)
-                || !periodStart.equals(yearMonth.atDay(1))
-                || !periodEnd.equals(yearMonth.atEndOfMonth())) {
-            throw new ApiException(
-                    ErrorCode.VALIDATION_ERROR,
-                    "1차 구현에서는 동일 월의 전체 기간만 허용합니다. periodStart=yyyy-MM-01, periodEnd=yyyy-MM-last-day"
-            );
+        YearMonth settlementMonth = YearMonth.from(periodStart);
+        if (!periodStart.equals(settlementMonth.atDay(1)) || !periodEnd.equals(settlementMonth.atEndOfMonth())) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "periodStart/periodEnd must describe a full month");
         }
+        return settlementMonth;
     }
 
     public record CreateSettlementCommand(
             String trainerId,
+            String settlementMonth,
             String periodStart,
             String periodEnd
     ) {
@@ -394,6 +422,7 @@ public class TrainerSettlementCreationService {
             Long settlementId,
             String trainerId,
             String userName,
+            YearMonth settlementMonth,
             LocalDate periodStart,
             LocalDate periodEnd,
             long totalSessions,

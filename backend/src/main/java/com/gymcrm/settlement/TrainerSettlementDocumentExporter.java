@@ -109,6 +109,7 @@ public class TrainerSettlementDocumentExporter {
 
         TrainerSettlementDocumentService.TrainerSettlementDocument first = documents.get(0);
         lines.add("Settlement Month: " + first.settlementMonth().getYear() + "-" + String.format("%02d", first.settlementMonth().getMonthValue()));
+        lines.add("Settlement Period: " + first.periodStart() + " ~ " + first.periodEnd());
         lines.add("Settlement Status: " + first.settlementStatus());
         lines.add("Confirmed At: " + DATE_TIME_FORMATTER.format(first.confirmedAt()));
         lines.add("Confirmed By: " + first.confirmedBy());
@@ -139,6 +140,8 @@ public class TrainerSettlementDocumentExporter {
         return new TrainerSettlementDocumentService.TrainerSettlementDocument(
                 settlement.settlementId(),
                 java.time.YearMonth.of(settlement.settlementMonth().getYear(), settlement.settlementMonth().getMonthValue()),
+                settlement.settlementMonth().withDayOfMonth(1),
+                settlement.settlementMonth().withDayOfMonth(settlement.settlementMonth().lengthOfMonth()),
                 settlement.settlementStatus(),
                 settlement.confirmedAt(),
                 settlement.confirmedBy(),

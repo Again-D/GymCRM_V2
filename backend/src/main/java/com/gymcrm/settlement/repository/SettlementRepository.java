@@ -6,8 +6,8 @@ import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.YearMonth;
 import java.util.Optional;
 
 @Repository
@@ -29,8 +29,58 @@ public class SettlementRepository {
     }
 
     public Optional<Settlement> findActiveByCenterAndYearMonth(Long centerId, int year, int month) {
-        return settlementJpaRepository.findByCenterIdAndSettlementYearAndSettlementMonthAndIsDeletedFalse(centerId, year, month)
-                .map(this::toDomain);
+        return settlementJpaRepository.findByCenterIdAndSettlementYearAndSettlementMonthAndIsDeletedFalse(
+                centerId,
+                year,
+                month
+        ).map(this::toDomain);
+    }
+
+    public Optional<Settlement> findActiveByCenterAndPeriodScope(
+            Long centerId,
+            java.time.LocalDate periodStart,
+            java.time.LocalDate periodEnd,
+            String scopeType,
+            Long scopeTrainerUserId
+    ) {
+        boolean isMonthlyAllScope = "ALL".equals(scopeType)
+                && scopeTrainerUserId == null
+                && periodStart.getDayOfMonth() == 1
+                && periodEnd.equals(periodStart.withDayOfMonth(periodStart.lengthOfMonth()));
+        if (!isMonthlyAllScope) {
+            return Optional.empty();
+        }
+        return findActiveByCenterAndYearMonth(centerId, periodStart.getYear(), periodStart.getMonthValue());
+    }
+
+    public boolean existsOverlappingSettlement(
+            Long centerId,
+            String status,
+            java.time.LocalDate periodStart,
+            java.time.LocalDate periodEnd,
+            String scopeType,
+            Long scopeTrainerUserId,
+            Long excludeSettlementId
+    ) {
+        boolean isMonthlyAllScope = "ALL".equals(scopeType)
+                && scopeTrainerUserId == null
+                && periodStart.getDayOfMonth() == 1
+                && periodEnd.equals(periodStart.withDayOfMonth(periodStart.lengthOfMonth()));
+        if (!isMonthlyAllScope) {
+            return false;
+        }
+        Optional<SettlementEntity> existing = settlementJpaRepository.findByCenterIdAndSettlementYearAndSettlementMonthAndIsDeletedFalse(
+                centerId,
+                periodStart.getYear(),
+                periodStart.getMonthValue()
+        );
+        if (existing.isEmpty()) {
+            return false;
+        }
+        if (excludeSettlementId != null && excludeSettlementId.equals(existing.get().getSettlementId())) {
+            return false;
+        }
+        return status.equals(existing.get().getStatus());
     }
 
     public Settlement create(CreateCommand command) {
@@ -41,7 +91,7 @@ public class SettlementRepository {
         entity.setTotalLessonCount(command.totalLessonCount());
         entity.setTotalAmount(command.totalAmount());
         entity.setStatus(command.status());
-        entity.setSettlementDate(command.settlementDate());
+        entity.setSettlementDate(YearMonth.of(command.settlementYear(), command.settlementMonth()).atDay(1));
         entity.setConfirmedBy(command.confirmedBy());
         entity.setConfirmedAt(command.confirmedAt());
         entity.setDeleted(false);
@@ -95,7 +145,6 @@ public class SettlementRepository {
             int totalLessonCount,
             BigDecimal totalAmount,
             String status,
-            LocalDate settlementDate,
             Long confirmedBy,
             OffsetDateTime confirmedAt,
             OffsetDateTime createdAt,

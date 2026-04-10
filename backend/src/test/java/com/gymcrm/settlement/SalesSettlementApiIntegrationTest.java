@@ -276,6 +276,133 @@ class SalesSettlementApiIntegrationTest {
     }
 
     @Test
+    @Transactional
+    void adminCanPreviewPeriodBasedTrainerSettlementForAllTrainers() throws Exception {
+        String adminToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
+        YearMonth targetMonth = YearMonth.of(2099, 8);
+
+        long trainerUserId = userIdByLogin(TRAINER_LOGIN_ID);
+        long otherTrainerUserId = userIdByLogin(OTHER_TRAINER_LOGIN_ID);
+        long memberId = insertMember(targetMonth.atDay(1));
+        long productId = insertProduct("TRAINER-PREVIEW-" + UUID.randomUUID().toString().substring(0, 6));
+        long membershipId = insertMembership(memberId, productId, "Trainer Preview PT", targetMonth.atDay(1), targetMonth.atEndOfMonth());
+
+        setTrainerSettlementRate(trainerUserId, new BigDecimal("50000"), null);
+        setTrainerSettlementRate(otherTrainerUserId, new BigDecimal("70000"), null);
+
+        long trainerSchedule = insertTrainerSchedule("Trainer Settlement Self", trainerUserId, targetMonth.atDay(5));
+        long otherTrainerSchedule = insertTrainerSchedule("Trainer Settlement Other", otherTrainerUserId, targetMonth.atDay(7));
+
+        insertCompletedReservation(membershipId, memberId, trainerSchedule, targetMonth.atDay(5));
+        insertCompletedReservation(membershipId, memberId, otherTrainerSchedule, targetMonth.atDay(7));
+
+        mockMvc.perform(get("/api/v1/settlements/preview")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .param("trainerId", "ALL")
+                        .param("periodStart", targetMonth.atDay(1).toString())
+                        .param("periodEnd", targetMonth.atEndOfMonth().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.scope.trainerId").value("ALL"))
+                .andExpect(jsonPath("$.data.summary.completedSessions").value(2))
+                .andExpect(jsonPath("$.data.summary.totalAmount").value(120000))
+                .andExpect(jsonPath("$.data.conflict.hasConflict").value(false))
+                .andExpect(jsonPath("$.data.conflict.createAllowed").value(true))
+                .andExpect(jsonPath("$.data.rows.length()").value(2));
+    }
+
+    @Test
+    @Transactional
+    void trainerCanPreviewOnlyOwnPeriodBasedSettlement() throws Exception {
+        String trainerToken = loginAndGetAccessToken(TRAINER_LOGIN_ID, TRAINER_PASSWORD);
+        YearMonth targetMonth = YearMonth.of(2099, 8);
+
+        long trainerUserId = userIdByLogin(TRAINER_LOGIN_ID);
+        long otherTrainerUserId = userIdByLogin(OTHER_TRAINER_LOGIN_ID);
+        long memberId = insertMember(targetMonth.atDay(1));
+        long productId = insertProduct("TRAINER-MY-PREVIEW-" + UUID.randomUUID().toString().substring(0, 6));
+        long membershipId = insertMembership(memberId, productId, "Trainer My Preview PT", targetMonth.atDay(1), targetMonth.atEndOfMonth());
+
+        setTrainerSettlementRate(trainerUserId, new BigDecimal("50000"), null);
+        setTrainerSettlementRate(otherTrainerUserId, new BigDecimal("70000"), null);
+
+        long trainerSchedule = insertTrainerSchedule("Trainer Settlement Self", trainerUserId, targetMonth.atDay(5));
+        long otherTrainerSchedule = insertTrainerSchedule("Trainer Settlement Other", otherTrainerUserId, targetMonth.atDay(7));
+
+        insertCompletedReservation(membershipId, memberId, trainerSchedule, targetMonth.atDay(5));
+        insertCompletedReservation(membershipId, memberId, otherTrainerSchedule, targetMonth.atDay(7));
+
+        mockMvc.perform(get("/api/v1/settlements/trainer-payroll/my-preview")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + trainerToken)
+                        .param("periodStart", targetMonth.atDay(1).toString())
+                        .param("periodEnd", targetMonth.atEndOfMonth().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.scope.trainerId").value(String.valueOf(trainerUserId)))
+                .andExpect(jsonPath("$.data.scope.trainerName").value("Trainer Settlement Self"))
+                .andExpect(jsonPath("$.data.summary.completedSessions").value(1))
+                .andExpect(jsonPath("$.data.rows.length()").value(1))
+                .andExpect(jsonPath("$.data.rows[0].trainerUserId").value(trainerUserId));
+    }
+
+    @Test
+    @Transactional
+    void previewShowsRateWarningWhenTrainerSettlementRateIsMissing() throws Exception {
+        String adminToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
+        YearMonth targetMonth = YearMonth.of(2099, 9);
+
+        long trainerUserId = userIdByLogin(TRAINER_LOGIN_ID);
+        long memberId = insertMember(targetMonth.atDay(1));
+        long productId = insertProduct("TRAINER-PREVIEW-WARN-" + UUID.randomUUID().toString().substring(0, 6));
+        long membershipId = insertMembership(memberId, productId, "Trainer Preview Warn GX", targetMonth.atDay(1), targetMonth.atEndOfMonth());
+
+        setTrainerSettlementRate(trainerUserId, new BigDecimal("50000"), null);
+
+        long gxSchedule = insertTrainerSchedule("GX", "Trainer Settlement Self", trainerUserId, targetMonth.atDay(5));
+        insertReservation(membershipId, memberId, gxSchedule, "COMPLETED", targetMonth.atDay(5));
+
+        mockMvc.perform(get("/api/v1/settlements/preview")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .param("trainerId", String.valueOf(trainerUserId))
+                        .param("periodStart", targetMonth.atDay(1).toString())
+                        .param("periodEnd", targetMonth.atEndOfMonth().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.summary.hasRateWarnings").value(true))
+                .andExpect(jsonPath("$.data.summary.totalAmount").doesNotExist())
+                .andExpect(jsonPath("$.data.conflict.createAllowed").value(false))
+                .andExpect(jsonPath("$.data.rows[0].hasRateWarning").value(true))
+                .andExpect(jsonPath("$.data.rows[0].rateWarningMessage", containsString("GX")));
+    }
+
+    @Test
+    @Transactional
+    void previewDisablesCreationWhenMonthHasOnlyCancelledOrNoShowSessions() throws Exception {
+        String adminToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
+        YearMonth targetMonth = YearMonth.of(2099, 10);
+
+        long trainerUserId = userIdByLogin(TRAINER_LOGIN_ID);
+        long memberId = insertMember(targetMonth.atDay(1));
+        long productId = insertProduct("TRAINER-PREVIEW-EMPTY-" + UUID.randomUUID().toString().substring(0, 6));
+        long membershipId = insertMembership(memberId, productId, "Trainer Preview Empty PT", targetMonth.atDay(1), targetMonth.atEndOfMonth());
+
+        setTrainerSettlementRate(trainerUserId, new BigDecimal("50000"), new BigDecimal("30000"));
+
+        long cancelledSchedule = insertTrainerSchedule("PT", "Trainer Settlement Self", trainerUserId, targetMonth.atDay(5));
+        long noShowSchedule = insertTrainerSchedule("GX", "Trainer Settlement Self", trainerUserId, targetMonth.atDay(6));
+        insertReservation(membershipId, memberId, cancelledSchedule, "CANCELLED", targetMonth.atDay(5));
+        insertReservation(membershipId, memberId, noShowSchedule, "NO_SHOW", targetMonth.atDay(6));
+
+        mockMvc.perform(get("/api/v1/settlements/preview")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .param("trainerId", String.valueOf(trainerUserId))
+                        .param("periodStart", targetMonth.atDay(1).toString())
+                        .param("periodEnd", targetMonth.atEndOfMonth().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.summary.completedSessions").value(0))
+                .andExpect(jsonPath("$.data.conflict.createAllowed").value(false));
+    }
+
+    @Test
     void trainerCannotAccessTrainerPayrollQuery() throws Exception {
         String trainerToken = loginAndGetAccessToken(TRAINER_LOGIN_ID, TRAINER_PASSWORD);
 
@@ -358,7 +485,7 @@ class SalesSettlementApiIntegrationTest {
         long trainerSchedule = insertTrainerSchedule("Trainer Settlement Self", trainerUserId, targetMonth.atDay(5));
         insertCompletedReservation(membershipId, memberId, trainerSchedule, targetMonth.atDay(5));
 
-        mockMvc.perform(post("/api/v1/settlements")
+        MvcResult createResult = mockMvc.perform(post("/api/v1/settlements")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
                         .contentType("application/json")
                         .content("""
@@ -374,7 +501,13 @@ class SalesSettlementApiIntegrationTest {
                 .andExpect(jsonPath("$.data.summary.completedSessions").value(1))
                 .andExpect(jsonPath("$.data.calculation.ptRatePerSession").value(50000))
                 .andExpect(jsonPath("$.data.calculation.totalAmount").value(50000))
-                .andExpect(jsonPath("$.data.status").value("DRAFT"));
+                .andExpect(jsonPath("$.data.status").value("DRAFT"))
+                .andReturn();
+
+        long settlementId = objectMapper.readTree(createResult.getResponse().getContentAsString())
+                .path("data")
+                .path("settlementId")
+                .asLong();
 
         assertEquals(1L, jdbcClient.sql("""
                 SELECT COUNT(*)
@@ -392,7 +525,9 @@ class SalesSettlementApiIntegrationTest {
         assertEquals(1L, jdbcClient.sql("""
                 SELECT COUNT(*)
                 FROM settlement_details
+                WHERE settlement_id = :settlementId
                 """)
+                .param("settlementId", settlementId)
                 .query(Long.class)
                 .single());
     }
@@ -622,19 +757,32 @@ class SalesSettlementApiIntegrationTest {
                 .param("settlementMonth", targetMonth.atDay(1))
                 .query(Long.class)
                 .single());
-        assertEquals(0, new BigDecimal("50000").compareTo(jdbcClient.sql("""
-                SELECT payroll_amount
-                FROM trainer_settlements
-                WHERE center_id = :centerId
-                  AND settlement_month = :settlementMonth
-                  AND trainer_user_id = :trainerUserId
-                  AND is_deleted = FALSE
-                """)
-                .param("centerId", CENTER_ID)
-                .param("settlementMonth", targetMonth.atDay(1))
-                .param("trainerUserId", trainerUserId)
-                .query(BigDecimal.class)
-                .single()));
+    }
+
+    @Test
+    @Transactional
+    void confirmSettlementRejectsWhenLegacyMonthlySnapshotAlreadyExistsForTrainer() throws Exception {
+        String adminToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
+        YearMonth targetMonth = YearMonth.of(2100, 7);
+
+        long trainerUserId = userIdByLogin(TRAINER_LOGIN_ID);
+        long memberId = insertMember(targetMonth.atDay(1));
+        long productId = insertProduct("TRAINER-CONFIRM-LEGACY-" + UUID.randomUUID().toString().substring(0, 6));
+        long membershipId = insertMembership(memberId, productId, "Trainer Confirm Legacy PT", targetMonth.atDay(1), targetMonth.atEndOfMonth());
+
+        setTrainerSettlementRate(trainerUserId, new BigDecimal("50000"), null);
+
+        long trainerSchedule = insertTrainerSchedule("Trainer Settlement Self", trainerUserId, targetMonth.atDay(5));
+        insertCompletedReservation(membershipId, memberId, trainerSchedule, targetMonth.atDay(5));
+
+        long settlementId = createSettlementBatch(adminToken, String.valueOf(trainerUserId), targetMonth);
+        insertLegacyTrainerSettlementRow(targetMonth, trainerUserId, "Trainer Settlement Self");
+
+        mockMvc.perform(post("/api/v1/settlements/{settlementId}/confirm", settlementId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("CONFLICT"));
     }
 
     @Test
@@ -705,7 +853,49 @@ class SalesSettlementApiIntegrationTest {
     }
 
     @Test
-    void createTrainerSettlementRejectsNonMonthlyPeriodAtHttpBoundary() throws Exception {
+    @Transactional
+    void createTrainerSettlementRejectsNonMonthlyCompatibilityPeriodInput() throws Exception {
+        String adminToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
+        YearMonth targetMonth = YearMonth.of(2099, 11);
+
+        long trainerUserId = userIdByLogin(TRAINER_LOGIN_ID);
+        long otherTrainerUserId = userIdByLogin(OTHER_TRAINER_LOGIN_ID);
+        long memberId = insertMember(targetMonth.atDay(1));
+        long productId = insertProduct("TRAINER-OVERLAP-" + UUID.randomUUID().toString().substring(0, 6));
+        long membershipId = insertMembership(memberId, productId, "Trainer Overlap PT", targetMonth.atDay(1), targetMonth.atEndOfMonth());
+
+        setTrainerSettlementRate(trainerUserId, new BigDecimal("50000"), null);
+        setTrainerSettlementRate(otherTrainerUserId, new BigDecimal("70000"), null);
+
+        long trainerSchedule = insertTrainerSchedule("Trainer Settlement Self", trainerUserId, targetMonth.atDay(6));
+        long otherTrainerSchedule = insertTrainerSchedule("Trainer Settlement Other", otherTrainerUserId, targetMonth.atDay(8));
+        insertCompletedReservation(membershipId, memberId, trainerSchedule, targetMonth.atDay(6));
+        insertCompletedReservation(membershipId, memberId, otherTrainerSchedule, targetMonth.atDay(8));
+
+        long settlementId = createSettlementBatch(adminToken, "ALL", targetMonth);
+
+        mockMvc.perform(post("/api/v1/settlements/{settlementId}/confirm", settlementId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("CONFIRMED"));
+
+        mockMvc.perform(post("/api/v1/settlements")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "trainerId": "%s",
+                                  "periodStart": "%s",
+                                  "periodEnd": "%s"
+                                }
+                                """.formatted(trainerUserId, targetMonth.atDay(5), targetMonth.atDay(10))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void createTrainerSettlementRejectsBackwardsPeriodAtHttpBoundary() throws Exception {
         String adminToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
 
         mockMvc.perform(post("/api/v1/settlements")
@@ -714,8 +904,8 @@ class SalesSettlementApiIntegrationTest {
                         .content("""
                                 {
                                   "trainerId": "ALL",
-                                  "periodStart": "2099-11-02",
-                                  "periodEnd": "2099-11-30"
+                                  "periodStart": "2099-11-30",
+                                  "periodEnd": "2099-11-02"
                                 }
                                 """))
                 .andExpect(status().isBadRequest())
@@ -850,6 +1040,43 @@ class SalesSettlementApiIntegrationTest {
 
         mockMvc.perform(post("/api/v1/settlements/{settlementId}/confirm", settlementId)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/settlements/trainer-payroll/document")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .param("settlementMonth", targetMonth.toString()))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith("application/pdf"))
+                .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, containsString("trainer-settlement-%s.pdf".formatted(targetMonth))))
+                .andExpect(result -> assertTrue(result.getResponse().getContentAsByteArray().length > 0));
+    }
+
+    @Test
+    @Transactional
+    void legacyMonthlyDocumentFallsBackToLegacySnapshotWhenCanonicalBatchDoesNotExist() throws Exception {
+        String adminToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
+        YearMonth targetMonth = YearMonth.of(2100, 4);
+
+        long trainerUserId = userIdByLogin(TRAINER_LOGIN_ID);
+        long otherTrainerUserId = userIdByLogin(OTHER_TRAINER_LOGIN_ID);
+        long memberId = insertMember(targetMonth.atDay(1));
+        long productId = insertProduct("TRAINER-LEGACY-BRIDGE-" + UUID.randomUUID().toString().substring(0, 6));
+        long membershipId = insertMembership(memberId, productId, "Trainer Legacy Bridge PT", targetMonth.atDay(1), targetMonth.atEndOfMonth());
+
+        long trainerSchedule = insertTrainerSchedule("Trainer Settlement Self", trainerUserId, targetMonth.atDay(5));
+        long otherTrainerSchedule = insertTrainerSchedule("Trainer Settlement Other", otherTrainerUserId, targetMonth.atDay(6));
+        insertCompletedReservation(membershipId, memberId, trainerSchedule, targetMonth.atDay(5));
+        insertCompletedReservation(membershipId, memberId, otherTrainerSchedule, targetMonth.atDay(6));
+
+        mockMvc.perform(post("/api/v1/settlements/trainer-payroll/confirm")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "settlementMonth": "%s",
+                                  "sessionUnitPrice": 50000
+                                }
+                                """.formatted(targetMonth)))
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/v1/settlements/trainer-payroll/document")
@@ -1030,6 +1257,53 @@ class SalesSettlementApiIntegrationTest {
                 .param("cancelledAt", "CANCELLED".equals(reservationStatus) ? date.atTime(9, 30).atOffset(ZoneOffset.UTC) : null)
                 .param("completedAt", "COMPLETED".equals(reservationStatus) ? date.atTime(11, 0).atOffset(ZoneOffset.UTC) : null)
                 .param("noShowAt", "NO_SHOW".equals(reservationStatus) ? date.atTime(11, 30).atOffset(ZoneOffset.UTC) : null)
+                .update();
+    }
+
+    private void insertLegacyTrainerSettlementRow(YearMonth settlementMonth, long trainerUserId, String trainerName) {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        jdbcClient.sql("""
+                INSERT INTO trainer_settlements (
+                    center_id,
+                    settlement_month,
+                    trainer_user_id,
+                    trainer_name,
+                    completed_class_count,
+                    session_unit_price,
+                    payroll_amount,
+                    settlement_status,
+                    confirmed_at,
+                    confirmed_by,
+                    is_deleted,
+                    created_at,
+                    created_by,
+                    updated_at,
+                    updated_by
+                ) VALUES (
+                    :centerId,
+                    :settlementMonth,
+                    :trainerUserId,
+                    :trainerName,
+                    1,
+                    50000,
+                    50000,
+                    'CONFIRMED',
+                    :confirmedAt,
+                    :trainerUserId,
+                    FALSE,
+                    :createdAt,
+                    :trainerUserId,
+                    :updatedAt,
+                    :trainerUserId
+                )
+                """)
+                .param("centerId", CENTER_ID)
+                .param("settlementMonth", settlementMonth.atDay(1))
+                .param("trainerUserId", trainerUserId)
+                .param("trainerName", trainerName)
+                .param("confirmedAt", now)
+                .param("createdAt", now)
+                .param("updatedAt", now)
                 .update();
     }
 

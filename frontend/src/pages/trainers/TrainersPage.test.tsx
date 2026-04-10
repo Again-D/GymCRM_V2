@@ -66,6 +66,8 @@ describe("TrainersPage", () => {
             loginId: "trainer-a",
             userStatus: "ACTIVE",
             phone: "010-1111-2222",
+            ptSessionUnitPrice: 50000,
+            gxSessionUnitPrice: 30000,
             assignedMemberCount: 1,
             todayConfirmedReservationCount: 1,
             assignedMembers: [],
@@ -90,6 +92,8 @@ describe("TrainersPage", () => {
             loginId: body.loginId,
             userStatus: "ACTIVE",
             phone: body.phone ?? null,
+            ptSessionUnitPrice: body.ptSessionUnitPrice ?? null,
+            gxSessionUnitPrice: body.gxSessionUnitPrice ?? null,
             assignedMemberCount: 0,
             todayConfirmedReservationCount: 0,
             assignedMembers: [],
@@ -97,6 +101,32 @@ describe("TrainersPage", () => {
           message: "트레이너 계정을 등록했습니다.",
           timestamp: "2026-03-20T00:00:00Z",
           traceId: "trace-trainer-create",
+        }),
+      };
+    }
+
+    if (url.includes("/api/v1/trainers/") && init?.method === "PATCH") {
+      const body = JSON.parse(String(init.body));
+      return {
+        ok: true,
+        json: async () => ({
+          success: true,
+          data: {
+            userId: 41,
+            centerId: 2,
+            userName: body.userName,
+            loginId: body.loginId,
+            userStatus: "ACTIVE",
+            phone: body.phone ?? null,
+            ptSessionUnitPrice: body.ptSessionUnitPrice ?? null,
+            gxSessionUnitPrice: body.gxSessionUnitPrice ?? null,
+            assignedMemberCount: 1,
+            todayConfirmedReservationCount: 1,
+            assignedMembers: [],
+          },
+          message: "트레이너 정보를 수정했습니다.",
+          timestamp: "2026-03-20T00:00:00Z",
+          traceId: "trace-trainer-update",
         }),
       };
     }
@@ -112,6 +142,8 @@ describe("TrainersPage", () => {
             userName: "정트레이너",
             userStatus: "ACTIVE",
             phone: "010-1111-2222",
+            ptSessionUnitPrice: 50000,
+            gxSessionUnitPrice: 30000,
             assignedMemberCount: 1,
             todayConfirmedReservationCount: 1,
           },
@@ -193,6 +225,10 @@ describe("TrainersPage", () => {
 
     expect(await screen.findByRole("heading", { name: "가용 스케줄" })).toBeTruthy();
     expect((await screen.findAllByText("세미나")).length).toBeGreaterThan(0);
+    expect(await screen.findByText("PT 회당 단가")).toBeTruthy();
+    expect(await screen.findByText("50,000원")).toBeTruthy();
+    expect(await screen.findByText("GX 회당 단가")).toBeTruthy();
+    expect(await screen.findByText("30,000원")).toBeTruthy();
   }, 10000);
 
   it("shows unsupported note for trainer role in live mode", async () => {
@@ -260,6 +296,12 @@ describe("TrainersPage", () => {
     fireEvent.change(screen.getByPlaceholderText("트레이너 성명"), {
       target: { value: "김트레이너" },
     });
+    fireEvent.change(screen.getByPlaceholderText("예: 50000"), {
+      target: { value: "55000" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("예: 30000"), {
+      target: { value: "32000" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "저장" }));
 
     await waitFor(() => {
@@ -273,6 +315,48 @@ describe("TrainersPage", () => {
             password: "Password123!",
             userName: "김트레이너",
             phone: null,
+            ptSessionUnitPrice: 55000,
+            gxSessionUnitPrice: 32000,
+          }),
+        }),
+      );
+    });
+  }, 10000);
+
+  it("preserves existing rates on edit submit when unchanged", async () => {
+    setMockApiModeForTests(false);
+
+    render(
+      <FoundationProviders
+        authValue={{
+          securityMode: "jwt",
+          authUser: {
+            userId: 11,
+            centerId: 2,
+            username: "jwt-admin",
+            primaryRole: "ROLE_CENTER_ADMIN",
+            roles: ["ROLE_CENTER_ADMIN"],
+          },
+        }}
+      >
+        <TrainersPage />
+      </FoundationProviders>,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "수정" }));
+    fireEvent.click(await screen.findByRole("button", { name: "저장" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/api/v1/trainers/41"),
+        expect.objectContaining({
+          method: "PATCH",
+          body: JSON.stringify({
+            loginId: "trainer-a",
+            userName: "정트레이너",
+            phone: "010-1111-2222",
+            ptSessionUnitPrice: 50000,
+            gxSessionUnitPrice: 30000,
           }),
         }),
       );

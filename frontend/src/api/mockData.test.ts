@@ -1,16 +1,19 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import {
+  createMockTrainer,
   createMockMember,
   createMockMembership,
   createMockTrainerSettlementConfirm,
   downloadMockSalesSettlementReport,
   downloadMockTrainerSettlementDocument,
+  getMockTrainerDetail,
   getMockResponse,
   patchMockMembership,
   processMockCrmQueue,
   resetMockData,
   triggerMockCrmExpiryReminder,
+  updateMockTrainer,
   updateMockMember
 } from "./mockData";
 import type { MemberSummary } from "../pages/members/modules/types";
@@ -217,6 +220,49 @@ describe("mockData membership propagation", () => {
     expect(summary.trainerUserId).toBe(41);
     expect(summary.trainerName).toBe("정트레이너");
     expect(summary.completedClassCount).toBeGreaterThan(0);
+  });
+
+  it("persists trainer PT/GX settlement rates in mock create and update helpers", () => {
+    const created = createMockTrainer({
+      centerId: 1,
+      loginId: "trainer-c",
+      password: "Password123!",
+      userName: "박트레이너",
+      phone: "010-5555-6666",
+      ptSessionUnitPrice: 65000,
+      gxSessionUnitPrice: 28000,
+    });
+    expect(created.ptSessionUnitPrice).toBe(65000);
+    expect(created.gxSessionUnitPrice).toBe(28000);
+
+    const updated = updateMockTrainer(created.userId, {
+      loginId: "trainer-c",
+      userName: "박트레이너",
+      phone: "010-5555-7777",
+      ptSessionUnitPrice: 70000,
+      gxSessionUnitPrice: null,
+    });
+
+    expect(updated?.ptSessionUnitPrice).toBe(70000);
+    expect(updated?.gxSessionUnitPrice).toBeNull();
+    expect(getMockTrainerDetail(created.userId)?.gxSessionUnitPrice).toBeNull();
+  });
+
+  it("marks settlement preview with a rate warning when trainer rates are missing", () => {
+    const preview = getMockResponse(
+      "/api/v1/settlements/preview?trainerId=42&settlementMonth=2026-03"
+    )?.data as {
+      summary: { hasRateWarnings: boolean; totalAmount: number | null };
+      rows: Array<{ hasRateWarning: boolean; rateWarningMessage: string | null; gxRatePerSession: number | null }>;
+      conflict: { createAllowed: boolean };
+    };
+
+    expect(preview.summary.hasRateWarnings).toBe(true);
+    expect(preview.summary.totalAmount).toBeNull();
+    expect(preview.rows[0]?.hasRateWarning).toBe(true);
+    expect(preview.rows[0]?.gxRatePerSession).toBeNull();
+    expect(preview.rows[0]?.rateWarningMessage).toContain("트레이너 관리");
+    expect(preview.conflict.createAllowed).toBe(false);
   });
 
 });

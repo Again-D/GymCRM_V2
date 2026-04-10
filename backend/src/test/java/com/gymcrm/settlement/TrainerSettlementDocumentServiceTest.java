@@ -5,6 +5,7 @@ import com.gymcrm.settlement.entity.Settlement;
 import com.gymcrm.settlement.entity.SettlementDetail;
 import com.gymcrm.settlement.repository.SettlementDetailRepository;
 import com.gymcrm.settlement.repository.SettlementRepository;
+import com.gymcrm.settlement.repository.TrainerSettlementRepository;
 import com.gymcrm.settlement.repository.TrainerSettlementSourceRepository;
 import com.gymcrm.settlement.service.TrainerSettlementDocumentService;
 import org.junit.jupiter.api.Test;
@@ -26,12 +27,14 @@ class TrainerSettlementDocumentServiceTest {
     void documentLinesUseBaseAmountWhileTotalUsesNetAmount() {
         SettlementRepository settlementRepository = mock(SettlementRepository.class);
         SettlementDetailRepository settlementDetailRepository = mock(SettlementDetailRepository.class);
+        TrainerSettlementRepository trainerSettlementRepository = mock(TrainerSettlementRepository.class);
         TrainerSettlementSourceRepository trainerSettlementSourceRepository = mock(TrainerSettlementSourceRepository.class);
         CurrentUserProvider currentUserProvider = mock(CurrentUserProvider.class);
 
         TrainerSettlementDocumentService service = new TrainerSettlementDocumentService(
                 settlementRepository,
                 settlementDetailRepository,
+                trainerSettlementRepository,
                 trainerSettlementSourceRepository,
                 currentUserProvider
         );
@@ -100,5 +103,7 @@ class TrainerSettlementDocumentServiceTest {
         assertEquals(0, new BigDecimal("135000").compareTo(document.totalAmount()));
         assertEquals(0, new BigDecimal("10000").compareTo(document.bonusAmount()));
         assertEquals(0, new BigDecimal("5000").compareTo(document.deductionAmount()));
+        assertEquals(LocalDate.of(2026, 4, 1), document.periodStart());
+        assertEquals(LocalDate.of(2026, 4, 30), document.periodEnd());
     }
 }

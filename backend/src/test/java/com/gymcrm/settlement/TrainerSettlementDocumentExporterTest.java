@@ -46,6 +46,7 @@ class TrainerSettlementDocumentExporterTest {
             String text = new PDFTextStripper().getText(document);
             assertTrue(text.contains("Trainer Settlement Statement"));
             assertTrue(text.contains("Settlement Month: 2026-03"));
+            assertTrue(text.contains("Settlement Period: 2026-03-01 ~ 2026-03-31"));
             assertTrue(text.contains("Trainer Alpha"));
             assertTrue(text.contains("PT Completed Classes: 12"));
             assertTrue(text.contains("PT Session Unit Price: 50000"));
@@ -61,6 +62,8 @@ class TrainerSettlementDocumentExporterTest {
                 .mapToObj(index -> new TrainerSettlementDocumentService.TrainerSettlementDocument(
                         (long) index,
                         YearMonth.of(2026, 3),
+                        YearMonth.of(2026, 3).atDay(1),
+                        YearMonth.of(2026, 3).atEndOfMonth(),
                         "CONFIRMED",
                         OffsetDateTime.parse("2026-03-25T10:00:00+09:00"),
                         1L,

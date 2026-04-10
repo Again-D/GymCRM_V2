@@ -6,6 +6,7 @@ import java.math.BigDecimal;
 
 public record CreateTrainerSettlementResponse(
         Long settlementId,
+        String settlementMonth,
         TrainerResponse trainer,
         PeriodResponse period,
         SummaryResponse summary,
@@ -16,6 +17,7 @@ public record CreateTrainerSettlementResponse(
     public static CreateTrainerSettlementResponse from(TrainerSettlementCreationService.CreateSettlementResult result) {
         return new CreateTrainerSettlementResponse(
                 result.settlementId(),
+                result.settlementMonth().toString(),
                 new TrainerResponse(result.trainerId(), result.userName()),
                 new PeriodResponse(result.periodStart(), result.periodEnd()),
                 new SummaryResponse(

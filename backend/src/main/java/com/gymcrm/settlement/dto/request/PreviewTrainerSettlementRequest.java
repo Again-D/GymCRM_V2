@@ -3,7 +3,7 @@ package com.gymcrm.settlement.dto.request;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 
-public record CreateTrainerSettlementRequest(
+public record PreviewTrainerSettlementRequest(
         @NotBlank(message = "trainerId is required")
         String trainerId,
         @Pattern(regexp = "^$|^\\d{4}-\\d{2}$", message = "settlementMonth must be YYYY-MM")

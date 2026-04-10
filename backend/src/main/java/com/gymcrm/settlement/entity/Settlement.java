@@ -20,4 +20,19 @@ public record Settlement(
         OffsetDateTime updatedAt,
         Long updatedBy
 ) {
+    public LocalDate periodStart() {
+        return LocalDate.of(settlementYear, settlementMonth, 1);
+    }
+
+    public LocalDate periodEnd() {
+        return periodStart().withDayOfMonth(periodStart().lengthOfMonth());
+    }
+
+    public String scopeType() {
+        return "ALL";
+    }
+
+    public Long scopeTrainerUserId() {
+        return null;
+    }
 }
