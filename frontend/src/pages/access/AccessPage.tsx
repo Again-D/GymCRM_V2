@@ -80,7 +80,8 @@ export default function AccessPage() {
 	const [isWorkbenchOpen, setIsWorkbenchOpen] = useState(false);
 
 	const isLiveAccessRoleSupported =
-		isMockMode || hasAnyRole(authUser, ["ROLE_MANAGER", "ROLE_DESK"]);
+		isMockMode ||
+		hasAnyRole(authUser, ["ROLE_SUPER_ADMIN", "ROLE_MANAGER", "ROLE_DESK"]);
 
 	const visibleMembers = isLiveAccessRoleSupported ? members : [];
 
