@@ -37,7 +37,7 @@ public class ProductController {
     }
 
     @PostMapping
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER)
     public ApiResponse<ProductResponse> create(@Valid @RequestBody ProductCreateRequest request) {
         Product product = productService.create(new ProductService.ProductCreateRequest(
                 request.productName(),
@@ -58,7 +58,7 @@ public class ProductController {
     }
 
     @GetMapping
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<List<ProductSummaryResponse>> list(
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String status
@@ -70,13 +70,13 @@ public class ProductController {
     }
 
     @GetMapping("/{productId}")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<ProductResponse> detail(@PathVariable Long productId) {
         return ApiResponse.success(ProductResponse.from(productService.get(productId)), "상품 상세 조회 성공");
     }
 
     @PatchMapping("/{productId}")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER)
     public ApiResponse<ProductResponse> update(
             @PathVariable Long productId,
             @Valid @RequestBody ProductUpdateRequest request
@@ -100,7 +100,7 @@ public class ProductController {
     }
 
     @PatchMapping("/{productId}/status")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER)
     public ApiResponse<ProductResponse> updateStatus(
             @PathVariable Long productId,
             @Valid @RequestBody UpdateProductStatusRequest request

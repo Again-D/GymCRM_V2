@@ -49,7 +49,7 @@ public class ReservationController {
     }
 
     @PostMapping
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK_OR_TRAINER)
     public ApiResponse<ReservationResponse> create(@Valid @RequestBody CreateReservationRequest request) {
         Reservation reservation = reservationService.create(new ReservationService.CreateRequest(
                 request.memberId(),
@@ -61,7 +61,7 @@ public class ReservationController {
     }
 
     @GetMapping
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK_OR_TRAINER)
     public ApiResponse<List<ReservationResponse>> list(
             @RequestParam(required = false) Long memberId,
             @RequestParam(required = false) Long scheduleId,
@@ -74,7 +74,7 @@ public class ReservationController {
     }
 
     @GetMapping("/schedules")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK_OR_TRAINER)
     public ApiResponse<List<ReservationScheduleResponse>> listSchedules(
             @RequestParam(required = false) List<Long> scheduleIds
     ) {
@@ -85,7 +85,7 @@ public class ReservationController {
     }
 
     @GetMapping("/pt-candidates")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK_OR_TRAINER)
     public ApiResponse<PtReservationCandidatesResponse> listPtCandidates(
             @RequestParam Long membershipId,
             @RequestParam Long trainerUserId,
@@ -98,7 +98,7 @@ public class ReservationController {
     }
 
     @PostMapping("/pt")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK_OR_TRAINER)
     public ApiResponse<ReservationResponse> createPt(@Valid @RequestBody CreatePtReservationRequest request) {
         Reservation reservation = ptReservationService.create(new PtReservationService.CreatePtReservationRequest(
                 request.memberId(),
@@ -111,7 +111,7 @@ public class ReservationController {
     }
 
     @GetMapping("/targets")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK_OR_TRAINER)
     public ApiResponse<List<ReservationTargetResponse>> listTargets(@RequestParam(required = false) String keyword) {
         List<ReservationTargetResponse> items = reservationService.listTargets(keyword).stream()
                 .map(ReservationTargetResponse::from)
@@ -120,13 +120,13 @@ public class ReservationController {
     }
 
     @GetMapping("/{reservationId}")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK_OR_TRAINER)
     public ApiResponse<ReservationResponse> detail(@PathVariable Long reservationId) {
         return ApiResponse.success(ReservationResponse.from(reservationService.get(reservationId)), "예약 상세 조회 성공");
     }
 
     @PostMapping("/{reservationId}/cancel")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK_OR_TRAINER)
     public ApiResponse<ReservationResponse> cancel(
             @PathVariable Long reservationId,
             @Valid @RequestBody CancelReservationRequest request
@@ -139,21 +139,21 @@ public class ReservationController {
     }
 
     @PostMapping("/{reservationId}/complete")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK_OR_TRAINER)
     public ApiResponse<CompleteReservationResponse> complete(@PathVariable Long reservationId) {
         ReservationService.CompleteResult result = reservationService.complete(new ReservationService.CompleteRequest(reservationId));
         return ApiResponse.success(CompleteReservationResponse.from(result), "예약 완료 처리되었습니다.");
     }
 
     @PostMapping("/{reservationId}/check-in")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK_OR_TRAINER)
     public ApiResponse<ReservationResponse> checkIn(@PathVariable Long reservationId) {
         Reservation reservation = reservationService.checkIn(new ReservationService.CheckInRequest(reservationId));
         return ApiResponse.success(ReservationResponse.from(reservation), "체크인 처리되었습니다.");
     }
 
     @PostMapping("/{reservationId}/no-show")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK_OR_TRAINER)
     public ApiResponse<ReservationResponse> noShow(@PathVariable Long reservationId) {
         Reservation reservation = reservationService.noShow(new ReservationService.NoShowRequest(reservationId));
         return ApiResponse.success(ReservationResponse.from(reservation), "노쇼 처리되었습니다.");

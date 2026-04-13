@@ -27,10 +27,10 @@ import java.util.Set;
 @Service
 public class TrainerAvailabilityService {
     private static final String ROLE_SUPER_ADMIN = "ROLE_SUPER_ADMIN";
-    private static final String ROLE_CENTER_ADMIN = "ROLE_CENTER_ADMIN";
+    private static final String ROLE_MANAGER = "ROLE_MANAGER";
     private static final String ROLE_DESK = "ROLE_DESK";
     private static final String ROLE_TRAINER = "ROLE_TRAINER";
-    private static final Set<String> READONLY_ROLES = Set.of(ROLE_SUPER_ADMIN, ROLE_CENTER_ADMIN, ROLE_DESK);
+    private static final Set<String> READONLY_ROLES = Set.of(ROLE_SUPER_ADMIN, ROLE_MANAGER, ROLE_DESK);
 
     private final TrainerAvailabilityRepository trainerAvailabilityRepository;
     private final AuthUserRepository authUserRepository;

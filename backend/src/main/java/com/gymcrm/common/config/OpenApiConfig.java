@@ -131,14 +131,14 @@ public class OpenApiConfig {
     }
 
     private List<String> resolveRoleMatrix(String policy) {
-        if (AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN.equals(policy)) {
-            return List.of("ROLE_SUPER_ADMIN", "ROLE_CENTER_ADMIN", "ROLE_MANAGER", "PROTOTYPE_NO_AUTH");
+        if (AccessPolicies.PROTOTYPE_OR_MANAGER.equals(policy)) {
+            return List.of("ROLE_SUPER_ADMIN", "ROLE_MANAGER", "PROTOTYPE_NO_AUTH");
         }
-        if (AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK.equals(policy)) {
-            return List.of("ROLE_SUPER_ADMIN", "ROLE_CENTER_ADMIN", "ROLE_MANAGER", "ROLE_DESK", "PROTOTYPE_NO_AUTH");
+        if (AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK.equals(policy)) {
+            return List.of("ROLE_SUPER_ADMIN", "ROLE_MANAGER", "ROLE_DESK", "PROTOTYPE_NO_AUTH");
         }
-        if (AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER.equals(policy)) {
-            return List.of("ROLE_SUPER_ADMIN", "ROLE_CENTER_ADMIN", "ROLE_MANAGER", "ROLE_DESK", "ROLE_TRAINER", "PROTOTYPE_NO_AUTH");
+        if (AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK_OR_TRAINER.equals(policy)) {
+            return List.of("ROLE_SUPER_ADMIN", "ROLE_MANAGER", "ROLE_DESK", "ROLE_TRAINER", "PROTOTYPE_NO_AUTH");
         }
         if (AccessPolicies.PROTOTYPE_OR_TRAINER.equals(policy)) {
             return List.of("ROLE_TRAINER", "PROTOTYPE_NO_AUTH");

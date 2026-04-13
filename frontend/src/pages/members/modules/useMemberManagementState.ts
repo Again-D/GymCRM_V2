@@ -73,7 +73,7 @@ function buildUpdateMemberInput(memberForm: MemberFormState) {
 }
 
 function canManageMember(authUser: ReturnType<typeof useAuthState>["authUser"]) {
-  return hasAnyRole(authUser, ["ROLE_CENTER_ADMIN", "ROLE_DESK"]);
+  return hasAnyRole(authUser, ["ROLE_MANAGER", "ROLE_DESK"]);
 }
 
 export function useMemberManagementState({

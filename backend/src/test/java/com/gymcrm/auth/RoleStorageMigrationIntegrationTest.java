@@ -36,7 +36,6 @@ class RoleStorageMigrationIntegrationTest {
                 .list();
 
         assertThat(roleCodes).containsExactly(
-                "ROLE_CENTER_ADMIN",
                 "ROLE_DESK",
                 "ROLE_MANAGER",
                 "ROLE_SUPER_ADMIN",
@@ -61,7 +60,7 @@ class RoleStorageMigrationIntegrationTest {
     }
 
     @Test
-    void seededCenterAdminHasCenterAdminRoleMapping() {
+    void seededCenterAdminHasManagerRoleMapping() {
         String roleCode = jdbcClient.sql("""
                 SELECT r.role_code
                 FROM users u
@@ -73,6 +72,6 @@ class RoleStorageMigrationIntegrationTest {
                 .query(String.class)
                 .single();
 
-        assertThat(roleCode).isEqualTo("ROLE_CENTER_ADMIN");
+        assertThat(roleCode).isEqualTo("ROLE_MANAGER");
     }
 }

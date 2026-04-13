@@ -36,7 +36,6 @@ public class GxScheduleService {
     private static final Logger log = LoggerFactory.getLogger(GxScheduleService.class);
     private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Seoul");
     private static final String ROLE_SUPER_ADMIN = "ROLE_SUPER_ADMIN";
-    private static final String ROLE_CENTER_ADMIN = "ROLE_CENTER_ADMIN";
     private static final String ROLE_MANAGER = "ROLE_MANAGER";
     private static final String ROLE_DESK = "ROLE_DESK";
     private static final String ROLE_TRAINER = "ROLE_TRAINER";
@@ -381,7 +380,6 @@ public class GxScheduleService {
 
     private void ensureReadAccess(AuthUser actor) {
         if (ROLE_SUPER_ADMIN.equals(actor.roleCode())
-                || ROLE_CENTER_ADMIN.equals(actor.roleCode())
                 || ROLE_MANAGER.equals(actor.roleCode())
                 || ROLE_DESK.equals(actor.roleCode())
                 || ROLE_TRAINER.equals(actor.roleCode())) {
@@ -392,7 +390,6 @@ public class GxScheduleService {
 
     private void ensureManagerMutationAccess(AuthUser actor) {
         if (ROLE_SUPER_ADMIN.equals(actor.roleCode())
-                || ROLE_CENTER_ADMIN.equals(actor.roleCode())
                 || ROLE_MANAGER.equals(actor.roleCode())) {
             return;
         }
@@ -401,7 +398,6 @@ public class GxScheduleService {
 
     private void ensureExceptionMutationAccess(AuthUser actor, GxScheduleRule rule) {
         if (ROLE_SUPER_ADMIN.equals(actor.roleCode())
-                || ROLE_CENTER_ADMIN.equals(actor.roleCode())
                 || ROLE_MANAGER.equals(actor.roleCode())) {
             return;
         }

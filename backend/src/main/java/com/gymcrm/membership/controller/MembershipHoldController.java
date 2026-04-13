@@ -36,7 +36,7 @@ public class MembershipHoldController {
     }
 
     @PostMapping("/hold")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<MembershipHoldResponse> hold(
             @PathVariable Long memberId,
             @PathVariable Long membershipId,
@@ -56,7 +56,7 @@ public class MembershipHoldController {
     }
 
     @PostMapping("/resume")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<MembershipResumeResponse> resume(
             @PathVariable Long memberId,
             @PathVariable Long membershipId,

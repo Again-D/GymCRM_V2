@@ -2,13 +2,13 @@ import { describe, expect, it } from "vitest";
 import { getDashboardWidgetConfig } from "./dashboardConfig";
 
 describe("getDashboardWidgetConfig", () => {
-  it("returns [accessSummary, metricsSummary, scheduleOverview] for ROLE_CENTER_ADMIN", () => {
+  it("returns [accessSummary, metricsSummary, scheduleOverview] for ROLE_MANAGER", () => {
     const widgets = getDashboardWidgetConfig({
       userId: 1,
       centerId: 1,
       username: "admin-user",
-      primaryRole: "ROLE_CENTER_ADMIN",
-      roles: ["ROLE_CENTER_ADMIN"],
+      primaryRole: "ROLE_MANAGER",
+      roles: ["ROLE_MANAGER"],
     });
 
     const ids = widgets.map((w) => w.id);
@@ -39,12 +39,12 @@ describe("getDashboardWidgetConfig", () => {
     expect(ids).toEqual(["accessSummary", "scheduleOverview", "crmAction"]);
   });
 
-  it("returns [accessSummary, scheduleOverview, crmAction] for ROLE_MANAGER", () => {
+  it("returns [accessSummary, scheduleOverview, crmAction] for ROLE_DESK", () => {
     const widgets = getDashboardWidgetConfig({
       userId: 3,
-      username: "manager-user",
-      primaryRole: "ROLE_MANAGER",
-      roles: ["ROLE_MANAGER"],
+      username: "desk-user",
+      primaryRole: "ROLE_DESK",
+      roles: ["ROLE_DESK"],
     });
 
     const ids = widgets.map((w) => w.id);

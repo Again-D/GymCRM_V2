@@ -35,7 +35,7 @@ public class CrmMessageTemplateController {
     }
 
     @PostMapping
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<TemplateResponse> create(@Valid @RequestBody CreateRequest request) {
         CrmMessageTemplate created = crmMessageTemplateService.create(new CrmMessageTemplateService.CreateRequest(
                 request.templateCode(),
@@ -49,7 +49,7 @@ public class CrmMessageTemplateController {
     }
 
     @PatchMapping("/{templateId}")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<TemplateResponse> update(
             @PathVariable Long templateId,
             @Valid @RequestBody UpdateRequest request
@@ -66,7 +66,7 @@ public class CrmMessageTemplateController {
     }
 
     @GetMapping
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<ListResponse> list(
             @RequestParam(required = false)
             @Pattern(regexp = "^(?i)(SMS|KAKAO|EMAIL)?$", message = "channelType is invalid")

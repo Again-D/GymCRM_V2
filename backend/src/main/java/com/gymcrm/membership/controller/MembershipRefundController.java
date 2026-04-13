@@ -36,7 +36,7 @@ public class MembershipRefundController {
     }
 
     @PostMapping("/preview")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<MembershipRefundPreviewResponse> preview(
             @PathVariable Long memberId,
             @PathVariable Long membershipId,
@@ -51,7 +51,7 @@ public class MembershipRefundController {
     }
 
     @PostMapping
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<MembershipRefundResponse> refund(
             @PathVariable Long memberId,
             @PathVariable Long membershipId,

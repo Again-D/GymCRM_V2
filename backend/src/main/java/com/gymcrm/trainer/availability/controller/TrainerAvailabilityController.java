@@ -33,7 +33,7 @@ public class TrainerAvailabilityController {
     }
 
     @GetMapping("/me/availability")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK_OR_TRAINER)
     public ApiResponse<TrainerAvailabilitySnapshotResponse> getMyAvailability(@RequestParam String month) {
         return ApiResponse.success(
                 TrainerAvailabilitySnapshotResponse.from(trainerAvailabilityService.getMyAvailability(month)),
@@ -42,7 +42,7 @@ public class TrainerAvailabilityController {
     }
 
     @PutMapping("/me/availability/weekly")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK_OR_TRAINER)
     public ApiResponse<TrainerAvailabilitySnapshotResponse> replaceMyWeeklyRules(
             @RequestParam String month,
             @Valid @RequestBody ReplaceTrainerAvailabilityWeeklyRulesRequest request
@@ -63,7 +63,7 @@ public class TrainerAvailabilityController {
     }
 
     @PutMapping("/me/availability/exceptions/{date}")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK_OR_TRAINER)
     public ApiResponse<TrainerAvailabilitySnapshotResponse> upsertMyException(
             @PathVariable LocalDate date,
             @RequestParam String month,
@@ -85,7 +85,7 @@ public class TrainerAvailabilityController {
     }
 
     @DeleteMapping("/me/availability/exceptions/{date}")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK_OR_TRAINER)
     public ApiResponse<TrainerAvailabilitySnapshotResponse> deleteMyException(
             @PathVariable LocalDate date,
             @RequestParam String month
@@ -97,7 +97,7 @@ public class TrainerAvailabilityController {
     }
 
     @GetMapping("/{trainerUserId}/availability")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK_OR_TRAINER)
     public ApiResponse<TrainerAvailabilitySnapshotResponse> getTrainerAvailability(
             @PathVariable Long trainerUserId,
             @RequestParam String month

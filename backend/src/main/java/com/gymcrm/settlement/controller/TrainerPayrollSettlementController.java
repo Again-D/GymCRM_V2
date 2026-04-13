@@ -56,7 +56,7 @@ public class TrainerPayrollSettlementController {
     }
 
     @GetMapping("/trainer-payroll")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<MonthlyTrainerPayrollResponse> getMonthlyTrainerPayroll(
             @RequestParam
             @Pattern(regexp = "^\\d{4}-\\d{2}$", message = "settlementMonth must be YYYY-MM")
@@ -105,7 +105,7 @@ public class TrainerPayrollSettlementController {
     }
 
     @PostMapping("/trainer-payroll/confirm")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<MonthlyTrainerPayrollResponse> confirmMonthlyTrainerPayroll(
             @Valid @RequestBody ConfirmMonthlyTrainerPayrollRequest request
     ) {
@@ -119,7 +119,7 @@ public class TrainerPayrollSettlementController {
     }
 
     @GetMapping(value = "/trainer-payroll/document", produces = MediaType.APPLICATION_PDF_VALUE)
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ResponseEntity<byte[]> exportMonthlyTrainerSettlementDocument(
             @RequestParam
             @Pattern(regexp = "^\\d{4}-\\d{2}$", message = "settlementMonth must be YYYY-MM")
@@ -136,7 +136,7 @@ public class TrainerPayrollSettlementController {
     }
 
     @GetMapping(value = "/{settlementId}/trainers/{trainerId}/document", produces = MediaType.APPLICATION_PDF_VALUE)
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ResponseEntity<byte[]> exportCanonicalTrainerSettlementDocument(
             @org.springframework.web.bind.annotation.PathVariable Long settlementId,
             @org.springframework.web.bind.annotation.PathVariable Long trainerId

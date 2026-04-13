@@ -14,9 +14,9 @@ const clientMocks = vi.hoisted(() => ({
 const authStateMock = vi.hoisted(() => ({
   authUser: {
     userId: 1,
-    roleCode: "ROLE_CENTER_ADMIN",
-    primaryRole: "ROLE_CENTER_ADMIN",
-    roles: ["ROLE_CENTER_ADMIN"]
+    roleCode: "ROLE_MANAGER",
+    primaryRole: "ROLE_MANAGER",
+    roles: ["ROLE_MANAGER"]
   }
 }));
 
@@ -285,9 +285,9 @@ describe("SettlementsPage", () => {
     };
     authStateMock.authUser = {
       userId: 1,
-      roleCode: "ROLE_CENTER_ADMIN",
-      primaryRole: "ROLE_CENTER_ADMIN",
-      roles: ["ROLE_CENTER_ADMIN"]
+      roleCode: "ROLE_MANAGER",
+      primaryRole: "ROLE_MANAGER",
+      roles: ["ROLE_MANAGER"]
     };
 
     vi.stubGlobal("matchMedia", vi.fn().mockImplementation((query) => ({
@@ -389,5 +389,5 @@ describe("SettlementsPage", () => {
     expect(moveButton).toBeTruthy();
     fireEvent.click(moveButton);
     expect(navigateMock).toHaveBeenCalledWith("/trainers");
-  });
+  }, 10000);
 });

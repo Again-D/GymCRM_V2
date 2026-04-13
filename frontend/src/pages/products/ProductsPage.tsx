@@ -98,8 +98,8 @@ export default function ProductsPage() {
     refetchProducts
   } = useProductsQuery(productFilters);
 
-  const canReadLiveProducts = isMockMode || hasAnyRole(authUser, ["ROLE_CENTER_ADMIN", "ROLE_DESK"]);
-  const canMutateProducts = isMockMode || hasRole(authUser, "ROLE_CENTER_ADMIN");
+  const canReadLiveProducts = isMockMode || hasAnyRole(authUser, ["ROLE_MANAGER", "ROLE_DESK"]);
+  const canMutateProducts = isMockMode || hasRole(authUser, "ROLE_MANAGER");
 
   const productsPagination = usePagination(products, {
     initialPageSize: 10,

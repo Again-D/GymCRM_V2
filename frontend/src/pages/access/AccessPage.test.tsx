@@ -146,8 +146,8 @@ describe("AccessPage", () => {
           authUser: {
             userId: 11,
             username: "jwt-admin",
-            primaryRole: "ROLE_CENTER_ADMIN",
-            roles: ["ROLE_CENTER_ADMIN"]
+            primaryRole: "ROLE_MANAGER",
+            roles: ["ROLE_MANAGER"]
           }
         }}
       >
@@ -238,8 +238,8 @@ describe("AccessPage", () => {
           authUser: {
             userId: 11,
             username: "jwt-admin",
-            primaryRole: "ROLE_CENTER_ADMIN",
-            roles: ["ROLE_CENTER_ADMIN"]
+            primaryRole: "ROLE_MANAGER",
+            roles: ["ROLE_MANAGER"]
           }
         }}
       >

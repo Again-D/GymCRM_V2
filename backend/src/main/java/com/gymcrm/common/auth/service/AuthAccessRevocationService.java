@@ -16,7 +16,6 @@ import java.time.ZoneOffset;
 @Service
 public class AuthAccessRevocationService {
     private static final String ROLE_SUPER_ADMIN = "ROLE_SUPER_ADMIN";
-    private static final String ROLE_CENTER_ADMIN = "ROLE_CENTER_ADMIN";
     private static final String ROLE_MANAGER = "ROLE_MANAGER";
     private static final String ROLE_TRAINER = "ROLE_TRAINER";
     private static final String ROLE_DESK = "ROLE_DESK";
@@ -163,7 +162,6 @@ public class AuthAccessRevocationService {
         }
         String normalized = requestedRoleCode.trim().toUpperCase();
         if (!normalized.equals(ROLE_SUPER_ADMIN)
-                && !normalized.equals(ROLE_CENTER_ADMIN)
                 && !normalized.equals(ROLE_MANAGER)
                 && !normalized.equals(ROLE_TRAINER)
                 && !normalized.equals(ROLE_DESK)) {

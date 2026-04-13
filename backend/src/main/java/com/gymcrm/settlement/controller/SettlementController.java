@@ -42,7 +42,7 @@ public class SettlementController {
     }
 
     @GetMapping("/preview")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<PreviewTrainerSettlementResponse> previewSettlement(
             @RequestParam String trainerId,
             @RequestParam(required = false, defaultValue = "")
@@ -70,7 +70,7 @@ public class SettlementController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER)
     public ApiResponse<CreateTrainerSettlementResponse> createSettlement(
             @Valid @RequestBody CreateTrainerSettlementRequest request
     ) {
@@ -86,7 +86,7 @@ public class SettlementController {
     }
 
     @PostMapping("/{settlementId}/confirm")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER)
     public ApiResponse<ConfirmSettlementResponse> confirmSettlement(@PathVariable Long settlementId) {
         TrainerSettlementLifecycleService.ConfirmSettlementResult result =
                 trainerSettlementLifecycleService.confirmSettlement(settlementId);

@@ -27,7 +27,7 @@ public class MembershipPurchaseController {
     }
 
     @GetMapping
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK_OR_TRAINER)
     public ApiResponse<java.util.List<MembershipSummaryResponse>> list(@PathVariable Long memberId) {
         return ApiResponse.success(
                 membershipPurchaseService.listMemberships(memberId).stream().map(MembershipSummaryResponse::from).toList(),
@@ -36,7 +36,7 @@ public class MembershipPurchaseController {
     }
 
     @PostMapping
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<MembershipPurchaseResponse> purchase(
             @PathVariable Long memberId,
             @Valid @RequestBody MembershipPurchaseRequest request

@@ -27,7 +27,7 @@ public class SalesDashboardController {
     }
 
     @GetMapping("/sales-dashboard")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<SalesDashboardResponse> getSalesDashboard(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate baseDate,
             @RequestParam(required = false) @Min(0) @Max(60) Integer expiringWithinDays

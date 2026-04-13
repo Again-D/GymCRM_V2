@@ -85,7 +85,7 @@ class MembershipHoldServiceTest {
     @Test
     void allowsHoldWhenOverrideLimitsIsTrueForAuthorizedActor() {
         when(currentUserProvider.currentUserId()).thenReturn(7L);
-        when(authUserRepository.findActiveById(7L)).thenReturn(Optional.of(activeUser("ROLE_CENTER_ADMIN")));
+        when(authUserRepository.findActiveById(7L)).thenReturn(Optional.of(activeUser("ROLE_MANAGER")));
 
         service.validateHoldEligibility(
                 membership("ACTIVE", "DURATION", LocalDate.of(2026, 3, 10), null, 25, 1),
@@ -99,7 +99,7 @@ class MembershipHoldServiceTest {
     @Test
     void rejectsOverrideWhenProductDisallowsBypass() {
         when(currentUserProvider.currentUserId()).thenReturn(7L);
-        when(authUserRepository.findActiveById(7L)).thenReturn(Optional.of(activeUser("ROLE_CENTER_ADMIN")));
+        when(authUserRepository.findActiveById(7L)).thenReturn(Optional.of(activeUser("ROLE_MANAGER")));
 
         ApiException exception = assertThrows(
                 ApiException.class,

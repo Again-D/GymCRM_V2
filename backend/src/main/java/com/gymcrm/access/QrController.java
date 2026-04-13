@@ -26,14 +26,14 @@ public class QrController {
     }
 
     @PostMapping("/issue")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<IssueQrResponse> issue(@Valid @RequestBody IssueQrRequest request) {
         QrCodeService.IssueResult issued = qrCodeService.issue(request.memberId());
         return ApiResponse.success(IssueQrResponse.from(issued), "동적 QR 코드가 발급되었습니다.");
     }
 
     @PostMapping("/verify")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<VerifyQrResponse> verify(@Valid @RequestBody VerifyQrRequest request) {
         QrCodeService.VerifyResult verified = qrCodeService.verifyAndHandle(
                 new QrCodeService.VerifyRequest(

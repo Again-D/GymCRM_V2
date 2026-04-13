@@ -85,7 +85,7 @@ describe("useMemberManagementState", () => {
               value={{
                 securityMode: "jwt",
                 authBootstrapping: false,
-                authUser: { userId: 11, username: "jwt-admin", primaryRole: "ROLE_CENTER_ADMIN", roles: ["ROLE_CENTER_ADMIN"] },
+                authUser: { userId: 11, username: "jwt-admin", primaryRole: "ROLE_MANAGER", roles: ["ROLE_MANAGER"] },
               }}
             >
               {children}
@@ -165,7 +165,7 @@ describe("useMemberManagementState", () => {
               value={{
                 securityMode: "jwt",
                 authBootstrapping: false,
-                authUser: { userId: 11, username: "jwt-admin", primaryRole: "ROLE_CENTER_ADMIN", roles: ["ROLE_CENTER_ADMIN"] },
+                authUser: { userId: 11, username: "jwt-admin", primaryRole: "ROLE_MANAGER", roles: ["ROLE_MANAGER"] },
               }}
             >
               {children}

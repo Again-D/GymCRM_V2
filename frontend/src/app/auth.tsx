@@ -84,8 +84,8 @@ const prototypeAdminUser: PrototypeAuthUser = {
   userId: 1,
   centerId: 1,
   username: "prototype-admin",
-  primaryRole: "ROLE_CENTER_ADMIN",
-  roles: ["ROLE_CENTER_ADMIN"],
+  primaryRole: "ROLE_MANAGER",
+  roles: ["ROLE_MANAGER"],
   email: "admin@gymcrm.ops"
 };
 
@@ -93,8 +93,8 @@ const jwtAdminUser: PrototypeAuthUser = {
   userId: 11,
   centerId: 1,
   username: "jwt-admin",
-  primaryRole: "ROLE_CENTER_ADMIN",
-  roles: ["ROLE_CENTER_ADMIN"],
+  primaryRole: "ROLE_MANAGER",
+  roles: ["ROLE_MANAGER"],
   email: "ops-lead@gymcrm.ops"
 };
 
