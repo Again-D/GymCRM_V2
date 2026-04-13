@@ -37,8 +37,10 @@ jobs:
 
           for name in gymcrm-postgres gymcrm-redis; do
             echo "Waiting for $name to become healthy..."
+            last_status="unknown"
             for _ in {1..60}; do
               status="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}unknown{{end}}' "$name" || true)"
+              last_status="$status"
               if [ "$status" = "healthy" ]; then
                 echo "$name is healthy."
                 break
@@ -50,6 +52,12 @@ jobs:
               fi
               sleep 2
             done
+
+            if [ "$last_status" != "healthy" ]; then
+              echo "$name did not become healthy in time (status=$last_status)."
+              docker logs "$name" || true
+              exit 1
+            fi
           done
 
       - name: Run integration tests
