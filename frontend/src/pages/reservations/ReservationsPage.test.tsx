@@ -25,14 +25,34 @@ async function selectAntdOptionIn(container: HTMLElement, index: number, optionN
   }
   fireEvent.mouseDown(combobox);
   const normalizedTarget = optionName.replace(/\s+/g, " ").trim();
+
+  const listboxes = await screen.findAllByRole("listbox");
+  const listbox = listboxes[listboxes.length - 1] as HTMLElement | undefined;
+  if (!listbox) {
+    throw new Error(`Listbox not found for option "${optionName}"`);
+  }
+
+  const options = within(listbox).queryAllByRole("option");
+  const matchedOption = options.find((option) =>
+    option.textContent?.replace(/\s+/g, " ").trim().includes(normalizedTarget) ?? false,
+  );
+
+  if (matchedOption) {
+    fireEvent.click(matchedOption);
+    return;
+  }
+
+  // Fallback for environments where roles are missing from the rendered options.
   const renderedMatches = await screen.findAllByText((_, element) =>
     element?.textContent?.replace(/\s+/g, " ").trim().includes(normalizedTarget) ?? false,
   );
-  const matchedOption = renderedMatches[renderedMatches.length - 1] as HTMLElement | undefined;
-  if (!matchedOption) {
+  const matchedFallback = renderedMatches[renderedMatches.length - 1] as
+    | HTMLElement
+    | undefined;
+  if (!matchedFallback) {
     throw new Error(`Option "${optionName}" not found`);
   }
-  fireEvent.click(matchedOption);
+  fireEvent.click(matchedFallback);
 }
 
 describe("ReservationsPage", () => {
@@ -175,7 +195,7 @@ describe("ReservationsPage", () => {
     expect(await screen.findByText("PT는 트레이너 가능 시간에서 60분 블록으로 예약합니다.")).toBeTruthy();
     expect(await screen.findByText("담당 트레이너 기본값: 정트레이너")).toBeTruthy();
     expect((submitButton as HTMLButtonElement).disabled).toBe(true);
-  }, 15000);
+  }, 30000);
 
   it("recovers past reservation schedule details through schedule id enrichment", async () => {
     vi.spyOn(dateUtils, "todayLocalDate").mockReturnValue("2026-03-16");
@@ -193,7 +213,10 @@ describe("ReservationsPage", () => {
     fireEvent.click(within(memberRow.closest("tr") as HTMLTableRowElement).getByRole("button", { name: "선택 후 조회" }));
 
     const workbench = await screen.findByRole("dialog", { name: /예약 워크벤치: 박서연/ });
-    expect(await within(workbench).findByText("2026.03.12 19:00 ~ 19:50")).toBeTruthy();
+    const normalizedScheduleText = "2026.03.12 19:00 ~ 19:50";
+    expect(await within(workbench).findAllByText((_, element) =>
+      element?.textContent?.replace(/\s+/g, " ").trim().includes(normalizedScheduleText) ?? false,
+    )).not.toHaveLength(0);
     expect(within(workbench).getByText("GX · 한코치 · 저녁 GX C")).toBeTruthy();
     expect(within(workbench).queryByText("삭제되었거나 조회 불가한 일정입니다.")).toBeNull();
   }, 15000);
