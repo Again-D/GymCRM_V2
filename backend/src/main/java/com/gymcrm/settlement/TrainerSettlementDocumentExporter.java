@@ -1,6 +1,5 @@
 package com.gymcrm.settlement;
 
-import com.gymcrm.settlement.entity.TrainerSettlement;
 import com.gymcrm.settlement.service.TrainerSettlementDocumentService;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
@@ -33,13 +32,6 @@ public class TrainerSettlementDocumentExporter {
             Path.of("/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc"),
             Path.of("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc")
     );
-
-    public byte[] export(List<TrainerSettlement> settlements) {
-        List<TrainerSettlementDocumentService.TrainerSettlementDocument> documents = settlements.stream()
-                .map(this::toDocument)
-                .toList();
-        return exportDocuments(documents);
-    }
 
     public byte[] export(TrainerSettlementDocumentService.TrainerSettlementDocument document) {
         return exportDocuments(List.of(document));
@@ -134,29 +126,6 @@ public class TrainerSettlementDocumentExporter {
             index += 1;
         }
         return lines;
-    }
-
-    private TrainerSettlementDocumentService.TrainerSettlementDocument toDocument(TrainerSettlement settlement) {
-        return new TrainerSettlementDocumentService.TrainerSettlementDocument(
-                settlement.settlementId(),
-                java.time.YearMonth.of(settlement.settlementMonth().getYear(), settlement.settlementMonth().getMonthValue()),
-                settlement.settlementMonth().withDayOfMonth(1),
-                settlement.settlementMonth().withDayOfMonth(settlement.settlementMonth().lengthOfMonth()),
-                settlement.settlementStatus(),
-                settlement.confirmedAt(),
-                settlement.confirmedBy(),
-                settlement.trainerUserId(),
-                settlement.trainerName(),
-                new TrainerSettlementDocumentService.DocumentLine(
-                        Math.toIntExact(settlement.completedClassCount()),
-                        settlement.sessionUnitPrice(),
-                        settlement.payrollAmount()
-                ),
-                new TrainerSettlementDocumentService.DocumentLine(0, java.math.BigDecimal.ZERO, java.math.BigDecimal.ZERO),
-                java.math.BigDecimal.ZERO,
-                java.math.BigDecimal.ZERO,
-                settlement.payrollAmount()
-        );
     }
 
     private String nullableLong(Long value) {

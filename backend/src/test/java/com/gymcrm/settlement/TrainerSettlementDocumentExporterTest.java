@@ -1,6 +1,5 @@
 package com.gymcrm.settlement;
 
-import com.gymcrm.settlement.entity.TrainerSettlement;
 import com.gymcrm.settlement.service.TrainerSettlementDocumentService;
 import org.junit.jupiter.api.Test;
 import org.apache.pdfbox.Loader;
@@ -21,23 +20,22 @@ class TrainerSettlementDocumentExporterTest {
 
     @Test
     void exportsConfirmedSettlementsAsPdf() throws Exception {
-        byte[] pdf = exporter.export(List.of(
-                new TrainerSettlement(
+        byte[] pdf = exporter.exportDocuments(List.of(
+                new TrainerSettlementDocumentService.TrainerSettlementDocument(
                         1L,
-                        1L,
+                        YearMonth.of(2026, 3),
                         LocalDate.of(2026, 3, 1),
-                        41L,
-                        "Trainer Alpha",
-                        12L,
-                        new BigDecimal("50000"),
-                        new BigDecimal("600000"),
+                        LocalDate.of(2026, 3, 31),
                         "CONFIRMED",
                         OffsetDateTime.parse("2026-03-25T10:00:00+09:00"),
                         1L,
-                        OffsetDateTime.parse("2026-03-25T10:00:00+09:00"),
-                        1L,
-                        OffsetDateTime.parse("2026-03-25T10:00:00+09:00"),
-                        1L
+                        41L,
+                        "Trainer Alpha",
+                        new TrainerSettlementDocumentService.DocumentLine(12, new BigDecimal("50000"), new BigDecimal("600000")),
+                        new TrainerSettlementDocumentService.DocumentLine(0, BigDecimal.ZERO, BigDecimal.ZERO),
+                        BigDecimal.ZERO,
+                        BigDecimal.ZERO,
+                        new BigDecimal("600000")
                 )
         ));
 

@@ -109,8 +109,8 @@ flowchart TB
 - 트레이너는 같은 `/settlements` 진입점을 사용하지만, 현재는 본인 월간 완료 PT 수업 수만 조회하고 있으므로 planning에서는 이를 본인 기간 기준 미리보기로 어떻게 전환할지 다뤄야 한다.
 - 매출 export는 단일 CSV 추출이 아니라 `Summary`/`Trend`/`Details` 시트를 가진 운영 보고서형 Excel을 기준 산출물로 본다.
 - 2026-04-10 기준 구현은 period workflow로 재정렬되었다. 운영자는 `GET /api/v1/settlements/preview` + `POST /api/v1/settlements` + `POST /api/v1/settlements/{settlementId}/confirm` 조합으로 기간 기준 preview/workspace를 사용하고, 트레이너는 `GET /api/v1/settlements/trainer-payroll/my-preview`로 본인 기간 preview를 조회한다.
-- canonical source-of-truth는 `settlements` + `settlement_details`이며, `trainer_settlements`는 legacy 월 조회/문서 출력을 위한 bridge snapshot으로만 유지된다.
-- legacy 월 문서 endpoint `GET /api/v1/settlements/trainer-payroll/document`는 먼저 월 전체 `ALL` canonical settlement를 찾고, 없으면 legacy snapshot으로 fallback 한다.
+- canonical source-of-truth는 `settlements` + `settlement_details`이며, legacy `trainer_settlements` bridge snapshot은 제거 대상으로 본다.
+- legacy 월 문서 endpoint `GET /api/v1/settlements/trainer-payroll/document`도 canonical 월 settlement만을 source-of-truth로 사용한다.
 
 ## Outstanding Questions
 

@@ -6,7 +6,6 @@ import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.AccessPolicies;
 import com.gymcrm.settlement.TrainerSettlementDocumentExporter;
 import com.gymcrm.settlement.dto.response.PreviewTrainerSettlementResponse;
-import com.gymcrm.settlement.entity.TrainerSettlement;
 import com.gymcrm.settlement.service.TrainerPayrollSettlementService;
 import com.gymcrm.settlement.service.TrainerSettlementDocumentService;
 import com.gymcrm.settlement.service.TrainerSettlementLifecycleService;
