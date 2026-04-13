@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { FoundationProviders } from "../../app/providers";
 import SettlementsPage from "./SettlementsPage";
-import type { SettlementReportFilters, TrainerSettlementPreviewFilters, TrainerSettlementPreviewReport, TrainerSettlementWorkspace } from "./modules/types";
+import type { SettlementReport, SettlementReportFilters, TrainerSettlementPreviewFilters, TrainerSettlementPreviewReport, TrainerSettlementWorkspace } from "./modules/types";
 
 const clientMocks = vi.hoisted(() => ({
   apiDownload: vi.fn(),
@@ -54,6 +54,45 @@ let mockSettlementFilters: SettlementReportFilters = {
   paymentMethod: "",
   productKeyword: "",
   trendGranularity: "DAILY"
+};
+
+let mockSettlementReport: SettlementReport = {
+  startDate: "2026-03-01",
+  endDate: "2026-03-31",
+  paymentMethod: null,
+  productKeyword: null,
+  trendGranularity: "DAILY" as const,
+  totalGrossSales: 100000,
+  totalRefundAmount: 20000,
+  totalNetSales: 80000,
+  trend: [
+    {
+      bucketStartDate: "2026-03-01",
+      bucketLabel: "03/01",
+      grossSales: 50000,
+      refundAmount: 5000,
+      netSales: 45000,
+      transactionCount: 2
+    },
+    {
+      bucketStartDate: "2026-03-02",
+      bucketLabel: "03/02",
+      grossSales: 50000,
+      refundAmount: 15000,
+      netSales: 35000,
+      transactionCount: 3
+    }
+  ],
+  rows: [
+    {
+      productName: "3개월 PT",
+      paymentMethod: "CARD" as const,
+      grossSales: 100000,
+      refundAmount: 20000,
+      netSales: 80000,
+      transactionCount: 5
+    }
+  ]
 };
 
 let mockTrainerSettlementFilters: TrainerSettlementPreviewFilters = {
@@ -152,23 +191,22 @@ vi.mock("./modules/useSalesDashboardQuery", () => ({
 
 vi.mock("./modules/useSettlementReportQuery", () => ({
   useSettlementReportQuery: () => ({
-    settlementReport: {
-      startDate: "2026-03-01",
-      endDate: "2026-03-31",
-      paymentMethod: null,
-      productKeyword: null,
-      trendGranularity: "DAILY",
-      totalGrossSales: 100000,
-      totalRefundAmount: 20000,
-      totalNetSales: 80000,
-      trend: [],
-      rows: []
-    },
+    settlementReport: mockSettlementReport,
     settlementReportLoading: false,
     settlementReportError: null,
     settlementReportMessage: null,
     refetchSettlementReport: vi.fn()
   })
+}));
+
+vi.mock("./components/SettlementSalesTrendChart", () => ({
+  SettlementSalesTrendChart: ({ chartData, loading }: { chartData: { points: Array<{ bucketStartDate: string }> }; loading: boolean }) => (
+    <div
+      data-testid="settlement-sales-trend-chart"
+      data-loading={loading ? "true" : "false"}
+      data-points={chartData.points.length}
+    />
+  )
 }));
 
 vi.mock("./modules/useSettlementRecentAdjustmentsQuery", () => ({
@@ -235,6 +273,44 @@ describe("SettlementsPage", () => {
       paymentMethod: "",
       productKeyword: "",
       trendGranularity: "DAILY"
+    };
+    mockSettlementReport = {
+      startDate: "2026-03-01",
+      endDate: "2026-03-31",
+      paymentMethod: null,
+      productKeyword: null,
+      trendGranularity: "DAILY",
+      totalGrossSales: 100000,
+      totalRefundAmount: 20000,
+      totalNetSales: 80000,
+      trend: [
+        {
+          bucketStartDate: "2026-03-01",
+          bucketLabel: "03/01",
+          grossSales: 50000,
+          refundAmount: 5000,
+          netSales: 45000,
+          transactionCount: 2
+        },
+        {
+          bucketStartDate: "2026-03-02",
+          bucketLabel: "03/02",
+          grossSales: 50000,
+          refundAmount: 15000,
+          netSales: 35000,
+          transactionCount: 3
+        }
+      ],
+      rows: [
+        {
+          productName: "3개월 PT",
+          paymentMethod: "CARD",
+          grossSales: 100000,
+          refundAmount: 20000,
+          netSales: 80000,
+          transactionCount: 5
+        }
+      ]
     };
     mockTrainerSettlementFilters = {
       trainerId: "ALL",
@@ -319,6 +395,50 @@ describe("SettlementsPage", () => {
     expect(screen.getByRole("button", { name: "preview 조회" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "정산 초안 생성" })).toBeTruthy();
   }, 10000);
+
+  it("renders the sales trend chart section above the retained report tables", () => {
+    const view = render(
+      <FoundationProviders>
+        <SettlementsPage />
+      </FoundationProviders>
+    );
+
+    fireEvent.click(screen.getAllByRole("tab", { name: "매출 분석" })[0]);
+
+    expect(screen.getByTestId("settlement-sales-trend-chart")).toBeTruthy();
+    expect(screen.getByTestId("settlement-sales-trend-chart").getAttribute("data-points")).toBe("2");
+    expect(screen.getByText("기간 추이 리포트")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Excel 다운로드" })).toBeTruthy();
+    expect(screen.getByText("3개월 PT")).toBeTruthy();
+
+    mockSettlementFilters = {
+      ...mockSettlementFilters,
+      trendGranularity: "MONTHLY"
+    };
+    mockSettlementReport = {
+      ...mockSettlementReport,
+      trendGranularity: "MONTHLY",
+      trend: [
+        {
+          bucketStartDate: "2026-03-01",
+          bucketLabel: "2026-03",
+          grossSales: 120000,
+          refundAmount: 20000,
+          netSales: 100000,
+          transactionCount: 5
+        }
+      ]
+    };
+
+    view.rerender(
+      <FoundationProviders>
+        <SettlementsPage />
+      </FoundationProviders>
+    );
+
+    fireEvent.click(screen.getAllByRole("tab", { name: "매출 분석" })[0]);
+    expect(screen.getByTestId("settlement-sales-trend-chart").getAttribute("data-points")).toBe("1");
+  });
 
   it("renders trainer mini view with period preview summary", () => {
     authStateMock.authUser = {
