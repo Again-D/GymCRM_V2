@@ -63,14 +63,12 @@ export const shellRoutes: ShellRoute[] = [
     showInDashboard: true,
     visibleRoles: [
       "ROLE_SUPER_ADMIN",
-      "ROLE_CENTER_ADMIN",
       "ROLE_MANAGER",
       "ROLE_DESK",
       "ROLE_TRAINER",
     ],
     allowedRoles: [
       "ROLE_SUPER_ADMIN",
-      "ROLE_CENTER_ADMIN",
       "ROLE_MANAGER",
       "ROLE_DESK",
       "ROLE_TRAINER",
@@ -83,8 +81,8 @@ export const shellRoutes: ShellRoute[] = [
     protected: true,
     showInSidebar: true,
     showInDashboard: true,
-    visibleRoles: ["ROLE_SUPER_ADMIN", "ROLE_CENTER_ADMIN", "ROLE_DESK"],
-    allowedRoles: ["ROLE_SUPER_ADMIN", "ROLE_CENTER_ADMIN", "ROLE_DESK"],
+    visibleRoles: ["ROLE_SUPER_ADMIN", "ROLE_MANAGER", "ROLE_DESK"],
+    allowedRoles: ["ROLE_SUPER_ADMIN", "ROLE_MANAGER", "ROLE_DESK"],
   },
   {
     key: "memberships",
@@ -133,8 +131,8 @@ export const shellRoutes: ShellRoute[] = [
     protected: true,
     showInSidebar: true,
     showInDashboard: false,
-    visibleRoles: ["ROLE_SUPER_ADMIN", "ROLE_CENTER_ADMIN", "ROLE_MANAGER", "ROLE_DESK", "ROLE_TRAINER"],
-    allowedRoles: ["ROLE_SUPER_ADMIN", "ROLE_CENTER_ADMIN", "ROLE_MANAGER", "ROLE_DESK", "ROLE_TRAINER"],
+    visibleRoles: ["ROLE_SUPER_ADMIN", "ROLE_MANAGER", "ROLE_DESK", "ROLE_TRAINER"],
+    allowedRoles: ["ROLE_SUPER_ADMIN", "ROLE_MANAGER", "ROLE_DESK", "ROLE_TRAINER"],
   },
   {
     key: "audit",
@@ -143,8 +141,8 @@ export const shellRoutes: ShellRoute[] = [
     protected: true,
     showInSidebar: true,
     showInDashboard: false,
-    visibleRoles: ["ROLE_SUPER_ADMIN", "ROLE_CENTER_ADMIN"],
-    allowedRoles: ["ROLE_SUPER_ADMIN", "ROLE_CENTER_ADMIN"],
+    visibleRoles: ["ROLE_SUPER_ADMIN", "ROLE_MANAGER"],
+    allowedRoles: ["ROLE_SUPER_ADMIN", "ROLE_MANAGER"],
   },
   {
     key: "products",

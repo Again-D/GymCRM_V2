@@ -36,7 +36,7 @@ public class CrmMessageController {
     }
 
     @PostMapping("/triggers/membership-expiry-reminder")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<TriggerResponse> triggerMembershipExpiryReminder(@Valid @RequestBody TriggerRequest request) {
         CrmMessageService.TriggerResult result = crmMessageService.triggerMembershipExpiryReminder(
                 new CrmMessageService.TriggerRequest(
@@ -50,7 +50,7 @@ public class CrmMessageController {
     }
 
     @PostMapping("/triggers/birthday-campaign")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<TriggerResponse> triggerBirthdayCampaign(@Valid @RequestBody BirthdayTriggerRequest request) {
         CrmMessageService.TriggerResult result = crmMessageService.triggerBirthdayCampaign(
                 new CrmMessageService.BirthdayTriggerRequest(
@@ -63,7 +63,7 @@ public class CrmMessageController {
     }
 
     @PostMapping("/triggers/event-campaign")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<TriggerResponse> triggerEventCampaign(@Valid @RequestBody EventCampaignTriggerRequest request) {
         CrmMessageService.TriggerResult result = crmMessageService.triggerEventCampaign(
                 new CrmMessageService.EventCampaignTriggerRequest(
@@ -78,14 +78,14 @@ public class CrmMessageController {
     }
 
     @PostMapping("/process")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<ProcessResponse> processPending(@Valid @RequestBody ProcessRequest request) {
         CrmMessageService.ProcessResult result = crmMessageService.processPending(new CrmMessageService.ProcessRequest(request.limit()));
         return ApiResponse.success(ProcessResponse.from(result), "CRM 메시지 큐 처리 완료");
     }
 
     @GetMapping
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<HistoryResponse> listHistory(
             @RequestParam(required = false)
             @Pattern(regexp = "^(?i)(PENDING|RETRY_WAIT|SENT|DEAD)?$", message = "sendStatus is invalid")

@@ -30,7 +30,7 @@ public class AuditLogController {
     }
 
     @GetMapping
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER)
     public ApiResponse<AuditLogListResponse> list(
             @RequestParam(required = false) String eventType, 
             @RequestParam(defaultValue = "100") @Min(1) @Max(500) Integer limit
@@ -42,7 +42,7 @@ public class AuditLogController {
     }
 
     @GetMapping("/retention-runs")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER)
     public ApiResponse<RetentionRunListResponse> listRetentionRuns(
             @RequestParam(required = false) String jobName,
             @RequestParam(defaultValue = "50") @Min(1) @Max(200) Integer limit
@@ -54,7 +54,7 @@ public class AuditLogController {
     }
 
     @PostMapping("/retention-runs")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER)
     public ApiResponse<RetentionRunResponse> recordRetentionRun(@Valid @RequestBody RecordRetentionRunRequest request) {
         AuditRetentionJobRun run = auditLogService.recordRetentionJobRun(
                 request.jobName(),

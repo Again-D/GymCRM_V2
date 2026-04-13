@@ -34,7 +34,7 @@ public class GxScheduleController {
     }
 
     @GetMapping("/snapshot")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK_OR_TRAINER)
     public ApiResponse<GxScheduleSnapshotResponse> getSnapshot(@RequestParam String month) {
         return ApiResponse.success(
                 GxScheduleSnapshotResponse.from(gxScheduleService.getSnapshot(month)),
@@ -43,7 +43,7 @@ public class GxScheduleController {
     }
 
     @PostMapping("/rules")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK_OR_TRAINER)
     public ApiResponse<GxScheduleSnapshotResponse> createRule(
             @RequestParam String month,
             @Valid @RequestBody CreateGxScheduleRuleRequest request
@@ -64,7 +64,7 @@ public class GxScheduleController {
     }
 
     @PutMapping("/rules/{ruleId}")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK_OR_TRAINER)
     public ApiResponse<GxScheduleSnapshotResponse> updateRule(
             @PathVariable Long ruleId,
             @RequestParam String month,
@@ -88,7 +88,7 @@ public class GxScheduleController {
     }
 
     @DeleteMapping("/rules/{ruleId}")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK_OR_TRAINER)
     public ApiResponse<GxScheduleSnapshotResponse> deleteRule(
             @PathVariable Long ruleId,
             @RequestParam String month
@@ -100,7 +100,7 @@ public class GxScheduleController {
     }
 
     @PutMapping("/rules/{ruleId}/exceptions/{date}")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK_OR_TRAINER)
     public ApiResponse<GxScheduleSnapshotResponse> upsertException(
             @PathVariable Long ruleId,
             @PathVariable LocalDate date,
@@ -124,7 +124,7 @@ public class GxScheduleController {
     }
 
     @DeleteMapping("/rules/{ruleId}/exceptions/{date}")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK_OR_TRAINER)
     public ApiResponse<GxScheduleSnapshotResponse> deleteException(
             @PathVariable Long ruleId,
             @PathVariable LocalDate date,

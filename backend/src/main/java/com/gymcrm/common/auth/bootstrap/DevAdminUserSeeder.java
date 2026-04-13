@@ -90,7 +90,7 @@ public class DevAdminUserSeeder implements ApplicationRunner {
                 INSERT INTO user_roles (user_id, role_id, created_by)
                 SELECT :userId, role_id, 0
                 FROM roles
-                WHERE role_code = 'ROLE_CENTER_ADMIN'
+                WHERE role_code = 'ROLE_MANAGER'
                 """)
                 .param("userId", userId)
                 .update();

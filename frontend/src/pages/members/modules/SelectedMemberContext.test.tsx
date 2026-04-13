@@ -186,7 +186,7 @@ describe("SelectedMemberContext", () => {
         username: string;
         primaryRole: string;
         roles: string[];
-      } | null>({ userId: 11, username: "jwt-admin", primaryRole: "ROLE_CENTER_ADMIN", roles: ["ROLE_CENTER_ADMIN"] });
+      } | null>({ userId: 11, username: "jwt-admin", primaryRole: "ROLE_MANAGER", roles: ["ROLE_MANAGER"] });
       setAuthUser = setAuthUserState;
       return (
         <FoundationProviders authValue={{ authUser }}>

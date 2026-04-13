@@ -26,7 +26,6 @@ import java.time.temporal.ChronoUnit;
 @Service
 public class MembershipHoldService {
     private static final String ROLE_SUPER_ADMIN = "ROLE_SUPER_ADMIN";
-    private static final String ROLE_CENTER_ADMIN = "ROLE_CENTER_ADMIN";
     private static final String ROLE_MANAGER = "ROLE_MANAGER";
 
     private final MemberMembershipRepository memberMembershipRepository;
@@ -314,7 +313,6 @@ public class MembershipHoldService {
 
     private boolean canOverrideHoldLimits(String roleCode) {
         return ROLE_SUPER_ADMIN.equals(roleCode)
-                || ROLE_CENTER_ADMIN.equals(roleCode)
                 || ROLE_MANAGER.equals(roleCode);
     }
 

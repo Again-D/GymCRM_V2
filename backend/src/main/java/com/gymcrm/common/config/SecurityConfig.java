@@ -60,7 +60,7 @@ public class SecurityConfig {
                         "/swagger-ui/**",
                         "/swagger-ui.html"
                 ).permitAll()
-                .requestMatchers("/actuator/prometheus").hasAnyRole("CENTER_ADMIN")
+                .requestMatchers("/actuator/prometheus").hasAnyRole("SUPER_ADMIN", "MANAGER")
                 .requestMatchers("/api/v1/**").authenticated()
                 .anyRequest().permitAll()
         );

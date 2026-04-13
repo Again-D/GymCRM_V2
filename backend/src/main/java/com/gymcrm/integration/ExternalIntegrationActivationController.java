@@ -30,7 +30,7 @@ public class ExternalIntegrationActivationController {
     }
 
     @GetMapping("/activation-policy")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER)
     public ApiResponse<PolicyResponse> getPolicy() {
         return ApiResponse.success(
                 PolicyResponse.from(activationService.getPolicy()),
@@ -39,7 +39,7 @@ public class ExternalIntegrationActivationController {
     }
 
     @PutMapping("/activation-policy")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER)
     public ApiResponse<PolicyResponse> updatePolicy(@Valid @RequestBody UpdatePolicyRequest request) {
         ExternalIntegrationActivationPolicy policy = activationService.updatePolicy(
                 new ExternalIntegrationActivationService.UpdatePolicyRequest(
@@ -53,7 +53,7 @@ public class ExternalIntegrationActivationController {
     }
 
     @PostMapping("/sandbox-drill")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER)
     public ApiResponse<DrillResponse> runSandboxDrill(@Valid @RequestBody RunDrillRequest request) {
         ExternalIntegrationActivationService.DrillResult result = activationService.runSandboxDrill(
                 new ExternalIntegrationActivationService.RunDrillRequest(

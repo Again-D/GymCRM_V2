@@ -33,7 +33,7 @@ public class LockerController {
     }
 
     @PostMapping("/slots")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER)
     public ApiResponse<LockerSlotResponse> createSlot(@Valid @RequestBody CreateLockerSlotRequest request) {
         LockerSlot slot = lockerService.createSlot(new LockerService.CreateSlotRequest(
                 request.lockerCode(),
@@ -46,7 +46,7 @@ public class LockerController {
     }
 
     @GetMapping("/slots")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<List<LockerSlotResponse>> listSlots(
             @RequestParam(required = false)
             @Pattern(regexp = "^(?i)(AVAILABLE|ASSIGNED|MAINTENANCE)?$", message = "lockerStatus filter is invalid")
@@ -60,7 +60,7 @@ public class LockerController {
     }
 
     @PostMapping("/assignments")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<LockerAssignmentResponse> assign(@Valid @RequestBody AssignLockerRequest request) {
         LockerAssignment assignment = lockerService.assign(new LockerService.AssignRequest(
                 request.lockerSlotId(),
@@ -73,7 +73,7 @@ public class LockerController {
     }
 
     @PostMapping("/assignments/{lockerAssignmentId}/return")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<LockerAssignmentResponse> returnAssignment(
             @PathVariable Long lockerAssignmentId,
             @Valid @RequestBody ReturnLockerRequest request
@@ -89,7 +89,7 @@ public class LockerController {
     }
 
     @GetMapping("/assignments")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<List<LockerAssignmentResponse>> listAssignments(
             @RequestParam(defaultValue = "true") boolean activeOnly
     ) {

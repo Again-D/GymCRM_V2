@@ -44,6 +44,6 @@ class MembershipSchedulerActorGuardTest {
     }
 
     private AuthUser activeUser(String userStatus) {
-        return new AuthUser(1L, 1L, "scheduler-admin", "hash", "Scheduler Admin", "010-0000-0000", "ROLE_CENTER_ADMIN", userStatus, null, null);
+        return new AuthUser(1L, 1L, "scheduler-admin", "hash", "Scheduler Admin", "010-0000-0000", "ROLE_MANAGER", userStatus, null, null);
     }
 }

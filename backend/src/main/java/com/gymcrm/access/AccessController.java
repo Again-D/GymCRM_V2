@@ -29,7 +29,7 @@ public class AccessController {
     }
 
     @PostMapping("/entry")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<AccessEventResponse> entry(@Valid @RequestBody EntryRequest request) {
         AccessEvent event = accessService.enter(new AccessService.EnterRequest(
                 request.memberId(),
@@ -40,14 +40,14 @@ public class AccessController {
     }
 
     @PostMapping("/exit")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<AccessEventResponse> exit(@Valid @RequestBody ExitRequest request) {
         AccessEvent event = accessService.exit(new AccessService.ExitRequest(request.memberId()));
         return ApiResponse.success(AccessEventResponse.from(event), "퇴장 처리되었습니다.");
     }
 
     @GetMapping("/events")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<List<AccessEventResponse>> listEvents(
             @RequestParam(required = false) Long memberId,
             @RequestParam(required = false) String eventType,
@@ -60,14 +60,14 @@ public class AccessController {
     }
 
     @GetMapping("/presence")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<PresenceResponse> presence() {
         AccessService.PresenceSummary summary = accessService.getPresence();
         return ApiResponse.success(PresenceResponse.from(summary), "출입 현황 조회 성공");
     }
 
     @GetMapping("/alerts")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<AlertResponse> alerts(
             @RequestParam(required = false) @Min(1) @Max(1440) Integer lookbackMinutes,
             @RequestParam(required = false) @Min(1) @Max(100) Integer limit

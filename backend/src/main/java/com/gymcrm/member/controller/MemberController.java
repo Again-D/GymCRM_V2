@@ -39,14 +39,14 @@ public class MemberController {
     }
 
     @PostMapping
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<MemberDetailResponse> create(@Valid @RequestBody MemberCreateRequest request) {
         Member member = memberService.create(request);
         return ApiResponse.success(MemberDetailResponse.from(member), "회원이 등록되었습니다.");
     }
 
     @GetMapping
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK_OR_TRAINER)
     public ApiResponse<List<MemberSummaryResponse>> list(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String memberCode,
@@ -78,7 +78,7 @@ public class MemberController {
     }
 
     @GetMapping("/{memberId}")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_MANAGER_OR_DESK_OR_TRAINER)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK_OR_TRAINER)
     public ApiResponse<MemberDetailResponse> detail(@PathVariable Long memberId) {
         Member member = memberService.get(memberId);
         auditLogService.recordPiiRead(
@@ -90,7 +90,7 @@ public class MemberController {
     }
 
     @PatchMapping("/{memberId}")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<MemberDetailResponse> update(
             @PathVariable Long memberId,
             @Valid @RequestBody MemberUpdateRequest request

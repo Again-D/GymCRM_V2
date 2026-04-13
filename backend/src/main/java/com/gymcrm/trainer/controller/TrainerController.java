@@ -36,7 +36,7 @@ public class TrainerController {
     }
 
     @GetMapping
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<List<TrainerSummaryResponse>> list(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String keyword,
@@ -49,7 +49,7 @@ public class TrainerController {
     }
 
     @GetMapping("/{userId}")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN_OR_DESK)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<?> detail(@PathVariable Long userId) {
         TrainerDetail detail = trainerService.getDetail(userId);
         if (detail.accountFieldsVisible()) {
@@ -59,7 +59,7 @@ public class TrainerController {
     }
 
     @PostMapping
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER)
     public ApiResponse<TrainerAdminDetailResponse> create(@Valid @RequestBody CreateTrainerRequest request) {
         TrainerDetail detail = trainerService.create(new TrainerService.CreateTrainerCommand(
                 request.centerId(),
@@ -74,7 +74,7 @@ public class TrainerController {
     }
 
     @PatchMapping("/{userId}")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER)
     public ApiResponse<TrainerAdminDetailResponse> update(@PathVariable Long userId, @Valid @RequestBody UpdateTrainerRequest request) {
         TrainerDetail detail = trainerService.update(userId, new TrainerService.UpdateTrainerCommand(
                 request.loginId(),
@@ -87,7 +87,7 @@ public class TrainerController {
     }
 
     @PatchMapping("/{userId}/status")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_CENTER_ADMIN)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER)
     public ApiResponse<TrainerAdminDetailResponse> updateStatus(@PathVariable Long userId, @Valid @RequestBody UpdateTrainerStatusRequest request) {
         TrainerDetail detail = trainerService.updateStatus(userId, request.userStatus());
         return ApiResponse.success(TrainerAdminDetailResponse.from(detail), "트레이너 상태를 변경했습니다.");
