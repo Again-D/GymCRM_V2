@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { setMockApiModeForTests } from "../../../api/client";
+import { resetMockData } from "../../../api/mockData";
 import { useSelectedMemberReservationsState } from "./useSelectedMemberReservationsState";
 
 function createTestQueryClient() {
@@ -25,10 +26,11 @@ function TestWrapper({ children, client }: { children: ReactNode; client: QueryC
 }
 
 describe("useSelectedMemberReservationsState", () => {
-  beforeEach(() => {
-    vi.restoreAllMocks();
-    setMockApiModeForTests(null);
-  });
+	beforeEach(() => {
+		vi.restoreAllMocks();
+		setMockApiModeForTests(null);
+		resetMockData();
+	});
 
   const TEST_TIMEOUT = 30000;
 
@@ -64,72 +66,92 @@ describe("useSelectedMemberReservationsState", () => {
     expect(result.current.selectedMemberReservations[0]?.reservationId).toBe(5001);
   }, TEST_TIMEOUT);
 
-  it("creates and mutates local reservation state in mock mode", async () => {
-    setMockApiModeForTests(true);
-    const queryClient = createTestQueryClient();
-    const { result } = renderHook(() => useSelectedMemberReservationsState(), {
-      wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper>,
-    });
+	  it("creates and mutates local reservation state in mock mode", async () => {
+	    setMockApiModeForTests(true);
+	    const queryClient = createTestQueryClient();
+	    const { result } = renderHook(() => useSelectedMemberReservationsState(), {
+	      wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper>,
+	    });
 
-    await act(async () => {
-      await result.current.loadSelectedMemberReservations(101);
-    });
+	    await act(async () => {
+	      await result.current.loadSelectedMemberReservations(101);
+	    });
 
-    let reservationId = 0;
-    await act(async () => {
-      const created = await result.current.createReservation({
-        memberId: 101,
-        membershipId: 9001,
-        scheduleId: 7001
-      });
-      reservationId = created.reservationId;
-    });
+	    await waitFor(() => {
+	      expect(result.current.selectedMemberReservations.length).toBeGreaterThan(0);
+	    });
+	    const initialCount = result.current.selectedMemberReservations.length;
 
-    await waitFor(() => {
-      expect(result.current.selectedMemberReservations).toHaveLength(1);
-    });
-    expect(result.current.selectedMemberReservations[0]?.reservationStatus).toBe("CONFIRMED");
+	    let reservationId = 0;
+	    await act(async () => {
+	      const created = await result.current.createReservation({
+	        memberId: 101,
+	        membershipId: 9001,
+	        scheduleId: 7001
+	      });
+	      reservationId = created.reservationId;
+	    });
 
-    await act(async () => {
-      await result.current.checkInReservation(101, reservationId);
-    });
-    await act(async () => {
-      await result.current.completeReservation(101, reservationId);
-    });
+	    await waitFor(() => {
+	      expect(result.current.selectedMemberReservations).toHaveLength(initialCount + 1);
+	    });
+	    const createdReservation = result.current.selectedMemberReservations.find(
+	      (reservation) => reservation.reservationId === reservationId,
+	    );
+	    expect(createdReservation?.reservationStatus).toBe("CONFIRMED");
 
-    await waitFor(() => {
-      expect(result.current.selectedMemberReservations).toHaveLength(1);
-      expect(result.current.selectedMemberReservations[0]?.checkedInAt).not.toBeNull();
-      expect(result.current.selectedMemberReservations[0]?.reservationStatus).toBe("COMPLETED");
-    });
-  }, TEST_TIMEOUT);
+	    await act(async () => {
+	      await result.current.checkInReservation(101, reservationId);
+	    });
+	    await act(async () => {
+	      await result.current.completeReservation(101, reservationId);
+	    });
 
-  it("creates PT reservations through dedicated flow in mock mode", async () => {
-    setMockApiModeForTests(true);
-    const queryClient = createTestQueryClient();
-    const { result } = renderHook(() => useSelectedMemberReservationsState(), {
-      wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper>,
-    });
+	    await waitFor(() => {
+	      const completedReservation = result.current.selectedMemberReservations.find(
+	        (reservation) => reservation.reservationId === reservationId,
+	      );
+	      expect(completedReservation?.checkedInAt).not.toBeNull();
+	      expect(completedReservation?.reservationStatus).toBe("COMPLETED");
+	    });
+	  }, TEST_TIMEOUT);
 
-    await act(async () => {
-      await result.current.loadSelectedMemberReservations(101);
-    });
+	  it("creates PT reservations through dedicated flow in mock mode", async () => {
+	    setMockApiModeForTests(true);
+	    const queryClient = createTestQueryClient();
+	    const { result } = renderHook(() => useSelectedMemberReservationsState(), {
+	      wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper>,
+	    });
 
-    await act(async () => {
-      await result.current.createPtReservation({
-        memberId: 101,
-        membershipId: 9001,
-        trainerUserId: 41,
-        startAt: "2026-03-16T10:00:00+09:00",
-        memo: "pt",
-      });
-    });
+	    await act(async () => {
+	      await result.current.loadSelectedMemberReservations(101);
+	    });
 
-    await waitFor(() => {
-      expect(result.current.selectedMemberReservations).toHaveLength(1);
-    });
-    expect(result.current.selectedMemberReservations[0]?.reservationStatus).toBe("CONFIRMED");
-  }, TEST_TIMEOUT);
+	    await waitFor(() => {
+	      expect(result.current.selectedMemberReservations.length).toBeGreaterThan(0);
+	    });
+	    const initialCount = result.current.selectedMemberReservations.length;
+
+	    let createdReservationId = 0;
+	    await act(async () => {
+	      const created = await result.current.createPtReservation({
+	        memberId: 101,
+	        membershipId: 9001,
+	        trainerUserId: 41,
+	        startAt: "2026-03-16T10:00:00+09:00",
+	        memo: "pt",
+	      });
+	      createdReservationId = created.reservationId;
+	    });
+
+	    await waitFor(() => {
+	      expect(result.current.selectedMemberReservations).toHaveLength(initialCount + 1);
+	    });
+	    const createdReservation = result.current.selectedMemberReservations.find(
+	      (reservation) => reservation.reservationId === createdReservationId,
+	    );
+	    expect(createdReservation?.reservationStatus).toBe("CONFIRMED");
+	  }, TEST_TIMEOUT);
 
   it("creates reservations through live API mode", async () => {
     setMockApiModeForTests(false);

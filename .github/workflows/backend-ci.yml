@@ -1,0 +1,43 @@
+name: backend-ci
+
+on:
+  pull_request:
+    branches: [develop, main]
+
+permissions:
+  contents: read
+
+jobs:
+  backend-ci:
+    name: backend-ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect backend changes
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+
+      - name: Skip (no backend changes)
+        if: steps.changes.outputs.backend != 'true'
+        run: echo "No backend/** changes. Skipping backend CI steps."
+
+      - name: Set up JDK 21
+        if: steps.changes.outputs.backend == 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Run unit tests (excluding IntegrationTest)
+        if: steps.changes.outputs.backend == 'true'
+        working-directory: backend
+        run: ./gradlew test --no-daemon

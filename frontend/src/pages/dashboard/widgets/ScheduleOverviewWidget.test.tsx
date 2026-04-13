@@ -50,6 +50,8 @@ describe("ScheduleOverviewWidget", () => {
     // The current date in tests should ideally be deterministic but we can at least check
     // if the skeleton disappears and some descriptive content appears.
     
-    expect(await screen.findByText(/오늘 예정된 수업|GX 스냅샷/)).toBeTruthy();
+    expect(
+      await screen.findByText(/오늘의 수업 일정|오늘 예정된 수업|GX 스냅샷/),
+    ).toBeTruthy();
   });
 });

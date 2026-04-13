@@ -71,17 +71,20 @@ describe("GxSchedulesPage", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		appQueryClient.clear();
+		const okEnvelope = <T,>(data: T) => ({
+			success: true,
+			data,
+			message: "OK",
+			timestamp: "2026-01-01T00:00:00Z",
+			traceId: "test-trace",
+		});
 		vi.mocked(apiGet).mockImplementation((url: string) => {
 			if (url.includes("snapshot")) {
-				return Promise.resolve({
-					success: true,
-					data: JSON.parse(JSON.stringify(mockSnapshot)),
-				});
+				return Promise.resolve(
+					okEnvelope(JSON.parse(JSON.stringify(mockSnapshot))),
+				);
 			}
-			return Promise.resolve({
-				success: true,
-				data: JSON.parse(JSON.stringify(mockTrainers)),
-			});
+			return Promise.resolve(okEnvelope(JSON.parse(JSON.stringify(mockTrainers))));
 		});
 	});
 

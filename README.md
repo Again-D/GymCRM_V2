@@ -6,6 +6,16 @@ GYM CRM 프로토타입 저장소입니다.
 - 관리자 포털 핵심 업무 프로토타입 완료 (Phase 1~4)
 - Phase 5 진행 중: `JWT + Refresh Token + RBAC + traceId` 운영 기본기 도입
 
+## CI
+
+PR 게이트(머지 차단, 필수 체크로 설정):
+- `backend-ci`: `cd backend && ./gradlew test` (DB/Redis 의존 `*IntegrationTest` 제외)
+- `frontend-ci`: `cd frontend && npm ci && npm run build && npm test` + Biome check(변경된 frontend 파일만)
+
+Nightly 통합 테스트(`develop` 기준, 소프트 블록):
+- `nightly-integration`: `docker compose`로 Postgres/Redis 기동 후 `cd backend && ./gradlew integrationTest` 실행
+- 실패 알림은 현재 GitHub Issue 생성/갱신으로 처리 (Slack/Discord 등 팀 채널은 후속으로 연결)
+
 ## Local Run
 
 개발 DB(권장: Docker PostgreSQL):
