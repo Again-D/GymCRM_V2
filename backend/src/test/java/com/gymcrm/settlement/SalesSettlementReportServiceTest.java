@@ -85,7 +85,12 @@ class SalesSettlementReportServiceTest {
         assertThat(result.totalGrossSales()).isEqualByComparingTo("100000");
         assertThat(result.totalRefundAmount()).isEqualByComparingTo("20000");
         assertThat(result.totalNetSales()).isEqualByComparingTo("80000");
-        assertThat(result.trend()).hasSize(1);
+        assertThat(result.trend()).hasSize(31);
+        assertThat(result.trend().get(0).bucketStartDate()).isEqualTo(startDate);
+        assertThat(result.trend().get(0).grossSales()).isEqualByComparingTo("100000");
+        assertThat(result.trend().get(1).bucketStartDate()).isEqualTo(startDate.plusDays(1));
+        assertThat(result.trend().get(1).grossSales()).isEqualByComparingTo("0");
+        assertThat(result.trend().get(30).bucketStartDate()).isEqualTo(endDate);
         verify(repository).findSalesRows(any());
         verify(repository).findTrendRows(any(), any());
         verify(cacheService).put(1L, result);
@@ -115,53 +120,126 @@ class SalesSettlementReportServiceTest {
     }
 
     @Test
-    void mapsTrendLabelsForNonDailyGranularities() {
+    void fillsMissingBucketsForWeeklyMonthlyAndYearlyGranularities() {
+        assertFilledTrend(
+                new SalesSettlementReportService.ReportQuery(
+                        LocalDate.of(2026, 3, 1),
+                        LocalDate.of(2026, 3, 31),
+                        null,
+                        null,
+                        "WEEKLY"
+                ),
+                List.of(
+                        new SalesSettlementReportRepository.SalesTrendRow(
+                                LocalDate.of(2026, 3, 2),
+                                BigDecimal.ONE,
+                                BigDecimal.ZERO,
+                                BigDecimal.ONE,
+                                1L
+                        )
+                ),
+                List.of(
+                        LocalDate.of(2026, 2, 23),
+                        LocalDate.of(2026, 3, 2),
+                        LocalDate.of(2026, 3, 9),
+                        LocalDate.of(2026, 3, 16),
+                        LocalDate.of(2026, 3, 23),
+                        LocalDate.of(2026, 3, 30)
+                ),
+                List.of(
+                        "2026-02-23 주간",
+                        "2026-03-02 주간",
+                        "2026-03-09 주간",
+                        "2026-03-16 주간",
+                        "2026-03-23 주간",
+                        "2026-03-30 주간"
+                ),
+                1
+        );
+
+        assertFilledTrend(
+                new SalesSettlementReportService.ReportQuery(
+                        LocalDate.of(2026, 3, 15),
+                        LocalDate.of(2026, 5, 10),
+                        null,
+                        null,
+                        "MONTHLY"
+                ),
+                List.of(
+                        new SalesSettlementReportRepository.SalesTrendRow(
+                                LocalDate.of(2026, 4, 1),
+                                BigDecimal.ONE,
+                                BigDecimal.ZERO,
+                                BigDecimal.ONE,
+                                1L
+                        )
+                ),
+                List.of(
+                        LocalDate.of(2026, 3, 1),
+                        LocalDate.of(2026, 4, 1),
+                        LocalDate.of(2026, 5, 1)
+                ),
+                List.of("2026-03", "2026-04", "2026-05"),
+                1
+        );
+
+        assertFilledTrend(
+                new SalesSettlementReportService.ReportQuery(
+                        LocalDate.of(2025, 12, 15),
+                        LocalDate.of(2027, 1, 15),
+                        null,
+                        null,
+                        "YEARLY"
+                ),
+                List.of(
+                        new SalesSettlementReportRepository.SalesTrendRow(
+                                LocalDate.of(2026, 1, 1),
+                                BigDecimal.ONE,
+                                BigDecimal.ZERO,
+                                BigDecimal.ONE,
+                                1L
+                        )
+                ),
+                List.of(
+                        LocalDate.of(2025, 1, 1),
+                        LocalDate.of(2026, 1, 1),
+                        LocalDate.of(2027, 1, 1)
+                ),
+                List.of("2025", "2026", "2027"),
+                1
+        );
+    }
+
+    @Test
+    void returnsZeroFilledTrendWhenNoBucketsMatch() {
         SalesSettlementReportRepository repository = mock(SalesSettlementReportRepository.class);
         SalesSettlementReportCacheService cacheService = mock(SalesSettlementReportCacheService.class);
         CurrentUserProvider currentUserProvider = mock(CurrentUserProvider.class);
         SalesSettlementReportService service = new SalesSettlementReportService(repository, cacheService, currentUserProvider);
 
         given(currentUserProvider.currentCenterId()).willReturn(1L);
+        given(cacheService.get(1L, LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 3), null, null, "DAILY"))
+                .willReturn(Optional.empty());
         given(repository.findSalesRows(any())).willReturn(List.of());
-        given(repository.findTrendRows(any(), any())).willReturn(List.of(
-                new SalesSettlementReportRepository.SalesTrendRow(
-                        LocalDate.of(2026, 3, 2),
-                        BigDecimal.ONE,
-                        BigDecimal.ZERO,
-                        BigDecimal.ONE,
-                        1L
-                )
+        given(repository.findTrendRows(any(), any())).willReturn(List.of());
+
+        SalesSettlementReportService.SalesReportResult result = service.getReport(new SalesSettlementReportService.ReportQuery(
+                LocalDate.of(2026, 3, 1),
+                LocalDate.of(2026, 3, 3),
+                null,
+                null,
+                "DAILY"
         ));
 
-        given(cacheService.get(1L, LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 31), null, null, "WEEKLY"))
-                .willReturn(Optional.empty());
-        assertThat(service.getReport(new SalesSettlementReportService.ReportQuery(
-                LocalDate.of(2026, 3, 1),
-                LocalDate.of(2026, 3, 31),
-                null,
-                null,
-                "WEEKLY"
-        )).trend().getFirst().bucketLabel()).isEqualTo("2026-03-02 주간");
-
-        given(cacheService.get(1L, LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 31), null, null, "MONTHLY"))
-                .willReturn(Optional.empty());
-        assertThat(service.getReport(new SalesSettlementReportService.ReportQuery(
-                LocalDate.of(2026, 3, 1),
-                LocalDate.of(2026, 3, 31),
-                null,
-                null,
-                "MONTHLY"
-        )).trend().getFirst().bucketLabel()).isEqualTo("2026-03");
-
-        given(cacheService.get(1L, LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 31), null, null, "YEARLY"))
-                .willReturn(Optional.empty());
-        assertThat(service.getReport(new SalesSettlementReportService.ReportQuery(
-                LocalDate.of(2026, 3, 1),
-                LocalDate.of(2026, 3, 31),
-                null,
-                null,
-                "YEARLY"
-        )).trend().getFirst().bucketLabel()).isEqualTo("2026");
+        assertThat(result.trend()).hasSize(3);
+        assertThat(result.trend()).extracting(SalesSettlementReportService.SalesTrendPoint::bucketStartDate)
+                .containsExactly(
+                        LocalDate.of(2026, 3, 1),
+                        LocalDate.of(2026, 3, 2),
+                        LocalDate.of(2026, 3, 3)
+                );
+        assertThat(result.trend()).extracting(SalesSettlementReportService.SalesTrendPoint::grossSales)
+                .containsExactly(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
     }
 
     @Test
@@ -207,5 +285,41 @@ class SalesSettlementReportServiceTest {
                         2L
                 ))
         );
+    }
+
+    private void assertFilledTrend(
+            SalesSettlementReportService.ReportQuery query,
+            List<SalesSettlementReportRepository.SalesTrendRow> trendRows,
+            List<LocalDate> expectedBucketDates,
+            List<String> expectedLabels,
+            int nonZeroBucketIndex
+    ) {
+        SalesSettlementReportRepository repository = mock(SalesSettlementReportRepository.class);
+        SalesSettlementReportCacheService cacheService = mock(SalesSettlementReportCacheService.class);
+        CurrentUserProvider currentUserProvider = mock(CurrentUserProvider.class);
+        SalesSettlementReportService service = new SalesSettlementReportService(repository, cacheService, currentUserProvider);
+
+        given(currentUserProvider.currentCenterId()).willReturn(1L);
+        given(cacheService.get(1L, query.startDate(), query.endDate(), query.paymentMethod(), query.productKeyword(), query.trendGranularity()))
+                .willReturn(Optional.empty());
+        given(repository.findSalesRows(any())).willReturn(List.of());
+        given(repository.findTrendRows(any(), any())).willReturn(trendRows);
+
+        SalesSettlementReportService.SalesReportResult result = service.getReport(query);
+
+        assertThat(result.trend()).extracting(SalesSettlementReportService.SalesTrendPoint::bucketStartDate)
+                .containsExactlyElementsOf(expectedBucketDates);
+        assertThat(result.trend()).extracting(SalesSettlementReportService.SalesTrendPoint::bucketLabel)
+                .containsExactlyElementsOf(expectedLabels);
+        assertThat(result.trend().get(nonZeroBucketIndex).grossSales()).isEqualByComparingTo("1");
+        for (int i = 0; i < result.trend().size(); i++) {
+            if (i == nonZeroBucketIndex) {
+                continue;
+            }
+            assertThat(result.trend().get(i).grossSales()).isEqualByComparingTo("0");
+            assertThat(result.trend().get(i).refundAmount()).isEqualByComparingTo("0");
+            assertThat(result.trend().get(i).netSales()).isEqualByComparingTo("0");
+            assertThat(result.trend().get(i).transactionCount()).isZero();
+        }
     }
 }

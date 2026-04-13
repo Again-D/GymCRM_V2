@@ -142,6 +142,34 @@ class SalesSettlementApiIntegrationTest {
     }
 
     @Test
+    @Transactional
+    void salesReportExposesFilledTrendBucketsInJson() throws Exception {
+        String adminToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
+        LocalDate baseDate = LocalDate.of(2099, 7, 15);
+        String keyword = "API-GAP-" + UUID.randomUUID().toString().substring(0, 6);
+        long productId = insertProduct(keyword);
+        long memberId = insertMember(baseDate);
+        long membershipId = insertMembership(memberId, productId, keyword + "-PT", baseDate, baseDate.plusDays(3));
+
+        insertPayment(memberId, membershipId, "PURCHASE", new BigDecimal("100000"), baseDate.atTime(1, 0).atOffset(ZoneOffset.UTC));
+        insertPayment(memberId, membershipId, "PURCHASE", new BigDecimal("50000"), baseDate.plusDays(2).atTime(1, 0).atOffset(ZoneOffset.UTC));
+
+        mockMvc.perform(get("/api/v1/settlements/sales-report")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .param("startDate", baseDate.toString())
+                        .param("endDate", baseDate.plusDays(2).toString())
+                        .param("paymentMethod", "CARD")
+                        .param("productKeyword", keyword)
+                        .param("trendGranularity", "DAILY"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.trend.length()").value(3))
+                .andExpect(jsonPath("$.data.trend[0].bucketStartDate").value(baseDate.toString()))
+                .andExpect(jsonPath("$.data.trend[1].bucketStartDate").value(baseDate.plusDays(1).toString()))
+                .andExpect(jsonPath("$.data.trend[1].grossSales").value(0))
+                .andExpect(jsonPath("$.data.trend[2].bucketStartDate").value(baseDate.plusDays(2).toString()));
+    }
+
+    @Test
     void salesReportRejectsInvalidTrendGranularityAtHttpBoundary() throws Exception {
         String adminToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
 

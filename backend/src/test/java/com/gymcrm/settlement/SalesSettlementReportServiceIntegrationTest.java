@@ -126,6 +126,63 @@ class SalesSettlementReportServiceIntegrationTest {
 
     @Test
     @Transactional
+    void reportFillsMissingDailyBucketsWithZeros() {
+        LocalDate reportDate = LocalDate.of(2026, 3, 1);
+        String keyword = "DAILY-GAP-" + UUID.randomUUID().toString().substring(0, 6);
+        Member member = createActiveMember();
+        Product product = createCountProduct(keyword, new BigDecimal("100000"));
+        long membershipId = insertMembership(member.memberId(), product.productId(), keyword, reportDate);
+
+        insertPayment(member.memberId(), membershipId, "PURCHASE", "CARD", new BigDecimal("100000"),
+                OffsetDateTime.parse("2026-03-01T01:00:00Z"));
+        insertPayment(member.memberId(), membershipId, "PURCHASE", "CARD", new BigDecimal("50000"),
+                OffsetDateTime.parse("2026-03-03T01:00:00Z"));
+
+        SalesSettlementReportService.SalesReportResult report = reportService.getReport(
+                new SalesSettlementReportService.ReportQuery(reportDate, reportDate.plusDays(2), "CARD", keyword, "DAILY")
+        );
+
+        assertEquals(3, report.trend().size());
+        assertEquals(LocalDate.of(2026, 3, 1), report.trend().get(0).bucketStartDate());
+        assertEquals(LocalDate.of(2026, 3, 2), report.trend().get(1).bucketStartDate());
+        assertEquals(LocalDate.of(2026, 3, 3), report.trend().get(2).bucketStartDate());
+        assertTrue(report.trend().get(0).grossSales().compareTo(BigDecimal.ZERO) > 0);
+        assertEquals(0, BigDecimal.ZERO.compareTo(report.trend().get(1).grossSales()));
+        assertTrue(report.trend().get(2).grossSales().compareTo(BigDecimal.ZERO) > 0);
+    }
+
+    @Test
+    @Transactional
+    void reportFillsMissingWeeklyBucketsAcrossRequestedRange() {
+        LocalDate reportDate = LocalDate.of(2026, 3, 1);
+        String keyword = "WEEKLY-GAP-" + UUID.randomUUID().toString().substring(0, 6);
+        Member member = createActiveMember();
+        Product product = createCountProduct(keyword, new BigDecimal("100000"));
+        long membershipId = insertMembership(member.memberId(), product.productId(), keyword, reportDate);
+
+        insertPayment(member.memberId(), membershipId, "PURCHASE", "CARD", new BigDecimal("100000"),
+                OffsetDateTime.parse("2026-02-28T15:30:00Z"));
+        insertPayment(member.memberId(), membershipId, "PURCHASE", "CARD", new BigDecimal("50000"),
+                OffsetDateTime.parse("2026-03-03T15:30:00Z"));
+
+        SalesSettlementReportService.SalesReportResult report = reportService.getReport(
+                new SalesSettlementReportService.ReportQuery(reportDate, reportDate.plusDays(30), "CARD", keyword, "WEEKLY")
+        );
+
+        assertEquals(6, report.trend().size());
+        assertEquals(LocalDate.of(2026, 2, 23), report.trend().get(0).bucketStartDate());
+        assertEquals(LocalDate.of(2026, 3, 2), report.trend().get(1).bucketStartDate());
+        assertEquals(LocalDate.of(2026, 3, 30), report.trend().get(5).bucketStartDate());
+        assertTrue(report.trend().get(0).grossSales().compareTo(BigDecimal.ZERO) > 0);
+        assertTrue(report.trend().get(1).grossSales().compareTo(BigDecimal.ZERO) > 0);
+        assertEquals(0, BigDecimal.ZERO.compareTo(report.trend().get(2).grossSales()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(report.trend().get(3).grossSales()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(report.trend().get(4).grossSales()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(report.trend().get(5).grossSales()));
+    }
+
+    @Test
+    @Transactional
     void reportUsesBusinessTimezoneForDailyBoundaries() {
         LocalDate reportDate = LocalDate.of(2026, 3, 1);
         String keyword = "TZ-SAL-" + UUID.randomUUID().toString().substring(0, 6);
@@ -212,7 +269,7 @@ class SalesSettlementReportServiceIntegrationTest {
 
     @Test
     @Transactional
-    void reportSupportsWeeklyMonthlyAndYearlyTrendBuckets() {
+    void reportSupportsMonthlyAndYearlyTrendBucketsAcrossRequestedRange() {
         LocalDate reportDate = LocalDate.of(2026, 3, 1);
         String keyword = "GRAN-" + UUID.randomUUID().toString().substring(0, 6);
         Member member = createActiveMember();
@@ -222,22 +279,26 @@ class SalesSettlementReportServiceIntegrationTest {
         insertPayment(member.memberId(), membershipId, "PURCHASE", "CARD", new BigDecimal("100000"),
                 OffsetDateTime.parse("2026-03-03T03:00:00Z"));
 
-        SalesSettlementReportService.SalesReportResult weeklyReport = reportService.getReport(
-                new SalesSettlementReportService.ReportQuery(reportDate, reportDate.plusDays(30), "CARD", keyword, "WEEKLY")
-        );
         SalesSettlementReportService.SalesReportResult monthlyReport = reportService.getReport(
-                new SalesSettlementReportService.ReportQuery(reportDate, reportDate.plusDays(30), "CARD", keyword, "MONTHLY")
+                new SalesSettlementReportService.ReportQuery(reportDate, reportDate.plusMonths(2), "CARD", keyword, "MONTHLY")
         );
         SalesSettlementReportService.SalesReportResult yearlyReport = reportService.getReport(
-                new SalesSettlementReportService.ReportQuery(reportDate, reportDate.plusDays(30), "CARD", keyword, "YEARLY")
+                new SalesSettlementReportService.ReportQuery(LocalDate.of(2025, 12, 15), LocalDate.of(2027, 1, 15), "CARD", keyword, "YEARLY")
         );
 
-        assertEquals(LocalDate.of(2026, 3, 2), weeklyReport.trend().get(0).bucketStartDate());
-        assertEquals("2026-03-02 주간", weeklyReport.trend().get(0).bucketLabel());
+        assertEquals(3, monthlyReport.trend().size());
         assertEquals(LocalDate.of(2026, 3, 1), monthlyReport.trend().get(0).bucketStartDate());
         assertEquals("2026-03", monthlyReport.trend().get(0).bucketLabel());
-        assertEquals(LocalDate.of(2026, 1, 1), yearlyReport.trend().get(0).bucketStartDate());
-        assertEquals("2026", yearlyReport.trend().get(0).bucketLabel());
+        assertEquals(LocalDate.of(2026, 4, 1), monthlyReport.trend().get(1).bucketStartDate());
+        assertEquals(LocalDate.of(2026, 5, 1), monthlyReport.trend().get(2).bucketStartDate());
+
+        assertEquals(3, yearlyReport.trend().size());
+        assertEquals(LocalDate.of(2025, 1, 1), yearlyReport.trend().get(0).bucketStartDate());
+        assertEquals("2025", yearlyReport.trend().get(0).bucketLabel());
+        assertEquals(LocalDate.of(2026, 1, 1), yearlyReport.trend().get(1).bucketStartDate());
+        assertEquals("2026", yearlyReport.trend().get(1).bucketLabel());
+        assertEquals(LocalDate.of(2027, 1, 1), yearlyReport.trend().get(2).bucketStartDate());
+        assertEquals("2027", yearlyReport.trend().get(2).bucketLabel());
     }
 
     private Member createActiveMember() {

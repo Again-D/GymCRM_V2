@@ -25,14 +25,32 @@ class SalesSettlementCsvExporterTest {
                 new BigDecimal("100000"),
                 new BigDecimal("20000"),
                 new BigDecimal("80000"),
-                List.of(new SalesSettlementReportService.SalesTrendPoint(
-                        LocalDate.of(2026, 3, 1),
-                        "2026-03-01",
-                        new BigDecimal("100000"),
-                        new BigDecimal("20000"),
-                        new BigDecimal("80000"),
-                        2L
-                )),
+                List.of(
+                        new SalesSettlementReportService.SalesTrendPoint(
+                                LocalDate.of(2026, 3, 1),
+                                "2026-03-01",
+                                new BigDecimal("100000"),
+                                new BigDecimal("20000"),
+                                new BigDecimal("80000"),
+                                2L
+                        ),
+                        new SalesSettlementReportService.SalesTrendPoint(
+                                LocalDate.of(2026, 3, 2),
+                                "2026-03-02",
+                                BigDecimal.ZERO,
+                                BigDecimal.ZERO,
+                                BigDecimal.ZERO,
+                                0L
+                        ),
+                        new SalesSettlementReportService.SalesTrendPoint(
+                                LocalDate.of(2026, 3, 3),
+                                "2026-03-03",
+                                new BigDecimal("50000"),
+                                BigDecimal.ZERO,
+                                new BigDecimal("50000"),
+                                1L
+                        )
+                ),
                 List.of(new SalesSettlementReportService.SalesReportRow(
                         "PT, Premium \"A\"",
                         "CARD",
@@ -54,6 +72,8 @@ class SalesSettlementCsvExporterTest {
             assertEquals("버킷 라벨", workbook.getSheet("Trend").getRow(0).getCell(1).getStringCellValue());
             assertEquals("2026-03-01", workbook.getSheet("Trend").getRow(1).getCell(1).getStringCellValue());
             assertEquals(2D, workbook.getSheet("Trend").getRow(1).getCell(5).getNumericCellValue());
+            assertEquals("2026-03-02", workbook.getSheet("Trend").getRow(2).getCell(1).getStringCellValue());
+            assertEquals(0D, workbook.getSheet("Trend").getRow(2).getCell(5).getNumericCellValue());
 
             assertEquals("상품명", workbook.getSheet("Details").getRow(0).getCell(0).getStringCellValue());
             assertEquals("PT, Premium \"A\"", workbook.getSheet("Details").getRow(1).getCell(0).getStringCellValue());
