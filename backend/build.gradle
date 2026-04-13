@@ -65,6 +65,22 @@ tasks.named('test') {
     useJUnitPlatform()
     systemProperty 'spring.datasource.hikari.maximum-pool-size', '2'
     systemProperty 'spring.datasource.hikari.minimum-idle', '0'
+    exclude '**/*IntegrationTest.*'
+}
+
+tasks.register('integrationTest', Test) {
+    group = 'verification'
+    description = 'Runs DB/Redis-backed integration tests (*IntegrationTest)'
+
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+
+    useJUnitPlatform()
+    systemProperty 'spring.datasource.hikari.maximum-pool-size', '2'
+    systemProperty 'spring.datasource.hikari.minimum-idle', '0'
+
+    include '**/*IntegrationTest.*'
+    shouldRunAfter tasks.named('test')
 }
 
 tasks.named('compileJava') {
