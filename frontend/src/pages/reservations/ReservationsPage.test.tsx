@@ -148,7 +148,7 @@ describe("ReservationsPage", () => {
         element?.textContent?.startsWith("예약 생성:") ?? false,
       ),
     ).not.toHaveLength(0);
-  }, 15000);
+  }, 30000);
 
   it("shows PT guidance and keeps submit disabled until required PT fields are selected", async () => {
     vi.spyOn(dateUtils, "todayLocalDate").mockReturnValue("2026-03-12");

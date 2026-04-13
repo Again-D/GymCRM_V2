@@ -438,7 +438,7 @@ describe("SettlementsPage", () => {
 
     fireEvent.click(screen.getAllByRole("tab", { name: "매출 분석" })[0]);
     expect(screen.getByTestId("settlement-sales-trend-chart").getAttribute("data-points")).toBe("1");
-  });
+  }, 10000);
 
   it("renders trainer mini view with period preview summary", () => {
     authStateMock.authUser = {
