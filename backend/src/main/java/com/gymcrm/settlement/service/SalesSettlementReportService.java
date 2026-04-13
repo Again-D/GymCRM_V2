@@ -12,6 +12,11 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.DayOfWeek;
+import java.time.temporal.TemporalAdjusters;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.List;
 
 @Service
@@ -98,16 +103,12 @@ public class SalesSettlementReportService {
                 ))
                 .toList();
 
-        List<SalesTrendPoint> trend = trendRows.stream()
-                .map(row -> new SalesTrendPoint(
-                        row.bucketStartDate(),
-                        validated.trendGranularity().labelFor(row.bucketStartDate()),
-                        nullSafe(row.grossSales()),
-                        nullSafe(row.refundAmount()),
-                        nullSafe(row.netSales()),
-                        row.transactionCount() == null ? 0L : row.transactionCount()
-                ))
-                .toList();
+        List<SalesTrendPoint> trend = expandTrend(
+                validated.startDate(),
+                validated.endDate(),
+                validated.trendGranularity(),
+                trendRows
+        );
 
         SalesReportResult result = new SalesReportResult(
                 validated.startDate(),
@@ -182,6 +183,37 @@ public class SalesSettlementReportService {
 
     private BigDecimal nullSafe(BigDecimal value) {
         return value == null ? BigDecimal.ZERO : value;
+    }
+
+    private List<SalesTrendPoint> expandTrend(
+            LocalDate startDate,
+            LocalDate endDate,
+            TrendGranularity trendGranularity,
+            List<SalesSettlementReportRepository.SalesTrendRow> trendRows
+    ) {
+        Map<LocalDate, SalesSettlementReportRepository.SalesTrendRow> trendRowsByBucket = new LinkedHashMap<>();
+        for (SalesSettlementReportRepository.SalesTrendRow row : trendRows) {
+            trendRowsByBucket.put(row.bucketStartDate(), row);
+        }
+
+        List<SalesTrendPoint> trend = new ArrayList<>();
+        LocalDate currentBucket = trendGranularity.alignToBucketStart(startDate);
+        LocalDate lastBucket = trendGranularity.alignToBucketStart(endDate);
+
+        while (!currentBucket.isAfter(lastBucket)) {
+            SalesSettlementReportRepository.SalesTrendRow row = trendRowsByBucket.get(currentBucket);
+            trend.add(new SalesTrendPoint(
+                    currentBucket,
+                    trendGranularity.labelFor(currentBucket),
+                    row == null ? BigDecimal.ZERO : nullSafe(row.grossSales()),
+                    row == null ? BigDecimal.ZERO : nullSafe(row.refundAmount()),
+                    row == null ? BigDecimal.ZERO : nullSafe(row.netSales()),
+                    row == null || row.transactionCount() == null ? 0L : row.transactionCount()
+            ));
+            currentBucket = trendGranularity.nextBucket(currentBucket);
+        }
+
+        return trend;
     }
 
     private String normalizeKeyword(String keyword) {
@@ -314,6 +346,24 @@ public class SalesSettlementReportService {
 
         String bucketExpression() {
             return bucketExpression;
+        }
+
+        LocalDate alignToBucketStart(LocalDate date) {
+            return switch (this) {
+                case DAILY -> date;
+                case WEEKLY -> date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+                case MONTHLY -> date.withDayOfMonth(1);
+                case YEARLY -> date.withDayOfYear(1);
+            };
+        }
+
+        LocalDate nextBucket(LocalDate date) {
+            return switch (this) {
+                case DAILY -> date.plusDays(1);
+                case WEEKLY -> date.plusWeeks(1);
+                case MONTHLY -> date.plusMonths(1);
+                case YEARLY -> date.plusYears(1);
+            };
         }
 
         abstract String labelFor(LocalDate date);

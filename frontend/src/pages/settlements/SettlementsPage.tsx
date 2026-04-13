@@ -39,7 +39,9 @@ import { toUserFacingErrorMessage } from "../../app/uiError";
 import { addDaysToLocalDate, addMonthsToLocalDate, startOfMonthLocalDate, todayLocalDate } from "../../shared/date";
 import { usePagination } from "../../shared/hooks/usePagination";
 import styles from "./SettlementsPage.module.css";
+import { SettlementSalesTrendChart } from "./components/SettlementSalesTrendChart";
 import { DEFAULT_SETTLEMENT_TAB, settlementTabs } from "./modules/settlementTabs";
+import { buildSettlementSalesTrendChartData } from "./modules/buildSettlementSalesTrendChartData";
 import { useSalesDashboardQuery } from "./modules/useSalesDashboardQuery";
 import { useSettlementPrototypeState } from "./modules/useSettlementPrototypeState";
 import { useSettlementRecentAdjustmentsQuery } from "./modules/useSettlementRecentAdjustmentsQuery";
@@ -499,6 +501,10 @@ function SettlementsManagerView() {
   const reportRows = settlementReport?.rows ?? [];
   const totalTransactionCount = reportRows.reduce((acc, row) => acc + row.transactionCount, 0);
   const trendPoints = settlementReport?.trend ?? [];
+  const settlementSalesTrendChartData = useMemo(
+    () => buildSettlementSalesTrendChartData(trendPoints),
+    [trendPoints]
+  );
   const latestTrendPoint = trendPoints[trendPoints.length - 1];
   const previousTrendPoint = trendPoints.length > 1 ? trendPoints[trendPoints.length - 2] : undefined;
 
@@ -898,17 +904,9 @@ function SettlementsManagerView() {
                   <Text type="secondary">
                     직전 버킷 {previousTrendPoint ? formatTrendHint(previousTrendPoint) : "비교 데이터 없음"}
                   </Text>
-                </div>
-                <div className={styles.trendList}>
-                  {trendPoints.slice(-4).map((point) => (
-                    <div key={point.bucketStartDate} className={styles.trendListItem}>
-                      <Text strong>{point.bucketLabel}</Text>
-                      <Text>{formatCurrency(point.netSales)}</Text>
-                    </div>
-                  ))}
-                  {trendPoints.length === 0 && (
-                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="표시할 추이 데이터가 없습니다." />
-                  )}
+                  <Text type="secondary" style={{ fontSize: "0.82rem" }}>
+                    차트와 표에서 최근 흐름을 함께 확인합니다.
+                  </Text>
                 </div>
               </Flex>
             </Card>
@@ -1054,8 +1052,15 @@ function SettlementsManagerView() {
                       />
                     </Card>
                   </Col>
-                ))}
+                  ))}
               </Row>
+
+              <div style={{ marginTop: 16 }}>
+                <SettlementSalesTrendChart
+                  chartData={settlementSalesTrendChartData}
+                  loading={settlementReportLoading}
+                />
+              </div>
 
               <div className={styles.trendTableWrap}>
                 <Table
