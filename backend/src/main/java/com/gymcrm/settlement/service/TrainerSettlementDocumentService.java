@@ -5,12 +5,10 @@ import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
 import com.gymcrm.settlement.entity.Settlement;
 import com.gymcrm.settlement.entity.SettlementDetail;
-import com.gymcrm.settlement.entity.TrainerSettlement;
 import com.gymcrm.settlement.enums.SettlementLessonType;
 import com.gymcrm.settlement.enums.SettlementStatus;
 import com.gymcrm.settlement.repository.SettlementDetailRepository;
 import com.gymcrm.settlement.repository.SettlementRepository;
-import com.gymcrm.settlement.repository.TrainerSettlementRepository;
 import com.gymcrm.settlement.repository.TrainerSettlementSourceRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,20 +26,17 @@ import java.util.stream.Collectors;
 public class TrainerSettlementDocumentService {
     private final SettlementRepository settlementRepository;
     private final SettlementDetailRepository settlementDetailRepository;
-    private final TrainerSettlementRepository trainerSettlementRepository;
     private final TrainerSettlementSourceRepository trainerSettlementSourceRepository;
     private final CurrentUserProvider currentUserProvider;
 
     public TrainerSettlementDocumentService(
             SettlementRepository settlementRepository,
             SettlementDetailRepository settlementDetailRepository,
-            TrainerSettlementRepository trainerSettlementRepository,
             TrainerSettlementSourceRepository trainerSettlementSourceRepository,
             CurrentUserProvider currentUserProvider
     ) {
         this.settlementRepository = settlementRepository;
         this.settlementDetailRepository = settlementDetailRepository;
-        this.trainerSettlementRepository = trainerSettlementRepository;
         this.trainerSettlementSourceRepository = trainerSettlementSourceRepository;
         this.currentUserProvider = currentUserProvider;
     }
@@ -73,25 +68,13 @@ public class TrainerSettlementDocumentService {
                 )
                 .filter(item -> SettlementStatus.CONFIRMED.name().equals(item.status()))
                 .orElse(null);
-        if (settlement != null) {
-            return getCanonicalMonthlyDocuments(settlement);
-        }
-
-        List<TrainerSettlement> legacySettlements = trainerSettlementRepository.findConfirmedByCenterIdAndSettlementMonth(
-                currentUserProvider.currentCenterId(),
-                settlementMonth.atDay(1)
-        );
-        if (legacySettlements.isEmpty()) {
+        if (settlement == null) {
             throw new ApiException(
                     ErrorCode.NOT_FOUND,
                     "확정된 트레이너 정산을 찾을 수 없습니다. settlementMonth=" + settlementMonth
             );
         }
-        return legacySettlements.stream()
-                .map(settlementRow -> toLegacyDocument(settlementMonth, settlementRow))
-                .sorted(Comparator.comparing(TrainerSettlementDocument::trainerName)
-                        .thenComparing(TrainerSettlementDocument::trainerUserId))
-                .toList();
+        return getCanonicalMonthlyDocuments(settlement);
     }
 
     private List<TrainerSettlementDocument> getCanonicalMonthlyDocuments(Settlement settlement) {
@@ -183,29 +166,6 @@ public class TrainerSettlementDocumentService {
                 bonusAmount,
                 deductionAmount,
                 totalAmount
-        );
-    }
-
-    private TrainerSettlementDocument toLegacyDocument(YearMonth settlementMonth, TrainerSettlement settlement) {
-        return new TrainerSettlementDocument(
-                settlement.settlementId(),
-                settlementMonth,
-                settlementMonth.atDay(1),
-                settlementMonth.atEndOfMonth(),
-                settlement.settlementStatus(),
-                settlement.confirmedAt(),
-                settlement.confirmedBy(),
-                settlement.trainerUserId(),
-                settlement.trainerName(),
-                new DocumentLine(
-                        Math.toIntExact(settlement.completedClassCount()),
-                        settlement.sessionUnitPrice(),
-                        settlement.payrollAmount()
-                ),
-                new DocumentLine(0, BigDecimal.ZERO, BigDecimal.ZERO),
-                BigDecimal.ZERO,
-                BigDecimal.ZERO,
-                settlement.payrollAmount()
         );
     }
 

@@ -61,9 +61,11 @@ class TrainerSettlementLifecycleServiceIntegrationTest {
         BigDecimal unitPrice = new BigDecimal("50000");
         MemberMembership membership1 = purchasePtMembership();
         MemberMembership membership2 = purchasePtMembership();
+        long trainerUserId1 = createTrainerUser();
+        long trainerUserId2 = createTrainerUser();
 
-        long trainerSchedule1 = insertSchedule("PT", "Trainer-Confirm-A", targetMonth.atDay(5));
-        long trainerSchedule2 = insertSchedule("PT", "Trainer-Confirm-B", targetMonth.atDay(8));
+        long trainerSchedule1 = insertSchedule("PT", "Trainer-Confirm-A", trainerUserId1, targetMonth.atDay(5));
+        long trainerSchedule2 = insertSchedule("PT", "Trainer-Confirm-B", trainerUserId2, targetMonth.atDay(8));
 
         insertReservation(membership1, trainerSchedule1, "COMPLETED", targetMonth.atDay(5));
         insertReservation(membership2, trainerSchedule2, "COMPLETED", targetMonth.atDay(8));
@@ -76,12 +78,17 @@ class TrainerSettlementLifecycleServiceIntegrationTest {
         assertEquals(2, confirmed.rows().size());
         assertEquals(2L, jdbcClient.sql("""
                 SELECT COUNT(*)
-                FROM trainer_settlements
-                WHERE center_id = 1
-                  AND settlement_month = :settlementMonth
-                  AND is_deleted = FALSE
+                FROM settlement_details detail
+                JOIN settlements settlement
+                  ON settlement.settlement_id = detail.settlement_id
+                WHERE settlement.center_id = 1
+                  AND settlement.settlement_year = :settlementYear
+                  AND settlement.settlement_month = :settlementMonth
+                  AND settlement.is_deleted = FALSE
+                  AND detail.lesson_type = 'PT'
                 """)
-                .param("settlementMonth", targetMonth.atDay(1))
+                .param("settlementYear", targetMonth.getYear())
+                .param("settlementMonth", targetMonth.getMonthValue())
                 .query(Long.class)
                 .single());
 
@@ -100,7 +107,8 @@ class TrainerSettlementLifecycleServiceIntegrationTest {
         YearMonth targetMonth = YearMonth.of(2026, 3);
         BigDecimal unitPrice = new BigDecimal("50000");
         MemberMembership membership = purchasePtMembership();
-        long trainerSchedule = insertSchedule("PT", "Trainer-Confirm-Dupe", targetMonth.atDay(10));
+        long trainerUserId = createTrainerUser();
+        long trainerSchedule = insertSchedule("PT", "Trainer-Confirm-Dupe", trainerUserId, targetMonth.atDay(10));
         insertReservation(membership, trainerSchedule, "COMPLETED", targetMonth.atDay(10));
 
         lifecycleService.confirmMonthlySettlement(
@@ -140,14 +148,17 @@ class TrainerSettlementLifecycleServiceIntegrationTest {
         assertEquals(2, confirmed.rows().size());
         assertEquals(2L, jdbcClient.sql("""
                 SELECT COUNT(*)
-                FROM trainer_settlements
-                WHERE center_id = 1
-                  AND settlement_month = :settlementMonth
-                  AND trainer_name = :trainerName
-                  AND is_deleted = FALSE
+                FROM settlement_details detail
+                JOIN settlements settlement
+                  ON settlement.settlement_id = detail.settlement_id
+                WHERE settlement.center_id = 1
+                  AND settlement.settlement_year = :settlementYear
+                  AND settlement.settlement_month = :settlementMonth
+                  AND settlement.is_deleted = FALSE
+                  AND detail.lesson_type = 'PT'
                 """)
-                .param("settlementMonth", targetMonth.atDay(1))
-                .param("trainerName", "동명이인 트레이너")
+                .param("settlementYear", targetMonth.getYear())
+                .param("settlementMonth", targetMonth.getMonthValue())
                 .query(Long.class)
                 .single());
     }

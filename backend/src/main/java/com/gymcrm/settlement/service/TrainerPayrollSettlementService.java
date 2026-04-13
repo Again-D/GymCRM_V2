@@ -5,9 +5,14 @@ import com.gymcrm.common.auth.repository.AuthUserRepository;
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
-import com.gymcrm.settlement.entity.TrainerSettlement;
+import com.gymcrm.settlement.entity.Settlement;
+import com.gymcrm.settlement.entity.SettlementDetail;
+import com.gymcrm.settlement.enums.SettlementLessonType;
+import com.gymcrm.settlement.enums.SettlementStatus;
+import com.gymcrm.settlement.repository.SettlementDetailRepository;
+import com.gymcrm.settlement.repository.SettlementRepository;
 import com.gymcrm.settlement.repository.TrainerPayrollSettlementRepository;
-import com.gymcrm.settlement.repository.TrainerSettlementRepository;
+import com.gymcrm.settlement.repository.TrainerSettlementSourceRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +21,7 @@ import java.time.OffsetDateTime;
 import java.time.YearMonth;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class TrainerPayrollSettlementService {
@@ -24,18 +30,24 @@ public class TrainerPayrollSettlementService {
     private static final BigDecimal DEFAULT_TRAINER_READONLY_SESSION_UNIT_PRICE = new BigDecimal("50000");
 
     private final TrainerPayrollSettlementRepository repository;
-    private final TrainerSettlementRepository trainerSettlementRepository;
+    private final SettlementRepository settlementRepository;
+    private final SettlementDetailRepository settlementDetailRepository;
+    private final TrainerSettlementSourceRepository trainerSettlementSourceRepository;
     private final AuthUserRepository authUserRepository;
     private final CurrentUserProvider currentUserProvider;
 
     public TrainerPayrollSettlementService(
             TrainerPayrollSettlementRepository repository,
-            TrainerSettlementRepository trainerSettlementRepository,
+            SettlementRepository settlementRepository,
+            SettlementDetailRepository settlementDetailRepository,
+            TrainerSettlementSourceRepository trainerSettlementSourceRepository,
             AuthUserRepository authUserRepository,
             CurrentUserProvider currentUserProvider
     ) {
         this.repository = repository;
-        this.trainerSettlementRepository = trainerSettlementRepository;
+        this.settlementRepository = settlementRepository;
+        this.settlementDetailRepository = settlementDetailRepository;
+        this.trainerSettlementSourceRepository = trainerSettlementSourceRepository;
         this.authUserRepository = authUserRepository;
         this.currentUserProvider = currentUserProvider;
     }
@@ -45,43 +57,9 @@ public class TrainerPayrollSettlementService {
         ActorScope actorScope = resolveActorScope();
         MonthlyPayrollQuery scopedQuery = normalizeQueryForActor(query, actorScope);
         validateQuery(scopedQuery);
-        List<TrainerSettlement> confirmedSettlements = trainerSettlementRepository.findConfirmedByCenterIdAndSettlementMonth(
-                currentUserProvider.currentCenterId(),
-                scopedQuery.settlementMonth().atDay(1)
-        );
-        if (actorScope.trainerUserId() != null) {
-            confirmedSettlements = confirmedSettlements.stream()
-                    .filter(settlement -> actorScope.trainerUserId().equals(settlement.trainerUserId()))
-                    .toList();
-        }
-        if (!confirmedSettlements.isEmpty()) {
-            List<TrainerPayrollRow> confirmedRows = confirmedSettlements.stream()
-                    .map(settlement -> new TrainerPayrollRow(
-                            settlement.settlementId(),
-                            settlement.trainerUserId(),
-                            settlement.trainerName(),
-                            settlement.completedClassCount(),
-                            settlement.sessionUnitPrice(),
-                            settlement.payrollAmount()
-                    ))
-                    .toList();
-
-            long totalCompletedClassCount = confirmedRows.stream()
-                    .mapToLong(TrainerPayrollRow::completedClassCount)
-                    .sum();
-            BigDecimal totalPayrollAmount = confirmedRows.stream()
-                    .map(TrainerPayrollRow::payrollAmount)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-            return new MonthlyPayrollResult(
-                    scopedQuery.settlementMonth(),
-                    confirmedRows.isEmpty() ? scopedQuery.sessionUnitPrice() : confirmedRows.get(0).sessionUnitPrice(),
-                    totalCompletedClassCount,
-                    totalPayrollAmount,
-                    "CONFIRMED",
-                    confirmedSettlements.get(0).confirmedAt(),
-                    confirmedRows
-            );
+        MonthlyPayrollResult confirmedResult = getConfirmedCanonicalMonthlyPayroll(scopedQuery, actorScope);
+        if (confirmedResult != null) {
+            return confirmedResult;
         }
         return calculateDraftMonthlyPayroll(scopedQuery, actorScope);
     }
@@ -179,6 +157,65 @@ public class TrainerPayrollSettlementService {
                 "DRAFT",
                 null,
                 payrollRows
+        );
+    }
+
+    private MonthlyPayrollResult getConfirmedCanonicalMonthlyPayroll(
+            MonthlyPayrollQuery query,
+            ActorScope actorScope
+    ) {
+        Settlement settlement = settlementRepository.findActiveByCenterAndYearMonth(
+                        currentUserProvider.currentCenterId(),
+                        query.settlementMonth().getYear(),
+                        query.settlementMonth().getMonthValue()
+                )
+                .filter(item -> SettlementStatus.CONFIRMED.name().equals(item.status()))
+                .orElse(null);
+        if (settlement == null) {
+            return null;
+        }
+
+        List<SettlementDetail> details = settlementDetailRepository.findBySettlementId(settlement.settlementId())
+                .stream()
+                .filter(detail -> SettlementLessonType.PT.name().equals(detail.lessonType()))
+                .toList();
+        if (actorScope.trainerUserId() != null) {
+            details = details.stream()
+                    .filter(detail -> actorScope.trainerUserId().equals(detail.userId()))
+                    .toList();
+        }
+
+        Map<Long, String> trainerNames = trainerSettlementSourceRepository.findTrainerNames(
+                currentUserProvider.currentCenterId(),
+                details.stream().map(SettlementDetail::userId).distinct().toList()
+        );
+
+        List<TrainerPayrollRow> confirmedRows = details.stream()
+                .map(detail -> new TrainerPayrollRow(
+                        settlement.settlementId(),
+                        detail.userId(),
+                        trainerNames.getOrDefault(detail.userId(), "Unknown Trainer"),
+                        detail.lessonCount(),
+                        detail.unitPrice(),
+                        detail.netAmount()
+                ))
+                .toList();
+
+        long totalCompletedClassCount = confirmedRows.stream()
+                .mapToLong(TrainerPayrollRow::completedClassCount)
+                .sum();
+        BigDecimal totalPayrollAmount = confirmedRows.stream()
+                .map(TrainerPayrollRow::payrollAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return new MonthlyPayrollResult(
+                query.settlementMonth(),
+                confirmedRows.isEmpty() ? query.sessionUnitPrice() : confirmedRows.get(0).sessionUnitPrice(),
+                totalCompletedClassCount,
+                totalPayrollAmount,
+                SettlementStatus.CONFIRMED.name(),
+                settlement.confirmedAt(),
+                confirmedRows
         );
     }
 

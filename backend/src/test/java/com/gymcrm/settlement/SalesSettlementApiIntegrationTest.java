@@ -748,20 +748,18 @@ class SalesSettlementApiIntegrationTest {
                 .single());
         assertEquals(1L, jdbcClient.sql("""
                 SELECT COUNT(*)
-                FROM trainer_settlements
-                WHERE center_id = :centerId
-                  AND settlement_month = :settlementMonth
-                  AND is_deleted = FALSE
+                FROM settlement_details
+                WHERE settlement_id = :settlementId
+                  AND lesson_type = 'PT'
                 """)
-                .param("centerId", CENTER_ID)
-                .param("settlementMonth", targetMonth.atDay(1))
+                .param("settlementId", settlementId)
                 .query(Long.class)
                 .single());
     }
 
     @Test
     @Transactional
-    void confirmSettlementRejectsWhenLegacyMonthlySnapshotAlreadyExistsForTrainer() throws Exception {
+    void confirmSettlementRejectsWhenSettlementAlreadyConfirmed() throws Exception {
         String adminToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
         YearMonth targetMonth = YearMonth.of(2100, 7);
 
@@ -776,7 +774,9 @@ class SalesSettlementApiIntegrationTest {
         insertCompletedReservation(membershipId, memberId, trainerSchedule, targetMonth.atDay(5));
 
         long settlementId = createSettlementBatch(adminToken, String.valueOf(trainerUserId), targetMonth);
-        insertLegacyTrainerSettlementRow(targetMonth, trainerUserId, "Trainer Settlement Self");
+        mockMvc.perform(post("/api/v1/settlements/{settlementId}/confirm", settlementId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+                .andExpect(status().isOk());
 
         mockMvc.perform(post("/api/v1/settlements/{settlementId}/confirm", settlementId)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
@@ -841,13 +841,11 @@ class SalesSettlementApiIntegrationTest {
                 .single());
         assertEquals(2L, jdbcClient.sql("""
                 SELECT COUNT(*)
-                FROM trainer_settlements
-                WHERE center_id = :centerId
-                  AND settlement_month = :settlementMonth
-                  AND is_deleted = FALSE
+                FROM settlement_details
+                WHERE settlement_id = :settlementId
+                  AND lesson_type = 'PT'
                 """)
-                .param("centerId", CENTER_ID)
-                .param("settlementMonth", targetMonth.atDay(1))
+                .param("settlementId", settlementId)
                 .query(Long.class)
                 .single());
     }
@@ -939,15 +937,6 @@ class SalesSettlementApiIntegrationTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("CONFIRMED"));
-
-        jdbcClient.sql("""
-                DELETE FROM trainer_settlements
-                WHERE center_id = :centerId
-                  AND settlement_month = :settlementMonth
-                """)
-                .param("centerId", CENTER_ID)
-                .param("settlementMonth", targetMonth.atDay(1))
-                .update();
 
         mockMvc.perform(get("/api/v1/settlements/{settlementId}/trainers/{trainerId}/document", settlementId, trainerUserId)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
@@ -1053,7 +1042,7 @@ class SalesSettlementApiIntegrationTest {
 
     @Test
     @Transactional
-    void legacyMonthlyDocumentFallsBackToLegacySnapshotWhenCanonicalBatchDoesNotExist() throws Exception {
+    void legacyMonthlyDocumentDownloadsFromCanonicalAfterMonthlyConfirm() throws Exception {
         String adminToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
         YearMonth targetMonth = YearMonth.of(2100, 4);
 
@@ -1257,53 +1246,6 @@ class SalesSettlementApiIntegrationTest {
                 .param("cancelledAt", "CANCELLED".equals(reservationStatus) ? date.atTime(9, 30).atOffset(ZoneOffset.UTC) : null)
                 .param("completedAt", "COMPLETED".equals(reservationStatus) ? date.atTime(11, 0).atOffset(ZoneOffset.UTC) : null)
                 .param("noShowAt", "NO_SHOW".equals(reservationStatus) ? date.atTime(11, 30).atOffset(ZoneOffset.UTC) : null)
-                .update();
-    }
-
-    private void insertLegacyTrainerSettlementRow(YearMonth settlementMonth, long trainerUserId, String trainerName) {
-        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-        jdbcClient.sql("""
-                INSERT INTO trainer_settlements (
-                    center_id,
-                    settlement_month,
-                    trainer_user_id,
-                    trainer_name,
-                    completed_class_count,
-                    session_unit_price,
-                    payroll_amount,
-                    settlement_status,
-                    confirmed_at,
-                    confirmed_by,
-                    is_deleted,
-                    created_at,
-                    created_by,
-                    updated_at,
-                    updated_by
-                ) VALUES (
-                    :centerId,
-                    :settlementMonth,
-                    :trainerUserId,
-                    :trainerName,
-                    1,
-                    50000,
-                    50000,
-                    'CONFIRMED',
-                    :confirmedAt,
-                    :trainerUserId,
-                    FALSE,
-                    :createdAt,
-                    :trainerUserId,
-                    :updatedAt,
-                    :trainerUserId
-                )
-                """)
-                .param("centerId", CENTER_ID)
-                .param("settlementMonth", settlementMonth.atDay(1))
-                .param("trainerUserId", trainerUserId)
-                .param("trainerName", trainerName)
-                .param("confirmedAt", now)
-                .param("createdAt", now)
-                .param("updatedAt", now)
                 .update();
     }
 
