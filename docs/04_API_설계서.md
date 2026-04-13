@@ -99,9 +99,11 @@ Link: </api/v2/members>; rel="successor-version"
 |------|------|------|
 | 시스템 관리자 | `SYSTEM_ADMIN` | 전체 시스템 관리 (멀티 테넌트) |
 | 관리자 | `ADMIN` | 헬스장 전체 관리 권한 |
-| 매니저 | `MANAGER` | 운영 관리 (정산 제외) |
+| 매니저 | `MANAGER` | 센터 매니저 |
 | 트레이너 | `TRAINER` | 본인 스케줄/회원 관리 |
 | 데스크 | `DESK` | 프론트 데스크 업무 (체크인, 라커 등) |
+
+> `MANAGER`는 센터 매니저 역할의 canonical 코드다.
 
 ---
 
@@ -502,13 +504,13 @@ X-RateLimit-Reset: 1740001860
 | 3 | `GET` | `/api/v1/settlements/sales-report/recent-adjustments` | 최근 환불 목록 조회 | O | ADMIN, MANAGER, DESK |
 | 4 | `GET` | `/api/v1/settlements/sales-report/export` | 매출 리포트 Excel(`.xlsx`) 다운로드 | O | ADMIN, MANAGER, DESK |
 | 5 | `GET` | `/api/v1/settlements/trainer-payroll/my-summary` | 트레이너 본인 월간 완료 PT 수업 수 요약 조회 (legacy mini summary) | O | TRAINER |
-| 6 | `GET` | `/api/v1/settlements/trainer-payroll` | 운영용 legacy 월 정산 조회. 확정 월은 `trainer_settlements` snapshot, 미확정 월은 조회 시점 PT draft 계산을 반환 | O | ADMIN, MANAGER, DESK |
+| 6 | `GET` | `/api/v1/settlements/trainer-payroll` | 운영용 legacy 월 정산 조회. 확정 월은 canonical `settlements`/`settlement_details`를, 미확정 월은 조회 시점 PT draft 계산을 반환 | O | ADMIN, MANAGER, DESK |
 | 7 | `GET` | `/api/v1/settlements/preview` | 운영자용 월 기준 트레이너 정산 preview 조회 (`settlementMonth` canonical, period 입력은 호환 레이어) | O | ADMIN, MANAGER, DESK |
 | 8 | `GET` | `/api/v1/settlements/trainer-payroll/my-preview` | 트레이너 본인 월 기준 정산 preview 조회 (`settlementMonth` canonical) | O | TRAINER |
-| 9 | `POST` | `/api/v1/settlements/trainer-payroll/confirm` | legacy 월 정산 일괄 확정 및 snapshot 저장 | O | ADMIN, MANAGER, DESK |
-| 10 | `GET` | `/api/v1/settlements/trainer-payroll/document` | 확정된 월 정산 PDF 정산서 다운로드 (legacy monthly bridge) | O | ADMIN, MANAGER, DESK |
-| 11 | `POST` | `/api/v1/settlements` | 지정 월의 트레이너 정산 DRAFT 생성 또는 월 단위 기존 DRAFT 재사용 | O | ADMIN |
-| 12 | `POST` | `/api/v1/settlements/{settlementId}/confirm` | 생성된 월 기반 정산 배치를 확정 | O | ADMIN |
+| 9 | `POST` | `/api/v1/settlements/trainer-payroll/confirm` | legacy 월 정산 일괄 확정 (canonical 월 정산 저장) | O | ADMIN, MANAGER, DESK |
+| 10 | `GET` | `/api/v1/settlements/trainer-payroll/document` | 확정된 월 정산 PDF 정산서 다운로드 (legacy endpoint, canonical-backed) | O | ADMIN, MANAGER, DESK |
+| 11 | `POST` | `/api/v1/settlements` | 지정 월의 트레이너 정산 DRAFT 생성 또는 월 단위 기존 DRAFT 재사용 | O | ADMIN, MANAGER |
+| 12 | `POST` | `/api/v1/settlements/{settlementId}/confirm` | 생성된 월 기반 정산 배치를 확정 | O | ADMIN, MANAGER |
 | 13 | `GET` | `/api/v1/settlements/{settlementId}/trainers/{trainerId}/document` | canonical 정산 배치의 개별 트레이너 PDF 정산서 다운로드 | O | ADMIN, MANAGER, DESK |
 
 ### 3.8 CRM 메시지 API (`/api/v1/messages`)
@@ -1241,7 +1243,7 @@ GET /api/v1/members?keyword=홍길동&status=ACTIVE&sort=name&order=asc&page=1&s
 | **URL** | `GET /api/v1/reservations/schedules` |
 | **설명** | 예약 생성용 미래 스케줄 목록을 조회한다. 필요 시 특정 `scheduleIds`를 함께 전달해 워크벤치에서 이미 생성된 예약의 일정 정보도 보강 조회할 수 있다. |
 | **인증** | 필요 |
-| **권한** | PROTOTYPE, CENTER_ADMIN, MANAGER, DESK, TRAINER |
+| **권한** | PROTOTYPE, MANAGER, DESK, TRAINER |
 
 **Query Parameters:**
 
@@ -1740,7 +1742,7 @@ Binary file download with:
 | 항목 | 내용 |
 |------|------|
 | **URL** | `GET /api/v1/settlements/trainer-payroll` |
-| **설명** | 운영용 legacy 월 정산 조회 API다. 확정 월은 `trainer_settlements` snapshot을, 미확정 월은 조회 시점 PT-only draft 계산을 반환한다. period workflow의 canonical source-of-truth는 아니다. |
+| **설명** | 운영용 legacy 월 정산 조회 API다. 확정 월은 canonical `settlements`/`settlement_details`(PT detail 기준)를, 미확정 월은 조회 시점 PT-only draft 계산을 반환한다. |
 | **인증** | 필요 |
 | **권한** | ADMIN, MANAGER, DESK |
 
@@ -1781,7 +1783,7 @@ Binary file download with:
 
 **비즈니스 규칙:**
 - 관리자/매니저/데스크는 월 전체 트레이너 row를 조회할 수 있다.
-- 확정된 월은 저장된 `trainer_settlements` snapshot을 우선 반환하고 `settlementStatus`와 `confirmedAt`를 함께 제공한다.
+- 확정된 월은 canonical 월 settlement + PT settlement details를 기준으로 `settlementStatus`와 `confirmedAt`를 함께 제공한다.
 - 미확정 월은 PT completed 클래스만 기준으로 조회 시점 draft 계산을 수행한다.
 - 기간 기반 preview/create/confirm과는 별도 surface이며, 새 workflow의 source-of-truth는 `settlements` / `settlement_details` canonical batch/detail이다.
 
@@ -1897,7 +1899,7 @@ Binary file download with:
 | 항목 | 내용 |
 |------|------|
 | **URL** | `POST /api/v1/settlements/trainer-payroll/confirm` |
-| **설명** | 월별 PT-only 운영 정산을 확정하고 `trainer_settlements` snapshot을 저장한다. period workflow 이전 운영 surface와 하위 호환을 위해 유지한다. |
+| **설명** | 월별 PT-only 운영 정산을 canonical 월 settlement/detail로 확정한다. period workflow 이전 운영 surface와의 하위 호환 endpoint로 유지한다. |
 | **인증** | 필요 |
 | **권한** | ADMIN, MANAGER, DESK |
 
@@ -1913,17 +1915,17 @@ Binary file download with:
 **비즈니스 규칙:**
 - 같은 월 정산은 한 번만 확정할 수 있다.
 - 트레이너는 이 endpoint를 호출할 수 없다.
-- 확정 시점의 row와 단가를 스냅샷으로 저장하고 이후 조회/문서 출력은 해당 스냅샷을 재사용한다.
-- canonical period settlement를 자동 생성하거나 재사용하지 않는다.
+- 확정 시점의 row와 단가는 canonical `settlement_details`(PT)에 저장된다.
+- 월별 canonical settlement가 없으면 생성 후 확정하고, 있으면 DRAFT일 때만 확정한다.
 
 ---
 
-### 4.9.10 트레이너 정산 문서 다운로드 API (Legacy Monthly Bridge)
+### 4.9.10 트레이너 정산 문서 다운로드 API (Legacy Endpoint, Canonical-backed)
 
 | 항목 | 내용 |
 |------|------|
 | **URL** | `GET /api/v1/settlements/trainer-payroll/document` |
-| **설명** | 확정된 월 정산 문서를 PDF 파일로 다운로드한다. 운영용 월별 bridge endpoint이며, 먼저 월 전체 `ALL` canonical settlement를 찾고 없으면 legacy `trainer_settlements` snapshot으로 fallback 한다. |
+| **설명** | 확정된 월 정산 문서를 PDF 파일로 다운로드한다. 운영용 월별 legacy endpoint이며 canonical 월 settlement/detail만 source-of-truth로 사용한다. |
 | **인증** | 필요 |
 | **권한** | ADMIN, MANAGER, DESK |
 
@@ -1942,8 +1944,8 @@ Binary file download with:
 **비즈니스 규칙:**
 - 확정된 월 정산만 문서로 출력할 수 있다.
 - 관리자/매니저/데스크는 월 전체 정산 문서를 출력할 수 있다.
-- 월 전체 `ALL` canonical settlement가 존재하면 `settlements` + `settlement_details`를 source-of-truth로 사용한다.
-- canonical batch가 없고 legacy snapshot만 있으면 `trainer_settlements` row를 PT-only 문서로 fallback 렌더링한다.
+- 월 전체 canonical settlement가 존재하면 `settlements` + `settlement_details`를 source-of-truth로 사용한다.
+- canonical 월 settlement가 없으면 `NOT_FOUND`를 반환한다. legacy snapshot fallback은 지원하지 않는다.
 - 단일 트레이너 canonical settlement 또는 부분 기간 canonical settlement는 이 bridge의 대상이 아니다.
 
 ---
@@ -2079,8 +2081,8 @@ Binary file download with:
 - `DRAFT` 상태의 정산만 확정할 수 있다.
 - 확정 이후에는 같은 정산 배치 및 그 하위 trainer detail을 수정할 수 없다.
 - 같은 범위와 겹치는 다른 `CONFIRMED` settlement가 있으면 확정할 수 없다.
-- 월별 운영용 `/api/v1/settlements/trainer-payroll/confirm`는 legacy snapshot endpoint이며, canonical 확정 endpoint는 본 API다.
-- 현재 구현에서는 월 canonical settlement 확정 시 PT detail을 `trainer_settlements` 월별 snapshot으로 브리지 저장한다.
+- 월별 운영용 `/api/v1/settlements/trainer-payroll/confirm`는 legacy route를 유지하지만 canonical 월 settlement/detail에 직접 반영한다.
+- canonical 확정 endpoint는 본 API이며, 별도 bridge snapshot 저장은 수행하지 않는다.
 - GX, bonus, deduction과 같은 확장 metrics의 source-of-truth는 계속 canonical `settlements` / `settlement_details`다.
 
 ---
@@ -2111,7 +2113,7 @@ Binary file download with:
 - `CONFIRMED` 상태의 정산 배치만 문서 출력할 수 있다.
 - `settlementId`는 현재 사용자 center scope 안에 있어야 한다.
 - 요청한 `trainerId`에 해당하는 canonical `settlement_details`가 없으면 `NOT_FOUND`를 반환한다.
-- 문서 내용은 `settlements` + `settlement_details` canonical batch/detail을 source-of-truth로 사용하며, `trainer_settlements` snapshot 존재 여부와 무관하게 생성된다.
+- 문서 내용은 `settlements` + `settlement_details` canonical batch/detail을 source-of-truth로 사용한다.
 - PDF에는 정산 월, 실제 정산 기간(`periodStart ~ periodEnd`), 정산 상태, 확정 정보, trainer 식별 정보, PT/GX 집계, 보너스/차감, 총 정산 금액이 포함된다.
 
 ---
@@ -2603,6 +2605,7 @@ X-Cache: HIT
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| v1.14.0 | 2026-04-13 | `trainer_settlements` bridge를 retire 대상으로 정렬하여 `/trainer-payroll`, `/trainer-payroll/confirm`, `/trainer-payroll/document` 계약을 canonical monthly settlement/detail source-of-truth 기준으로 갱신하고 legacy snapshot fallback 문구를 제거 | Codex |
 | v1.13.0 | 2026-04-10 | 정산 계약을 monthly canonical 모델로 롤백해 `/settlements/preview`, `/trainer-payroll/my-preview`, `POST /settlements`의 canonical 입력을 `settlementMonth`로 재정렬하고 `periodStart/periodEnd`는 월 전체 호환 입력으로 강등 | Codex |
 | v1.12.0 | 2026-04-10 | 기간 기반 trainer settlement workflow를 문서 기준 계약으로 승격해 `/settlements/preview`, `/trainer-payroll/my-preview`, period/scope canonical 생성·확정 규칙, legacy monthly bridge fallback 규칙을 현재 구현과 동기화 | Codex |
 | v1.11.0 | 2026-04-08 | 생성형 트레이너 정산 응답의 PT/GX/취소/노쇼 집계 semantics와 GX amount 계산을 현재 구현 기준으로 동기화하고, confirm 시 legacy snapshot이 PT-only bridge임을 명시 | Codex |
