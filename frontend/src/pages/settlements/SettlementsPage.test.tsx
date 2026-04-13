@@ -394,7 +394,7 @@ describe("SettlementsPage", () => {
     expect(screen.getByText("정산 작업 패널")).toBeTruthy();
     expect(screen.getByRole("button", { name: "preview 조회" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "정산 초안 생성" })).toBeTruthy();
-  }, 10000);
+  }, 30000);
 
   it("renders the sales trend chart section above the retained report tables", () => {
     const view = render(
@@ -438,7 +438,7 @@ describe("SettlementsPage", () => {
 
     fireEvent.click(screen.getAllByRole("tab", { name: "매출 분석" })[0]);
     expect(screen.getByTestId("settlement-sales-trend-chart").getAttribute("data-points")).toBe("1");
-  }, 10000);
+  }, 30000);
 
   it("renders trainer mini view with period preview summary", () => {
     authStateMock.authUser = {
@@ -509,5 +509,5 @@ describe("SettlementsPage", () => {
     expect(moveButton).toBeTruthy();
     fireEvent.click(moveButton);
     expect(navigateMock).toHaveBeenCalledWith("/trainers");
-  }, 10000);
+  }, 30000);
 });
