@@ -1,0 +1,3 @@
+# Ensure Linux shell scripts keep LF line endings (prevents "/bin/sh: ... not found" on Windows checkouts).
+backend/gradlew text eol=lf
+

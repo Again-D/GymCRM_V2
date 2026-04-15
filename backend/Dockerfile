@@ -10,6 +10,7 @@ COPY settings.gradle settings.gradle
 COPY src src
 
 RUN chmod +x gradlew \
+  && sed -i 's/\r$//' gradlew \
   && ./gradlew bootJar -x test --no-daemon
 
 FROM eclipse-temurin:21-jre
