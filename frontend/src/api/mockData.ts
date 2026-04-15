@@ -908,11 +908,11 @@ function cloneTrainerSettlementSnapshots(source: MockTrainerSettlementSnapshot[]
   return source.map((snapshot) => ({ ...snapshot }));
 }
 
-function envelope<T>(data: T): ApiEnvelope<T> {
+function envelope<T>(data: T, message = "mock ok"): ApiEnvelope<T> {
   return {
     success: true,
     data,
-    message: "mock ok",
+    message,
     timestamp: "2026-03-12T00:00:00Z",
     traceId: "mock-trace",
   };

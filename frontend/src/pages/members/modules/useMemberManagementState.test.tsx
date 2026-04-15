@@ -21,7 +21,7 @@ function createTestQueryClient() {
 
 describe("useMemberManagementState", () => {
   let queryClient: QueryClient;
-  let clearSelectedMember: ReturnType<typeof vi.fn>;
+  let clearSelectedMember: () => void;
 
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -29,7 +29,7 @@ describe("useMemberManagementState", () => {
     setMockApiModeForTests(true);
     queryClient = createTestQueryClient();
     vi.spyOn(queryClient, "invalidateQueries");
-    clearSelectedMember = vi.fn();
+    clearSelectedMember = vi.fn(() => undefined);
   });
 
   it("creates a member in mock mode and invalidates members", async () => {
