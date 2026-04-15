@@ -40,6 +40,7 @@ jobs:
         env:
           STAGING_POSTGRES_PASSWORD: ${{ secrets.STAGING_SELFHOSTED_POSTGRES_PASSWORD }}
           STAGING_HTTP_PORT: ${{ vars.STAGING_SELFHOSTED_HTTP_PORT }}
+          APP_PROTOTYPE_ALLOWED_ORIGINS: ${{ vars.STAGING_SELFHOSTED_ALLOWED_ORIGINS }}
         run: |
           @echo off
           REM Defensive: if the runner has COMPOSE_FILE / COMPOSE_PROJECT_NAME set globally,
@@ -53,6 +54,10 @@ jobs:
           )
           if "%STAGING_HTTP_PORT%"=="" (
             set STAGING_HTTP_PORT=8088
+          )
+
+          if not "%APP_PROTOTYPE_ALLOWED_ORIGINS%"=="" (
+            echo Using APP_PROTOTYPE_ALLOWED_ORIGINS=%APP_PROTOTYPE_ALLOWED_ORIGINS%
           )
 
           docker compose -p gymcrm-staging -f compose.selfhosted-staging.yaml up -d --build --remove-orphans
