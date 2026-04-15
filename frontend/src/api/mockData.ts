@@ -1722,6 +1722,20 @@ export function updateMockMember(
   return { ...nextMember };
 }
 
+export function deleteMockMember(memberId: number) {
+  const existed = mockMemberDetails.has(memberId);
+  if (!existed) {
+    return false;
+  }
+
+  mockMemberDetails.delete(memberId);
+  mockMembers = mockMembers.filter((member) => member.memberId !== memberId);
+  mockMemberMemberships.delete(memberId);
+  mockReservationsByMemberId.delete(memberId);
+  bumpMockDataVersion();
+  return true;
+}
+
 export function createMockMembership(input: {
   memberId: number;
   productNameSnapshot: string;
@@ -2816,7 +2830,7 @@ export function deleteMockGxScheduleException(
   return buildMockGxScheduleSnapshot(month, actor);
 }
 
-export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
+export function getMockResponse(path: string, method: string = "GET"): ApiEnvelope<unknown> | null {
   const url = new URL(path, "http://local.mock");
 
   if (url.pathname === "/api/v1/auth/trainers") {
@@ -2866,6 +2880,11 @@ export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
           ...reservation,
         })),
       );
+    }
+    if (method === "DELETE") {
+      return deleteMockMember(memberId)
+        ? envelope(null, "회원이 삭제되었습니다.")
+        : null;
     }
     const detail = mockMemberDetails.get(memberId);
     return detail ? envelope({ ...detail }) : null;

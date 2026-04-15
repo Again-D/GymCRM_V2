@@ -80,11 +80,11 @@ export default function TrainersPage() {
   const defaultCenterId = authUser?.centerId ?? 1;
   const canReadLiveTrainers =
     isMockMode ||
-    hasAnyRole(authUser, ["ROLE_SUPER_ADMIN", "ROLE_MANAGER", "ROLE_DESK"]);
+    hasAnyRole(authUser, ["ROLE_SUPER_ADMIN", "ROLE_ADMIN", "ROLE_MANAGER", "ROLE_DESK"]);
   const isSuperAdmin = hasRole(authUser, "ROLE_SUPER_ADMIN");
   const canMutateTrainers =
     isMockMode ||
-    hasAnyRole(authUser, ["ROLE_SUPER_ADMIN", "ROLE_MANAGER"]);
+    hasAnyRole(authUser, ["ROLE_SUPER_ADMIN", "ROLE_ADMIN", "ROLE_MANAGER"]);
 
   const [trainerFilters, setTrainerFilters] = useState(() =>
     createDefaultTrainerFilters(defaultCenterId),

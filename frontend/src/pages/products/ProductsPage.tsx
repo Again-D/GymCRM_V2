@@ -105,9 +105,9 @@ export default function ProductsPage() {
 
 	const canReadLiveProducts =
 		isMockMode ||
-		hasAnyRole(authUser, ["ROLE_SUPER_ADMIN", "ROLE_MANAGER", "ROLE_DESK"]);
+		hasAnyRole(authUser, ["ROLE_SUPER_ADMIN", "ROLE_ADMIN", "ROLE_MANAGER", "ROLE_DESK"]);
 	const canMutateProducts =
-		isMockMode || hasAnyRole(authUser, ["ROLE_SUPER_ADMIN", "ROLE_MANAGER"]);
+		isMockMode || hasAnyRole(authUser, ["ROLE_SUPER_ADMIN", "ROLE_ADMIN", "ROLE_MANAGER"]);
 
 	const productsPagination = usePagination(products, {
 		initialPageSize: 10,

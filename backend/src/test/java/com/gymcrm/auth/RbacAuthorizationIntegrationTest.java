@@ -17,7 +17,9 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -295,6 +297,65 @@ class RbacAuthorizationIntegrationTest {
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.error.code").value("ACCESS_DENIED"))
                 .andExpect(jsonPath("$.error.detail", containsString("권한")));
+    }
+
+    @Test
+    void managerCannotDeleteMemberButAdminCan() throws Exception {
+        ensureManagerUser();
+        String managerToken = loginAndGetAccessToken(MANAGER_LOGIN_ID, MANAGER_PASSWORD);
+        String adminToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
+        String memberName = "삭제대상회원-" + shortId();
+        String phone = "010" + randomDigits(8);
+
+        MvcResult createMemberResult = mockMvc.perform(post("/api/v1/members")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "memberName": "%s",
+                                  "phone": "%s",
+                                  "memberStatus": "ACTIVE",
+                                  "joinDate": "%s",
+                                  "consentSms": true,
+                                  "consentMarketing": false
+                                }
+                                """.formatted(memberName, phone, LocalDate.now())))
+                .andExpect(status().isOk())
+                .andReturn();
+        long memberId = jsonLong(createMemberResult, "/data/memberId");
+
+        mockMvc.perform(post("/api/v1/members/{memberId}/memberships", memberId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "productId": %d,
+                                  "startDate": "%s",
+                                  "paidAmount": 120000,
+                                  "paymentMethod": "CARD"
+                                }
+                                """.formatted(insertDurationProductFixture("DELETE상품-" + shortId(), false), LocalDate.now())))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(delete("/api/v1/members/{memberId}", memberId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + managerToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("ACCESS_DENIED"));
+
+        mockMvc.perform(delete("/api/v1/members/{memberId}", memberId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        Boolean isDeleted = jdbcClient.sql("""
+                SELECT is_deleted
+                FROM members
+                WHERE member_id = :memberId
+                """)
+                .param("memberId", memberId)
+                .query(Boolean.class)
+                .single();
+        assertThat(isDeleted).isTrue();
     }
 
     private void ensureDeskUser() {

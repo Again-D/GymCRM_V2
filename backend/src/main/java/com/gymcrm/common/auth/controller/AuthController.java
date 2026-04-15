@@ -104,7 +104,7 @@ public class AuthController {
     }
 
     @PostMapping("/users/{userId}/revoke-access")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_ADMIN)
     public ApiResponse<ForceRevokeAccessResponse> revokeAccess(@PathVariable Long userId) {
         AuthAccessRevocationService.ForceRevokeResult result = authAccessRevocationService.forceRevokeUserAccess(userId);
         return ApiResponse.success(
@@ -114,7 +114,7 @@ public class AuthController {
     }
 
     @PostMapping("/users/{userId}/role")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_ADMIN)
     public ApiResponse<UpdateUserRoleResponse> updateRole(@PathVariable Long userId, @Valid @RequestBody UpdateUserRoleRequest request) {
         AuthAccessRevocationService.UpdateUserRoleResult result = authAccessRevocationService.updateRoleAndRevoke(userId, request.roleCode());
         return ApiResponse.success(
@@ -124,7 +124,7 @@ public class AuthController {
     }
 
     @PostMapping("/users/{userId}/status")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_ADMIN)
     public ApiResponse<UpdateUserStatusResponse> updateStatus(@PathVariable Long userId, @Valid @RequestBody UpdateUserStatusRequest request) {
         AuthAccessRevocationService.UpdateUserStatusResult result = authAccessRevocationService.updateStatusAndRevoke(userId, request.userStatus());
         return ApiResponse.success(
@@ -203,7 +203,7 @@ public class AuthController {
 
     public record UpdateUserRoleRequest(
             @jakarta.validation.constraints.Pattern(
-                    regexp = "^(?i)(ROLE_SUPER_ADMIN|ROLE_MANAGER|ROLE_TRAINER|ROLE_DESK)$",
+                    regexp = "^(?i)(ROLE_SUPER_ADMIN|ROLE_ADMIN|ROLE_MANAGER|ROLE_TRAINER|ROLE_DESK)$",
                     message = "roleCode is invalid"
             )
             String roleCode

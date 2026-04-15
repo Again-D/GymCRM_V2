@@ -62,16 +62,20 @@ export function MemberListSection() {
     memberFormError,
     memberFormMessage,
     canManageMembers,
+    canDeleteMembers,
     closeMemberModal,
     startCreateMember,
     openMemberDetail,
     openMemberEdit,
     openMemberDeactivate,
+    openMemberDelete,
     submitMemberForm,
-    deactivateMember
+    deactivateMember,
+    deleteMember
   } = useMemberManagementState({
     selectedMemberId,
-    selectMember
+    selectMember,
+    clearSelectedMember
   });
 
   const { members, membersLoading, membersQueryError } = useMembersQuery({
@@ -120,8 +124,11 @@ export function MemberListSection() {
     ? "신규 회원 등록"
     : modalState.kind === "edit"
       ? `회원 #${modalState.memberId} 수정`
-      : "회원 정보";
+      : modalState.kind === "delete"
+        ? "회원 삭제"
+        : "회원 정보";
   const deactivationMemberId = modalState.kind === "deactivate" ? modalState.memberId : null;
+  const deletionMemberId = modalState.kind === "delete" ? modalState.memberId : null;
 
   const columns: ColumnsType<MemberSummary> = [
     {
@@ -419,11 +426,43 @@ export function MemberListSection() {
           canManageMembers && selectedMemberId && (
             <Button key="deactivate" danger type="primary" onClick={() => openMemberDeactivate(selectedMemberId)}>비활성화</Button>
           ),
+          canDeleteMembers && selectedMemberId && (
+            <Button key="delete" danger onClick={() => openMemberDelete(selectedMemberId)}>삭제</Button>
+          ),
           <Button key="membership" onClick={() => goToSelectedMemberContext("/memberships")}>회원권</Button>,
           <Button key="reservation" type="primary" onClick={() => goToSelectedMemberContext("/reservations")}>예약</Button>
         ].filter(Boolean)}
       >
         <SelectedMemberSummaryCard surface="plain" />
+      </Modal>
+
+      {/* 삭제 모달 */}
+      <Modal
+        open={modalState.kind === "delete"}
+        onCancel={closeMemberModal}
+        title={selectedMember ? `${selectedMember.memberName} 삭제` : "회원 삭제"}
+        confirmLoading={memberFormSubmitting}
+        onOk={() => {
+          if (deletionMemberId != null) {
+            void deleteMember(deletionMemberId);
+          }
+        }}
+        okText="삭제"
+        okButtonProps={{ danger: true }}
+        cancelText="취소"
+      >
+        <Flex vertical gap={16} style={{ marginTop: 16 }}>
+          {memberFormError && <Alert message={memberFormError} type="error" showIcon />}
+          <Text strong>선택한 회원을 소프트 삭제합니다.</Text>
+          <Text type="secondary">
+            삭제된 회원은 목록과 대부분의 업무 화면에서 더 이상 표시되지 않습니다.
+          </Text>
+          <Alert
+            message={selectedMember ? `${selectedMember.memberName} (#${selectedMember.memberId}) 회원을 삭제합니다.` : "이 회원을 삭제합니다."}
+            type="warning"
+            showIcon
+          />
+        </Flex>
       </Modal>
 
       {/* 등록/수정 모달 */}

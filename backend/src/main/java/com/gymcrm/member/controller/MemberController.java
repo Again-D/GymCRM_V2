@@ -14,6 +14,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -97,5 +98,12 @@ public class MemberController {
     ) {
         Member member = memberService.update(memberId, request);
         return ApiResponse.success(MemberDetailResponse.from(member), "회원 정보가 수정되었습니다.");
+    }
+
+    @DeleteMapping("/{memberId}")
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_ADMIN)
+    public ApiResponse<Void> delete(@PathVariable Long memberId) {
+        memberService.delete(memberId);
+        return ApiResponse.success(null, "회원이 삭제되었습니다.");
     }
 }

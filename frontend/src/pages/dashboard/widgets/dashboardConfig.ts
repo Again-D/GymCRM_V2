@@ -38,6 +38,7 @@ export function getDashboardWidgetConfig(
 
 	switch (primaryRole) {
 		case "ROLE_SUPER_ADMIN":
+		case "ROLE_ADMIN":
 		case "ROLE_MANAGER":
 			widgetIds = ["accessSummary", "metricsSummary", "scheduleOverview"];
 			break;

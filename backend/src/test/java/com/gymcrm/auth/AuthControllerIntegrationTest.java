@@ -82,7 +82,7 @@ class AuthControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.loginId").value("center-admin"))
-                .andExpect(jsonPath("$.data.roleCode").value("ROLE_MANAGER"));
+                .andExpect(jsonPath("$.data.roleCode").value("ROLE_ADMIN"));
 
         MvcResult refreshResult = mockMvc.perform(post("/api/v1/auth/refresh")
                         .cookie(new MockCookie(AuthCookieSupport.REFRESH_COOKIE_NAME, refreshToken)))

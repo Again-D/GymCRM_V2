@@ -15,6 +15,19 @@ describe("getDashboardWidgetConfig", () => {
     expect(ids).toEqual(["accessSummary", "metricsSummary", "scheduleOverview"]);
   });
 
+  it("returns [accessSummary, metricsSummary, scheduleOverview] for ROLE_ADMIN", () => {
+    const widgets = getDashboardWidgetConfig({
+      userId: 1,
+      centerId: 1,
+      username: "admin-user",
+      primaryRole: "ROLE_ADMIN",
+      roles: ["ROLE_ADMIN"],
+    });
+
+    const ids = widgets.map((w) => w.id);
+    expect(ids).toEqual(["accessSummary", "metricsSummary", "scheduleOverview"]);
+  });
+
   it("returns [accessSummary, metricsSummary, scheduleOverview] for ROLE_SUPER_ADMIN", () => {
     const widgets = getDashboardWidgetConfig({
       userId: 1,

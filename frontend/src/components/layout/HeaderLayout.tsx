@@ -71,6 +71,7 @@ export default function HeaderLayout() {
                 <>
                   <Button size="small" type="default" onClick={() => setRuntimeAuthPreset("prototype-admin")}>데모</Button>
                   <Button size="small" type="default" onClick={() => setRuntimeAuthPreset("jwt-admin")}>관리자</Button>
+                  <Button size="small" type="default" onClick={() => setRuntimeAuthPreset("jwt-manager")}>매니저</Button>
                   <Button size="small" type="default" onClick={clearRuntimeSession}>초기화</Button>
                 </>
               ) : (

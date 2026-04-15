@@ -6,6 +6,7 @@ import com.gymcrm.member.enums.Gender;
 import com.gymcrm.member.enums.MemberStatus;
 import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -118,6 +119,19 @@ public class MemberRepository {
         MemberEntity saved = memberJpaRepository.saveAndFlush(entity);
         entityManager.refresh(saved);
         return toDomain(saved);
+    }
+
+    @Transactional
+    public void delete(Long memberId, Long actorUserId) {
+        MemberEntity entity = memberJpaRepository.findByMemberIdAndIsDeletedFalse(memberId)
+                .orElseThrow();
+        OffsetDateTime now = OffsetDateTime.now();
+        entity.setDeleted(true);
+        entity.setDeletedAt(now);
+        entity.setDeletedBy(actorUserId);
+        entity.setUpdatedAt(now);
+        entity.setUpdatedBy(actorUserId);
+        memberJpaRepository.saveAndFlush(entity);
     }
 
     private Member toDomain(MemberEntity entity) {

@@ -44,6 +44,7 @@ public class PtReservationService {
     private static final int MAX_MEMO_LENGTH = 500;
     private static final String ROLE_TRAINER = "ROLE_TRAINER";
     private static final String ROLE_SUPER_ADMIN = "ROLE_SUPER_ADMIN";
+    private static final String ROLE_ADMIN = "ROLE_ADMIN";
     private static final String ROLE_MANAGER = "ROLE_MANAGER";
     private static final String ROLE_DESK = "ROLE_DESK";
 
@@ -335,6 +336,7 @@ public class PtReservationService {
                 .filter(AuthUser::isActive)
                 .filter(actor -> ROLE_TRAINER.equals(actor.roleCode())
                         || ROLE_SUPER_ADMIN.equals(actor.roleCode())
+                        || ROLE_ADMIN.equals(actor.roleCode())
                         || ROLE_MANAGER.equals(actor.roleCode())
                         || ROLE_DESK.equals(actor.roleCode()))
                 .orElseThrow(() -> new ApiException(ErrorCode.AUTHENTICATION_FAILED, "활성 사용자 정보를 찾을 수 없습니다."));
