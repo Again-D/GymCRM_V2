@@ -64,6 +64,13 @@ docker compose -p gymcrm-staging -f compose.selfhosted-staging.yaml up -d --buil
 docker compose -p gymcrm-staging -f compose.selfhosted-staging.yaml ps
 ```
 
+만약 runner/PC에 `COMPOSE_FILE` 같은 전역 환경변수가 세팅되어 있으면, 의도치 않게 다른 compose 파일이 합쳐질 수 있다. 그 경우 아래처럼 환경변수를 제거한 뒤 실행한다.
+
+```bash
+set COMPOSE_FILE=
+set COMPOSE_PROJECT_NAME=
+```
+
 Smoke check:
 - `http://localhost:8088/`
 - `http://localhost:8088/api/v1/health`

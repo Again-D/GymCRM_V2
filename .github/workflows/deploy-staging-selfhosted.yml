@@ -31,6 +31,11 @@ jobs:
           STAGING_POSTGRES_PASSWORD: ${{ secrets.STAGING_SELFHOSTED_POSTGRES_PASSWORD }}
           STAGING_HTTP_PORT: ${{ vars.STAGING_SELFHOSTED_HTTP_PORT }}
         run: |
+          # Defensive: if the runner has COMPOSE_FILE / COMPOSE_PROJECT_NAME set globally,
+          # it can cause unexpected extra compose files/services to be included.
+          Remove-Item Env:COMPOSE_FILE -ErrorAction SilentlyContinue
+          Remove-Item Env:COMPOSE_PROJECT_NAME -ErrorAction SilentlyContinue
+
           if (-not $env:STAGING_POSTGRES_PASSWORD) {
             throw "Missing secret: STAGING_SELFHOSTED_POSTGRES_PASSWORD (mapped to STAGING_POSTGRES_PASSWORD)"
           }
