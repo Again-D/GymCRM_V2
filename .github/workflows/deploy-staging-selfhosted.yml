@@ -1,0 +1,88 @@
+name: deploy-staging-selfhosted
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch: {}
+
+concurrency:
+  group: staging-selfhosted-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: deploy
+    runs-on: [self-hosted, windows, gymcrm-staging]
+    timeout-minutes: 45
+    environment: staging-selfhosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Docker info
+        shell: pwsh
+        run: |
+          docker version
+          docker compose version
+
+      - name: Deploy (docker compose up --build)
+        shell: pwsh
+        env:
+          STAGING_POSTGRES_PASSWORD: ${{ secrets.STAGING_SELFHOSTED_POSTGRES_PASSWORD }}
+          STAGING_HTTP_PORT: ${{ vars.STAGING_SELFHOSTED_HTTP_PORT }}
+        run: |
+          if (-not $env:STAGING_POSTGRES_PASSWORD) {
+            throw "Missing secret: STAGING_SELFHOSTED_POSTGRES_PASSWORD (mapped to STAGING_POSTGRES_PASSWORD)"
+          }
+          if (-not $env:STAGING_HTTP_PORT) {
+            $env:STAGING_HTTP_PORT = "8088"
+          }
+
+          docker compose -p gymcrm-staging -f compose.selfhosted-staging.yaml up -d --build --remove-orphans
+          docker compose -p gymcrm-staging -f compose.selfhosted-staging.yaml ps
+
+      - name: Smoke test (/, /api/v1/health)
+        shell: pwsh
+        env:
+          STAGING_HTTP_PORT: ${{ vars.STAGING_SELFHOSTED_HTTP_PORT }}
+        run: |
+          if (-not $env:STAGING_HTTP_PORT) {
+            $env:STAGING_HTTP_PORT = "8088"
+          }
+
+          $baseUrl = "http://localhost:$($env:STAGING_HTTP_PORT)"
+          $targets = @(
+            "$baseUrl/",
+            "$baseUrl/api/v1/health"
+          )
+
+          foreach ($target in $targets) {
+            Write-Host "Waiting for $target"
+            $ok = $false
+            for ($i = 1; $i -le 60; $i++) {
+              try {
+                $resp = Invoke-WebRequest -Uri $target -UseBasicParsing -TimeoutSec 3
+                if ($resp.StatusCode -ge 200 -and $resp.StatusCode -lt 400) {
+                  $ok = $true
+                  break
+                }
+              } catch {
+                # retry
+              }
+              Start-Sleep -Seconds 2
+            }
+
+            if (-not $ok) {
+              throw "Smoke check failed for $target"
+            }
+          }
+
+      - name: Dump logs on failure
+        if: failure()
+        shell: pwsh
+        run: |
+          docker ps -a --filter "name=gymcrm-staging-" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+          docker logs gymcrm-staging-nginx 2>$null
+          docker logs gymcrm-staging-backend 2>$null
+          docker logs gymcrm-staging-postgres 2>$null
+          docker logs gymcrm-staging-redis 2>$null

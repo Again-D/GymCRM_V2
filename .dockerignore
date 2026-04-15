@@ -1,0 +1,26 @@
+.git
+.github
+.worktrees
+.agents
+.aider*
+.gradle-local
+.npm-cache
+.vscode
+.idea
+.DS_Store
+
+# Node
+node_modules
+frontend/node_modules
+frontend/dist
+frontend/*.tsbuildinfo
+
+# Java build outputs
+backend/build
+backend/target
+backend/.gradle
+
+# Docs / tmp
+tmp
+*.log
+
