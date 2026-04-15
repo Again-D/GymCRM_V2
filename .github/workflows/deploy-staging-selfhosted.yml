@@ -20,81 +20,83 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Assert Windows runner
-        shell: powershell
+        shell: cmd
         run: |
-          if ($env:RUNNER_OS -ne "Windows") {
-            throw "This workflow must run on a Windows runner. Detected RUNNER_OS=$env:RUNNER_OS"
-          }
+          @echo off
+          if not "%RUNNER_OS%"=="Windows" (
+            echo This workflow must run on a Windows runner. Detected RUNNER_OS=%RUNNER_OS%
+            exit /b 1
+          )
 
       - name: Docker info
-        shell: powershell
+        shell: cmd
         run: |
+          @echo off
           docker version
           docker compose version
 
       - name: Deploy (docker compose up --build)
-        shell: powershell
+        shell: cmd
         env:
           STAGING_POSTGRES_PASSWORD: ${{ secrets.STAGING_SELFHOSTED_POSTGRES_PASSWORD }}
           STAGING_HTTP_PORT: ${{ vars.STAGING_SELFHOSTED_HTTP_PORT }}
         run: |
-          # Defensive: if the runner has COMPOSE_FILE / COMPOSE_PROJECT_NAME set globally,
-          # it can cause unexpected extra compose files/services to be included.
-          Remove-Item Env:COMPOSE_FILE -ErrorAction SilentlyContinue
-          Remove-Item Env:COMPOSE_PROJECT_NAME -ErrorAction SilentlyContinue
+          @echo off
+          REM Defensive: if the runner has COMPOSE_FILE / COMPOSE_PROJECT_NAME set globally,
+          REM it can cause unexpected extra compose files/services to be included.
+          set COMPOSE_FILE=
+          set COMPOSE_PROJECT_NAME=
 
-          if (-not $env:STAGING_POSTGRES_PASSWORD) {
-            throw "Missing secret: STAGING_SELFHOSTED_POSTGRES_PASSWORD (mapped to STAGING_POSTGRES_PASSWORD)"
-          }
-          if (-not $env:STAGING_HTTP_PORT) {
-            $env:STAGING_HTTP_PORT = "8088"
-          }
+          if "%STAGING_POSTGRES_PASSWORD%"=="" (
+            echo Missing secret: STAGING_SELFHOSTED_POSTGRES_PASSWORD ^(mapped to STAGING_POSTGRES_PASSWORD^)
+            exit /b 1
+          )
+          if "%STAGING_HTTP_PORT%"=="" (
+            set STAGING_HTTP_PORT=8088
+          )
 
           docker compose -p gymcrm-staging -f compose.selfhosted-staging.yaml up -d --build --remove-orphans
           docker compose -p gymcrm-staging -f compose.selfhosted-staging.yaml ps
 
       - name: Smoke test (/, /api/v1/health)
-        shell: powershell
+        shell: cmd
         env:
           STAGING_HTTP_PORT: ${{ vars.STAGING_SELFHOSTED_HTTP_PORT }}
         run: |
-          if (-not $env:STAGING_HTTP_PORT) {
-            $env:STAGING_HTTP_PORT = "8088"
-          }
-
-          $baseUrl = "http://localhost:$($env:STAGING_HTTP_PORT)"
-          $targets = @(
-            "$baseUrl/",
-            "$baseUrl/api/v1/health"
+          @echo off
+          if "%STAGING_HTTP_PORT%"=="" (
+            set STAGING_HTTP_PORT=8088
           )
 
-          foreach ($target in $targets) {
-            Write-Host "Waiting for $target"
-            $ok = $false
-            for ($i = 1; $i -le 60; $i++) {
-              try {
-                $resp = Invoke-WebRequest -Uri $target -UseBasicParsing -TimeoutSec 3
-                if ($resp.StatusCode -ge 200 -and $resp.StatusCode -lt 400) {
-                  $ok = $true
-                  break
-                }
-              } catch {
-                # retry
-              }
-              Start-Sleep -Seconds 2
-            }
+          set BASE_URL=http://localhost:%STAGING_HTTP_PORT%
 
-            if (-not $ok) {
-              throw "Smoke check failed for $target"
-            }
-          }
+          call :wait_for "%BASE_URL%/" 60 2 || exit /b 1
+          call :wait_for "%BASE_URL%/api/v1/health" 60 2 || exit /b 1
+          exit /b 0
+
+          :wait_for
+          set TARGET=%~1
+          set RETRIES=%~2
+          set SLEEP_SECS=%~3
+
+          echo Waiting for %TARGET%
+          for /l %%i in (1,1,%RETRIES%) do (
+            curl -fsS "%TARGET%" >NUL 2>&1
+            if not errorlevel 1 (
+              exit /b 0
+            )
+            ping -n %SLEEP_SECS% 127.0.0.1 >NUL
+          )
+          echo Smoke check failed for %TARGET%
+          exit /b 1
 
       - name: Dump logs on failure
         if: failure()
-        shell: powershell
+        shell: cmd
         run: |
+          @echo off
           docker ps -a --filter "name=gymcrm-staging-" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-          docker logs gymcrm-staging-nginx 2>$null
-          docker logs gymcrm-staging-backend 2>$null
-          docker logs gymcrm-staging-postgres 2>$null
-          docker logs gymcrm-staging-redis 2>$null
+          docker logs gymcrm-staging-nginx 2>NUL
+          docker logs gymcrm-staging-backend 2>NUL
+          docker logs gymcrm-staging-postgres 2>NUL
+          docker logs gymcrm-staging-redis 2>NUL
