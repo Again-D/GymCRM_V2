@@ -29,6 +29,7 @@ public class DevAdminUserSeeder implements ApplicationRunner {
     private final String loginId;
     private final String userName;
     private final String initialPassword;
+    private final String initialRoleCode;
 
     public DevAdminUserSeeder(
             SecurityModeSettings securityModeSettings,
@@ -39,7 +40,8 @@ public class DevAdminUserSeeder implements ApplicationRunner {
             @Value("${app.security.dev-admin.center-id:1}") long centerId,
             @Value("${app.security.dev-admin.login-id:center-admin}") String loginId,
             @Value("${app.security.dev-admin.display-name:Center Admin}") String userName,
-            @Value("${app.security.dev-admin.initial-password:dev-admin-1234!}") String initialPassword
+            @Value("${app.security.dev-admin.initial-password:dev-admin-1234!}") String initialPassword,
+            @Value("${app.security.dev-admin.initial-role-code:ROLE_ADMIN}") String initialRoleCode
     ) {
         this.securityModeSettings = securityModeSettings;
         this.environment = environment;
@@ -50,6 +52,7 @@ public class DevAdminUserSeeder implements ApplicationRunner {
         this.loginId = loginId;
         this.userName = userName;
         this.initialPassword = initialPassword;
+        this.initialRoleCode = initialRoleCode;
     }
 
     @Override
@@ -62,6 +65,7 @@ public class DevAdminUserSeeder implements ApplicationRunner {
             return;
         }
         if (existsActiveUser()) {
+            normalizeExistingSeedUserRole();
             return;
         }
         if (initialPassword == null || initialPassword.isBlank()) {
@@ -86,16 +90,52 @@ public class DevAdminUserSeeder implements ApplicationRunner {
                 .query(Long.class)
                 .single();
 
+        String normalizedRoleCode = initialRoleCode.trim().toUpperCase();
         jdbcClient.sql("""
                 INSERT INTO user_roles (user_id, role_id, created_by)
                 SELECT :userId, role_id, 0
                 FROM roles
-                WHERE role_code = 'ROLE_MANAGER'
+                WHERE role_code = :roleCode
+                """)
+                .param("userId", userId)
+                .param("roleCode", normalizedRoleCode)
+                .update();
+
+        log.warn("Seeded dev/staging admin user loginId='{}' roleCode='{}' for centerId={} (JWT mode). Change password after first use.", loginId, normalizedRoleCode, centerId);
+    }
+
+    private void normalizeExistingSeedUserRole() {
+        Long userId = jdbcClient.sql("""
+                SELECT user_id
+                FROM users
+                WHERE center_id = :centerId
+                  AND login_id = :loginId
+                  AND is_deleted = FALSE
+                """)
+                .param("centerId", centerId)
+                .param("loginId", loginId.trim())
+                .query(Long.class)
+                .single();
+
+        String normalizedRoleCode = initialRoleCode.trim().toUpperCase();
+        jdbcClient.sql("""
+                DELETE FROM user_roles
+                WHERE user_id = :userId
                 """)
                 .param("userId", userId)
                 .update();
 
-        log.warn("Seeded dev/staging admin user loginId='{}' for centerId={} (JWT mode). Change password after first use.", loginId, centerId);
+        jdbcClient.sql("""
+                INSERT INTO user_roles (user_id, role_id, created_by)
+                SELECT :userId, role_id, 0
+                FROM roles
+                WHERE role_code = :roleCode
+                """)
+                .param("userId", userId)
+                .param("roleCode", normalizedRoleCode)
+                .update();
+
+        log.warn("Normalized existing dev/staging admin user loginId='{}' to roleCode='{}' for centerId={} (JWT mode).", loginId, normalizedRoleCode, centerId);
     }
 
     private boolean existsActiveUser() {

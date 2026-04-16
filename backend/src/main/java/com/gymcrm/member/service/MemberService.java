@@ -175,6 +175,24 @@ public class MemberService {
         }
     }
 
+    @Transactional
+    public void delete(Long memberId) {
+        AuthUser actor = currentActorOrNull();
+        if (actor == null) {
+            throw new ApiException(ErrorCode.AUTHENTICATION_FAILED, "활성 사용자 정보를 찾을 수 없습니다.");
+        }
+
+        Member current = memberRepository.findById(memberId)
+                .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "회원을 찾을 수 없습니다. memberId=" + memberId));
+
+        if (!"ROLE_SUPER_ADMIN".equals(actor.roleCode())
+                && !current.centerId().equals(currentUserProvider.currentCenterId())) {
+            throw new ApiException(ErrorCode.ACCESS_DENIED, "현재 센터의 회원만 삭제할 수 있습니다.");
+        }
+
+        memberRepository.delete(memberId, actor.userId());
+    }
+
     private Member resolvePii(Member member) {
         String phone = member.phone();
         LocalDate birthDate = member.birthDate();

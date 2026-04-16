@@ -89,6 +89,14 @@ export default function Login() {
                       </Button>
                       <Button 
                         size="large" 
+                        icon={<SafetyCertificateOutlined />} 
+                        block 
+                        onClick={() => setRuntimeAuthPreset("jwt-manager")}
+                      >
+                        JWT 매니저 세션
+                      </Button>
+                      <Button 
+                        size="large" 
                         icon={<TeamOutlined />} 
                         block 
                         onClick={() => setRuntimeAuthPreset("jwt-trainer")}

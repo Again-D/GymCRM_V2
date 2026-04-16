@@ -72,9 +72,9 @@ export function configureApiAuth(hooks: ApiAuthHooks | null) {
   refreshInFlight = null;
 }
 
-async function resolveMockEnvelope<T>(path: string): Promise<ApiEnvelope<T>> {
+async function resolveMockEnvelope<T>(path: string, method: string = "GET"): Promise<ApiEnvelope<T>> {
   const { getMockResponse } = await import("./mockData");
-  const payload = getMockResponse(path) as ApiEnvelope<T> | null;
+  const payload = getMockResponse(path, method) as ApiEnvelope<T> | null;
   if (!payload) {
     throw new Error(`No mock response configured for ${path}`);
   }
@@ -99,7 +99,7 @@ async function request<T>(
   options?: { skipAuthRetry?: boolean; overrideAccessToken?: string | null },
 ): Promise<ApiEnvelope<T>> {
   if (isMockApiMode()) {
-    return resolveMockEnvelope<T>(path);
+    return resolveMockEnvelope<T>(path, init?.method ?? "GET");
   }
 
   const headers = new Headers(init?.headers);

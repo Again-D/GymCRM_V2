@@ -47,7 +47,7 @@ describe("AuthStateProvider bootstrap", () => {
     });
 
     act(() => {
-      firstRender.result.current.setRuntimeAuthPreset("jwt-trainer");
+      firstRender.result.current.setRuntimeAuthPreset("jwt-manager");
     });
 
     firstRender.unmount();
@@ -61,8 +61,8 @@ describe("AuthStateProvider bootstrap", () => {
     });
 
     expect(secondRender.result.current.securityMode).toBe("jwt");
-    expect(secondRender.result.current.authUser?.primaryRole).toBe("ROLE_TRAINER");
-    expect(secondRender.result.current.authUser?.roles).toEqual(["ROLE_TRAINER"]);
+    expect(secondRender.result.current.authUser?.primaryRole).toBe("ROLE_MANAGER");
+    expect(secondRender.result.current.authUser?.roles).toEqual(["ROLE_MANAGER"]);
   });
 
   it("bootstraps live jwt session from health and refresh", async () => {
@@ -86,16 +86,16 @@ describe("AuthStateProvider bootstrap", () => {
       status: 200,
       json: async () => ({
         success: true,
-        data: {
-          accessToken: "token-1",
-          user: {
-            userId: 7,
-            loginId: "center-admin",
-            userName: "센터 관리자",
-            primaryRole: "ROLE_MANAGER",
-            roles: ["ROLE_MANAGER"]
-          }
-        },
+            data: {
+              accessToken: "token-1",
+              user: {
+                userId: 7,
+                loginId: "center-admin",
+                userName: "센터 관리자",
+                primaryRole: "ROLE_ADMIN",
+                roles: ["ROLE_ADMIN"]
+              }
+            },
         message: "토큰이 재발급되었습니다.",
         timestamp: "",
         traceId: ""
@@ -150,16 +150,16 @@ describe("AuthStateProvider bootstrap", () => {
       status: 200,
       json: async () => ({
         success: true,
-        data: {
-          accessToken: "token-login",
-          user: {
-            userId: 11,
-            loginId: "center-admin",
-            userName: "센터 관리자",
-            primaryRole: "ROLE_MANAGER",
-            roles: ["ROLE_MANAGER"]
-          }
-        },
+            data: {
+              accessToken: "token-login",
+              user: {
+                userId: 11,
+                loginId: "center-admin",
+                userName: "센터 관리자",
+                primaryRole: "ROLE_ADMIN",
+                roles: ["ROLE_ADMIN"]
+              }
+            },
         message: "로그인되었습니다.",
         timestamp: "",
         traceId: ""
@@ -204,16 +204,16 @@ describe("AuthStateProvider bootstrap", () => {
       status: 200,
       json: async () => ({
         success: true,
-        data: {
-          accessToken: "token-refresh",
-          user: {
-            userId: 11,
-            loginId: "center-admin",
-            userName: "센터 관리자",
-            primaryRole: "ROLE_MANAGER",
-            roles: ["ROLE_MANAGER"]
-          }
-        },
+            data: {
+              accessToken: "token-refresh",
+              user: {
+                userId: 11,
+                loginId: "center-admin",
+                userName: "센터 관리자",
+                primaryRole: "ROLE_ADMIN",
+                roles: ["ROLE_ADMIN"]
+              }
+            },
         message: "기존 세션을 복구했습니다.",
         timestamp: "",
         traceId: ""

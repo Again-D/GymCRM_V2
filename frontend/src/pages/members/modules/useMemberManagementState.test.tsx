@@ -21,6 +21,7 @@ function createTestQueryClient() {
 
 describe("useMemberManagementState", () => {
   let queryClient: QueryClient;
+  let clearSelectedMember: () => void;
 
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -28,6 +29,7 @@ describe("useMemberManagementState", () => {
     setMockApiModeForTests(true);
     queryClient = createTestQueryClient();
     vi.spyOn(queryClient, "invalidateQueries");
+    clearSelectedMember = vi.fn(() => undefined);
   });
 
   it("creates a member in mock mode and invalidates members", async () => {
@@ -37,6 +39,7 @@ describe("useMemberManagementState", () => {
         useMemberManagementState({
           selectedMemberId: null,
           selectMember,
+          clearSelectedMember,
         }),
       {
         wrapper: ({ children }) => (
@@ -77,6 +80,7 @@ describe("useMemberManagementState", () => {
         useMemberManagementState({
           selectedMemberId: 101,
           selectMember,
+          clearSelectedMember,
         }),
       {
         wrapper: ({ children }) => (
@@ -85,7 +89,7 @@ describe("useMemberManagementState", () => {
               value={{
                 securityMode: "jwt",
                 authBootstrapping: false,
-                authUser: { userId: 11, username: "jwt-admin", primaryRole: "ROLE_MANAGER", roles: ["ROLE_MANAGER"] },
+                authUser: { userId: 11, username: "jwt-admin", primaryRole: "ROLE_ADMIN", roles: ["ROLE_ADMIN"] },
               }}
             >
               {children}
@@ -157,6 +161,7 @@ describe("useMemberManagementState", () => {
         useMemberManagementState({
           selectedMemberId: 101,
           selectMember,
+          clearSelectedMember,
         }),
       {
         wrapper: ({ children }) => (
@@ -165,7 +170,7 @@ describe("useMemberManagementState", () => {
               value={{
                 securityMode: "jwt",
                 authBootstrapping: false,
-                authUser: { userId: 11, username: "jwt-admin", primaryRole: "ROLE_MANAGER", roles: ["ROLE_MANAGER"] },
+                authUser: { userId: 11, username: "jwt-admin", primaryRole: "ROLE_ADMIN", roles: ["ROLE_ADMIN"] },
               }}
             >
               {children}
@@ -191,6 +196,60 @@ describe("useMemberManagementState", () => {
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith(expect.objectContaining({ queryKey: ["members"] }));
   });
 
+  it("deletes a member in live mode for admin role", async () => {
+    setMockApiModeForTests(false);
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: null,
+        message: "회원이 삭제되었습니다.",
+        timestamp: "2026-03-20T00:00:00Z",
+        traceId: "trace-delete",
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const selectMember = vi.fn(async () => true);
+    const { result } = renderHook(
+      () =>
+        useMemberManagementState({
+          selectedMemberId: 101,
+          selectMember,
+          clearSelectedMember,
+        }),
+      {
+        wrapper: ({ children }) => (
+          <QueryClientProvider client={queryClient}>
+            <AuthStateProvider
+              value={{
+                securityMode: "jwt",
+                authBootstrapping: false,
+                authUser: { userId: 11, username: "jwt-admin", primaryRole: "ROLE_ADMIN", roles: ["ROLE_ADMIN"] },
+              }}
+            >
+              {children}
+            </AuthStateProvider>
+          </QueryClientProvider>
+        ),
+      },
+    );
+
+    await act(async () => {
+      await result.current.deleteMember(101);
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/members/101",
+      expect.objectContaining({
+        credentials: "include",
+        method: "DELETE",
+      }),
+    );
+    expect(clearSelectedMember).toHaveBeenCalled();
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith(expect.objectContaining({ queryKey: ["members"] }));
+  });
+
   it("blocks member mutations for trainer role", async () => {
     const selectMember = vi.fn(async () => true);
     const { result } = renderHook(
@@ -198,6 +257,7 @@ describe("useMemberManagementState", () => {
         useMemberManagementState({
           selectedMemberId: null,
           selectMember,
+          clearSelectedMember,
         }),
       {
         wrapper: ({ children }) => (

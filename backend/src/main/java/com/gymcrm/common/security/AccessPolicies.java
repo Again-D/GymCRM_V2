@@ -5,15 +5,18 @@ public final class AccessPolicies {
 
     // Prototype mode keeps no-auth behavior for local demo flows.
     public static final String PROTOTYPE_OR_MANAGER =
-            "@securityModeSettings.isPrototypeMode() or hasAnyRole('SUPER_ADMIN','MANAGER')";
+            "@securityModeSettings.isPrototypeMode() or hasAnyRole('SUPER_ADMIN','ADMIN','MANAGER')";
 
     public static final String PROTOTYPE_OR_MANAGER_OR_DESK =
-            "@securityModeSettings.isPrototypeMode() or hasAnyRole('SUPER_ADMIN','MANAGER','DESK')";
+            "@securityModeSettings.isPrototypeMode() or hasAnyRole('SUPER_ADMIN','ADMIN','MANAGER','DESK')";
 
     public static final String PROTOTYPE_OR_MANAGER_OR_DESK_OR_TRAINER =
-            "@securityModeSettings.isPrototypeMode() or hasAnyRole('SUPER_ADMIN','MANAGER','DESK','TRAINER')";
+            "@securityModeSettings.isPrototypeMode() or hasAnyRole('SUPER_ADMIN','ADMIN','MANAGER','DESK','TRAINER')";
 
     public static final String PROTOTYPE_OR_TRAINER =
             "@securityModeSettings.isPrototypeMode() or hasRole('TRAINER')";
+
+    public static final String PROTOTYPE_OR_ADMIN =
+            "@securityModeSettings.isPrototypeMode() or hasAnyRole('SUPER_ADMIN','ADMIN')";
 
 }

@@ -16,6 +16,7 @@ import java.time.ZoneOffset;
 @Service
 public class AuthAccessRevocationService {
     private static final String ROLE_SUPER_ADMIN = "ROLE_SUPER_ADMIN";
+    private static final String ROLE_ADMIN = "ROLE_ADMIN";
     private static final String ROLE_MANAGER = "ROLE_MANAGER";
     private static final String ROLE_TRAINER = "ROLE_TRAINER";
     private static final String ROLE_DESK = "ROLE_DESK";
@@ -79,7 +80,7 @@ public class AuthAccessRevocationService {
         AuthUser actor = requireActor();
         AuthUser targetUser = requireScopedUser(centerId, targetUserId);
         String normalizedRoleCode = normalizeRoleCode(requestedRoleCode);
-        ensureSuperAdminRoleChangeAllowed(actor, targetUser, normalizedRoleCode);
+        ensureRoleChangeAllowed(actor, targetUser, normalizedRoleCode);
         OffsetDateTime revokedAfter = OffsetDateTime.now(ZoneOffset.UTC);
 
         int updatedRole = authUserRepository.updateRoleCode(targetUser.userId(), normalizedRoleCode, actorUserId);
@@ -147,11 +148,17 @@ public class AuthAccessRevocationService {
                 .orElseThrow(() -> new ApiException(ErrorCode.AUTHENTICATION_FAILED, "활성 사용자 정보를 찾을 수 없습니다."));
     }
 
-    private void ensureSuperAdminRoleChangeAllowed(AuthUser actor, AuthUser targetUser, String normalizedRoleCode) {
+    private void ensureRoleChangeAllowed(AuthUser actor, AuthUser targetUser, String normalizedRoleCode) {
         if (ROLE_SUPER_ADMIN.equals(actor.roleCode())) {
             return;
         }
-        if (ROLE_SUPER_ADMIN.equals(normalizedRoleCode) || ROLE_SUPER_ADMIN.equals(targetUser.roleCode())) {
+        if (actor.userId().equals(targetUser.userId())) {
+            throw new ApiException(ErrorCode.ACCESS_DENIED, "본인 역할은 변경할 수 없습니다.");
+        }
+        if (ROLE_SUPER_ADMIN.equals(normalizedRoleCode)
+                || ROLE_ADMIN.equals(normalizedRoleCode)
+                || ROLE_SUPER_ADMIN.equals(targetUser.roleCode())
+                || ROLE_ADMIN.equals(targetUser.roleCode())) {
             throw new ApiException(ErrorCode.ACCESS_DENIED, "슈퍼 관리자 권한은 슈퍼 관리자만 변경할 수 있습니다.");
         }
     }
@@ -162,6 +169,7 @@ public class AuthAccessRevocationService {
         }
         String normalized = requestedRoleCode.trim().toUpperCase();
         if (!normalized.equals(ROLE_SUPER_ADMIN)
+                && !normalized.equals(ROLE_ADMIN)
                 && !normalized.equals(ROLE_MANAGER)
                 && !normalized.equals(ROLE_TRAINER)
                 && !normalized.equals(ROLE_DESK)) {

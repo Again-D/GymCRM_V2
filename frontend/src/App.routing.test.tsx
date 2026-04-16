@@ -82,7 +82,7 @@ describe("prototype shell routing", () => {
   it("redirects unknown paths to dashboard for authenticated sessions", async () => {
     renderRoute(["/not-a-real-route"], {
       securityMode: "jwt",
-      authUser: { userId: 1, username: "test", primaryRole: "ADMIN", roles: ["ADMIN"] }
+      authUser: { userId: 1, username: "test", primaryRole: "ROLE_ADMIN", roles: ["ROLE_ADMIN"] }
     });
 
     await waitForShellHeading("운영 대시보드");

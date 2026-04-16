@@ -908,11 +908,11 @@ function cloneTrainerSettlementSnapshots(source: MockTrainerSettlementSnapshot[]
   return source.map((snapshot) => ({ ...snapshot }));
 }
 
-function envelope<T>(data: T): ApiEnvelope<T> {
+function envelope<T>(data: T, message = "mock ok"): ApiEnvelope<T> {
   return {
     success: true,
     data,
-    message: "mock ok",
+    message,
     timestamp: "2026-03-12T00:00:00Z",
     traceId: "mock-trace",
   };
@@ -1720,6 +1720,20 @@ export function updateMockMember(
   );
   bumpMockDataVersion();
   return { ...nextMember };
+}
+
+export function deleteMockMember(memberId: number) {
+  const existed = mockMemberDetails.has(memberId);
+  if (!existed) {
+    return false;
+  }
+
+  mockMemberDetails.delete(memberId);
+  mockMembers = mockMembers.filter((member) => member.memberId !== memberId);
+  mockMemberMemberships.delete(memberId);
+  mockReservationsByMemberId.delete(memberId);
+  bumpMockDataVersion();
+  return true;
 }
 
 export function createMockMembership(input: {
@@ -2816,7 +2830,7 @@ export function deleteMockGxScheduleException(
   return buildMockGxScheduleSnapshot(month, actor);
 }
 
-export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
+export function getMockResponse(path: string, method: string = "GET"): ApiEnvelope<unknown> | null {
   const url = new URL(path, "http://local.mock");
 
   if (url.pathname === "/api/v1/auth/trainers") {
@@ -2866,6 +2880,11 @@ export function getMockResponse(path: string): ApiEnvelope<unknown> | null {
           ...reservation,
         })),
       );
+    }
+    if (method === "DELETE") {
+      return deleteMockMember(memberId)
+        ? envelope(null, "회원이 삭제되었습니다.")
+        : null;
     }
     const detail = mockMemberDetails.get(memberId);
     return detail ? envelope({ ...detail }) : null;

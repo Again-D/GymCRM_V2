@@ -66,6 +66,7 @@ export default function GxSchedulesPage() {
   const [savingException, setSavingException] = useState(false);
   const canManageRules =
     hasRole(authUser, "ROLE_SUPER_ADMIN") ||
+    hasRole(authUser, "ROLE_ADMIN") ||
     hasRole(authUser, "ROLE_MANAGER");
   const isTrainer = hasRole(authUser, "ROLE_TRAINER");
   const canManageExceptions = canManageRules || hasRole(authUser, "ROLE_TRAINER");

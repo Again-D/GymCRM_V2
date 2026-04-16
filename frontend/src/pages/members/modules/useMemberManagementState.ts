@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { apiPatch, apiPost, isMockApiMode } from "../../../api/client";
+import { apiDelete, apiPatch, apiPost, isMockApiMode } from "../../../api/client";
 import { useAuthState } from "../../../app/auth";
 import { queryKeys } from "../../../app/queryHelpers";
 import { hasAnyRole } from "../../../app/roles";
@@ -76,17 +76,26 @@ function canManageMember(
 ) {
 	return hasAnyRole(authUser, [
 		"ROLE_SUPER_ADMIN",
+		"ROLE_ADMIN",
 		"ROLE_MANAGER",
 		"ROLE_DESK",
 	]);
 }
 
+function canDeleteMember(
+	authUser: ReturnType<typeof useAuthState>["authUser"],
+) {
+	return hasAnyRole(authUser, ["ROLE_SUPER_ADMIN", "ROLE_ADMIN"]);
+}
+
 export function useMemberManagementState({
 	selectedMemberId,
 	selectMember,
+	clearSelectedMember,
 }: {
 	selectedMemberId: number | null;
 	selectMember: (memberId: number) => Promise<boolean>;
+	clearSelectedMember: () => void;
 }) {
 	const { authUser } = useAuthState();
 	const queryClient = useQueryClient();
@@ -103,6 +112,7 @@ export function useMemberManagementState({
 	);
 	const useMockMutations = isMockApiMode();
 	const canManageMembers = useMemo(() => canManageMember(authUser), [authUser]);
+	const canDeleteMembers = useMemo(() => canDeleteMember(authUser), [authUser]);
 
 	function clearMemberFeedback() {
 		setMemberFormError(null);
@@ -129,6 +139,11 @@ export function useMemberManagementState({
 	function openMemberDeactivate(memberId: number) {
 		clearMemberFeedback();
 		setModalState({ kind: "deactivate", memberId });
+	}
+
+	function openMemberDelete(memberId: number) {
+		clearMemberFeedback();
+		setModalState({ kind: "delete", memberId });
 	}
 
 	function closeMemberModal() {
@@ -256,6 +271,37 @@ export function useMemberManagementState({
 		}
 	}
 
+	async function deleteMember(memberId: number) {
+		clearMemberFeedback();
+		if (!canDeleteMembers) {
+			setMemberFormError("회원 삭제 권한이 없습니다.");
+			return null;
+		}
+
+		setMemberFormSubmitting(true);
+		try {
+			if (useMockMutations) {
+				const { deleteMockMember } = await import("../../../api/mockData");
+				const deleted = deleteMockMember(memberId);
+				if (!deleted) {
+					setMemberFormError("삭제할 회원을 찾을 수 없습니다.");
+					return null;
+				}
+				setMemberFormMessage(`회원 #${memberId}를 삭제했습니다.`);
+			} else {
+				const response = await apiDelete<void>(`/api/v1/members/${memberId}`);
+				setMemberFormMessage(response.message);
+			}
+
+			queryClient.invalidateQueries({ queryKey: queryKeys.members.all });
+			clearSelectedMember();
+			setModalState({ kind: "none" });
+			return null;
+		} finally {
+			setMemberFormSubmitting(false);
+		}
+	}
+
 	return {
 		modalState,
 		memberForm,
@@ -264,13 +310,16 @@ export function useMemberManagementState({
 		memberFormError,
 		memberFormMessage,
 		canManageMembers,
+		canDeleteMembers,
 		clearMemberFeedback,
 		closeMemberModal,
 		startCreateMember,
 		openMemberDetail,
 		openMemberEdit,
 		openMemberDeactivate,
+		openMemberDelete,
 		submitMemberForm,
 		deactivateMember,
+		deleteMember,
 	} as const;
 }

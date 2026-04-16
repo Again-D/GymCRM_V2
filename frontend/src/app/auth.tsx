@@ -40,7 +40,7 @@ type AuthStateOverride = Readonly<{
   authUser?: PrototypeAuthUser | null;
 }>;
 
-export type RuntimeAuthPreset = "prototype-admin" | "jwt-anon" | "jwt-admin" | "jwt-trainer";
+export type RuntimeAuthPreset = "prototype-admin" | "jwt-anon" | "jwt-admin" | "jwt-manager" | "jwt-trainer";
 
 type HealthPayload = {
   status: string;
@@ -84,8 +84,8 @@ const prototypeAdminUser: PrototypeAuthUser = {
   userId: 1,
   centerId: 1,
   username: "prototype-admin",
-  primaryRole: "ROLE_MANAGER",
-  roles: ["ROLE_MANAGER"],
+  primaryRole: "ROLE_ADMIN",
+  roles: ["ROLE_ADMIN"],
   email: "admin@gymcrm.ops"
 };
 
@@ -93,9 +93,18 @@ const jwtAdminUser: PrototypeAuthUser = {
   userId: 11,
   centerId: 1,
   username: "jwt-admin",
+  primaryRole: "ROLE_ADMIN",
+  roles: ["ROLE_ADMIN"],
+  email: "ops-lead@gymcrm.ops"
+};
+
+const jwtManagerUser: PrototypeAuthUser = {
+  userId: 12,
+  centerId: 1,
+  username: "jwt-manager",
   primaryRole: "ROLE_MANAGER",
   roles: ["ROLE_MANAGER"],
-  email: "ops-lead@gymcrm.ops"
+  email: "manager@gymcrm.ops"
 };
 
 const jwtTrainerUser: PrototypeAuthUser = {
@@ -149,6 +158,12 @@ function stateFromPreset(preset: RuntimeAuthPreset): AuthState {
         authBootstrapping: false,
         authUser: jwtAdminUser
       };
+    case "jwt-manager":
+      return {
+        securityMode: "jwt",
+        authBootstrapping: false,
+        authUser: jwtManagerUser
+      };
     case "jwt-trainer":
       return {
         securityMode: "jwt",
@@ -165,7 +180,13 @@ function presetFromState(state: AuthState): RuntimeAuthPreset {
   if (!state.authUser) {
     return "jwt-anon";
   }
-  return state.authUser.primaryRole === "ROLE_TRAINER" ? "jwt-trainer" : "jwt-admin";
+  if (state.authUser.primaryRole === "ROLE_TRAINER") {
+    return "jwt-trainer";
+  }
+  if (state.authUser.primaryRole === "ROLE_MANAGER") {
+    return "jwt-manager";
+  }
+  return "jwt-admin";
 }
 
 function resolveRuntimePreset(): RuntimeAuthPreset {
@@ -181,6 +202,9 @@ function resolveRuntimePreset(): RuntimeAuthPreset {
       if (authSession === "admin") {
         return "jwt-admin";
       }
+      if (authSession === "manager") {
+        return "jwt-manager";
+      }
       if (authSession === "trainer") {
         return "jwt-trainer";
       }
@@ -192,6 +216,7 @@ function resolveRuntimePreset(): RuntimeAuthPreset {
       storedPreset === "prototype-admin" ||
       storedPreset === "jwt-anon" ||
       storedPreset === "jwt-admin" ||
+      storedPreset === "jwt-manager" ||
       storedPreset === "jwt-trainer"
     ) {
       return storedPreset;

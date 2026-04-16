@@ -84,7 +84,7 @@ export default function LockersPage() {
 
 	const isLiveLockerRoleSupported =
 		isMockMode ||
-		hasAnyRole(authUser, ["ROLE_SUPER_ADMIN", "ROLE_MANAGER", "ROLE_DESK"]);
+		hasAnyRole(authUser, ["ROLE_SUPER_ADMIN", "ROLE_ADMIN", "ROLE_MANAGER", "ROLE_DESK"]);
 
 	const slotsPagination = usePagination(lockerSlots, {
 		initialPageSize: 10,

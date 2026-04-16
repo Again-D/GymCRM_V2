@@ -81,7 +81,7 @@ export default function CrmPage() {
 
 	const isLiveCrmRoleSupported =
 		isMockMode ||
-		hasAnyRole(authUser, ["ROLE_SUPER_ADMIN", "ROLE_MANAGER", "ROLE_DESK"]);
+		hasAnyRole(authUser, ["ROLE_SUPER_ADMIN", "ROLE_ADMIN", "ROLE_MANAGER", "ROLE_DESK"]);
 
 	const historyPagination = usePagination(crmHistoryRows, {
 		initialPageSize: 10,

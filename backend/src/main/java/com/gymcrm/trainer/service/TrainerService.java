@@ -24,6 +24,7 @@ import java.util.List;
 @Service
 public class TrainerService {
     private static final String ROLE_SUPER_ADMIN = "ROLE_SUPER_ADMIN";
+    private static final String ROLE_ADMIN = "ROLE_ADMIN";
     private static final String ROLE_MANAGER = "ROLE_MANAGER";
     private static final String ROLE_DESK = "ROLE_DESK";
     private static final String ROLE_TRAINER = "ROLE_TRAINER";
@@ -216,7 +217,9 @@ public class TrainerService {
     }
 
     private boolean canManage(AuthUser actor) {
-        return ROLE_SUPER_ADMIN.equals(actor.roleCode()) || ROLE_MANAGER.equals(actor.roleCode());
+        return ROLE_SUPER_ADMIN.equals(actor.roleCode())
+                || ROLE_ADMIN.equals(actor.roleCode())
+                || ROLE_MANAGER.equals(actor.roleCode());
     }
 
     private Long resolveActorCenter(AuthUser actor, Long requestedCenterId) {

@@ -253,6 +253,58 @@ describe("MemberListSection", () => {
 		expect(screen.queryByRole("button", { name: /회원 등록/ })).toBeNull();
 	}, 15000);
 
+	function mockSelectedMember() {
+		selectMemberMock = vi.fn(async () => {
+			currentSelectedMemberId = 101;
+			const selectedMember: NonNullable<typeof currentSelectedMember> = {
+				memberId: 101,
+				centerId: 1,
+				memberName: "김민수",
+				phone: "010-1234-5678",
+				email: null,
+				gender: null,
+				birthDate: null,
+				memberStatus: "ACTIVE",
+				joinDate: "2026-01-04",
+				consentSms: true,
+				consentMarketing: false,
+				memo: null,
+			};
+			currentSelectedMember = selectedMember;
+			return true;
+		});
+	}
+
+	it("shows member delete action for admin", async () => {
+		mockSelectedMember();
+
+		renderWithAuth({
+			userId: 11,
+			username: "jwt-admin",
+			primaryRole: "ROLE_ADMIN",
+			roles: ["ROLE_ADMIN"],
+		});
+
+		fireEvent.click(screen.getByText("김민수"));
+		await waitFor(() => expect(selectMemberMock).toHaveBeenCalledWith(101));
+		expect(screen.getByRole("button", { name: "삭제" })).toBeTruthy();
+	}, 15000);
+
+	it("hides member delete action for manager", async () => {
+		mockSelectedMember();
+
+		renderWithAuth({
+			userId: 11,
+			username: "jwt-manager",
+			primaryRole: "ROLE_MANAGER",
+			roles: ["ROLE_MANAGER"],
+		});
+
+		fireEvent.click(screen.getByText("김민수"));
+		await waitFor(() => expect(selectMemberMock).toHaveBeenCalledWith(101));
+		expect(screen.queryByRole("button", { name: "삭제" })).toBeNull();
+	}, 15000);
+
 	it("resets filters on reset button click", () => {
 		renderWithAuth();
 

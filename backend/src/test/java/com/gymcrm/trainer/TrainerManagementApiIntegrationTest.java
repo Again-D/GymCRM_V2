@@ -139,6 +139,51 @@ class TrainerManagementApiIntegrationTest {
     }
 
     @Test
+    void managerCanMutateTrainerManagement() throws Exception {
+        ensureUser(CENTER_ID, "manager-trainer-mgmt", "manager-pass-1234!", "Manager Trainer", "ROLE_MANAGER");
+        String managerToken = loginAndGetAccessToken("manager-trainer-mgmt", "manager-pass-1234!");
+        String adminToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
+        String trainerLoginId = "trainer-manager-deny-" + shortId();
+        long trainerUserId = createTrainer(adminToken, trainerLoginId, "매니저 제한 대상");
+
+        mockMvc.perform(post("/api/v1/trainers")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + managerToken)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "centerId": 1,
+                                  "loginId": "manager-trainer-create-%s",
+                                  "password": "trainer-pass-1234!",
+                                  "userName": "Manager Denied",
+                                  "phone": "010-2222-3333"
+                                }
+                                """.formatted(shortId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.userName").value("Manager Denied"));
+
+        mockMvc.perform(patch("/api/v1/trainers/{userId}", trainerUserId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + managerToken)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "loginId": "%s",
+                                  "userName": "Manager Denied Update"
+                                }
+                                """.formatted(trainerLoginId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.userName").value("Manager Denied Update"));
+
+        mockMvc.perform(patch("/api/v1/trainers/{userId}/status", trainerUserId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + managerToken)
+                        .contentType("application/json")
+                        .content("""
+                                {"userStatus":"INACTIVE"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.userStatus").value("INACTIVE"));
+    }
+
+    @Test
     void centerAdminCannotReadOrCreateAcrossAnotherCenter() throws Exception {
         String adminToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
         Long otherCenterTrainerId = jdbcClient.sql("""

@@ -30,7 +30,8 @@ export type MembersModalState =
   | { kind: "detail"; memberId: number }
   | { kind: "create" }
   | { kind: "edit"; memberId: number }
-  | { kind: "deactivate"; memberId: number };
+  | { kind: "deactivate"; memberId: number }
+  | { kind: "delete"; memberId: number };
 
 export type MemberFormState = {
   memberName: string;

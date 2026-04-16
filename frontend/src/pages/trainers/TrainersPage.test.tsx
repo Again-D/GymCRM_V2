@@ -268,8 +268,8 @@ describe("TrainersPage", () => {
             userId: 11,
             centerId: 2,
             username: "jwt-admin",
-            primaryRole: "ROLE_MANAGER",
-            roles: ["ROLE_MANAGER"],
+            primaryRole: "ROLE_ADMIN",
+            roles: ["ROLE_ADMIN"],
           },
         }}
       >
@@ -334,8 +334,8 @@ describe("TrainersPage", () => {
             userId: 11,
             centerId: 2,
             username: "jwt-admin",
-            primaryRole: "ROLE_MANAGER",
-            roles: ["ROLE_MANAGER"],
+            primaryRole: "ROLE_ADMIN",
+            roles: ["ROLE_ADMIN"],
           },
         }}
       >
