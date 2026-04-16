@@ -92,15 +92,6 @@ public class DevAdminUserSeeder implements ApplicationRunner {
 
         String normalizedRoleCode = initialRoleCode.trim().toUpperCase();
         jdbcClient.sql("""
-                UPDATE users
-                SET role_code = :roleCode
-                WHERE user_id = :userId
-                """)
-                .param("userId", userId)
-                .param("roleCode", normalizedRoleCode)
-                .update();
-
-        jdbcClient.sql("""
                 INSERT INTO user_roles (user_id, role_id, created_by)
                 SELECT :userId, role_id, 0
                 FROM roles
