@@ -253,7 +253,7 @@ describe("MemberListSection", () => {
 		expect(screen.queryByRole("button", { name: /회원 등록/ })).toBeNull();
 	}, 15000);
 
-	it("shows member delete action only for admin", async () => {
+	function mockSelectedMember() {
 		selectMemberMock = vi.fn(async () => {
 			currentSelectedMemberId = 101;
 			const selectedMember: NonNullable<typeof currentSelectedMember> = {
@@ -273,6 +273,10 @@ describe("MemberListSection", () => {
 			currentSelectedMember = selectedMember;
 			return true;
 		});
+	}
+
+	it("shows member delete action for admin", async () => {
+		mockSelectedMember();
 
 		renderWithAuth({
 			userId: 11,
@@ -284,8 +288,10 @@ describe("MemberListSection", () => {
 		fireEvent.click(screen.getByText("김민수"));
 		await waitFor(() => expect(selectMemberMock).toHaveBeenCalledWith(101));
 		expect(screen.getByRole("button", { name: "삭제" })).toBeTruthy();
+	}, 15000);
 
-		cleanup();
+	it("hides member delete action for manager", async () => {
+		mockSelectedMember();
 
 		renderWithAuth({
 			userId: 11,
