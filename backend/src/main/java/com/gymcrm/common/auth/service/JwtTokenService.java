@@ -70,7 +70,7 @@ public class JwtTokenService {
                 .claim("username", user.loginId())
                 .claim("role", roleCode)
                 .claim("primaryRole", roleCode)
-                .claim("roles", List.of(roleCode))
+                .claim("roles", java.util.List.of(roleCode))
                 .signWith(signingKey)
                 .compact();
 
@@ -98,7 +98,7 @@ public class JwtTokenService {
                 .claim("username", user.loginId())
                 .claim("role", roleCode)
                 .claim("primaryRole", roleCode)
-                .claim("roles", List.of(roleCode))
+                .claim("roles", java.util.List.of(roleCode))
                 .claim("familyId", familyId)
                 .signWith(signingKey)
                 .compact();
@@ -113,6 +113,8 @@ public class JwtTokenService {
                 claims.get("centerId", Number.class).longValue(),
                 claims.get("username", String.class),
                 resolveRoleCode(claims),
+                claims.get("primaryRole", String.class),
+                resolveRolesList(claims),
                 claims.getId(),
                 toOffsetDateTime(claims.getIssuedAt()),
                 toOffsetDateTime(claims.getExpiration())
@@ -126,6 +128,8 @@ public class JwtTokenService {
                 claims.get("centerId", Number.class).longValue(),
                 claims.get("username", String.class),
                 resolveRoleCode(claims),
+                claims.get("primaryRole", String.class),
+                resolveRolesList(claims),
                 claims.get("familyId", String.class),
                 claims.getId(),
                 toOffsetDateTime(claims.getExpiration()),
@@ -191,7 +195,7 @@ public class JwtTokenService {
         }
         if (roleCode == null || roleCode.isBlank()) {
             Object rawRoles = claims.get("roles");
-            if (rawRoles instanceof List<?> roleList && !roleList.isEmpty()) {
+            if (rawRoles instanceof java.util.List<?> roleList && !roleList.isEmpty()) {
                 Object firstRole = roleList.getFirst();
                 if (firstRole instanceof String firstRoleCode && !firstRoleCode.isBlank()) {
                     roleCode = firstRoleCode;
@@ -202,6 +206,15 @@ public class JwtTokenService {
             throw new ApiException(ErrorCode.TOKEN_INVALID, "role claim이 없습니다.");
         }
         return roleCode;
+    }
+
+    @SuppressWarnings("unchecked")
+    private java.util.List<String> resolveRolesList(Claims claims) {
+        Object rawRoles = claims.get("roles");
+        if (rawRoles instanceof java.util.List<?>) {
+            return (java.util.List<String>) rawRoles;
+        }
+        return java.util.List.of();
     }
 
     private String requireRoleCode(String roleCode) {
@@ -234,6 +247,8 @@ public class JwtTokenService {
             Long centerId,
             String username,
             String roleCode,
+            String primaryRole,
+            java.util.List<String> roles,
             String jti,
             OffsetDateTime issuedAt,
             OffsetDateTime expiresAt
@@ -244,6 +259,8 @@ public class JwtTokenService {
             Long centerId,
             String username,
             String roleCode,
+            String primaryRole,
+            java.util.List<String> roles,
             String tokenFamilyId,
             String jti,
             OffsetDateTime expiresAt,

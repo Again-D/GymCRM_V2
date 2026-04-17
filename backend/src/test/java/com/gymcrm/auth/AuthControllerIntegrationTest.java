@@ -84,6 +84,8 @@ class AuthControllerIntegrationTest {
         String accessToken = JsonExtractors.readString(loginResult.getResponse().getContentAsString(), "$.data.accessToken");
         JwtTokenService.AccessTokenClaims accessTokenClaims = jwtTokenService.parseAccessToken(accessToken);
         assertEquals("ROLE_ADMIN", accessTokenClaims.roleCode());
+        assertEquals("ROLE_ADMIN", accessTokenClaims.primaryRole());
+        assertEquals(java.util.List.of("ROLE_ADMIN"), accessTokenClaims.roles());
         String refreshCookieHeader = loginResult.getResponse().getHeader(HttpHeaders.SET_COOKIE);
         String refreshToken = CookieExtractors.extractCookieValue(refreshCookieHeader, AuthCookieSupport.REFRESH_COOKIE_NAME);
 
