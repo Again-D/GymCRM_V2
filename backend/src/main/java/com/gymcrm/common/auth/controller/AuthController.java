@@ -5,6 +5,7 @@ import com.gymcrm.common.auth.AuthCookieSupport;
 import com.gymcrm.common.auth.entity.AuthUser;
 import com.gymcrm.common.auth.service.AuthAccessRevocationService;
 import com.gymcrm.common.auth.service.AuthService;
+import com.gymcrm.common.auth.service.AuthUserQueryService;
 import com.gymcrm.common.auth.service.JwtTokenService;
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
@@ -16,6 +17,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.HttpHeaders;
 import org.springframework.core.env.Environment;
+import org.springframework.data.domain.Page;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,6 +25,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.OffsetDateTime;
@@ -35,6 +38,7 @@ import java.util.List;
 public class AuthController {
     private final AuthService authService;
     private final AuthAccessRevocationService authAccessRevocationService;
+    private final AuthUserQueryService authUserQueryService;
     private final AuthCookieSupport authCookieSupport;
     private final JwtTokenService jwtTokenService;
     private final CurrentUserProvider currentUserProvider;
@@ -43,6 +47,7 @@ public class AuthController {
     public AuthController(
             AuthService authService,
             AuthAccessRevocationService authAccessRevocationService,
+            AuthUserQueryService authUserQueryService,
             AuthCookieSupport authCookieSupport,
             JwtTokenService jwtTokenService,
             CurrentUserProvider currentUserProvider,
@@ -50,6 +55,7 @@ public class AuthController {
     ) {
         this.authService = authService;
         this.authAccessRevocationService = authAccessRevocationService;
+        this.authUserQueryService = authUserQueryService;
         this.authCookieSupport = authCookieSupport;
         this.jwtTokenService = jwtTokenService;
         this.currentUserProvider = currentUserProvider;
@@ -101,6 +107,26 @@ public class AuthController {
                 .map(TrainerSummaryResponse::from)
                 .toList();
         return ApiResponse.success(items, "트레이너 목록 조회 성공");
+    }
+
+    @GetMapping("/users")
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_ADMIN)
+    public ApiResponse<UserListResponse> listUsers(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String roleCode,
+            @RequestParam(required = false) String userStatus,
+            @RequestParam(defaultValue = "1") @jakarta.validation.constraints.Min(1) int page,
+            @RequestParam(defaultValue = "20") @jakarta.validation.constraints.Min(1) int size
+    ) {
+        Page<AuthUser> result = authUserQueryService.listUsers(
+                currentUserProvider.currentCenterId(),
+                q,
+                roleCode,
+                userStatus,
+                page,
+                size
+        );
+        return ApiResponse.success(UserListResponse.from(result), "사용자 목록 조회 성공");
     }
 
     @PostMapping("/users/{userId}/revoke-access")
@@ -200,6 +226,50 @@ public class AuthController {
             return new TrainerSummaryResponse(user.userId(), user.centerId(), user.userName());
         }
     }
+
+    public record UserListResponse(
+            List<UserListItemResponse> items,
+            PageInfo page
+    ) {
+        static UserListResponse from(Page<AuthUser> page) {
+            List<UserListItemResponse> items = page.getContent().stream()
+                    .map(UserListItemResponse::from)
+                    .toList();
+            return new UserListResponse(
+                    items,
+                    new PageInfo(page.getNumber() + 1, page.getSize(), page.getTotalElements(), page.getTotalPages())
+            );
+        }
+    }
+
+    public record UserListItemResponse(
+            Long userId,
+            String loginId,
+            String userName,
+            String roleCode,
+            String userStatus,
+            OffsetDateTime lastLoginAt,
+            OffsetDateTime accessRevokedAfter
+    ) {
+        static UserListItemResponse from(AuthUser user) {
+            return new UserListItemResponse(
+                    user.userId(),
+                    user.loginId(),
+                    user.userName(),
+                    user.roleCode(),
+                    user.userStatus(),
+                    user.lastLoginAt(),
+                    user.accessRevokedAfter()
+            );
+        }
+    }
+
+    public record PageInfo(
+            int page,
+            int size,
+            long totalItems,
+            int totalPages
+    ) {}
 
     public record UpdateUserRoleRequest(
             @jakarta.validation.constraints.Pattern(

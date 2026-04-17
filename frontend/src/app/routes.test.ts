@@ -1,0 +1,52 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  canAccessShellRoute,
+  canSeeShellRoute,
+  getSidebarRoutes,
+  shellRoutes,
+} from "./routes";
+
+const adminUser = {
+  userId: 11,
+  username: "admin",
+  primaryRole: "ROLE_ADMIN",
+  roles: ["ROLE_ADMIN"],
+};
+
+const managerUser = {
+  userId: 12,
+  username: "manager",
+  primaryRole: "ROLE_MANAGER",
+  roles: ["ROLE_MANAGER"],
+};
+
+describe("shell routes", () => {
+  it("shows the new admin routes only to admin-capable users", () => {
+    const adminSidebarRoutes = getSidebarRoutes(adminUser, false);
+    const managerSidebarRoutes = getSidebarRoutes(managerUser, false);
+
+    expect(adminSidebarRoutes.map((route) => route.path)).toContain("/settings");
+    expect(adminSidebarRoutes.map((route) => route.path)).toContain("/user-accounts");
+    expect(managerSidebarRoutes.map((route) => route.path)).not.toContain("/settings");
+    expect(managerSidebarRoutes.map((route) => route.path)).not.toContain("/user-accounts");
+  });
+
+  it("allows admins and blocks managers for the new protected routes", () => {
+    const settingsRoute = shellRoutes.find((route) => route.path === "/settings");
+    const userAccountsRoute = shellRoutes.find((route) => route.path === "/user-accounts");
+
+    expect(settingsRoute).toBeTruthy();
+    expect(userAccountsRoute).toBeTruthy();
+
+    expect(canSeeShellRoute(settingsRoute!, adminUser, false)).toBe(true);
+    expect(canAccessShellRoute(settingsRoute!, adminUser, false)).toBe(true);
+    expect(canSeeShellRoute(settingsRoute!, managerUser, false)).toBe(false);
+    expect(canAccessShellRoute(settingsRoute!, managerUser, false)).toBe(false);
+
+    expect(canSeeShellRoute(userAccountsRoute!, adminUser, false)).toBe(true);
+    expect(canAccessShellRoute(userAccountsRoute!, adminUser, false)).toBe(true);
+    expect(canSeeShellRoute(userAccountsRoute!, managerUser, false)).toBe(false);
+    expect(canAccessShellRoute(userAccountsRoute!, managerUser, false)).toBe(false);
+  });
+});

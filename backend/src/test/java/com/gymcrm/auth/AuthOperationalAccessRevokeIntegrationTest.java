@@ -22,6 +22,7 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -225,6 +226,33 @@ class AuthOperationalAccessRevokeIntegrationTest {
                 .single();
         assertThat(roleCode).isEqualTo("ROLE_DESK");
         assertAuditEventExists("ACCOUNT_ROLE_CHANGE");
+    }
+
+    @Test
+    void centerAdminCanAssignOperationalRolesButNotAdminRole() throws Exception {
+        String adminAccessToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
+
+        for (String allowedRole : new String[] {"ROLE_MANAGER", "ROLE_DESK", "ROLE_TRAINER"}) {
+            mockMvc.perform(post("/api/v1/auth/users/{userId}/role", targetUserId)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                            .contentType("application/json")
+                            .content("""
+                                    {"roleCode":"%s"}
+                                    """.formatted(allowedRole)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.roleCode").value(allowedRole));
+        }
+
+        mockMvc.perform(post("/api/v1/auth/users/{userId}/role", targetUserId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .contentType("application/json")
+                        .content("""
+                                {"roleCode":"ROLE_ADMIN"}
+                                """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("ACCESS_DENIED"))
+                .andExpect(jsonPath("$.error.detail", containsString("운영 역할")));
     }
 
     @Test

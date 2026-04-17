@@ -5,6 +5,8 @@ import com.gymcrm.common.auth.entity.AuthUserEntity;
 import com.gymcrm.common.auth.entity.RoleEntity;
 
 import jakarta.persistence.EntityManager;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -60,6 +62,12 @@ public class AuthUserRepository {
                 .stream()
                 .map(this::toDomain)
                 .toList();
+    }
+
+    public Page<AuthUser> searchUsers(Long centerId, String q, String roleCode, String userStatus, Pageable pageable) {
+        entityManager.clear();
+        return authUserJpaRepository.searchAdminUsers(centerId, q, roleCode, userStatus, pageable)
+                .map(this::toDomain);
     }
 
     @Transactional

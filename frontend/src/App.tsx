@@ -21,12 +21,14 @@ const CrmPage = lazy(() => import("./pages/crm/CrmPage"));
 const LockersPage = lazy(() => import("./pages/lockers/LockersPage"));
 const MembershipsPage = lazy(() => import("./pages/memberships/MembershipsPage"));
 const ProductsPage = lazy(() => import("./pages/products/ProductsPage"));
+const CenterSettingsPage = lazy(() => import("./pages/settings/CenterSettingsPage"));
 const ReservationsPage = lazy(() => import("./pages/reservations/ReservationsPage"));
 const SettlementsPage = lazy(() => import("./pages/settlements/SettlementsPage"));
 const AuditLogsPage = lazy(() => import("./pages/audit/AuditLogsPage"));
 const GxSchedulesPage = lazy(() => import("./pages/gx-schedules/GxSchedulesPage"));
 const TrainerAvailabilityPage = lazy(() => import("./pages/trainer-availability/TrainerAvailabilityPage"));
 const TrainersPage = lazy(() => import("./pages/trainers/TrainersPage"));
+const UserAccountsPage = lazy(() => import("./pages/user-accounts/UserAccountsPage"));
 const MemberList = lazy(() => import("./pages/members/MemberList"));
 
 if (import.meta.env.MODE === "test") {
@@ -156,6 +158,22 @@ export default function App() {
               element={
                 <RouteProfiler id="Lockers">
                   <LockersPage />
+                </RouteProfiler>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <RouteProfiler id="CenterSettings">
+                  <CenterSettingsPage />
+                </RouteProfiler>
+              }
+            />
+            <Route
+              path="/user-accounts"
+              element={
+                <RouteProfiler id="UserAccounts">
+                  <UserAccountsPage />
                 </RouteProfiler>
               }
             />
