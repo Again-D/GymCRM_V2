@@ -1,6 +1,7 @@
 package com.gymcrm.auth;
 
 import com.gymcrm.common.auth.AuthCookieSupport;
+import com.gymcrm.common.auth.service.JwtTokenService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +17,7 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasItem;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -45,6 +47,9 @@ class AuthControllerIntegrationTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private JwtTokenService jwtTokenService;
+
     @BeforeEach
     void ensureSeedUserIsActive() {
         Integer count = jdbcClient.sql("""
@@ -70,6 +75,9 @@ class AuthControllerIntegrationTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.accessToken").isString())
                 .andExpect(jsonPath("$.data.user.loginId").value("center-admin"))
+                .andExpect(jsonPath("$.data.user.roleCode").value("ROLE_ADMIN"))
+                .andExpect(jsonPath("$.data.user.primaryRole").value("ROLE_ADMIN"))
+                .andExpect(jsonPath("$.data.user.roles[0]").value("ROLE_ADMIN"))
                 .andExpect(cookie().exists(AuthCookieSupport.REFRESH_COOKIE_NAME))
                 .andReturn();
 
@@ -86,7 +94,9 @@ class AuthControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.loginId").value("center-admin"))
-                .andExpect(jsonPath("$.data.roleCode").value("ROLE_ADMIN"));
+                .andExpect(jsonPath("$.data.roleCode").value("ROLE_ADMIN"))
+                .andExpect(jsonPath("$.data.primaryRole").value("ROLE_ADMIN"))
+                .andExpect(jsonPath("$.data.roles[0]").value("ROLE_ADMIN"));
 
         MvcResult refreshResult = mockMvc.perform(post("/api/v1/auth/refresh")
                         .cookie(new MockCookie(AuthCookieSupport.REFRESH_COOKIE_NAME, refreshToken)))

@@ -3,7 +3,7 @@
 | 항목 | 내용 |
 |------|------|
 | 프로젝트명 | 중소형 헬스장 웹 기반 회원관리 시스템 (GymCRM) |
-| 문서 버전 | v1.0.0 |
+| 문서 버전 | v1.16.0 |
 | 작성일 | 2026-02-20 |
 | 기술 스택 | Java Spring Boot 3.0, PostgreSQL, React.js + TypeScript |
 | 인프라 | AWS EC2, RDS |
@@ -74,8 +74,8 @@ Link: </api/v2/members>; rel="successor-version"
 | 항목 | 내용 |
 |------|------|
 | 인증 방식 | Bearer Token (JWT) |
-| Access Token 만료 | 30분 |
-| Refresh Token 만료 | 14일 |
+| Access Token 만료 | 15분 |
+| Refresh Token 만료 | 7일 |
 | 토큰 저장 위치 | Access Token: 메모리 (React State), Refresh Token: HttpOnly Secure Cookie |
 | 토큰 갱신 | Access Token 만료 시 Refresh Token으로 자동 갱신 |
 | 비밀키 관리 | AWS Secrets Manager |
@@ -84,12 +84,17 @@ Link: </api/v2/members>; rel="successor-version"
 
 ```json
 {
-  "sub": "admin-001",
-  "name": "김관리자",
-  "role": "ADMIN",
-  "gymId": "gym-001",
+  "sub": "11",
+  "typ": "access",
+  "uid": 11,
+  "centerId": 1,
+  "username": "center-admin",
+  "role": "ROLE_ADMIN",
+  "primaryRole": "ROLE_ADMIN",
+  "roles": ["ROLE_ADMIN"],
+  "jti": "6a26d2f8-642a-44ab-8a7f-b6f95710a8ee",
   "iat": 1740000000,
-  "exp": 1740001800
+  "exp": 1740000900
 }
 ```
 
@@ -97,13 +102,13 @@ Link: </api/v2/members>; rel="successor-version"
 
 | 역할 | 코드 | 설명 |
 |------|------|------|
-| 시스템 관리자 | `SYSTEM_ADMIN` | 전체 시스템 관리 (멀티 테넌트) |
-| 관리자 | `ADMIN` | 헬스장 전체 관리 권한 |
-| 매니저 | `MANAGER` | 센터 매니저 |
-| 트레이너 | `TRAINER` | 본인 스케줄/회원 관리 |
-| 데스크 | `DESK` | 프론트 데스크 업무 (체크인, 라커 등) |
+| 플랫폼 관리자 | `ROLE_SUPER_ADMIN` | 멀티 센터 운영/보안 운영 전역 관리자 |
+| 센터 관리자 | `ROLE_ADMIN` | 센터 최고 운영 관리자(원장/대표) |
+| 운영 관리자 | `ROLE_MANAGER` | 센터 운영 관리자(부원장/매니저) |
+| 트레이너 | `ROLE_TRAINER` | 본인 스케줄/담당 회원 관리 |
+| 데스크 | `ROLE_DESK` | 프론트 데스크 업무 (체크인, 라커 등) |
 
-> `MANAGER`는 센터 매니저 역할의 canonical 코드다.
+> 본 문서의 권한 표에서 `ADMIN`, `MANAGER`, `TRAINER`, `DESK` 표기는 각각 `ROLE_ADMIN`, `ROLE_MANAGER`, `ROLE_TRAINER`, `ROLE_DESK`를 의미하며, `ROLE_SUPER_ADMIN`은 관리자 권한을 상위 호환으로 가진다.
 
 ---
 
@@ -586,19 +591,20 @@ X-RateLimit-Reset: 1740001860
   "success": true,
   "data": {
     "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "tokenType": "Bearer",
-    "expiresIn": 1800,
+    "accessTokenExpiresInSeconds": 900,
+    "accessTokenExpiresAt": "2026-04-17T10:15:00Z",
     "user": {
-      "userId": "USR-001",
-      "name": "김관리자",
-      "role": "ADMIN",
-      "gymId": "GYM-001",
-      "gymName": "파워짐 강남점",
-      "lastLoginAt": "2026-02-19T18:30:00+09:00"
+      "userId": 1,
+      "centerId": 1,
+      "loginId": "center-admin",
+      "userName": "센터 관리자",
+      "roleCode": "ROLE_ADMIN",
+      "primaryRole": "ROLE_ADMIN",
+      "roles": ["ROLE_ADMIN"]
     }
   },
   "message": "로그인에 성공했습니다.",
-  "timestamp": "2026-02-20T09:00:00+09:00"
+  "timestamp": "2026-04-17T10:00:00+09:00"
 }
 ```
 
@@ -2396,7 +2402,9 @@ Binary file download with:
 **비즈니스 규칙:**
 - 목록은 현재 센터로 범위가 제한된다.
 - 목록은 `userId` 오름차순으로 정렬한다.
-- 역할 변경은 운영 역할(`ROLE_MANAGER`, `ROLE_DESK`, `ROLE_TRAINER`)로만 허용되며, `ROLE_ADMIN` 대상은 변경 대상에서 제외된다.
+- 역할 변경 정책은 행위자 권한에 따라 분기된다.
+  - `ROLE_ADMIN`은 운영 역할(`ROLE_MANAGER`, `ROLE_DESK`, `ROLE_TRAINER`)만 부여/변경할 수 있다.
+  - `ROLE_SUPER_ADMIN`은 `ROLE_ADMIN` 및 `ROLE_SUPER_ADMIN`을 포함한 전 역할 부여/변경이 가능하다.
 - `POST /api/v1/auth/users/{userId}/revoke-access`, `/role`, `/status`는 기존 계정 운영 액션이며, 관리자만 사용할 수 있다.
 
 ---
@@ -2736,6 +2744,7 @@ X-Cache: HIT
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| v1.16.0 | 2026-04-17 | RBAC contract cleanup: JWT payload/인증 응답 사용자 role 모델을 `roleCode + primaryRole + roles[]`로 정렬하고, 권한 표기 규칙 및 관리자/슈퍼관리자 역할 변경 정책을 현재 구현 기준으로 동기화 | Codex |
 | v1.15.0 | 2026-04-17 | `GET /api/v1/centers/me` 센터 프로필 조회/수정 API와 `GET /api/v1/auth/users` 사용자 목록 조회 및 계정 운영 API를 추가하고, 관리자 전용 RBAC 계약을 현재 구현 기준으로 동기화 | Codex |
 | v1.14.0 | 2026-04-13 | `trainer_settlements` bridge를 retire 대상으로 정렬하여 `/trainer-payroll`, `/trainer-payroll/confirm`, `/trainer-payroll/document` 계약을 canonical monthly settlement/detail source-of-truth 기준으로 갱신하고 legacy snapshot fallback 문구를 제거 | Codex |
 | v1.13.0 | 2026-04-10 | 정산 계약을 monthly canonical 모델로 롤백해 `/settlements/preview`, `/trainer-payroll/my-preview`, `POST /settlements`의 canonical 입력을 `settlementMonth`로 재정렬하고 `periodStart/periodEnd`는 월 전체 호환 입력으로 강등 | Codex |

@@ -14,6 +14,13 @@ const adminUser = {
   roles: ["ROLE_ADMIN"],
 };
 
+const superAdminUser = {
+  userId: 1,
+  username: "super-admin",
+  primaryRole: "ROLE_SUPER_ADMIN",
+  roles: ["ROLE_SUPER_ADMIN"],
+};
+
 const managerUser = {
   userId: 12,
   username: "manager",
@@ -41,11 +48,15 @@ describe("shell routes", () => {
 
     expect(canSeeShellRoute(settingsRoute!, adminUser, false)).toBe(true);
     expect(canAccessShellRoute(settingsRoute!, adminUser, false)).toBe(true);
+    expect(canSeeShellRoute(settingsRoute!, superAdminUser, false)).toBe(true);
+    expect(canAccessShellRoute(settingsRoute!, superAdminUser, false)).toBe(true);
     expect(canSeeShellRoute(settingsRoute!, managerUser, false)).toBe(false);
     expect(canAccessShellRoute(settingsRoute!, managerUser, false)).toBe(false);
 
     expect(canSeeShellRoute(userAccountsRoute!, adminUser, false)).toBe(true);
     expect(canAccessShellRoute(userAccountsRoute!, adminUser, false)).toBe(true);
+    expect(canSeeShellRoute(userAccountsRoute!, superAdminUser, false)).toBe(true);
+    expect(canAccessShellRoute(userAccountsRoute!, superAdminUser, false)).toBe(true);
     expect(canSeeShellRoute(userAccountsRoute!, managerUser, false)).toBe(false);
     expect(canAccessShellRoute(userAccountsRoute!, managerUser, false)).toBe(false);
   });

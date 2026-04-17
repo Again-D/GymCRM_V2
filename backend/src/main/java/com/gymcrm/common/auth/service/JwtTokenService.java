@@ -20,6 +20,7 @@ import java.time.ZoneOffset;
 import java.util.Base64;
 import java.util.Date;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -53,6 +54,7 @@ public class JwtTokenService {
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         OffsetDateTime expiresAt = now.plusMinutes(accessTokenMinutes);
         String jti = UUID.randomUUID().toString();
+        String roleCode = requireRoleCode(user.roleCode());
 
         String token = Jwts.builder()
                 .issuer(issuer)
@@ -66,9 +68,9 @@ public class JwtTokenService {
                 .claim("uid", user.userId())
                 .claim("centerId", user.centerId())
                 .claim("username", user.loginId())
-                .claim("role", user.roleCode())
-                .claim("primaryRole", user.roleCode())
-                .claim("roles", java.util.List.of(user.roleCode()))
+                .claim("role", roleCode)
+                .claim("primaryRole", roleCode)
+                .claim("roles", java.util.List.of(roleCode))
                 .signWith(signingKey)
                 .compact();
 
@@ -80,6 +82,7 @@ public class JwtTokenService {
         OffsetDateTime expiresAt = now.plusDays(refreshTokenDays);
         String jti = UUID.randomUUID().toString();
         String familyId = (tokenFamilyId == null || tokenFamilyId.isBlank()) ? UUID.randomUUID().toString() : tokenFamilyId;
+        String roleCode = requireRoleCode(user.roleCode());
 
         String token = Jwts.builder()
                 .issuer(issuer)
@@ -93,9 +96,9 @@ public class JwtTokenService {
                 .claim("uid", user.userId())
                 .claim("centerId", user.centerId())
                 .claim("username", user.loginId())
-                .claim("role", user.roleCode())
-                .claim("primaryRole", user.roleCode())
-                .claim("roles", java.util.List.of(user.roleCode()))
+                .claim("role", roleCode)
+                .claim("primaryRole", roleCode)
+                .claim("roles", java.util.List.of(roleCode))
                 .claim("familyId", familyId)
                 .signWith(signingKey)
                 .compact();
@@ -212,6 +215,13 @@ public class JwtTokenService {
             return (java.util.List<String>) rawRoles;
         }
         return java.util.List.of();
+    }
+
+    private String requireRoleCode(String roleCode) {
+        if (roleCode == null || roleCode.isBlank()) {
+            throw new IllegalStateException("roleCode must not be blank");
+        }
+        return roleCode;
     }
 
     private byte[] normalizeSecret(String secret) {
