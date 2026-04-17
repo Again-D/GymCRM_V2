@@ -20,6 +20,7 @@ import java.time.ZoneOffset;
 import java.util.Base64;
 import java.util.Date;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -53,6 +54,7 @@ public class JwtTokenService {
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         OffsetDateTime expiresAt = now.plusMinutes(accessTokenMinutes);
         String jti = UUID.randomUUID().toString();
+        String roleCode = requireRoleCode(user.roleCode());
 
         String token = Jwts.builder()
                 .issuer(issuer)
@@ -66,7 +68,9 @@ public class JwtTokenService {
                 .claim("uid", user.userId())
                 .claim("centerId", user.centerId())
                 .claim("username", user.loginId())
-                .claim("role", user.roleCode())
+                .claim("role", roleCode)
+                .claim("primaryRole", roleCode)
+                .claim("roles", List.of(roleCode))
                 .signWith(signingKey)
                 .compact();
 
@@ -78,6 +82,7 @@ public class JwtTokenService {
         OffsetDateTime expiresAt = now.plusDays(refreshTokenDays);
         String jti = UUID.randomUUID().toString();
         String familyId = (tokenFamilyId == null || tokenFamilyId.isBlank()) ? UUID.randomUUID().toString() : tokenFamilyId;
+        String roleCode = requireRoleCode(user.roleCode());
 
         String token = Jwts.builder()
                 .issuer(issuer)
@@ -91,7 +96,9 @@ public class JwtTokenService {
                 .claim("uid", user.userId())
                 .claim("centerId", user.centerId())
                 .claim("username", user.loginId())
-                .claim("role", user.roleCode())
+                .claim("role", roleCode)
+                .claim("primaryRole", roleCode)
+                .claim("roles", List.of(roleCode))
                 .claim("familyId", familyId)
                 .signWith(signingKey)
                 .compact();
@@ -105,7 +112,7 @@ public class JwtTokenService {
                 claims.get("uid", Number.class).longValue(),
                 claims.get("centerId", Number.class).longValue(),
                 claims.get("username", String.class),
-                claims.get("role", String.class),
+                resolveRoleCode(claims),
                 claims.getId(),
                 toOffsetDateTime(claims.getIssuedAt()),
                 toOffsetDateTime(claims.getExpiration())
@@ -118,7 +125,7 @@ public class JwtTokenService {
                 claims.get("uid", Number.class).longValue(),
                 claims.get("centerId", Number.class).longValue(),
                 claims.get("username", String.class),
-                claims.get("role", String.class),
+                resolveRoleCode(claims),
                 claims.get("familyId", String.class),
                 claims.getId(),
                 toOffsetDateTime(claims.getExpiration()),
@@ -175,6 +182,33 @@ public class JwtTokenService {
 
     private OffsetDateTime toOffsetDateTime(Date date) {
         return date.toInstant().atOffset(ZoneOffset.UTC);
+    }
+
+    private String resolveRoleCode(Claims claims) {
+        String roleCode = claims.get("primaryRole", String.class);
+        if (roleCode == null || roleCode.isBlank()) {
+            roleCode = claims.get("role", String.class);
+        }
+        if (roleCode == null || roleCode.isBlank()) {
+            Object rawRoles = claims.get("roles");
+            if (rawRoles instanceof List<?> roleList && !roleList.isEmpty()) {
+                Object firstRole = roleList.getFirst();
+                if (firstRole instanceof String firstRoleCode && !firstRoleCode.isBlank()) {
+                    roleCode = firstRoleCode;
+                }
+            }
+        }
+        if (roleCode == null || roleCode.isBlank()) {
+            throw new ApiException(ErrorCode.TOKEN_INVALID, "role claim이 없습니다.");
+        }
+        return roleCode;
+    }
+
+    private String requireRoleCode(String roleCode) {
+        if (roleCode == null || roleCode.isBlank()) {
+            throw new IllegalStateException("roleCode must not be blank");
+        }
+        return roleCode;
     }
 
     private byte[] normalizeSecret(String secret) {

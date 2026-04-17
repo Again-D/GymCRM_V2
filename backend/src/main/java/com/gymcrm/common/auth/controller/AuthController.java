@@ -198,16 +198,21 @@ public class AuthController {
             Long centerId,
             String loginId,
             String userName,
-            String roleCode
+            String roleCode,
+            String primaryRole,
+            List<String> roles
     ) {
         static AuthMeResponse from(AuthService.UserSession session) {
+            String roleCode = session.roleCode();
             return new AuthMeResponse(
                     session.userId(),
                     session.centerId(),
                     session.loginId(),
                     session.userName(),
-                    session.roleCode()
-                );
+                    roleCode,
+                    roleCode,
+                    roleCode == null ? List.of() : List.of(roleCode)
+            );
         }
     }
 
