@@ -67,6 +67,8 @@ public class JwtTokenService {
                 .claim("centerId", user.centerId())
                 .claim("username", user.loginId())
                 .claim("role", user.roleCode())
+                .claim("primaryRole", user.roleCode())
+                .claim("roles", java.util.List.of(user.roleCode()))
                 .signWith(signingKey)
                 .compact();
 
@@ -92,6 +94,8 @@ public class JwtTokenService {
                 .claim("centerId", user.centerId())
                 .claim("username", user.loginId())
                 .claim("role", user.roleCode())
+                .claim("primaryRole", user.roleCode())
+                .claim("roles", java.util.List.of(user.roleCode()))
                 .claim("familyId", familyId)
                 .signWith(signingKey)
                 .compact();
@@ -105,7 +109,9 @@ public class JwtTokenService {
                 claims.get("uid", Number.class).longValue(),
                 claims.get("centerId", Number.class).longValue(),
                 claims.get("username", String.class),
-                claims.get("role", String.class),
+                resolveRoleCode(claims),
+                claims.get("primaryRole", String.class),
+                resolveRolesList(claims),
                 claims.getId(),
                 toOffsetDateTime(claims.getIssuedAt()),
                 toOffsetDateTime(claims.getExpiration())
@@ -118,7 +124,9 @@ public class JwtTokenService {
                 claims.get("uid", Number.class).longValue(),
                 claims.get("centerId", Number.class).longValue(),
                 claims.get("username", String.class),
-                claims.get("role", String.class),
+                resolveRoleCode(claims),
+                claims.get("primaryRole", String.class),
+                resolveRolesList(claims),
                 claims.get("familyId", String.class),
                 claims.getId(),
                 toOffsetDateTime(claims.getExpiration()),
@@ -177,6 +185,35 @@ public class JwtTokenService {
         return date.toInstant().atOffset(ZoneOffset.UTC);
     }
 
+    private String resolveRoleCode(Claims claims) {
+        String roleCode = claims.get("primaryRole", String.class);
+        if (roleCode == null || roleCode.isBlank()) {
+            roleCode = claims.get("role", String.class);
+        }
+        if (roleCode == null || roleCode.isBlank()) {
+            Object rawRoles = claims.get("roles");
+            if (rawRoles instanceof java.util.List<?> roleList && !roleList.isEmpty()) {
+                Object firstRole = roleList.getFirst();
+                if (firstRole instanceof String firstRoleCode && !firstRoleCode.isBlank()) {
+                    roleCode = firstRoleCode;
+                }
+            }
+        }
+        if (roleCode == null || roleCode.isBlank()) {
+            throw new ApiException(ErrorCode.TOKEN_INVALID, "role claim이 없습니다.");
+        }
+        return roleCode;
+    }
+
+    @SuppressWarnings("unchecked")
+    private java.util.List<String> resolveRolesList(Claims claims) {
+        Object rawRoles = claims.get("roles");
+        if (rawRoles instanceof java.util.List<?>) {
+            return (java.util.List<String>) rawRoles;
+        }
+        return java.util.List.of();
+    }
+
     private byte[] normalizeSecret(String secret) {
         byte[] raw = secret.getBytes(StandardCharsets.UTF_8);
         if (raw.length >= 32) {
@@ -200,6 +237,8 @@ public class JwtTokenService {
             Long centerId,
             String username,
             String roleCode,
+            String primaryRole,
+            java.util.List<String> roles,
             String jti,
             OffsetDateTime issuedAt,
             OffsetDateTime expiresAt
@@ -210,6 +249,8 @@ public class JwtTokenService {
             Long centerId,
             String username,
             String roleCode,
+            String primaryRole,
+            java.util.List<String> roles,
             String tokenFamilyId,
             String jti,
             OffsetDateTime expiresAt,
