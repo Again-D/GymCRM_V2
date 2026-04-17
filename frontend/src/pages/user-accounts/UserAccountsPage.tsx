@@ -24,6 +24,8 @@ import {
   USER_ROLE_FILTER_OPTIONS,
   USER_STATUS_FILTER_OPTIONS,
 } from "./modules/types";
+import { useAuthState } from "../../app/auth";
+import { hasRole } from "../../app/roles";
 import { useAccountOpsMutations } from "./modules/useAccountOpsMutations";
 import { useUserAccountsQuery } from "./modules/useUserAccountsQuery";
 
@@ -32,6 +34,7 @@ const { Title, Paragraph, Text } = Typography;
 const PAGE_SIZE_OPTIONS = ["10", "20", "50"];
 
 export default function UserAccountsPage() {
+  const { authUser } = useAuthState();
   const [draftFilters, setDraftFilters] = useState<UserAccountFilters>(
     createDefaultUserAccountFilters(),
   );
@@ -46,6 +49,7 @@ export default function UserAccountsPage() {
   const { userAccounts, userAccountsPage, userAccountsLoading, userAccountsError } =
     useUserAccountsQuery(appliedFilters);
   const { revokeAccess, changeRole, changeStatus } = useAccountOpsMutations();
+  const canEditAdminUsers = hasRole(authUser, "ROLE_SUPER_ADMIN");
 
   const columns = useMemo<ColumnsType<UserAccountRecord>>(
     () => [
@@ -103,7 +107,7 @@ export default function UserAccountsPage() {
             <Button
               size="small"
               onClick={() => openRoleEditor(user)}
-              disabled={user.roleCode === "ROLE_ADMIN"}
+              disabled={user.roleCode === "ROLE_ADMIN" && !canEditAdminUsers}
             >
               역할 변경
             </Button>
@@ -117,7 +121,7 @@ export default function UserAccountsPage() {
         ),
       },
     ],
-    [confirmRevokeAccess, confirmStatusToggle, openRoleEditor],
+    [canEditAdminUsers, confirmRevokeAccess, confirmStatusToggle, openRoleEditor],
   );
 
   function applyFilters() {
