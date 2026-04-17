@@ -87,6 +87,74 @@ const trainerAssignedMemberIds = new Map<number, number[]>([
   [42, [102]],
 ]);
 
+type MockCenterProfileRecord = {
+  centerId: number;
+  centerName: string;
+  phone: string | null;
+  address: string | null;
+};
+
+type MockUserAccountRecord = {
+  userId: number;
+  centerId: number;
+  loginId: string;
+  userName: string;
+  roleCode: "ROLE_ADMIN" | "ROLE_MANAGER" | "ROLE_DESK" | "ROLE_TRAINER";
+  userStatus: "ACTIVE" | "INACTIVE";
+  lastLoginAt: string | null;
+  accessRevokedAfter: string | null;
+};
+
+let mockCenterProfile: MockCenterProfileRecord = {
+  centerId: 1,
+  centerName: "GymCRM 강남점",
+  phone: "02-123-4567",
+  address: "서울특별시 강남구 테헤란로 123",
+};
+
+let mockUserAccounts: MockUserAccountRecord[] = [
+  {
+    userId: 1,
+    centerId: 1,
+    loginId: "center-admin",
+    userName: "센터 관리자",
+    roleCode: "ROLE_ADMIN",
+    userStatus: "ACTIVE",
+    lastLoginAt: "2026-04-16T09:00:00.000Z",
+    accessRevokedAfter: null,
+  },
+  {
+    userId: 2,
+    centerId: 1,
+    loginId: "manager-user",
+    userName: "운영 관리자",
+    roleCode: "ROLE_MANAGER",
+    userStatus: "ACTIVE",
+    lastLoginAt: "2026-04-15T10:15:00.000Z",
+    accessRevokedAfter: null,
+  },
+  {
+    userId: 3,
+    centerId: 1,
+    loginId: "desk-user",
+    userName: "데스크 담당자",
+    roleCode: "ROLE_DESK",
+    userStatus: "ACTIVE",
+    lastLoginAt: "2026-04-14T08:30:00.000Z",
+    accessRevokedAfter: null,
+  },
+  {
+    userId: 4,
+    centerId: 1,
+    loginId: "trainer-user",
+    userName: "트레이너",
+    roleCode: "ROLE_TRAINER",
+    userStatus: "INACTIVE",
+    lastLoginAt: "2026-04-12T13:45:00.000Z",
+    accessRevokedAfter: "2026-04-12T13:45:30.000Z",
+  },
+];
+
 type MockTrainerRecord = {
   userId: number;
   centerId: number;
@@ -1596,6 +1664,125 @@ function filterMembers(url: URL) {
   });
 }
 
+function filterMockUserAccounts(url: URL) {
+  const q = url.searchParams.get("q")?.trim() ?? "";
+  const roleCode = url.searchParams.get("roleCode")?.trim() ?? "";
+  const userStatus = url.searchParams.get("userStatus")?.trim() ?? "";
+  const page = parsePositiveInteger(url.searchParams.get("page"), 1);
+  const size = parsePositiveInteger(url.searchParams.get("size"), 20);
+
+  const filtered = mockUserAccounts
+    .filter((user) => !q || user.loginId.includes(q) || user.userName.includes(q))
+    .filter((user) => !roleCode || user.roleCode === roleCode)
+    .filter((user) => !userStatus || user.userStatus === userStatus)
+    .sort((left, right) => left.userId - right.userId);
+
+  const totalItems = filtered.length;
+  const totalPages = totalItems === 0 ? 0 : Math.ceil(totalItems / size);
+  const start = (page - 1) * size;
+  const items = filtered.slice(start, start + size).map((user) => ({ ...user }));
+
+  return {
+    items,
+    page: {
+      page,
+      size,
+      totalItems,
+      totalPages,
+    },
+  };
+}
+
+export function getMockCenterProfile() {
+  return { ...mockCenterProfile };
+}
+
+export function updateMockCenterProfile(input: {
+  centerName: string;
+  phone: string | null;
+  address: string | null;
+}) {
+  mockCenterProfile = {
+    ...mockCenterProfile,
+    centerName: input.centerName.trim(),
+    phone: normalizeMockOptionalText(input.phone),
+    address: normalizeMockOptionalText(input.address),
+  };
+  bumpMockDataVersion();
+  return getMockCenterProfile();
+}
+
+export function revokeMockUserAccess(userId: number) {
+  const updatedAt = new Date().toISOString();
+  mockUserAccounts = mockUserAccounts.map((user) =>
+    user.userId === userId
+      ? {
+          ...user,
+          accessRevokedAfter: updatedAt,
+        }
+      : user,
+  );
+  bumpMockDataVersion();
+  return {
+    userId,
+    accessRevokedAfter: updatedAt,
+    revokedRefreshTokenCount: 1,
+  };
+}
+
+export function updateMockUserRole(userId: number, roleCode: MockUserAccountRecord["roleCode"]) {
+  const updatedAt = new Date().toISOString();
+  mockUserAccounts = mockUserAccounts.map((user) =>
+    user.userId === userId
+      ? {
+          ...user,
+          roleCode,
+          accessRevokedAfter: updatedAt,
+        }
+      : user,
+  );
+  bumpMockDataVersion();
+  return {
+    userId,
+    roleCode,
+    accessRevokedAfter: updatedAt,
+    revokedRefreshTokenCount: 1,
+  };
+}
+
+export function updateMockUserStatus(userId: number, userStatus: MockUserAccountRecord["userStatus"]) {
+  const updatedAt = new Date().toISOString();
+  mockUserAccounts = mockUserAccounts.map((user) =>
+    user.userId === userId
+      ? {
+          ...user,
+          userStatus,
+          accessRevokedAfter: updatedAt,
+        }
+      : user,
+  );
+  bumpMockDataVersion();
+  return {
+    userId,
+    userStatus,
+    accessRevokedAfter: updatedAt,
+    revokedRefreshTokenCount: 1,
+  };
+}
+
+function normalizeMockOptionalText(value: string | null) {
+  if (value == null) {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+function parsePositiveInteger(value: string | null, fallback: number) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
 function bumpMockDataVersion() {
   mockDataVersion += 1;
 }
@@ -1608,6 +1795,54 @@ export function resetMockData() {
   mockMembers = cloneMembers(initialMembers);
   mockMemberDetails = cloneMemberDetails(initialMemberDetails);
   mockMemberMemberships = cloneMembershipMap(initialMemberMemberships);
+  mockCenterProfile = {
+    centerId: 1,
+    centerName: "GymCRM 강남점",
+    phone: "02-123-4567",
+    address: "서울특별시 강남구 테헤란로 123",
+  };
+  mockUserAccounts = [
+    {
+      userId: 1,
+      centerId: 1,
+      loginId: "center-admin",
+      userName: "센터 관리자",
+      roleCode: "ROLE_ADMIN",
+      userStatus: "ACTIVE",
+      lastLoginAt: "2026-04-16T09:00:00.000Z",
+      accessRevokedAfter: null,
+    },
+    {
+      userId: 2,
+      centerId: 1,
+      loginId: "manager-user",
+      userName: "운영 관리자",
+      roleCode: "ROLE_MANAGER",
+      userStatus: "ACTIVE",
+      lastLoginAt: "2026-04-15T10:15:00.000Z",
+      accessRevokedAfter: null,
+    },
+    {
+      userId: 3,
+      centerId: 1,
+      loginId: "desk-user",
+      userName: "데스크 담당자",
+      roleCode: "ROLE_DESK",
+      userStatus: "ACTIVE",
+      lastLoginAt: "2026-04-14T08:30:00.000Z",
+      accessRevokedAfter: null,
+    },
+    {
+      userId: 4,
+      centerId: 1,
+      loginId: "trainer-user",
+      userName: "트레이너",
+      roleCode: "ROLE_TRAINER",
+      userStatus: "INACTIVE",
+      lastLoginAt: "2026-04-12T13:45:00.000Z",
+      accessRevokedAfter: "2026-04-12T13:45:30.000Z",
+    },
+  ];
   mockReservationSchedules = cloneSchedules(initialReservationSchedules);
   mockReservationsByMemberId = cloneReservationsMap(
     initialReservationsByMemberId,
@@ -2832,6 +3067,17 @@ export function deleteMockGxScheduleException(
 
 export function getMockResponse(path: string, method: string = "GET"): ApiEnvelope<unknown> | null {
   const url = new URL(path, "http://local.mock");
+
+  if (url.pathname === "/api/v1/centers/me") {
+    if (method === "PATCH") {
+      return envelope(getMockCenterProfile(), "센터 프로필이 수정되었습니다.");
+    }
+    return envelope(getMockCenterProfile());
+  }
+
+  if (url.pathname === "/api/v1/auth/users") {
+    return envelope(filterMockUserAccounts(url));
+  }
 
   if (url.pathname === "/api/v1/auth/trainers") {
     return envelope(

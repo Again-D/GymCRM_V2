@@ -365,6 +365,10 @@ X-RateLimit-Reset: 1740001860
 | 3 | `POST` | `/api/v1/auth/refresh-token` | 액세스 토큰 갱신 | X (쿠키) | - |
 | 4 | `PATCH` | `/api/v1/auth/password` | 비밀번호 변경 | O | ALL |
 | 5 | `GET` | `/api/v1/auth/me` | 내 정보 조회 | O | ALL |
+| 6 | `GET` | `/api/v1/auth/users` | 사용자 목록 조회 (검색/필터/페이징) | O | ADMIN |
+| 7 | `POST` | `/api/v1/auth/users/{userId}/revoke-access` | 사용자 access token 강제 무효화 | O | ADMIN |
+| 8 | `POST` | `/api/v1/auth/users/{userId}/role` | 사용자 역할 변경 | O | ADMIN |
+| 9 | `POST` | `/api/v1/auth/users/{userId}/status` | 사용자 상태 변경 | O | ADMIN |
 
 ### 3.2 회원 관리 API (`/api/v1/members`)
 
@@ -541,6 +545,13 @@ X-RateLimit-Reset: 1740001860
 | 5 | `GET` | `/api/v1/dashboard/reservations` | 오늘의 예약 현황 | O | ALL |
 | 6 | `GET` | `/api/v1/dashboard/new-members` | 신규 회원 현황 (최근 7일) | O | ADMIN, MANAGER |
 | 7 | `GET` | `/api/v1/dashboard/locker-status` | 라커 사용 현황 | O | ADMIN, MANAGER, DESK |
+
+### 3.10 시스템 설정 API (`/api/v1/centers`)
+
+| # | Method | URL | 설명 | 인증 | 권한 |
+|---|--------|-----|------|------|------|
+| 1 | `GET` | `/api/v1/centers/me` | 현재 센터 프로필 조회 | O | ADMIN |
+| 2 | `PATCH` | `/api/v1/centers/me` | 현재 센터 프로필 수정 | O | ADMIN |
 
 ---
 
@@ -2270,6 +2281,126 @@ Binary file download with:
 
 ---
 
+### 4.13 센터 프로필 조회/수정 API
+
+| 항목 | 내용 |
+|------|------|
+| **URL** | `GET /api/v1/centers/me` / `PATCH /api/v1/centers/me` |
+| **설명** | 현재 로그인한 센터의 프로필(센터명, 전화번호, 주소)을 조회하거나 수정한다. |
+| **인증** | 필요 |
+| **권한** | ADMIN |
+
+**GET Response Body (성공 - 200):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "centerId": 1,
+    "centerName": "GymCRM 강남점",
+    "phone": "02-123-4567",
+    "address": "서울특별시 강남구 테헤란로 123"
+  },
+  "message": "센터 프로필 조회 성공",
+  "timestamp": "2026-02-20T10:00:00+09:00"
+}
+```
+
+**PATCH Request Body:**
+
+```json
+{
+  "centerName": "GymCRM 강남점",
+  "phone": "02-123-4567",
+  "address": "서울특별시 강남구 테헤란로 123"
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `centerName` | String | O | 센터명. 서버에서 trim 후 비어 있으면 거절 |
+| `phone` | String | X | 연락처. trim 후 빈 문자열은 `null`로 정규화 |
+| `address` | String | X | 주소. trim 후 빈 문자열은 `null`로 정규화 |
+
+**PATCH Response Body (성공 - 200):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "centerId": 1,
+    "centerName": "GymCRM 강남점",
+    "phone": "02-123-4567",
+    "address": "서울특별시 강남구 테헤란로 123"
+  },
+  "message": "센터 프로필이 수정되었습니다.",
+  "timestamp": "2026-02-20T10:00:00+09:00"
+}
+```
+
+**비즈니스 규칙:**
+- 수정 대상은 항상 현재 센터의 `centers` 레코드다.
+- `address_detail`은 MVP 계약에서 제외되며 변경하지 않는다.
+- `phone`과 `address`는 서버에서 trim하여 저장한다.
+
+---
+
+### 4.14 사용자 목록 조회 API
+
+| 항목 | 내용 |
+|------|------|
+| **URL** | `GET /api/v1/auth/users` |
+| **설명** | 현재 센터의 사용자 목록을 검색/필터/페이징하여 조회한다. |
+| **인증** | 필요 |
+| **권한** | ADMIN |
+
+**Query Parameters:**
+
+| 파라미터 | 타입 | 필수 | 기본값 | 설명 |
+|----------|------|------|--------|------|
+| `q` | String | X | - | `userName` 또는 `loginId` 검색 |
+| `roleCode` | String | X | - | `ROLE_ADMIN`, `ROLE_MANAGER`, `ROLE_DESK`, `ROLE_TRAINER` |
+| `userStatus` | String | X | - | `ACTIVE`, `INACTIVE` |
+| `page` | Integer | X | `1` | 1-based 페이지 번호 |
+| `size` | Integer | X | `20` | 페이지 크기 |
+
+**Response Body (성공 - 200):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "userId": 1,
+        "loginId": "center-admin",
+        "userName": "센터 관리자",
+        "roleCode": "ROLE_ADMIN",
+        "userStatus": "ACTIVE",
+        "lastLoginAt": "2026-04-16T09:00:00Z",
+        "accessRevokedAfter": null
+      }
+    ],
+    "page": {
+      "page": 1,
+      "size": 20,
+      "totalItems": 1,
+      "totalPages": 1
+    }
+  },
+  "message": "사용자 목록 조회 성공",
+  "timestamp": "2026-04-17T10:00:00+09:00"
+}
+```
+
+**비즈니스 규칙:**
+- 목록은 현재 센터로 범위가 제한된다.
+- 목록은 `userId` 오름차순으로 정렬한다.
+- 역할 변경은 운영 역할(`ROLE_MANAGER`, `ROLE_DESK`, `ROLE_TRAINER`)로만 허용되며, `ROLE_ADMIN` 대상은 변경 대상에서 제외된다.
+- `POST /api/v1/auth/users/{userId}/revoke-access`, `/role`, `/status`는 기존 계정 운영 액션이며, 관리자만 사용할 수 있다.
+
+---
+
 ## 5. API 흐름도
 
 ### 5.1 회원 등록 및 회원권 구매 플로우
@@ -2605,6 +2736,7 @@ X-Cache: HIT
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| v1.15.0 | 2026-04-17 | `GET /api/v1/centers/me` 센터 프로필 조회/수정 API와 `GET /api/v1/auth/users` 사용자 목록 조회 및 계정 운영 API를 추가하고, 관리자 전용 RBAC 계약을 현재 구현 기준으로 동기화 | Codex |
 | v1.14.0 | 2026-04-13 | `trainer_settlements` bridge를 retire 대상으로 정렬하여 `/trainer-payroll`, `/trainer-payroll/confirm`, `/trainer-payroll/document` 계약을 canonical monthly settlement/detail source-of-truth 기준으로 갱신하고 legacy snapshot fallback 문구를 제거 | Codex |
 | v1.13.0 | 2026-04-10 | 정산 계약을 monthly canonical 모델로 롤백해 `/settlements/preview`, `/trainer-payroll/my-preview`, `POST /settlements`의 canonical 입력을 `settlementMonth`로 재정렬하고 `periodStart/periodEnd`는 월 전체 호환 입력으로 강등 | Codex |
 | v1.12.0 | 2026-04-10 | 기간 기반 trainer settlement workflow를 문서 기준 계약으로 승격해 `/settlements/preview`, `/trainer-payroll/my-preview`, period/scope canonical 생성·확정 규칙, legacy monthly bridge fallback 규칙을 현재 구현과 동기화 | Codex |

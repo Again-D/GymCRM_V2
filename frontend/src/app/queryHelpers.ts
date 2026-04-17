@@ -37,6 +37,8 @@ export const queryKeys = {
   reservations: createQueryKeys("reservations"),
   products: createQueryKeys("products"),
   trainers: createQueryKeys("trainers"),
+  centers: createQueryKeys("centers"),
+  authUsers: createQueryKeys("authUsers"),
   access: createQueryKeys("access"),
   lockers: createQueryKeys("lockers"),
   crm: createQueryKeys("crm"),

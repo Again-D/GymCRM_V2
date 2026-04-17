@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.Set;
 
 @Service
 public class AuthAccessRevocationService {
@@ -20,6 +21,7 @@ public class AuthAccessRevocationService {
     private static final String ROLE_MANAGER = "ROLE_MANAGER";
     private static final String ROLE_TRAINER = "ROLE_TRAINER";
     private static final String ROLE_DESK = "ROLE_DESK";
+    private static final Set<String> ADMIN_ASSIGNABLE_ROLE_CODES = Set.of(ROLE_MANAGER, ROLE_TRAINER, ROLE_DESK);
     private static final String STATUS_ACTIVE = "ACTIVE";
     private static final String STATUS_INACTIVE = "INACTIVE";
 
@@ -151,6 +153,9 @@ public class AuthAccessRevocationService {
     private void ensureRoleChangeAllowed(AuthUser actor, AuthUser targetUser, String normalizedRoleCode) {
         if (ROLE_SUPER_ADMIN.equals(actor.roleCode())) {
             return;
+        }
+        if (ROLE_ADMIN.equals(actor.roleCode()) && !ADMIN_ASSIGNABLE_ROLE_CODES.contains(normalizedRoleCode)) {
+            throw new ApiException(ErrorCode.ACCESS_DENIED, "관리자 역할은 지정된 운영 역할만 변경할 수 있습니다.");
         }
         if (actor.userId().equals(targetUser.userId())) {
             throw new ApiException(ErrorCode.ACCESS_DENIED, "본인 역할은 변경할 수 없습니다.");

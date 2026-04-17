@@ -169,65 +169,78 @@ class AuthControllerIntegrationTest {
                 .andExpect(jsonPath("$.data[*].userName").value(org.hamcrest.Matchers.not(hasItem("Desk User"))));
     }
 
+    @Test
+    void userListEndpointSupportsFiltersAndPaging() throws Exception {
+        ensureManagerUser("manager-list-a", "Manager List A");
+        ensureManagerUser("manager-list-b", "Manager List B");
+        ensureDeskUser("desk-list-user", "Desk List User");
+
+        String adminToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
+
+        mockMvc.perform(get("/api/v1/auth/users")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .param("q", "Manager List")
+                        .param("roleCode", "ROLE_MANAGER")
+                        .param("userStatus", "ACTIVE")
+                        .param("page", "2")
+                        .param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.page.page").value(2))
+                .andExpect(jsonPath("$.data.page.size").value(1))
+                .andExpect(jsonPath("$.data.page.totalItems").value(4))
+                .andExpect(jsonPath("$.data.page.totalPages").value(4))
+                .andExpect(jsonPath("$.data.items[0].loginId").value("manager-list-b"))
+                .andExpect(jsonPath("$.data.items[0].roleCode").value("ROLE_MANAGER"))
+                .andExpect(jsonPath("$.data.items[0].userStatus").value("ACTIVE"));
+    }
+
+    @Test
+    void userListEndpointSupportsDefaultBlankSearch() throws Exception {
+        ensureManagerUser("manager-list-default", "Manager List Default");
+
+        String adminToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
+
+        mockMvc.perform(get("/api/v1/auth/users")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .param("page", "1")
+                        .param("size", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.items").isArray())
+                .andExpect(jsonPath("$.data.items[*].loginId").exists())
+                .andExpect(jsonPath("$.data.page.page").value(1));
+    }
+
+    @Test
+    void managerCannotAccessUserListEndpoint() throws Exception {
+        ensureManagerUser("manager-list-denied", "Manager List Denied");
+        String managerToken = loginAndGetAccessToken("manager-list-denied", "manager-list-denied-1234!");
+
+        mockMvc.perform(get("/api/v1/auth/users")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + managerToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("ACCESS_DENIED"));
+    }
+
     private void ensureTrainerUser() {
-        int updated = jdbcClient.sql("""
-                UPDATE users
-                SET password_hash = :passwordHash,
-                    user_name = :displayName,
-                    user_status = 'ACTIVE',
-                    is_deleted = FALSE,
-                    deleted_at = NULL,
-                    deleted_by = NULL,
-                    updated_at = CURRENT_TIMESTAMP,
-                    updated_by = 0
-                WHERE center_id = 1
-                  AND login_id = 'trainer-user'
-                """)
-                .param("passwordHash", passwordEncoder.encode("trainer-user-1234!"))
-                .param("displayName", "Trainer User")
-                .update();
-
-        Long trainerUserId;
-        if (updated == 0) {
-            trainerUserId = jdbcClient.sql("""
-                    INSERT INTO users (
-                        center_id, login_id, password_hash, user_name, user_status,
-                        created_by, updated_by
-                    )
-                    VALUES (
-                        1, 'trainer-user', :passwordHash, 'Trainer User', 'ACTIVE',
-                        0, 0
-                    )
-                    RETURNING user_id
-                    """)
-                    .param("passwordHash", passwordEncoder.encode("trainer-user-1234!"))
-                    .query(Long.class)
-                    .single();
-        } else {
-            trainerUserId = jdbcClient.sql("""
-                    SELECT user_id
-                    FROM users
-                    WHERE center_id = 1
-                      AND login_id = 'trainer-user'
-                    """)
-                    .query(Long.class)
-                    .single();
-        }
-
-        jdbcClient.sql("DELETE FROM user_roles WHERE user_id = :userId")
-                .param("userId", trainerUserId)
-                .update();
-        jdbcClient.sql("""
-                INSERT INTO user_roles (user_id, role_id, created_by)
-                SELECT :userId, role_id, 0
-                FROM roles
-                WHERE role_code = 'ROLE_TRAINER'
-                """)
-                .param("userId", trainerUserId)
-                .update();
+        ensureUserByRole("trainer-user", "trainer-user-1234!", "ROLE_TRAINER", "Trainer User");
     }
 
     private void ensureDeskUser() {
+        ensureUserByRole("desk-user", "desk-user-1234!", "ROLE_DESK", "Desk User");
+    }
+
+    private void ensureDeskUser(String loginId, String displayName) {
+        ensureUserByRole(loginId, loginId + "-1234!", "ROLE_DESK", displayName);
+    }
+
+    private void ensureManagerUser(String loginId, String displayName) {
+        ensureUserByRole(loginId, loginId + "-1234!", "ROLE_MANAGER", displayName);
+    }
+
+    private void ensureUserByRole(String loginId, String password, String roleCode, String displayName) {
         int updated = jdbcClient.sql("""
                 UPDATE users
                 SET password_hash = :passwordHash,
@@ -239,50 +252,69 @@ class AuthControllerIntegrationTest {
                     updated_at = CURRENT_TIMESTAMP,
                     updated_by = 0
                 WHERE center_id = 1
-                  AND login_id = 'desk-user'
+                  AND login_id = :loginId
                 """)
-                .param("passwordHash", passwordEncoder.encode("desk-user-1234!"))
-                .param("displayName", "Desk User")
+                .param("loginId", loginId)
+                .param("passwordHash", passwordEncoder.encode(password))
+                .param("displayName", displayName)
                 .update();
 
-        Long deskUserId;
+        Long userId;
         if (updated == 0) {
-            deskUserId = jdbcClient.sql("""
+            userId = jdbcClient.sql("""
                     INSERT INTO users (
                         center_id, login_id, password_hash, user_name, user_status,
                         created_by, updated_by
                     )
                     VALUES (
-                        1, 'desk-user', :passwordHash, 'Desk User', 'ACTIVE',
+                        1, :loginId, :passwordHash, :displayName, 'ACTIVE',
                         0, 0
                     )
                     RETURNING user_id
                     """)
-                    .param("passwordHash", passwordEncoder.encode("desk-user-1234!"))
+                    .param("loginId", loginId)
+                    .param("passwordHash", passwordEncoder.encode(password))
+                    .param("displayName", displayName)
                     .query(Long.class)
                     .single();
         } else {
-            deskUserId = jdbcClient.sql("""
+            userId = jdbcClient.sql("""
                     SELECT user_id
                     FROM users
                     WHERE center_id = 1
-                      AND login_id = 'desk-user'
+                      AND login_id = :loginId
                     """)
+                    .param("loginId", loginId)
                     .query(Long.class)
                     .single();
         }
 
         jdbcClient.sql("DELETE FROM user_roles WHERE user_id = :userId")
-                .param("userId", deskUserId)
+                .param("userId", userId)
                 .update();
         jdbcClient.sql("""
                 INSERT INTO user_roles (user_id, role_id, created_by)
                 SELECT :userId, role_id, 0
                 FROM roles
-                WHERE role_code = 'ROLE_DESK'
+                WHERE role_code = :roleCode
                 """)
-                .param("userId", deskUserId)
+                .param("userId", userId)
+                .param("roleCode", roleCode)
                 .update();
+    }
+
+    private String loginAndGetAccessToken(String loginId, String password) throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "loginId": "%s",
+                                  "password": "%s"
+                                }
+                                """.formatted(loginId, password)))
+                .andExpect(status().isOk())
+                .andReturn();
+        return JsonExtractors.readString(result.getResponse().getContentAsString(), "$.data.accessToken");
     }
 
     static final class CookieExtractors {

@@ -12,6 +12,8 @@ export type NavSectionKey =
   | "access"
   | "lockers"
   | "crm"
+  | "settings"
+  | "userAccounts"
   | "settlements"
   | "audit"
   | "products";
@@ -131,6 +133,26 @@ export const shellRoutes: ShellRoute[] = [
     showInDashboard: false,
     visibleRoles: ["ROLE_SUPER_ADMIN", "ROLE_ADMIN", "ROLE_MANAGER", "ROLE_DESK"],
     allowedRoles: ["ROLE_SUPER_ADMIN", "ROLE_ADMIN", "ROLE_MANAGER", "ROLE_DESK"],
+  },
+  {
+    key: "settings",
+    path: "/settings",
+    label: "시스템 설정",
+    protected: true,
+    showInSidebar: true,
+    showInDashboard: false,
+    visibleRoles: ["ROLE_SUPER_ADMIN", "ROLE_ADMIN"],
+    allowedRoles: ["ROLE_SUPER_ADMIN", "ROLE_ADMIN"],
+  },
+  {
+    key: "userAccounts",
+    path: "/user-accounts",
+    label: "사용자 계정 관리",
+    protected: true,
+    showInSidebar: true,
+    showInDashboard: false,
+    visibleRoles: ["ROLE_SUPER_ADMIN", "ROLE_ADMIN"],
+    allowedRoles: ["ROLE_SUPER_ADMIN", "ROLE_ADMIN"],
   },
   {
     key: "settlements",
