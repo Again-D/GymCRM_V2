@@ -117,6 +117,56 @@ describe("AuthStateProvider bootstrap", () => {
     expect(result.current.authStatusMessage).toBe("기존 세션을 복구했습니다.");
   });
 
+  it("normalizes roleCode-only auth payload into primaryRole and roles", async () => {
+    setMockApiModeForTests(false);
+    const fetchMock = vi.fn<
+      (input: RequestInfo | URL) => Promise<{ ok: boolean; status: number; json: () => Promise<unknown> }>
+    >();
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        success: true,
+        data: { securityMode: "jwt", prototypeNoAuth: false },
+        message: "ok",
+        timestamp: "",
+        traceId: ""
+      })
+    });
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        success: true,
+        data: {
+          accessToken: "token-rolecode",
+          user: {
+            userId: 9,
+            centerId: 1,
+            loginId: "desk-user",
+            userName: "데스크 사용자",
+            roleCode: "ROLE_DESK"
+          }
+        },
+        message: "기존 세션을 복구했습니다.",
+        timestamp: "",
+        traceId: ""
+      })
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result } = renderHook(() => useAuthState(), {
+      wrapper: ({ children }) => <AuthStateProvider>{children}</AuthStateProvider>
+    });
+
+    await waitFor(() => {
+      expect(result.current.authBootstrapping).toBe(false);
+    });
+
+    expect(result.current.authUser?.primaryRole).toBe("ROLE_DESK");
+    expect(result.current.authUser?.roles).toEqual(["ROLE_DESK"]);
+  });
+
   it("logs in through the live auth endpoint", async () => {
     setMockApiModeForTests(false);
     const fetchMock = vi.fn<
