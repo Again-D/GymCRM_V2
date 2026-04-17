@@ -66,8 +66,14 @@ public class AuthUserRepository {
 
     public Page<AuthUser> searchUsers(Long centerId, String q, String roleCode, String userStatus, Pageable pageable) {
         entityManager.clear();
-        return authUserJpaRepository.searchAdminUsers(centerId, q, roleCode, userStatus, pageable)
-                .map(this::toDomain);
+        Page<AuthUserEntity> page = authUserJpaRepository.searchAdminUsers(centerId, q, roleCode, userStatus, pageable);
+        List<Long> userIds = page.getContent().stream().map(AuthUserEntity::getUserId).toList();
+        if (!userIds.isEmpty()) {
+            // Avoid collection fetch + pagination in one query (in-memory pagination).
+            // Fetch roles in a second query for the paged IDs to keep DB pagination.
+            authUserJpaRepository.findAllWithRolesByUserIdIn(userIds);
+        }
+        return page.map(this::toDomain);
     }
 
     @Transactional

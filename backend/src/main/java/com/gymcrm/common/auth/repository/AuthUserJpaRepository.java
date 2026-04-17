@@ -25,7 +25,6 @@ public interface AuthUserJpaRepository extends JpaRepository<AuthUserEntity, Lon
             String roleCode
     );
 
-    @EntityGraph(attributePaths = "roles")
     @Query(value = """
             select distinct u
             from AuthUserEntity u
@@ -72,4 +71,12 @@ public interface AuthUserJpaRepository extends JpaRepository<AuthUserEntity, Lon
             String userStatus,
             Pageable pageable
     );
+
+    @Query("""
+            select distinct u
+            from AuthUserEntity u
+            left join fetch u.roles
+            where u.userId in :userIds
+            """)
+    List<AuthUserEntity> findAllWithRolesByUserIdIn(List<Long> userIds);
 }
