@@ -9,7 +9,14 @@ import {
 } from "react";
 import { useStore } from "zustand";
 
-import { ApiClientError, apiGet, apiPost, configureApiAuth, isMockApiMode } from "../api/client";
+import {
+  ApiClientError,
+  apiGet,
+  apiPost,
+  configureApiAuth,
+  isMockApiMode,
+  setMockAuthSessionContext,
+} from "../api/client";
 import {
   createAuthStore,
   initialAuthStoreState,
@@ -26,6 +33,7 @@ export type PrototypeAuthUser = {
   primaryRole: string;
   roles: string[];
   email?: string;
+  passwordChangeRequired?: boolean;
 };
 
 export type AuthState = {
@@ -58,6 +66,7 @@ type AuthTokenResponse = {
     primaryRole?: string;
     roles?: string[];
     roleCode?: string;
+    passwordChangeRequired?: boolean;
   };
 };
 
@@ -86,7 +95,8 @@ const prototypeAdminUser: PrototypeAuthUser = {
   username: "prototype-admin",
   primaryRole: "ROLE_ADMIN",
   roles: ["ROLE_ADMIN"],
-  email: "admin@gymcrm.ops"
+  email: "admin@gymcrm.ops",
+  passwordChangeRequired: false
 };
 
 const jwtAdminUser: PrototypeAuthUser = {
@@ -95,7 +105,8 @@ const jwtAdminUser: PrototypeAuthUser = {
   username: "jwt-admin",
   primaryRole: "ROLE_ADMIN",
   roles: ["ROLE_ADMIN"],
-  email: "ops-lead@gymcrm.ops"
+  email: "ops-lead@gymcrm.ops",
+  passwordChangeRequired: false
 };
 
 const jwtManagerUser: PrototypeAuthUser = {
@@ -104,7 +115,8 @@ const jwtManagerUser: PrototypeAuthUser = {
   username: "jwt-manager",
   primaryRole: "ROLE_MANAGER",
   roles: ["ROLE_MANAGER"],
-  email: "manager@gymcrm.ops"
+  email: "manager@gymcrm.ops",
+  passwordChangeRequired: false
 };
 
 const jwtTrainerUser: PrototypeAuthUser = {
@@ -113,7 +125,8 @@ const jwtTrainerUser: PrototypeAuthUser = {
   username: "jwt-trainer-a",
   primaryRole: "ROLE_TRAINER",
   roles: ["ROLE_TRAINER"],
-  email: "trainer-alpha@gymcrm.ops"
+  email: "trainer-alpha@gymcrm.ops",
+  passwordChangeRequired: false
 };
 
 const defaultAuthState: AuthState = {
@@ -269,7 +282,8 @@ function normalizeLiveUser(user: AuthTokenResponse["user"] | null): PrototypeAut
     centerId: user.centerId,
     username: user.userName || user.loginId,
     primaryRole: normalizedRoles.primaryRole,
-    roles: normalizedRoles.roles
+    roles: normalizedRoles.roles,
+    passwordChangeRequired: user.passwordChangeRequired ?? false
   };
 }
 
@@ -310,6 +324,7 @@ function createInitialAuthStoreState({
 
 export function resetRuntimeAuthStorageForTests() {
   memoryPreset = null;
+  setMockAuthSessionContext(null);
 }
 
 export function AuthStateProvider({
@@ -459,6 +474,33 @@ export function AuthStateProvider({
   const securityMode = useStore(store, (state) => state.securityMode);
   const authBootstrapping = useStore(store, (state) => state.authBootstrapping);
   const authUser = useStore(store, (state) => state.authUser);
+
+  useEffect(() => {
+    if (!isMockMode) {
+      setMockAuthSessionContext(null);
+      return;
+    }
+
+    if (!authUser) {
+      setMockAuthSessionContext(null);
+      return;
+    }
+
+    setMockAuthSessionContext({
+      userId: authUser.userId,
+      centerId: authUser.centerId ?? 1,
+      loginId: authUser.username,
+      userName: authUser.username,
+      primaryRole: authUser.primaryRole,
+      roles: authUser.roles,
+      passwordChangeRequired: authUser.passwordChangeRequired ?? false,
+      userStatus: "ACTIVE",
+    });
+
+    return () => {
+      setMockAuthSessionContext(null);
+    };
+  }, [authUser, isMockMode]);
 
   useEffect(() => {
     if (hasRuntimeOverride || !isMockMode || authBootstrapping || typeof window === "undefined") {

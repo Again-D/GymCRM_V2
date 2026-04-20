@@ -25,7 +25,7 @@ import {
   TeamOutlined
 } from "@ant-design/icons";
 
-import { apiGet, apiPatch, apiPost, isMockApiMode } from "../../api/client";
+import { apiGet, apiPatch, isMockApiMode } from "../../api/client";
 import { invalidateQueryDomains } from "../../api/queryInvalidation";
 import { useAuthState } from "../../app/auth";
 import { hasAnyRole, hasRole } from "../../app/roles";
@@ -94,7 +94,6 @@ export default function TrainersPage() {
   const [selectedTrainer, setSelectedTrainer] = useState<TrainerDetail | null>(null);
   const [availabilityMonth, setAvailabilityMonth] = useState(getCurrentMonthValue);
   const [trainerFormOpen, setTrainerFormOpen] = useState(false);
-  const [trainerFormMode, setTrainerFormMode] = useState<"create" | "edit">("create");
   const [trainerForm, setTrainerForm] = useState(() =>
     createEmptyTrainerForm(defaultCenterId),
   );
@@ -178,13 +177,6 @@ export default function TrainersPage() {
     }
   }
 
-  function startCreateTrainer() {
-    clearFeedback();
-    setTrainerFormMode("create");
-    setTrainerForm(createEmptyTrainerForm(defaultCenterId));
-    setTrainerFormOpen(true);
-  }
-
   async function startEditTrainer(userId: number) {
     clearFeedback();
     setDetailLoading(true);
@@ -201,7 +193,6 @@ export default function TrainersPage() {
         throw new Error("트레이너 상세를 찾을 수 없습니다.");
       }
       setSelectedTrainer(detail);
-      setTrainerFormMode("edit");
       setTrainerForm(createTrainerFormFromDetail(detail));
       setTrainerFormOpen(true);
     } catch (error) {
@@ -224,10 +215,6 @@ export default function TrainersPage() {
       setTrainerFormError("트레이너 이름을 입력해야 합니다.");
       return;
     }
-    if (trainerFormMode === "create" && !trainerForm.password.trim()) {
-      setTrainerFormError("초기 비밀번호를 입력해야 합니다.");
-      return;
-    }
 
     const ptSessionUnitPrice = parseOptionalUnitPrice(trainerForm.ptSessionUnitPrice);
     const gxSessionUnitPrice = parseOptionalUnitPrice(trainerForm.gxSessionUnitPrice);
@@ -239,48 +226,24 @@ export default function TrainersPage() {
 
     setTrainerFormSubmitting(true);
     try {
+      if (!selectedTrainer) {
+        throw new Error("트레이너를 찾을 수 없습니다.");
+      }
+
       let detail: TrainerDetail | null = null;
       if (isMockApiMode()) {
-        if (trainerFormMode === "create") {
-          const { createMockTrainer } = await import("../../api/mockData");
-          detail = createMockTrainer({
-            centerId: trainerForm.centerId,
-            loginId,
-            password: trainerForm.password,
-            userName,
-            phone: asNullableText(trainerForm.phone),
-            ptSessionUnitPrice,
-            gxSessionUnitPrice,
-          });
-          setTrainerPanelMessage("트레이너 계정을 등록했습니다.");
-        } else {
-          const { updateMockTrainer } = await import("../../api/mockData");
-          detail = selectedTrainer
-            ? updateMockTrainer(selectedTrainer.userId, {
-              loginId,
-              userName,
-              phone: asNullableText(trainerForm.phone),
-              ptSessionUnitPrice,
-              gxSessionUnitPrice,
-              })
-            : null;
-          setTrainerPanelMessage("트레이너 정보를 수정했습니다.");
-        }
-      } else if (trainerFormMode === "create") {
-        const response = await apiPost<TrainerDetail>("/api/v1/trainers", {
-          centerId: trainerForm.centerId,
+        const { updateMockTrainer } = await import("../../api/mockData");
+        detail = updateMockTrainer(selectedTrainer.userId, {
           loginId,
-          password: trainerForm.password,
           userName,
           phone: asNullableText(trainerForm.phone),
           ptSessionUnitPrice,
           gxSessionUnitPrice,
         });
-        detail = response.data;
-        setTrainerPanelMessage(response.message);
+        setTrainerPanelMessage("트레이너 정보를 수정했습니다.");
       } else {
         const response = await apiPatch<TrainerDetail>(
-          `/api/v1/trainers/${selectedTrainer?.userId}`,
+          `/api/v1/trainers/${selectedTrainer.userId}`,
           {
             loginId,
             userName,
@@ -450,14 +413,9 @@ export default function TrainersPage() {
             <Space wrap>
               <Tag color="blue">계정 운영</Tag>
               <Tag color="cyan">담당 현황</Tag>
-              <Tag color="purple">데스크 조회 전용</Tag>
+              <Tag color="purple">조회 / 수정</Tag>
             </Space>
           </Space>
-          {canMutateTrainers ? (
-            <Button type="primary" size="large" onClick={startCreateTrainer}>
-              트레이너 등록
-            </Button>
-          ) : null}
         </Flex>
       </Card>
 
@@ -751,11 +709,11 @@ export default function TrainersPage() {
         </Flex>
       </Modal>
 
-      {/* 등록/수정 모달 */}
+      {/* 수정 모달 */}
       <Modal
         open={trainerFormOpen}
         onCancel={() => setTrainerFormOpen(false)}
-        title={trainerFormMode === "create" ? "트레이너 계정 등록" : "트레이너 정보 수정"}
+        title="트레이너 정보 수정"
         onOk={() => void submitTrainerForm()}
         okText="저장"
         cancelText="닫기"
@@ -786,16 +744,6 @@ export default function TrainersPage() {
               </Form.Item>
             </Col>
           </Row>
-
-          {trainerFormMode === "create" && (
-            <Form.Item label="초기 비밀번호" required>
-              <Input.Password
-                value={trainerForm.password}
-                onChange={(e) => setTrainerForm(prev => ({ ...prev, password: e.target.value }))}
-                placeholder="최소 8자 이상"
-              />
-            </Form.Item>
-          )}
 
           <Row gutter={16}>
             <Col span={12}>

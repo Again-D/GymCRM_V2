@@ -17,8 +17,21 @@ type ApiAuthHooks = {
   onUnauthorized?: () => void;
 };
 
+export type MockAuthSessionContext = {
+  userId: number;
+  centerId: number;
+  loginId?: string;
+  userName: string;
+  primaryRole: string;
+  roles: string[];
+  passwordChangeRequired: boolean;
+  userStatus?: "ACTIVE" | "INACTIVE";
+  currentPassword?: string | null;
+};
+
 let apiAuthHooks: ApiAuthHooks | null = null;
 let refreshInFlight: Promise<string | null> | null = null;
+let mockAuthSessionContext: MockAuthSessionContext | null = null;
 
 export type ApiEnvelope<T> = {
   success: boolean;
@@ -72,9 +85,35 @@ export function configureApiAuth(hooks: ApiAuthHooks | null) {
   refreshInFlight = null;
 }
 
-async function resolveMockEnvelope<T>(path: string, method: string = "GET"): Promise<ApiEnvelope<T>> {
+export function setMockAuthSessionContext(session: MockAuthSessionContext | null) {
+  mockAuthSessionContext = session;
+}
+
+function parseMockRequestBody(body: BodyInit | null | undefined): unknown {
+  if (typeof body !== "string") {
+    return body ?? undefined;
+  }
+  if (!body.trim()) {
+    return undefined;
+  }
+  try {
+    return JSON.parse(body);
+  } catch {
+    return body;
+  }
+}
+
+async function resolveMockEnvelope<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<ApiEnvelope<T>> {
   const { getMockResponse } = await import("./mockData");
-  const payload = getMockResponse(path, method) as ApiEnvelope<T> | null;
+  const payload = getMockResponse(
+    path,
+    init?.method ?? "GET",
+    parseMockRequestBody(init?.body),
+    mockAuthSessionContext,
+  ) as ApiEnvelope<T> | null;
   if (!payload) {
     throw new Error(`No mock response configured for ${path}`);
   }
@@ -99,7 +138,7 @@ async function request<T>(
   options?: { skipAuthRetry?: boolean; overrideAccessToken?: string | null },
 ): Promise<ApiEnvelope<T>> {
   if (isMockApiMode()) {
-    return resolveMockEnvelope<T>(path, init?.method ?? "GET");
+    return resolveMockEnvelope<T>(path, init);
   }
 
   const headers = new Headers(init?.headers);

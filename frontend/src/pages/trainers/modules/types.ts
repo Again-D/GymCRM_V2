@@ -31,7 +31,6 @@ export type TrainerFilters = {
 export type TrainerFormState = {
   centerId: number;
   loginId: string;
-  password: string;
   userName: string;
   phone: string;
   ptSessionUnitPrice: string;
@@ -50,7 +49,6 @@ export function createEmptyTrainerForm(centerId = 1): TrainerFormState {
   return {
     centerId,
     loginId: "",
-    password: "",
     userName: "",
     phone: "",
     ptSessionUnitPrice: "",
@@ -62,7 +60,6 @@ export function createTrainerFormFromDetail(detail: TrainerDetail): TrainerFormS
   return {
     centerId: detail.centerId,
     loginId: detail.loginId ?? "",
-    password: "",
     userName: detail.userName,
     phone: detail.phone ?? "",
     ptSessionUnitPrice:

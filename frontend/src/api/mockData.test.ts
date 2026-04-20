@@ -1,9 +1,10 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { apiPatch, apiPost, setMockApiModeForTests, setMockAuthSessionContext } from "./client";
 import {
-  createMockTrainer,
   createMockMember,
   createMockMembership,
+  createMockUserAccount,
   createMockTrainerSettlementConfirm,
   downloadMockSalesSettlementReport,
   downloadMockTrainerSettlementDocument,
@@ -25,6 +26,12 @@ import type { MemberDetail } from "../pages/members/modules/types";
 describe("mockData membership propagation", () => {
   beforeEach(() => {
     resetMockData();
+    setMockApiModeForTests(true);
+  });
+
+  afterEach(() => {
+    setMockAuthSessionContext(null);
+    setMockApiModeForTests(null);
   });
 
   it("adds a new membership to member summaries and reservation targets", () => {
@@ -222,18 +229,20 @@ describe("mockData membership propagation", () => {
     expect(summary.completedClassCount).toBeGreaterThan(0);
   });
 
-  it("persists trainer PT/GX settlement rates in mock create and update helpers", () => {
-    const created = createMockTrainer({
+  it("syncs trainer records when a trainer account is created through user-account helpers", () => {
+    const created = createMockUserAccount({
       centerId: 1,
       loginId: "trainer-c",
-      password: "Password123!",
       userName: "박트레이너",
-      phone: "010-5555-6666",
-      ptSessionUnitPrice: 65000,
-      gxSessionUnitPrice: 28000,
+      roleCode: "ROLE_TRAINER",
+      temporaryPassword: "Password123!",
     });
-    expect(created.ptSessionUnitPrice).toBe(65000);
-    expect(created.gxSessionUnitPrice).toBe(28000);
+    expect(created.passwordChangeRequired).toBe(true);
+
+    const trainerDetail = getMockTrainerDetail(created.userId);
+    expect(trainerDetail).not.toBeNull();
+    expect(trainerDetail?.ptSessionUnitPrice).toBeNull();
+    expect(trainerDetail?.gxSessionUnitPrice).toBeNull();
 
     const updated = updateMockTrainer(created.userId, {
       loginId: "trainer-c",
@@ -246,6 +255,151 @@ describe("mockData membership propagation", () => {
     expect(updated?.ptSessionUnitPrice).toBe(70000);
     expect(updated?.gxSessionUnitPrice).toBeNull();
     expect(getMockTrainerDetail(created.userId)?.gxSessionUnitPrice).toBeNull();
+  });
+
+  it("creates accounts and rejects duplicate loginIds through the mock auth endpoint", async () => {
+    setMockAuthSessionContext({
+      userId: 99,
+      centerId: 1,
+      loginId: "admin-user",
+      userName: "관리자",
+      primaryRole: "ROLE_ADMIN",
+      roles: ["ROLE_ADMIN"],
+      passwordChangeRequired: false,
+      userStatus: "ACTIVE",
+      currentPassword: "Admin-1234!",
+    });
+
+    const firstResponse = await apiPost<{
+      userId: number;
+      passwordChangeRequired: boolean;
+      roleCode: string;
+    }>("/api/v1/auth/users", {
+      loginId: "endpoint-manager",
+      userName: "엔드포인트 관리자",
+      roleCode: "ROLE_MANAGER",
+      temporaryPassword: "Temp-pass-1234!",
+    });
+
+    expect(firstResponse.data.passwordChangeRequired).toBe(true);
+
+    const usersAfterCreate = getMockResponse("/api/v1/auth/users")?.data as {
+      items: Array<{ loginId: string; passwordChangeRequired: boolean }>;
+    };
+    expect(
+      usersAfterCreate.items.find((user) => user.loginId === "endpoint-manager")?.passwordChangeRequired,
+    ).toBe(true);
+
+    await expect(
+      apiPost("/api/v1/auth/users", {
+        loginId: "endpoint-manager",
+        userName: "중복 관리자",
+        roleCode: "ROLE_MANAGER",
+        temporaryPassword: "Temp-pass-1234!",
+      }),
+    ).rejects.toMatchObject({
+      status: 409,
+      code: "CONFLICT",
+    });
+  });
+
+  it("resets a current-center account and changes the active session password through the mock auth endpoint", async () => {
+    setMockAuthSessionContext({
+      userId: 1,
+      centerId: 1,
+      loginId: "center-admin",
+      userName: "센터 관리자",
+      primaryRole: "ROLE_ADMIN",
+      roles: ["ROLE_ADMIN"],
+      passwordChangeRequired: true,
+      userStatus: "ACTIVE",
+      currentPassword: "Admin-1234!",
+    });
+
+    const resetResponse = await apiPost<{
+      userId: number;
+      passwordChangeRequired: boolean;
+      accessRevokedAfter: string | null;
+    }>("/api/v1/auth/users/2/password-reset", {
+      temporaryPassword: "Reset-pass-1234!",
+    });
+
+    expect(resetResponse.data.passwordChangeRequired).toBe(true);
+    expect(resetResponse.data.accessRevokedAfter).not.toBeNull();
+
+    const usersAfterReset = getMockResponse("/api/v1/auth/users")?.data as {
+      items: Array<{ userId: number; passwordChangeRequired: boolean; accessRevokedAfter: string | null }>;
+    };
+    expect(usersAfterReset.items.find((user) => user.userId === 2)?.passwordChangeRequired).toBe(true);
+    expect(usersAfterReset.items.find((user) => user.userId === 2)?.accessRevokedAfter).not.toBeNull();
+
+    const forcedChangeResponse = await apiPatch<{
+      userId: number;
+      passwordChangeRequired: boolean;
+    }>("/api/v1/auth/password", {
+      newPassword: "New-pass-1234!",
+      newPasswordConfirmation: "New-pass-1234!",
+    });
+
+    expect(forcedChangeResponse.data.passwordChangeRequired).toBe(false);
+
+    const usersAfterChange = getMockResponse("/api/v1/auth/users")?.data as {
+      items: Array<{ userId: number; passwordChangeRequired: boolean }>;
+    };
+    expect(usersAfterChange.items.find((user) => user.userId === 1)?.passwordChangeRequired).toBe(false);
+
+    await expect(
+      apiPatch("/api/v1/auth/password", {
+        currentPassword: "Admin-1234!",
+        newPassword: "Newest-pass-1234!",
+        newPasswordConfirmation: "Newest-pass-1234!",
+      }),
+    ).rejects.toMatchObject({
+      status: 401,
+      code: "AUTHENTICATION_FAILED",
+    });
+
+    const normalChangeResponse = await apiPatch<{
+      userId: number;
+      passwordChangeRequired: boolean;
+    }>("/api/v1/auth/password", {
+      currentPassword: "New-pass-1234!",
+      newPassword: "Newest-pass-1234!",
+      newPasswordConfirmation: "Newest-pass-1234!",
+    });
+
+    expect(normalChangeResponse.data.passwordChangeRequired).toBe(false);
+  });
+
+  it("rejects password resets for users outside the current center", async () => {
+    setMockAuthSessionContext({
+      userId: 99,
+      centerId: 1,
+      loginId: "admin-user",
+      userName: "관리자",
+      primaryRole: "ROLE_ADMIN",
+      roles: ["ROLE_ADMIN"],
+      passwordChangeRequired: false,
+      userStatus: "ACTIVE",
+      currentPassword: "Admin-1234!",
+    });
+
+    const externalUser = createMockUserAccount({
+      centerId: 2,
+      loginId: "external-trainer",
+      userName: "외부 트레이너",
+      roleCode: "ROLE_TRAINER",
+      temporaryPassword: "Temp-pass-1234!",
+    });
+
+    await expect(
+      apiPost(`/api/v1/auth/users/${externalUser.userId}/password-reset`, {
+        temporaryPassword: "Reset-pass-1234!",
+      }),
+    ).rejects.toMatchObject({
+      status: 404,
+      code: "NOT_FOUND",
+    });
   });
 
   it("marks settlement preview with a rate warning when trainer rates are missing", () => {

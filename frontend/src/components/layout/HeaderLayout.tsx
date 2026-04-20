@@ -1,4 +1,5 @@
 import { App, Button, Card, Segmented, Space, Tag, Typography } from "antd";
+import { useNavigate } from "react-router-dom";
 
 import { useAuthState } from "../../app/auth";
 import { useThemeStore, type ThemePreference } from "../../app/theme";
@@ -9,6 +10,7 @@ const { Text } = Typography;
 
 export default function HeaderLayout() {
   const feedback = App.useApp();
+  const navigate = useNavigate();
   const {
     authError,
     authStatusMessage,
@@ -67,6 +69,11 @@ export default function HeaderLayout() {
           <div className={styles.controlGroup}>
             <Text className={styles.controlLabel}>{isMockMode ? "런타임 전환" : "세션 제어"}</Text>
             <Space wrap>
+              {securityMode === "jwt" && authUser && !authUser.passwordChangeRequired ? (
+                <Button size="small" type="default" onClick={() => navigate("/my-account")}>
+                  내 계정
+                </Button>
+              ) : null}
               {isMockMode ? (
                 <>
                   <Button size="small" type="default" onClick={() => setRuntimeAuthPreset("prototype-admin")}>데모</Button>

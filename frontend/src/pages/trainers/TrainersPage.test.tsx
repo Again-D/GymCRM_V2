@@ -79,32 +79,6 @@ describe("TrainersPage", () => {
       };
     }
 
-    if (url.includes("/api/v1/trainers") && init?.method === "POST") {
-      const body = JSON.parse(String(init.body));
-      return {
-        ok: true,
-        json: async () => ({
-          success: true,
-          data: {
-            userId: 52,
-            centerId: body.centerId,
-            userName: body.userName,
-            loginId: body.loginId,
-            userStatus: "ACTIVE",
-            phone: body.phone ?? null,
-            ptSessionUnitPrice: body.ptSessionUnitPrice ?? null,
-            gxSessionUnitPrice: body.gxSessionUnitPrice ?? null,
-            assignedMemberCount: 0,
-            todayConfirmedReservationCount: 0,
-            assignedMembers: [],
-          },
-          message: "트레이너 계정을 등록했습니다.",
-          timestamp: "2026-03-20T00:00:00Z",
-          traceId: "trace-trainer-create",
-        }),
-      };
-    }
-
     if (url.includes("/api/v1/trainers/") && init?.method === "PATCH") {
       const body = JSON.parse(String(init.body));
       return {
@@ -286,41 +260,7 @@ describe("TrainersPage", () => {
       );
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "트레이너 등록" }));
-    fireEvent.change(screen.getByPlaceholderText("아이디 입력"), {
-      target: { value: "trainer-b" },
-    });
-    fireEvent.change(screen.getByPlaceholderText("최소 8자 이상"), {
-      target: { value: "Password123!" },
-    });
-    fireEvent.change(screen.getByPlaceholderText("트레이너 성명"), {
-      target: { value: "김트레이너" },
-    });
-    fireEvent.change(screen.getByPlaceholderText("예: 50000"), {
-      target: { value: "55000" },
-    });
-    fireEvent.change(screen.getByPlaceholderText("예: 30000"), {
-      target: { value: "32000" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "저장" }));
-
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining("/api/v1/trainers"),
-        expect.objectContaining({
-          method: "POST",
-          body: JSON.stringify({
-            centerId: 2,
-            loginId: "trainer-b",
-            password: "Password123!",
-            userName: "김트레이너",
-            phone: null,
-            ptSessionUnitPrice: 55000,
-            gxSessionUnitPrice: 32000,
-          }),
-        }),
-      );
-    });
+    expect(screen.queryByRole("button", { name: "트레이너 등록" })).toBeNull();
   }, 10000);
 
   it("preserves existing rates on edit submit when unchanged", async () => {

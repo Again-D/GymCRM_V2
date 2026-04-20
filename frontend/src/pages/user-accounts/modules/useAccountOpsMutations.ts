@@ -3,6 +3,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { apiPost, isMockApiMode } from "../../../api/client";
 import { queryKeys } from "../../../app/queryHelpers";
 import type {
+  UserAccountCreateRequest,
+  UserAccountLifecycleResponse,
   UserAccountRecord,
   UserRoleCode,
   UserStatus,
@@ -13,6 +15,19 @@ export function useAccountOpsMutations() {
 
   async function refreshAccounts() {
     await queryClient.invalidateQueries({ queryKey: queryKeys.authUsers.all });
+  }
+
+  async function createAccount(
+    request: UserAccountCreateRequest & { centerId?: number },
+  ) {
+    const response = await apiPost<UserAccountLifecycleResponse>("/api/v1/auth/users", {
+      loginId: request.loginId,
+      userName: request.userName,
+      roleCode: request.roleCode,
+      temporaryPassword: request.temporaryPassword,
+    });
+    await refreshAccounts();
+    return response.data;
   }
 
   async function revokeAccess(user: UserAccountRecord) {
@@ -52,6 +67,7 @@ export function useAccountOpsMutations() {
   }
 
   return {
+    createAccount,
     revokeAccess,
     changeRole,
     changeStatus,

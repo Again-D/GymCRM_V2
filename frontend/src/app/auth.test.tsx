@@ -84,16 +84,17 @@ describe("AuthStateProvider bootstrap", () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,
       status: 200,
-      json: async () => ({
-        success: true,
-            data: {
+        json: async () => ({
+          success: true,
+              data: {
               accessToken: "token-1",
               user: {
                 userId: 7,
                 loginId: "center-admin",
                 userName: "센터 관리자",
                 primaryRole: "ROLE_ADMIN",
-                roles: ["ROLE_ADMIN"]
+                roles: ["ROLE_ADMIN"],
+                passwordChangeRequired: true
               }
             },
         message: "토큰이 재발급되었습니다.",
@@ -114,6 +115,7 @@ describe("AuthStateProvider bootstrap", () => {
     expect(result.current.isMockMode).toBe(false);
     expect(result.current.securityMode).toBe("jwt");
     expect(result.current.authUser?.userId).toBe(7);
+    expect(result.current.authUser?.passwordChangeRequired).toBe(true);
     expect(result.current.authStatusMessage).toBe("기존 세션을 복구했습니다.");
   });
 
@@ -200,16 +202,17 @@ describe("AuthStateProvider bootstrap", () => {
       status: 200,
       json: async () => ({
         success: true,
-            data: {
-              accessToken: "token-login",
-              user: {
-                userId: 11,
-                loginId: "center-admin",
-                userName: "센터 관리자",
-                primaryRole: "ROLE_ADMIN",
-                roles: ["ROLE_ADMIN"]
-              }
-            },
+        data: {
+          accessToken: "token-login",
+          user: {
+            userId: 11,
+            loginId: "center-admin",
+            userName: "센터 관리자",
+            primaryRole: "ROLE_ADMIN",
+            roles: ["ROLE_ADMIN"],
+            passwordChangeRequired: true
+          }
+        },
         message: "로그인되었습니다.",
         timestamp: "",
         traceId: ""
@@ -230,6 +233,7 @@ describe("AuthStateProvider bootstrap", () => {
     });
 
     expect(result.current.authUser?.userId).toBe(11);
+    expect(result.current.authUser?.passwordChangeRequired).toBe(true);
     expect(result.current.authStatusMessage).toBe("로그인되었습니다.");
   });
 
