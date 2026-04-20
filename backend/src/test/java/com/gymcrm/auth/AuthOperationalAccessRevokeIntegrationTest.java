@@ -165,6 +165,31 @@ class AuthOperationalAccessRevokeIntegrationTest {
     }
 
     @Test
+    void superAdminAuthSurfaceStaysInsideCurrentCenter() throws Exception {
+        ensureCenter(2L, "Secondary Center");
+        Long superAdminUserId = ensureUser(1L, "super-admin-scope", "super-admin-scope-1234!", "Super Admin Scope", "ROLE_SUPER_ADMIN");
+        Long otherCenterUserId = ensureUser(2L, "other-center-scope", "other-center-scope-1234!", "Other Center Scope", "ROLE_DESK");
+        try {
+            String superAdminToken = loginAndGetAccessToken("super-admin-scope", "super-admin-scope-1234!");
+
+            mockMvc.perform(post("/api/v1/auth/users/{userId}/revoke-access", targetUserId)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + superAdminToken))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.data.userId").value(targetUserId.intValue()));
+
+            mockMvc.perform(post("/api/v1/auth/users/{userId}/revoke-access", otherCenterUserId)
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + superAdminToken))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.success").value(false))
+                    .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
+        } finally {
+            deleteUser(superAdminUserId);
+            deleteUser(otherCenterUserId);
+        }
+    }
+
+    @Test
     void roleDowngradeRevokesExistingAccessAndRefreshTokens() throws Exception {
         String adminAccessToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
         jdbcClient.sql("""
@@ -368,6 +393,102 @@ class AuthOperationalAccessRevokeIntegrationTest {
                 """)
                 .param("userId", userId)
                 .param("roleCode", roleCode)
+                .update();
+    }
+
+    private void ensureCenter(long centerId, String centerName) {
+        Integer existing = jdbcClient.sql("""
+                SELECT COUNT(*)
+                FROM centers
+                WHERE center_id = :centerId
+                """)
+                .param("centerId", centerId)
+                .query(Integer.class)
+                .single();
+        if (existing != null && existing > 0) {
+            return;
+        }
+        jdbcClient.sql("""
+                INSERT INTO centers (
+                    center_id, center_name, phone, created_by, updated_by
+                )
+                VALUES (
+                    :centerId, :centerName, '010-0000-0000', 0, 0
+                )
+                """)
+                .param("centerId", centerId)
+                .param("centerName", centerName)
+                .update();
+    }
+
+    private Long ensureUser(long centerId, String loginId, String password, String displayName, String roleCode) {
+        int updated = jdbcClient.sql("""
+                UPDATE users
+                SET password_hash = :passwordHash,
+                    user_name = :displayName,
+                    user_status = 'ACTIVE',
+                    is_deleted = FALSE,
+                    deleted_at = NULL,
+                    deleted_by = NULL,
+                    updated_at = CURRENT_TIMESTAMP,
+                    updated_by = 0
+                WHERE center_id = :centerId
+                  AND login_id = :loginId
+                """)
+                .param("centerId", centerId)
+                .param("loginId", loginId)
+                .param("passwordHash", passwordEncoder.encode(password))
+                .param("displayName", displayName)
+                .update();
+
+        Long userId;
+        if (updated == 0) {
+            userId = jdbcClient.sql("""
+                    INSERT INTO users (
+                        center_id, login_id, password_hash, user_name, user_status,
+                        created_by, updated_by
+                    )
+                    VALUES (
+                        :centerId, :loginId, :passwordHash, :displayName, 'ACTIVE',
+                        0, 0
+                    )
+                    RETURNING user_id
+                    """)
+                    .param("centerId", centerId)
+                    .param("loginId", loginId)
+                    .param("passwordHash", passwordEncoder.encode(password))
+                    .param("displayName", displayName)
+                    .query(Long.class)
+                    .single();
+        } else {
+            userId = jdbcClient.sql("""
+                    SELECT user_id
+                    FROM users
+                    WHERE center_id = :centerId
+                      AND login_id = :loginId
+                    """)
+                    .param("centerId", centerId)
+                    .param("loginId", loginId)
+                    .query(Long.class)
+                    .single();
+        }
+
+        replaceUserRole(userId, roleCode);
+        return userId;
+    }
+
+    private void deleteUser(Long userId) {
+        if (userId == null) {
+            return;
+        }
+        jdbcClient.sql("DELETE FROM auth_refresh_tokens WHERE user_id = :userId")
+                .param("userId", userId)
+                .update();
+        jdbcClient.sql("DELETE FROM user_roles WHERE user_id = :userId")
+                .param("userId", userId)
+                .update();
+        jdbcClient.sql("DELETE FROM users WHERE user_id = :userId")
+                .param("userId", userId)
                 .update();
     }
 

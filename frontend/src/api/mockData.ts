@@ -1,4 +1,5 @@
-import type { ApiEnvelope } from "./client";
+import { ApiClientError, setMockAuthSessionContext } from "./client";
+import type { ApiEnvelope, MockAuthSessionContext } from "./client";
 import type {
   MemberDetail,
   MemberSummary,
@@ -86,6 +87,12 @@ const trainerAssignedMemberIds = new Map<number, number[]>([
   [41, [101]],
   [42, [102]],
 ]);
+const initialTrainerAssignedMemberIds = new Map<number, number[]>(
+  Array.from(trainerAssignedMemberIds.entries(), ([userId, memberIds]) => [
+    userId,
+    [...memberIds],
+  ]),
+);
 
 type MockCenterProfileRecord = {
   centerId: number;
@@ -101,9 +108,27 @@ type MockUserAccountRecord = {
   userName: string;
   roleCode: "ROLE_ADMIN" | "ROLE_MANAGER" | "ROLE_DESK" | "ROLE_TRAINER";
   userStatus: "ACTIVE" | "INACTIVE";
+  passwordChangeRequired: boolean;
   lastLoginAt: string | null;
   accessRevokedAfter: string | null;
 };
+
+const ROLE_SUPER_ADMIN = "ROLE_SUPER_ADMIN";
+const ROLE_ADMIN = "ROLE_ADMIN";
+const ROLE_MANAGER = "ROLE_MANAGER";
+const ROLE_DESK = "ROLE_DESK";
+const ROLE_TRAINER = "ROLE_TRAINER";
+const ADMIN_CREATABLE_ROLE_CODES = new Set([ROLE_MANAGER, ROLE_TRAINER, ROLE_DESK]);
+const ADMIN_RESETTABLE_ROLE_CODES = new Set([ROLE_MANAGER, ROLE_TRAINER, ROLE_DESK]);
+const PASSWORD_POLICY_REGEX = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+const PASSWORD_POLICY_MESSAGE = "8자 이상이며 문자, 숫자, 특수문자를 모두 포함해야 합니다.";
+
+const initialMockUserPasswords = new Map<number, string>([
+  [1, "Admin-1234!"],
+  [2, "Manager-1234!"],
+  [3, "Desk-1234!"],
+  [4, "Trainer-1234!"],
+]);
 
 let mockCenterProfile: MockCenterProfileRecord = {
   centerId: 1,
@@ -120,6 +145,7 @@ let mockUserAccounts: MockUserAccountRecord[] = [
     userName: "센터 관리자",
     roleCode: "ROLE_ADMIN",
     userStatus: "ACTIVE",
+    passwordChangeRequired: false,
     lastLoginAt: "2026-04-16T09:00:00.000Z",
     accessRevokedAfter: null,
   },
@@ -130,6 +156,7 @@ let mockUserAccounts: MockUserAccountRecord[] = [
     userName: "운영 관리자",
     roleCode: "ROLE_MANAGER",
     userStatus: "ACTIVE",
+    passwordChangeRequired: false,
     lastLoginAt: "2026-04-15T10:15:00.000Z",
     accessRevokedAfter: null,
   },
@@ -140,6 +167,7 @@ let mockUserAccounts: MockUserAccountRecord[] = [
     userName: "데스크 담당자",
     roleCode: "ROLE_DESK",
     userStatus: "ACTIVE",
+    passwordChangeRequired: false,
     lastLoginAt: "2026-04-14T08:30:00.000Z",
     accessRevokedAfter: null,
   },
@@ -150,10 +178,12 @@ let mockUserAccounts: MockUserAccountRecord[] = [
     userName: "트레이너",
     roleCode: "ROLE_TRAINER",
     userStatus: "INACTIVE",
+    passwordChangeRequired: false,
     lastLoginAt: "2026-04-12T13:45:00.000Z",
     accessRevokedAfter: "2026-04-12T13:45:30.000Z",
   },
 ];
+let mockUserPasswords = new Map(initialMockUserPasswords);
 
 type MockTrainerRecord = {
   userId: number;
@@ -238,6 +268,7 @@ let mockTrainers: MockTrainerRecord[] = [
     userStatus: "ACTIVE",
   },
 ];
+const initialMockTrainers = mockTrainers.map((trainer) => ({ ...trainer }));
 
 const initialTrainerAvailabilityByUserId = new Map<number, MockTrainerAvailabilityState>([
   [
@@ -940,6 +971,10 @@ function cloneLockerAssignments(source: LockerAssignment[]) {
 
 function cloneProducts(source: ProductRecord[]) {
   return source.map((product) => ({ ...product }));
+}
+
+function cloneMockTrainers(source: MockTrainerRecord[]) {
+  return source.map((trainer) => ({ ...trainer }));
 }
 
 function cloneTrainerAvailabilityMap(
@@ -1664,14 +1699,19 @@ function filterMembers(url: URL) {
   });
 }
 
-function filterMockUserAccounts(url: URL) {
+function filterMockUserAccounts(
+  url: URL,
+  authSession: MockAuthSessionContext | null | undefined,
+) {
   const q = url.searchParams.get("q")?.trim() ?? "";
   const roleCode = url.searchParams.get("roleCode")?.trim() ?? "";
   const userStatus = url.searchParams.get("userStatus")?.trim() ?? "";
   const page = parsePositiveInteger(url.searchParams.get("page"), 1);
   const size = parsePositiveInteger(url.searchParams.get("size"), 20);
+  const centerId = currentMockCenterId(authSession);
 
   const filtered = mockUserAccounts
+    .filter((user) => user.centerId === centerId)
     .filter((user) => !q || user.loginId.includes(q) || user.userName.includes(q))
     .filter((user) => !roleCode || user.roleCode === roleCode)
     .filter((user) => !userStatus || user.userStatus === userStatus)
@@ -1691,6 +1731,153 @@ function filterMockUserAccounts(url: URL) {
       totalPages,
     },
   };
+}
+
+function createMockUserAccountFromRequest(
+  body: unknown,
+  authSession: MockAuthSessionContext | null | undefined,
+) {
+  const actor = authSession ?? null;
+  if (!actor) {
+    throwMockApiError(401, "AUTHENTICATION_FAILED", "인증에 실패했습니다.");
+  }
+
+  const payload = (body ?? {}) as Record<string, unknown>;
+  const loginId = requireMockText(payload.loginId, "loginId");
+  const userName = requireMockText(payload.userName, "userName");
+  const roleCode = normalizeMockRoleCode(payload.roleCode);
+  const temporaryPassword = requireMockText(payload.temporaryPassword, "temporaryPassword");
+
+  validateMockPasswordPolicy(temporaryPassword, "temporaryPassword");
+  ensureMockCreateRoleAllowed(actor.primaryRole, roleCode);
+  ensureMockLoginIdAvailable(currentMockCenterId(actor), loginId);
+
+  return createMockUserAccount({
+    centerId: currentMockCenterId(actor),
+    loginId,
+    userName,
+    roleCode: roleCode as MockUserAccountRecord["roleCode"],
+    temporaryPassword,
+  });
+}
+
+function resetMockUserPasswordFromRequest(
+  targetUserId: number,
+  body: unknown,
+  authSession: MockAuthSessionContext | null | undefined,
+) {
+  const actor = authSession ?? null;
+  if (!actor) {
+    throwMockApiError(401, "AUTHENTICATION_FAILED", "인증에 실패했습니다.");
+  }
+
+  const targetUser = getMockUserAccountInCurrentCenter(targetUserId, authSession);
+  if (!targetUser) {
+    throwMockApiError(404, "NOT_FOUND", `사용자를 찾을 수 없습니다. userId=${targetUserId}`);
+  }
+
+  ensureMockResetAllowed(actor.primaryRole, targetUser.roleCode, actor.userId, targetUser.userId);
+
+  const payload = (body ?? {}) as Record<string, unknown>;
+  const temporaryPassword = requireMockText(payload.temporaryPassword, "temporaryPassword");
+  validateMockPasswordPolicy(temporaryPassword, "temporaryPassword");
+
+  const updatedAt = new Date().toISOString();
+  const nextUser = updateMockUserAccount(targetUser.userId, (current) => ({
+    ...current,
+    passwordChangeRequired: true,
+    accessRevokedAfter: updatedAt,
+  }));
+
+  const updatedUser = nextUser;
+  if (!updatedUser) {
+    throwMockApiError(404, "NOT_FOUND", `사용자를 찾을 수 없습니다. userId=${targetUserId}`);
+  }
+
+  const persistedUser = updatedUser as MockUserAccountRecord;
+
+  syncMockPassword(persistedUser.userId, temporaryPassword);
+  bumpMockDataVersion();
+
+  return buildMockAccountLifecycleResponse(
+    buildMockLifecycleIdentityFromUser(persistedUser),
+    updatedAt,
+    1,
+  );
+}
+
+function changeMockPasswordFromRequest(
+  body: unknown,
+  authSession: MockAuthSessionContext | null | undefined,
+) {
+  const actor = authSession ?? null;
+  if (!actor) {
+    throwMockApiError(401, "AUTHENTICATION_FAILED", "인증에 실패했습니다.");
+  }
+
+  const payload = (body ?? {}) as Record<string, unknown>;
+  const currentPassword = normalizeMockOptionalPassword(payload.currentPassword);
+  const newPassword = requireMockText(payload.newPassword, "newPassword");
+  const newPasswordConfirmation = requireMockText(
+    payload.newPasswordConfirmation,
+    "newPasswordConfirmation",
+  );
+
+  validateMockPasswordPolicy(newPassword, "newPassword");
+  if (newPassword !== newPasswordConfirmation) {
+    throwMockApiError(400, "VALIDATION_ERROR", "newPasswordConfirmation does not match");
+  }
+
+  if (!actor.passwordChangeRequired) {
+    if (!currentPassword) {
+      throwMockApiError(400, "VALIDATION_ERROR", "currentPassword is required");
+    }
+
+    const expectedPassword = currentMockPasswordForSession(actor);
+    if (!expectedPassword || currentPassword !== expectedPassword) {
+      throwMockApiError(401, "AUTHENTICATION_FAILED", "현재 비밀번호가 올바르지 않습니다.");
+    }
+  }
+
+  const updatedAt = new Date().toISOString();
+  const nextUser = updateMockUserAccount(actor.userId, (current) => ({
+    ...current,
+    passwordChangeRequired: false,
+    accessRevokedAfter: updatedAt,
+  }));
+
+  syncMockPassword(actor.userId, newPassword);
+  setMockAuthSessionContext({
+    userId: actor.userId,
+    centerId: actor.centerId,
+    loginId: actor.loginId ?? actor.userName,
+    userName: actor.userName,
+    primaryRole: actor.primaryRole,
+    roles: actor.roles,
+    passwordChangeRequired: false,
+    userStatus: actor.userStatus ?? "ACTIVE",
+    currentPassword: newPassword,
+  });
+  bumpMockDataVersion();
+
+  if (nextUser) {
+    return buildMockAccountLifecycleResponse(
+      buildMockLifecycleIdentityFromUser(nextUser),
+      updatedAt,
+      1,
+    );
+  }
+
+  return buildMockAccountLifecycleResponse(
+    buildMockLifecycleIdentityFromSession({
+      ...actor,
+      loginId: actor.loginId ?? actor.userName,
+      userStatus: actor.userStatus ?? "ACTIVE",
+      currentPassword: newPassword,
+    }),
+    updatedAt,
+    1,
+  );
 }
 
 export function getMockCenterProfile() {
@@ -1732,15 +1919,20 @@ export function revokeMockUserAccess(userId: number) {
 
 export function updateMockUserRole(userId: number, roleCode: MockUserAccountRecord["roleCode"]) {
   const updatedAt = new Date().toISOString();
+  let nextUser: MockUserAccountRecord | null = null;
   mockUserAccounts = mockUserAccounts.map((user) =>
     user.userId === userId
-      ? {
+      ? ((nextUser = {
           ...user,
           roleCode,
           accessRevokedAfter: updatedAt,
-        }
+        }),
+        nextUser)
       : user,
   );
+  if (nextUser) {
+    syncMockTrainerAccount(nextUser);
+  }
   bumpMockDataVersion();
   return {
     userId,
@@ -1752,15 +1944,20 @@ export function updateMockUserRole(userId: number, roleCode: MockUserAccountReco
 
 export function updateMockUserStatus(userId: number, userStatus: MockUserAccountRecord["userStatus"]) {
   const updatedAt = new Date().toISOString();
+  let nextUser: MockUserAccountRecord | null = null;
   mockUserAccounts = mockUserAccounts.map((user) =>
     user.userId === userId
-      ? {
+      ? ((nextUser = {
           ...user,
           userStatus,
           accessRevokedAfter: updatedAt,
-        }
+        }),
+        nextUser)
       : user,
   );
+  if (nextUser) {
+    syncMockTrainerAccount(nextUser);
+  }
   bumpMockDataVersion();
   return {
     userId,
@@ -1792,6 +1989,7 @@ export function getMockDataVersion() {
 }
 
 export function resetMockData() {
+  setMockAuthSessionContext(null);
   mockMembers = cloneMembers(initialMembers);
   mockMemberDetails = cloneMemberDetails(initialMemberDetails);
   mockMemberMemberships = cloneMembershipMap(initialMemberMemberships);
@@ -1809,6 +2007,7 @@ export function resetMockData() {
       userName: "센터 관리자",
       roleCode: "ROLE_ADMIN",
       userStatus: "ACTIVE",
+      passwordChangeRequired: false,
       lastLoginAt: "2026-04-16T09:00:00.000Z",
       accessRevokedAfter: null,
     },
@@ -1819,6 +2018,7 @@ export function resetMockData() {
       userName: "운영 관리자",
       roleCode: "ROLE_MANAGER",
       userStatus: "ACTIVE",
+      passwordChangeRequired: false,
       lastLoginAt: "2026-04-15T10:15:00.000Z",
       accessRevokedAfter: null,
     },
@@ -1829,6 +2029,7 @@ export function resetMockData() {
       userName: "데스크 담당자",
       roleCode: "ROLE_DESK",
       userStatus: "ACTIVE",
+      passwordChangeRequired: false,
       lastLoginAt: "2026-04-14T08:30:00.000Z",
       accessRevokedAfter: null,
     },
@@ -1839,10 +2040,12 @@ export function resetMockData() {
       userName: "트레이너",
       roleCode: "ROLE_TRAINER",
       userStatus: "INACTIVE",
+      passwordChangeRequired: false,
       lastLoginAt: "2026-04-12T13:45:00.000Z",
       accessRevokedAfter: "2026-04-12T13:45:30.000Z",
     },
   ];
+  mockUserPasswords = new Map(initialMockUserPasswords);
   mockReservationSchedules = cloneSchedules(initialReservationSchedules);
   mockReservationsByMemberId = cloneReservationsMap(
     initialReservationsByMemberId,
@@ -1853,9 +2056,14 @@ export function resetMockData() {
   mockLockerAssignments = cloneLockerAssignments(initialLockerAssignments);
   mockProducts = cloneProducts(initialProducts);
   mockCrmHistoryRows = cloneCrmHistoryRows(initialCrmHistoryRows);
+  mockTrainers = cloneMockTrainers(initialMockTrainers);
   mockTrainerAvailabilityByUserId = cloneTrainerAvailabilityMap(
     initialTrainerAvailabilityByUserId,
   );
+  trainerAssignedMemberIds.clear();
+  for (const [userId, memberIds] of initialTrainerAssignedMemberIds.entries()) {
+    trainerAssignedMemberIds.set(userId, [...memberIds]);
+  }
   mockGxRules = cloneMockGxRules(initialMockGxRules);
   mockGxExceptions = cloneMockGxExceptions(initialMockGxExceptions);
   mockSettlementTransactions = cloneSettlementTransactions(
@@ -1874,6 +2082,7 @@ export function resetMockData() {
   productIdSeed = 200;
   crmMessageEventIdSeed = 12050;
   memberIdSeed = 103;
+  trainerIdSeed = 42;
   trainerAvailabilityRuleIdSeed = 4;
   trainerAvailabilityExceptionIdSeed = 11;
   gxRuleIdSeed = 1;
@@ -2613,33 +2822,301 @@ export function getMockTrainerDetail(userId: number) {
   return trainer ? buildMockTrainerDetail(trainer) : null;
 }
 
-export function createMockTrainer(input: {
+function syncMockTrainerAccount(user: MockUserAccountRecord) {
+  if (user.roleCode === "ROLE_TRAINER") {
+    const existingTrainer = mockTrainers.find((trainer) => trainer.userId === user.userId);
+    if (existingTrainer) {
+      mockTrainers = mockTrainers.map((trainer) =>
+        trainer.userId === user.userId
+          ? {
+              ...trainer,
+              centerId: user.centerId,
+              loginId: user.loginId,
+              userName: user.userName,
+              userStatus: user.userStatus,
+            }
+          : trainer,
+      );
+    } else {
+      const nextTrainer: MockTrainerRecord = {
+        userId: user.userId,
+        centerId: user.centerId,
+        loginId: user.loginId,
+        userName: user.userName,
+        phone: null,
+        ptSessionUnitPrice: null,
+        gxSessionUnitPrice: null,
+        userStatus: user.userStatus,
+      };
+      mockTrainers = [nextTrainer, ...mockTrainers];
+      mockTrainerAvailabilityByUserId.set(nextTrainer.userId, {
+        weeklyRules: [],
+        exceptions: [],
+      });
+      trainerAssignedMemberIds.set(nextTrainer.userId, []);
+    }
+    return;
+  }
+
+  const existingTrainer = mockTrainers.some((trainer) => trainer.userId === user.userId);
+  if (existingTrainer) {
+    mockTrainers = mockTrainers.filter((trainer) => trainer.userId !== user.userId);
+    mockTrainerAvailabilityByUserId.delete(user.userId);
+    trainerAssignedMemberIds.delete(user.userId);
+  }
+}
+
+type MockAccountLifecycleIdentity = {
+  userId: number;
   centerId: number;
   loginId: string;
-  password: string;
   userName: string;
-  phone: string | null;
-  ptSessionUnitPrice: number | null;
-  gxSessionUnitPrice: number | null;
+  roleCode: string;
+  userStatus: "ACTIVE" | "INACTIVE";
+  passwordChangeRequired: boolean;
+};
+
+function defaultMockPasswordForRole(roleCode: string) {
+  switch (roleCode) {
+    case ROLE_SUPER_ADMIN:
+      return "Superadmin-1234!";
+    case ROLE_ADMIN:
+      return "Admin-1234!";
+    case ROLE_MANAGER:
+      return "Manager-1234!";
+    case ROLE_DESK:
+      return "Desk-1234!";
+    case ROLE_TRAINER:
+      return "Trainer-1234!";
+    default:
+      return null;
+  }
+}
+
+function normalizeMockRoleCode(value: unknown) {
+  const normalized = requireMockText(value, "roleCode").toUpperCase();
+  if (
+    normalized !== ROLE_SUPER_ADMIN &&
+    normalized !== ROLE_ADMIN &&
+    normalized !== ROLE_MANAGER &&
+    normalized !== ROLE_DESK &&
+    normalized !== ROLE_TRAINER
+  ) {
+    throwMockApiError(400, "VALIDATION_ERROR", "roleCode is invalid");
+  }
+  return normalized;
+}
+
+function throwMockApiError(status: number, code: string, detail: string): never {
+  throw new ApiClientError(detail, {
+    status,
+    code,
+    detail,
+  });
+}
+
+function requireMockText(value: unknown, fieldName: string) {
+  if (typeof value !== "string") {
+    throwMockApiError(400, "VALIDATION_ERROR", `${fieldName} is required`);
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    throwMockApiError(400, "VALIDATION_ERROR", `${fieldName} is required`);
+  }
+  return trimmed;
+}
+
+function normalizeMockOptionalPassword(value: unknown) {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+function validateMockPasswordPolicy(password: string, fieldName: string) {
+  if (
+    password.length < 8 ||
+    !PASSWORD_POLICY_REGEX.test(password)
+  ) {
+    throwMockApiError(
+      400,
+      "VALIDATION_ERROR",
+      `${fieldName} must be at least 8 characters and include letters, numbers, and special characters`,
+    );
+  }
+}
+
+function currentMockCenterId(authSession: MockAuthSessionContext | null | undefined) {
+  return authSession?.centerId ?? 1;
+}
+
+function currentMockPasswordForSession(authSession: MockAuthSessionContext | null | undefined) {
+  if (!authSession) {
+    return null;
+  }
+  if (authSession.currentPassword != null && authSession.currentPassword.trim()) {
+    return authSession.currentPassword.trim();
+  }
+  return mockUserPasswords.get(authSession.userId) ?? defaultMockPasswordForRole(authSession.primaryRole);
+}
+
+function buildMockAccountLifecycleResponse(
+  identity: MockAccountLifecycleIdentity,
+  accessRevokedAfter: string | null,
+  revokedRefreshTokenCount: number,
+) {
+  return {
+    userId: identity.userId,
+    centerId: identity.centerId,
+    loginId: identity.loginId,
+    userName: identity.userName,
+    roleCode: identity.roleCode,
+    userStatus: identity.userStatus,
+    passwordChangeRequired: identity.passwordChangeRequired,
+    accessRevokedAfter,
+    revokedRefreshTokenCount,
+  };
+}
+
+function buildMockLifecycleIdentityFromUser(user: MockUserAccountRecord): MockAccountLifecycleIdentity {
+  return {
+    userId: user.userId,
+    centerId: user.centerId,
+    loginId: user.loginId,
+    userName: user.userName,
+    roleCode: user.roleCode,
+    userStatus: user.userStatus,
+    passwordChangeRequired: user.passwordChangeRequired,
+  };
+}
+
+function buildMockLifecycleIdentityFromSession(
+  authSession: MockAuthSessionContext,
+): MockAccountLifecycleIdentity {
+  return {
+    userId: authSession.userId,
+    centerId: authSession.centerId,
+    loginId: authSession.loginId ?? authSession.userName,
+    userName: authSession.userName,
+    roleCode: authSession.primaryRole,
+    userStatus: authSession.userStatus ?? "ACTIVE",
+    passwordChangeRequired: authSession.passwordChangeRequired,
+  };
+}
+
+function updateMockUserAccount(
+  userId: number,
+  updater: (user: MockUserAccountRecord) => MockUserAccountRecord,
+) {
+  let nextUser: MockUserAccountRecord | null = null;
+  mockUserAccounts = mockUserAccounts.map((user) => {
+    if (user.userId !== userId) {
+      return user;
+    }
+    nextUser = updater({ ...user });
+    return nextUser;
+  });
+  return nextUser;
+}
+
+function ensureMockCreateRoleAllowed(actorRole: string, requestedRoleCode: string) {
+  if (actorRole === ROLE_SUPER_ADMIN) {
+    return;
+  }
+
+  if (actorRole === ROLE_ADMIN) {
+    if (!ADMIN_CREATABLE_ROLE_CODES.has(requestedRoleCode)) {
+      throwMockApiError(403, "ACCESS_DENIED", "관리자 역할은 지정된 운영 역할만 생성할 수 있습니다.");
+    }
+    return;
+  }
+
+  throwMockApiError(403, "ACCESS_DENIED", "계정 생성 권한이 없습니다.");
+}
+
+function ensureMockResetAllowed(actorRole: string, targetRoleCode: string, actorUserId: number, targetUserId: number) {
+  if (actorUserId === targetUserId) {
+    throwMockApiError(403, "ACCESS_DENIED", "자기 계정은 /my-account에서만 변경할 수 있습니다.");
+  }
+
+  if (actorRole === ROLE_SUPER_ADMIN) {
+    return;
+  }
+
+  if (actorRole === ROLE_ADMIN) {
+    if (!ADMIN_RESETTABLE_ROLE_CODES.has(targetRoleCode)) {
+      throwMockApiError(403, "ACCESS_DENIED", "관리자 역할은 지정된 운영 역할만 초기화할 수 있습니다.");
+    }
+    return;
+  }
+
+  throwMockApiError(403, "ACCESS_DENIED", "비밀번호 초기화 권한이 없습니다.");
+}
+
+function ensureMockLoginIdAvailable(centerId: number, loginId: string) {
+  const duplicate = mockUserAccounts.find(
+    (user) => user.centerId === centerId && user.loginId === loginId,
+  );
+  if (duplicate) {
+    throwMockApiError(409, "CONFLICT", "이미 존재하는 loginId입니다.");
+  }
+}
+
+function getMockUserAccountInCurrentCenter(
+  userId: number,
+  authSession: MockAuthSessionContext | null | undefined,
+) {
+  const centerId = currentMockCenterId(authSession);
+  return mockUserAccounts.find(
+    (user) => user.userId === userId && user.centerId === centerId,
+  ) ?? null;
+}
+
+function getMockUserAccountById(userId: number) {
+  return mockUserAccounts.find((user) => user.userId === userId) ?? null;
+}
+
+function syncMockPassword(userId: number, password: string) {
+  mockUserPasswords.set(userId, password);
+}
+
+export function createMockUserAccount(input: {
+  centerId: number;
+  loginId: string;
+  userName: string;
+  roleCode: MockUserAccountRecord["roleCode"];
+  temporaryPassword: string;
 }) {
-  trainerIdSeed += 1;
-  const nextTrainer: MockTrainerRecord = {
-    userId: trainerIdSeed,
+  const duplicate = mockUserAccounts.find(
+    (user) => user.centerId === input.centerId && user.loginId === input.loginId,
+  );
+  if (duplicate) {
+    throwMockApiError(409, "CONFLICT", "이미 존재하는 loginId입니다.");
+  }
+
+  const nextUserId = Math.max(0, ...mockUserAccounts.map((user) => user.userId)) + 1;
+  const nextUser: MockUserAccountRecord = {
+    userId: nextUserId,
     centerId: input.centerId,
     loginId: input.loginId,
     userName: input.userName,
-    phone: input.phone,
-    ptSessionUnitPrice: input.ptSessionUnitPrice,
-    gxSessionUnitPrice: input.gxSessionUnitPrice,
+    roleCode: input.roleCode,
     userStatus: "ACTIVE",
+    passwordChangeRequired: true,
+    lastLoginAt: null,
+    accessRevokedAfter: null,
   };
-  mockTrainers = [nextTrainer, ...mockTrainers];
-  mockTrainerAvailabilityByUserId.set(nextTrainer.userId, {
-    weeklyRules: [],
-    exceptions: [],
-  });
+
+  mockUserAccounts = [nextUser, ...mockUserAccounts];
+  syncMockPassword(nextUser.userId, input.temporaryPassword);
+  syncMockTrainerAccount(nextUser);
   bumpMockDataVersion();
-  return buildMockTrainerDetail(nextTrainer);
+  return {
+    ...buildMockLifecycleIdentityFromUser(nextUser),
+    accessRevokedAfter: nextUser.accessRevokedAfter,
+    revokedRefreshTokenCount: 0,
+  };
 }
 
 export function updateMockTrainer(
@@ -3065,7 +3542,12 @@ export function deleteMockGxScheduleException(
   return buildMockGxScheduleSnapshot(month, actor);
 }
 
-export function getMockResponse(path: string, method: string = "GET"): ApiEnvelope<unknown> | null {
+export function getMockResponse(
+  path: string,
+  method: string = "GET",
+  body?: unknown,
+  authSession?: MockAuthSessionContext | null,
+): ApiEnvelope<unknown> | null {
   const url = new URL(path, "http://local.mock");
 
   if (url.pathname === "/api/v1/centers/me") {
@@ -3075,8 +3557,31 @@ export function getMockResponse(path: string, method: string = "GET"): ApiEnvelo
     return envelope(getMockCenterProfile());
   }
 
+  if (url.pathname === "/api/v1/auth/users" && method === "POST") {
+    return envelope(
+      createMockUserAccountFromRequest(body, authSession),
+      "사용자 계정을 생성했습니다.",
+    );
+  }
+
+  if (url.pathname.match(/^\/api\/v1\/auth\/users\/\d+\/password-reset$/) && method === "POST") {
+    const segments = url.pathname.split("/").filter(Boolean);
+    const userId = Number(segments[4]);
+    return envelope(
+      resetMockUserPasswordFromRequest(userId, body, authSession),
+      "사용자 비밀번호가 초기화되었습니다.",
+    );
+  }
+
+  if (url.pathname === "/api/v1/auth/password" && method === "PATCH") {
+    return envelope(
+      changeMockPasswordFromRequest(body, authSession),
+      "비밀번호가 변경되었습니다.",
+    );
+  }
+
   if (url.pathname === "/api/v1/auth/users") {
-    return envelope(filterMockUserAccounts(url));
+    return envelope(filterMockUserAccounts(url, authSession));
   }
 
   if (url.pathname === "/api/v1/auth/trainers") {

@@ -88,6 +88,7 @@ public class AuthUserRepository {
         entity.setGxSessionUnitPrice(command.gxSessionUnitPrice());
         entity.setRoles(new LinkedHashSet<>(List.of(requireRole(command.roleCode()))));
         entity.setUserStatus(command.userStatus());
+        entity.setPasswordChangeRequired(command.passwordChangeRequired());
         entity.setCreatedAt(OffsetDateTime.now());
         entity.setCreatedBy(command.actorUserId());
         entity.setUpdatedAt(OffsetDateTime.now());
@@ -163,6 +164,19 @@ public class AuthUserRepository {
         return 1;
     }
 
+    @Transactional
+    public AuthUser updatePassword(Long userId, String passwordHash, boolean passwordChangeRequired, Long updatedBy) {
+        AuthUserEntity entity = authUserJpaRepository.findByUserIdAndIsDeletedFalse(userId).orElse(null);
+        if (entity == null) {
+            return null;
+        }
+        entity.setPasswordHash(passwordHash);
+        entity.setPasswordChangeRequired(passwordChangeRequired);
+        entity.setUpdatedAt(OffsetDateTime.now());
+        entity.setUpdatedBy(updatedBy == null ? userId : updatedBy);
+        return toDomain(authUserJpaRepository.saveAndFlush(entity));
+    }
+
     private AuthUser toDomain(AuthUserEntity entity) {
         return new AuthUser(
                 entity.getUserId(),
@@ -173,6 +187,7 @@ public class AuthUserRepository {
                 entity.getPhone(),
                 entity.getRoles().stream().map(RoleEntity::getRoleCode).findFirst().orElse(null),
                 entity.getUserStatus(),
+                entity.isPasswordChangeRequired(),
                 entity.getLastLoginAt(),
                 entity.getAccessRevokedAfter()
         );
@@ -193,6 +208,7 @@ public class AuthUserRepository {
             java.math.BigDecimal gxSessionUnitPrice,
             String roleCode,
             String userStatus,
+            boolean passwordChangeRequired,
             Long actorUserId
     ) {
     }

@@ -12,7 +12,6 @@ import com.gymcrm.trainer.entity.TrainerSummary;
 import com.gymcrm.trainer.repository.TrainerQueryRepository;
 
 import org.springframework.dao.DataAccessException;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,20 +34,17 @@ public class TrainerService {
     private final AuthUserRepository authUserRepository;
     private final TrainerQueryRepository trainerQueryRepository;
     private final CurrentUserProvider currentUserProvider;
-    private final PasswordEncoder passwordEncoder;
     private final AuthAccessRevocationService authAccessRevocationService;
 
     public TrainerService(
             AuthUserRepository authUserRepository,
             TrainerQueryRepository trainerQueryRepository,
             CurrentUserProvider currentUserProvider,
-            PasswordEncoder passwordEncoder,
             AuthAccessRevocationService authAccessRevocationService
     ) {
         this.authUserRepository = authUserRepository;
         this.trainerQueryRepository = trainerQueryRepository;
         this.currentUserProvider = currentUserProvider;
-        this.passwordEncoder = passwordEncoder;
         this.authAccessRevocationService = authAccessRevocationService;
     }
 
@@ -103,39 +99,6 @@ public class TrainerService {
                 assignedMembers,
                 canManage(actor)
         );
-    }
-
-    @Transactional
-    public TrainerDetail create(CreateTrainerCommand command) {
-        AuthUser actor = requireActor();
-        ensureManageAccess(actor);
-        Long centerId = resolveActorCenter(actor, command.centerId());
-        String loginId = requireText(command.loginId(), "loginId");
-        String password = requireText(command.password(), "password");
-        String userName = requireText(command.userName(), "userName");
-        String phone = normalizeNullable(command.phone());
-        BigDecimal ptSessionUnitPrice = command.ptSessionUnitPrice();
-        BigDecimal gxSessionUnitPrice = command.gxSessionUnitPrice();
-        validateRate(ptSessionUnitPrice, "ptSessionUnitPrice");
-        validateRate(gxSessionUnitPrice, "gxSessionUnitPrice");
-
-        try {
-            AuthUser created = authUserRepository.insert(new AuthUserRepository.AuthUserCreateCommand(
-                    centerId,
-                    loginId,
-                    passwordEncoder.encode(password),
-                    userName,
-                    phone,
-                    ptSessionUnitPrice,
-                    gxSessionUnitPrice,
-                    ROLE_TRAINER,
-                    STATUS_ACTIVE,
-                    actor.userId()
-            ));
-            return getDetail(created.userId());
-        } catch (DataAccessException ex) {
-            throw mapWriteException(ex);
-        }
     }
 
     @Transactional
@@ -276,16 +239,6 @@ public class TrainerService {
         return new ApiException(ErrorCode.INTERNAL_ERROR, "트레이너 계정 처리 중 오류가 발생했습니다.");
     }
 
-    public record CreateTrainerCommand(
-            Long centerId,
-            String loginId,
-            String password,
-            String userName,
-            String phone,
-            BigDecimal ptSessionUnitPrice,
-            BigDecimal gxSessionUnitPrice
-    ) {
-    }
     public record UpdateTrainerCommand(
             String loginId,
             String userName,

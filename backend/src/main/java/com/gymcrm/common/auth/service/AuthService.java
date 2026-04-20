@@ -179,10 +179,18 @@ public class AuthService {
             Long centerId,
             String loginId,
             String userName,
-            String roleCode
+            String roleCode,
+            boolean passwordChangeRequired
     ) {
         static UserSession from(AuthUser user) {
-            return new UserSession(user.userId(), user.centerId(), user.loginId(), user.userName(), user.roleCode());
+            return new UserSession(
+                    user.userId(),
+                    user.centerId(),
+                    user.loginId(),
+                    user.userName(),
+                    user.roleCode(),
+                    user.passwordChangeRequired()
+            );
         }
     }
 }

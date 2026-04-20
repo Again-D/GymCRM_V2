@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { FoundationProviders } from "../../app/providers";
@@ -12,7 +12,7 @@ describe("UserAccountsPage", () => {
       </FoundationProviders>,
     );
 
-    expect(await screen.findByRole("heading", { name: "사용자 계정 관리" })).toBeTruthy();
+    await screen.findAllByText("center-admin");
     await waitFor(() => {
       expect(screen.getByText("center-admin")).toBeTruthy();
       expect(screen.getByText("manager-user")).toBeTruthy();
@@ -35,6 +35,7 @@ describe("UserAccountsPage", () => {
       </FoundationProviders>,
     );
 
+    await screen.findAllByText("center-admin");
     await waitFor(() => {
       expect(screen.getAllByText("center-admin").length).toBeGreaterThan(0);
     });
@@ -52,4 +53,41 @@ describe("UserAccountsPage", () => {
       }),
     ).toBe(true);
   });
+
+  it("creates a user account and refreshes the table", async () => {
+    render(
+      <FoundationProviders
+        authValue={{
+          authUser: {
+            userId: 99,
+            username: "admin-user",
+            primaryRole: "ROLE_ADMIN",
+            roles: ["ROLE_ADMIN"],
+          },
+        }}
+      >
+        <UserAccountsPage />
+      </FoundationProviders>,
+    );
+
+    await screen.findAllByText("center-admin");
+    fireEvent.click(screen.getAllByRole("button", { name: "계정 생성" })[0]);
+
+    fireEvent.change(screen.getByLabelText("로그인 ID"), {
+      target: { value: "onboarding-manager" },
+    });
+    fireEvent.change(screen.getByLabelText("이름"), {
+      target: { value: "온보딩 관리자" },
+    });
+    fireEvent.change(screen.getByLabelText("임시 비밀번호"), {
+      target: { value: "Temp-pass-1234!" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "생성" }));
+
+    const createdRows = await screen.findAllByText("onboarding-manager");
+    const createdRow = createdRows[0];
+    const row = createdRow.closest("tr");
+    expect(row).not.toBeNull();
+    expect(within(row!).getByText("임시 비밀번호")).toBeTruthy();
+  }, 40000);
 });

@@ -4,6 +4,7 @@ import com.gymcrm.common.api.ApiResponse;
 import com.gymcrm.common.auth.AuthCookieSupport;
 import com.gymcrm.common.auth.entity.AuthUser;
 import com.gymcrm.common.auth.service.AuthAccessRevocationService;
+import com.gymcrm.common.auth.service.AuthAccountLifecycleService;
 import com.gymcrm.common.auth.service.AuthService;
 import com.gymcrm.common.auth.service.AuthUserQueryService;
 import com.gymcrm.common.auth.service.JwtTokenService;
@@ -16,16 +17,19 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.core.env.Environment;
 import org.springframework.data.domain.Page;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.OffsetDateTime;
@@ -38,6 +42,7 @@ import java.util.List;
 public class AuthController {
     private final AuthService authService;
     private final AuthAccessRevocationService authAccessRevocationService;
+    private final AuthAccountLifecycleService authAccountLifecycleService;
     private final AuthUserQueryService authUserQueryService;
     private final AuthCookieSupport authCookieSupport;
     private final JwtTokenService jwtTokenService;
@@ -47,6 +52,7 @@ public class AuthController {
     public AuthController(
             AuthService authService,
             AuthAccessRevocationService authAccessRevocationService,
+            AuthAccountLifecycleService authAccountLifecycleService,
             AuthUserQueryService authUserQueryService,
             AuthCookieSupport authCookieSupport,
             JwtTokenService jwtTokenService,
@@ -55,6 +61,7 @@ public class AuthController {
     ) {
         this.authService = authService;
         this.authAccessRevocationService = authAccessRevocationService;
+        this.authAccountLifecycleService = authAccountLifecycleService;
         this.authUserQueryService = authUserQueryService;
         this.authCookieSupport = authCookieSupport;
         this.jwtTokenService = jwtTokenService;
@@ -132,7 +139,7 @@ public class AuthController {
     @PostMapping("/users/{userId}/revoke-access")
     @PreAuthorize(AccessPolicies.PROTOTYPE_OR_ADMIN)
     public ApiResponse<ForceRevokeAccessResponse> revokeAccess(@PathVariable Long userId) {
-        AuthAccessRevocationService.ForceRevokeResult result = authAccessRevocationService.forceRevokeUserAccess(userId);
+        AuthAccessRevocationService.ForceRevokeResult result = authAccessRevocationService.forceRevokeUserAccessInCurrentCenter(userId);
         return ApiResponse.success(
                 new ForceRevokeAccessResponse(result.userId(), result.accessRevokedAfter(), result.revokedRefreshTokenCount()),
                 "사용자 access token이 강제 무효화되었습니다."
@@ -142,7 +149,7 @@ public class AuthController {
     @PostMapping("/users/{userId}/role")
     @PreAuthorize(AccessPolicies.PROTOTYPE_OR_ADMIN)
     public ApiResponse<UpdateUserRoleResponse> updateRole(@PathVariable Long userId, @Valid @RequestBody UpdateUserRoleRequest request) {
-        AuthAccessRevocationService.UpdateUserRoleResult result = authAccessRevocationService.updateRoleAndRevoke(userId, request.roleCode());
+        AuthAccessRevocationService.UpdateUserRoleResult result = authAccessRevocationService.updateRoleAndRevokeInCurrentCenter(userId, request.roleCode());
         return ApiResponse.success(
                 new UpdateUserRoleResponse(result.userId(), result.roleCode(), result.accessRevokedAfter(), result.revokedRefreshTokenCount()),
                 "사용자 역할이 변경되고 기존 토큰이 무효화되었습니다."
@@ -152,11 +159,52 @@ public class AuthController {
     @PostMapping("/users/{userId}/status")
     @PreAuthorize(AccessPolicies.PROTOTYPE_OR_ADMIN)
     public ApiResponse<UpdateUserStatusResponse> updateStatus(@PathVariable Long userId, @Valid @RequestBody UpdateUserStatusRequest request) {
-        AuthAccessRevocationService.UpdateUserStatusResult result = authAccessRevocationService.updateStatusAndRevoke(userId, request.userStatus());
+        AuthAccessRevocationService.UpdateUserStatusResult result = authAccessRevocationService.updateStatusAndRevokeInCurrentCenter(userId, request.userStatus());
         return ApiResponse.success(
                 new UpdateUserStatusResponse(result.userId(), result.userStatus(), result.accessRevokedAfter(), result.revokedRefreshTokenCount()),
                 "사용자 상태가 변경되고 기존 토큰이 무효화되었습니다."
         );
+    }
+
+    @PostMapping("/users")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_ADMIN)
+    public ApiResponse<AccountLifecycleResponse> createUser(@Valid @RequestBody CreateUserRequest request) {
+        AuthAccountLifecycleService.AccountLifecycleResult result = authAccountLifecycleService.createUser(
+                new AuthAccountLifecycleService.CreateUserCommand(
+                        request.loginId(),
+                        request.userName(),
+                        request.roleCode(),
+                        request.temporaryPassword()
+                )
+        );
+        return ApiResponse.success(AccountLifecycleResponse.from(result), "사용자 계정을 생성했습니다.");
+    }
+
+    @PostMapping("/users/{userId}/password-reset")
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_ADMIN)
+    public ApiResponse<AccountLifecycleResponse> resetUserPassword(
+            @PathVariable Long userId,
+            @Valid @RequestBody ResetPasswordRequest request
+    ) {
+        AuthAccountLifecycleService.AccountLifecycleResult result = authAccountLifecycleService.resetPassword(
+                userId,
+                new AuthAccountLifecycleService.ResetPasswordCommand(request.temporaryPassword())
+        );
+        return ApiResponse.success(AccountLifecycleResponse.from(result), "사용자 비밀번호가 초기화되었습니다.");
+    }
+
+    @PatchMapping("/password")
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_ANY_ROLE)
+    public ApiResponse<AccountLifecycleResponse> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        AuthAccountLifecycleService.AccountLifecycleResult result = authAccountLifecycleService.changePassword(
+                new AuthAccountLifecycleService.ChangePasswordCommand(
+                        request.currentPassword(),
+                        request.newPassword(),
+                        request.newPasswordConfirmation()
+                )
+        );
+        return ApiResponse.success(AccountLifecycleResponse.from(result), "비밀번호가 변경되었습니다.");
     }
 
     private boolean isProdProfileActive() {
@@ -199,6 +247,7 @@ public class AuthController {
             String loginId,
             String userName,
             String roleCode,
+            boolean passwordChangeRequired,
             String primaryRole,
             List<String> roles
     ) {
@@ -210,6 +259,7 @@ public class AuthController {
                     session.loginId(),
                     session.userName(),
                     roleCode,
+                    session.passwordChangeRequired(),
                     roleCode,
                     roleCode == null ? List.of() : List.of(roleCode)
             );
@@ -253,6 +303,7 @@ public class AuthController {
             String userName,
             String roleCode,
             String userStatus,
+            boolean passwordChangeRequired,
             OffsetDateTime lastLoginAt,
             OffsetDateTime accessRevokedAfter
     ) {
@@ -263,6 +314,7 @@ public class AuthController {
                     user.userName(),
                     user.roleCode(),
                     user.userStatus(),
+                    user.passwordChangeRequired(),
                     user.lastLoginAt(),
                     user.accessRevokedAfter()
             );
@@ -305,4 +357,53 @@ public class AuthController {
             OffsetDateTime accessRevokedAfter,
             int revokedRefreshTokenCount
     ) {}
+
+    public record CreateUserRequest(
+            @NotBlank(message = "loginId is required") String loginId,
+            @NotBlank(message = "userName is required") String userName,
+            @NotBlank(message = "roleCode is required")
+            @jakarta.validation.constraints.Pattern(
+                    regexp = "^(?i)(ROLE_SUPER_ADMIN|ROLE_ADMIN|ROLE_MANAGER|ROLE_TRAINER|ROLE_DESK)$",
+                    message = "roleCode is invalid"
+            )
+            String roleCode,
+            @NotBlank(message = "temporaryPassword is required") String temporaryPassword
+    ) {}
+
+    public record ResetPasswordRequest(
+            @NotBlank(message = "temporaryPassword is required") String temporaryPassword
+    ) {}
+
+    public record ChangePasswordRequest(
+            String currentPassword,
+            @NotBlank(message = "newPassword is required") String newPassword,
+            @NotBlank(message = "newPasswordConfirmation is required") String newPasswordConfirmation
+    ) {}
+
+    public record AccountLifecycleResponse(
+            Long userId,
+            Long centerId,
+            String loginId,
+            String userName,
+            String roleCode,
+            String userStatus,
+            boolean passwordChangeRequired,
+            OffsetDateTime accessRevokedAfter,
+            int revokedRefreshTokenCount
+    ) {
+        static AccountLifecycleResponse from(AuthAccountLifecycleService.AccountLifecycleResult result) {
+            AuthUser user = result.user();
+            return new AccountLifecycleResponse(
+                    user.userId(),
+                    user.centerId(),
+                    user.loginId(),
+                    user.userName(),
+                    user.roleCode(),
+                    user.userStatus(),
+                    user.passwordChangeRequired(),
+                    result.accessRevokedAfter(),
+                    result.revokedRefreshTokenCount()
+            );
+        }
+    }
 }

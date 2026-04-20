@@ -12,8 +12,28 @@ export type UserAccountRecord = {
   userName: string;
   roleCode: UserRoleCode;
   userStatus: UserStatus;
+  passwordChangeRequired: boolean;
   lastLoginAt: string | null;
   accessRevokedAfter: string | null;
+};
+
+export type UserAccountCreateRequest = {
+  loginId: string;
+  userName: string;
+  roleCode: UserRoleCode;
+  temporaryPassword: string;
+};
+
+export type UserAccountLifecycleResponse = {
+  userId: number;
+  centerId: number;
+  loginId: string;
+  userName: string;
+  roleCode: UserRoleCode;
+  userStatus: UserStatus;
+  passwordChangeRequired: boolean;
+  accessRevokedAfter: string | null;
+  revokedRefreshTokenCount: number;
 };
 
 export type UserAccountsPageInfo = {
@@ -41,6 +61,14 @@ export const MANAGEABLE_ROLE_OPTIONS: Array<{ label: string; value: UserRoleCode
   { label: "데스크", value: "ROLE_DESK" },
   { label: "트레이너", value: "ROLE_TRAINER" },
 ];
+
+export const SUPER_ADMIN_CREATE_ROLE_OPTIONS: Array<{ label: string; value: UserRoleCode }> = [
+  { label: "관리자", value: "ROLE_ADMIN" },
+];
+
+export function getCreateRoleOptions(isSuperAdmin: boolean) {
+  return isSuperAdmin ? SUPER_ADMIN_CREATE_ROLE_OPTIONS : MANAGEABLE_ROLE_OPTIONS;
+}
 
 export const USER_ROLE_FILTER_OPTIONS: Array<{ label: string; value: "" | UserRoleCode }> = [
   { label: "전체", value: "" },

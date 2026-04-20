@@ -29,6 +29,17 @@ async function waitForShellHeading(name: string) {
   }, { timeout: 20000 });
 }
 
+async function waitForStandaloneHeading(name: string) {
+  const loadingHeading = screen.queryByRole("heading", { name: "Loading Workspace" });
+  if (loadingHeading) {
+    await waitForElementToBeRemoved(loadingHeading, { timeout: 20000 });
+  }
+
+  await waitFor(() => {
+    expect(screen.queryByRole("heading", { name })).toBeTruthy();
+  }, { timeout: 20000 });
+}
+
 beforeEach(() => {
   vi.stubGlobal('matchMedia', vi.fn().mockImplementation(query => ({
     matches: false,
@@ -86,5 +97,44 @@ describe("prototype shell routing", () => {
     });
 
     await waitForShellHeading("운영 대시보드");
+  }, 30000);
+
+  it("redirects forced-change sessions to my account from dashboard and login", async () => {
+    renderRoute(["/dashboard"], {
+      securityMode: "jwt",
+      authUser: {
+        userId: 11,
+        username: "forced-admin",
+        primaryRole: "ROLE_ADMIN",
+        roles: ["ROLE_ADMIN"],
+        passwordChangeRequired: true
+      }
+    });
+
+    await waitForStandaloneHeading("내 계정");
+
+    cleanup();
+
+    renderRoute(["/login"], {
+      securityMode: "jwt",
+      authUser: {
+        userId: 11,
+        username: "forced-admin",
+        primaryRole: "ROLE_ADMIN",
+        roles: ["ROLE_ADMIN"],
+        passwordChangeRequired: true
+      }
+    });
+
+    await waitForStandaloneHeading("내 계정");
+  }, 30000);
+
+  it("routes unauthenticated my-account visits to login", async () => {
+    renderRoute(["/my-account"], {
+      securityMode: "jwt",
+      authUser: null
+    });
+
+    expect(await screen.findByRole("heading", { name: "GymCRM" })).toBeTruthy();
   }, 30000);
 });

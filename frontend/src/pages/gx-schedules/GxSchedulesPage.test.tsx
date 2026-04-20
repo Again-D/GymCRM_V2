@@ -27,6 +27,7 @@ vi.mock("../../api/client", () => ({
 	apiDelete: vi.fn(),
 	configureApiAuth: vi.fn(),
 	isMockApiMode: () => true,
+	setMockAuthSessionContext: vi.fn(),
 }));
 
 vi.mock("../../api/queryInvalidation", () => ({

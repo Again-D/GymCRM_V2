@@ -9,6 +9,7 @@ public enum ErrorCode {
     TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "유효하지 않은 토큰입니다."),
     TOKEN_REVOKED(HttpStatus.UNAUTHORIZED, "무효화된 토큰입니다."),
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "접근 권한이 없습니다."),
+    PASSWORD_CHANGE_REQUIRED(HttpStatus.FORBIDDEN, "비밀번호 변경이 필요합니다."),
     NOT_FOUND(HttpStatus.NOT_FOUND, "대상을 찾을 수 없습니다."),
     CONFLICT(HttpStatus.CONFLICT, "이미 처리되었거나 충돌이 발생했습니다."),
     BUSINESS_RULE(HttpStatus.UNPROCESSABLE_ENTITY, "비즈니스 규칙 위반입니다."),

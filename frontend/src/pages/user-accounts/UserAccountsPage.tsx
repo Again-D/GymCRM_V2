@@ -3,6 +3,7 @@ import {
   Alert,
   Button,
   Card,
+  Form,
   Input,
   Modal,
   Select,
@@ -18,23 +19,30 @@ import dayjs from "dayjs";
 import {
   MANAGEABLE_ROLE_OPTIONS,
   createDefaultUserAccountFilters,
+  getCreateRoleOptions,
   type UserAccountFilters,
+  type UserAccountCreateRequest,
   type UserAccountRecord,
   type UserRoleCode,
   USER_ROLE_FILTER_OPTIONS,
   USER_STATUS_FILTER_OPTIONS,
 } from "./modules/types";
 import { useAuthState } from "../../app/auth";
-import { hasRole } from "../../app/roles";
+import { hasAnyRole, hasRole } from "../../app/roles";
 import { useAccountOpsMutations } from "./modules/useAccountOpsMutations";
 import { useUserAccountsQuery } from "./modules/useUserAccountsQuery";
 
 const { Title, Paragraph, Text } = Typography;
 
+const PASSWORD_POLICY_REGEX = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+const PASSWORD_POLICY_MESSAGE = "8자 이상이며 문자, 숫자, 특수문자를 모두 포함해야 합니다.";
+type UserAccountCreateFormValues = UserAccountCreateRequest;
+
 const PAGE_SIZE_OPTIONS = ["10", "20", "50"];
 
 export default function UserAccountsPage() {
   const { authUser } = useAuthState();
+  const [createForm] = Form.useForm<UserAccountCreateFormValues>();
   const [draftFilters, setDraftFilters] = useState<UserAccountFilters>(
     createDefaultUserAccountFilters(),
   );
@@ -45,11 +53,17 @@ export default function UserAccountsPage() {
     null,
   );
   const [roleDraft, setRoleDraft] = useState<UserRoleCode>("ROLE_MANAGER");
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createSubmitting, setCreateSubmitting] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const { userAccounts, userAccountsPage, userAccountsLoading, userAccountsError } =
     useUserAccountsQuery(appliedFilters);
-  const { revokeAccess, changeRole, changeStatus } = useAccountOpsMutations();
+  const { createAccount, revokeAccess, changeRole, changeStatus } = useAccountOpsMutations();
   const canEditAdminUsers = hasRole(authUser, "ROLE_SUPER_ADMIN");
+  const canCreateAccounts = hasAnyRole(authUser, ["ROLE_SUPER_ADMIN", "ROLE_ADMIN"]);
+  const isSuperAdmin = hasRole(authUser, "ROLE_SUPER_ADMIN");
+  const createRoleOptions = useMemo(() => getCreateRoleOptions(isSuperAdmin), [isSuperAdmin]);
 
   const columns = useMemo<ColumnsType<UserAccountRecord>>(
     () => [
@@ -82,6 +96,17 @@ export default function UserAccountsPage() {
           </Tag>
         ),
         width: 120,
+      },
+      {
+        title: "비밀번호 상태",
+        dataIndex: "passwordChangeRequired",
+        key: "passwordChangeRequired",
+        render: (passwordChangeRequired: boolean) => (
+          <Tag color={passwordChangeRequired ? "warning" : "green"}>
+            {passwordChangeRequired ? "임시 비밀번호" : "정상"}
+          </Tag>
+        ),
+        width: 150,
       },
       {
         title: "최근 로그인",
@@ -139,6 +164,31 @@ export default function UserAccountsPage() {
     setRoleDraft(user.roleCode === "ROLE_ADMIN" ? "ROLE_MANAGER" : user.roleCode);
   }
 
+  function openCreateDialog() {
+    setCreateError(null);
+    createForm.resetFields();
+    createForm.setFieldsValue({
+      loginId: "",
+      userName: "",
+      roleCode: createRoleOptions[0]?.value ?? "ROLE_MANAGER",
+      temporaryPassword: "",
+    });
+    setCreateDialogOpen(true);
+  }
+
+  function closeCreateDialog() {
+    setCreateDialogOpen(false);
+    setCreateError(null);
+    createForm.resetFields();
+  }
+
+  function passwordPolicyValidator(_: unknown, value: string | undefined) {
+    if (!value || PASSWORD_POLICY_REGEX.test(value)) {
+      return Promise.resolve();
+    }
+    return Promise.reject(new Error(PASSWORD_POLICY_MESSAGE));
+  }
+
   async function confirmRevokeAccess(user: UserAccountRecord) {
     Modal.confirm({
       title: "접속 권한을 취소할까요?",
@@ -184,6 +234,26 @@ export default function UserAccountsPage() {
       setRoleEditorUser(null);
     } catch (error) {
       message.error(error instanceof Error ? error.message : "사용자 역할을 변경하지 못했습니다.");
+    }
+  }
+
+  async function saveCreateAccount(values: UserAccountCreateFormValues) {
+    setCreateSubmitting(true);
+    setCreateError(null);
+    try {
+      await createAccount({
+        centerId: authUser?.centerId ?? 1,
+        loginId: values.loginId.trim(),
+        userName: values.userName.trim(),
+        roleCode: values.roleCode,
+        temporaryPassword: values.temporaryPassword,
+      });
+      message.success("사용자 계정을 생성했습니다.");
+      closeCreateDialog();
+    } catch (error) {
+      setCreateError(error instanceof Error ? error.message : "사용자 계정을 생성하지 못했습니다.");
+    } finally {
+      setCreateSubmitting(false);
     }
   }
 
@@ -245,6 +315,11 @@ export default function UserAccountsPage() {
             <Text type="secondary">
               총 {userAccountsPage.totalItems.toLocaleString()}명
             </Text>
+            {canCreateAccounts ? (
+              <Button type="primary" onClick={openCreateDialog}>
+                계정 생성
+              </Button>
+            ) : null}
           </Space>
         }
       >
@@ -253,7 +328,7 @@ export default function UserAccountsPage() {
           dataSource={userAccounts}
           columns={columns}
           loading={userAccountsLoading}
-          scroll={{ x: 1120 }}
+          scroll={{ x: 1260 }}
           pagination={{
             current: userAccountsPage.page,
             pageSize: userAccountsPage.size,
@@ -270,6 +345,64 @@ export default function UserAccountsPage() {
           }}
         />
       </Card>
+
+      <Modal
+        title="계정 생성"
+        open={createDialogOpen}
+        onCancel={closeCreateDialog}
+        onOk={() => void createForm.submit()}
+        okText="생성"
+        cancelText="닫기"
+        confirmLoading={createSubmitting}
+        destroyOnClose
+      >
+        <Space direction="vertical" style={{ width: "100%" }} size="middle">
+          <Text type="secondary">새 계정은 생성 직후 비밀번호 변경 필요 상태로 시작합니다.</Text>
+          {createError ? <Alert type="error" showIcon message={createError} /> : null}
+          <Form<UserAccountCreateFormValues>
+            form={createForm}
+            layout="vertical"
+            requiredMark={false}
+            initialValues={{ roleCode: createRoleOptions[0]?.value }}
+            onFinish={(values) => void saveCreateAccount(values)}
+          >
+            <Form.Item
+              label="로그인 ID"
+              name="loginId"
+              rules={[{ required: true, message: "로그인 ID를 입력하세요." }]}
+            >
+              <Input placeholder="로그인 ID" />
+            </Form.Item>
+
+            <Form.Item
+              label="이름"
+              name="userName"
+              rules={[{ required: true, message: "이름을 입력하세요." }]}
+            >
+              <Input placeholder="이름" />
+            </Form.Item>
+
+            <Form.Item
+              label="역할"
+              name="roleCode"
+              rules={[{ required: true, message: "역할을 선택하세요." }]}
+            >
+              <Select options={createRoleOptions} />
+            </Form.Item>
+
+            <Form.Item
+              label="임시 비밀번호"
+              name="temporaryPassword"
+              rules={[
+                { required: true, message: "임시 비밀번호를 입력하세요." },
+                { validator: passwordPolicyValidator },
+              ]}
+            >
+              <Input.Password placeholder="8자 이상, 문자/숫자/특수문자 포함" />
+            </Form.Item>
+          </Form>
+        </Space>
+      </Modal>
 
       <Modal
         title="역할 변경"

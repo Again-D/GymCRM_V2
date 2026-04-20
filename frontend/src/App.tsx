@@ -29,6 +29,7 @@ const GxSchedulesPage = lazy(() => import("./pages/gx-schedules/GxSchedulesPage"
 const TrainerAvailabilityPage = lazy(() => import("./pages/trainer-availability/TrainerAvailabilityPage"));
 const TrainersPage = lazy(() => import("./pages/trainers/TrainersPage"));
 const UserAccountsPage = lazy(() => import("./pages/user-accounts/UserAccountsPage"));
+const MyAccountPage = lazy(() => import("./pages/my-account/MyAccountPage"));
 const MemberList = lazy(() => import("./pages/members/MemberList"));
 
 if (import.meta.env.MODE === "test") {
@@ -41,6 +42,7 @@ export default function App() {
   const { authBootstrapping, authUser, isMockMode, securityMode } = useAuthState();
   const shellRoute = getShellRouteByPath(location.pathname);
   const isJwt = securityMode === "jwt";
+  const requiresPasswordChange = Boolean(authUser?.passwordChangeRequired);
   const sidebarRoutes = getSidebarRoutes(authUser, isMockMode);
 
   if (authBootstrapping) {
@@ -49,6 +51,10 @@ export default function App() {
 
   if (location.pathname === "/") {
     return <Navigate to="/dashboard" replace />;
+  }
+
+  if (requiresPasswordChange && location.pathname !== "/my-account") {
+    return <Navigate to="/my-account" replace />;
   }
 
   if (location.pathname === "/login") {
@@ -68,6 +74,18 @@ export default function App() {
             }
           />
         </Routes>
+      </Suspense>
+    );
+  }
+
+  if (location.pathname === "/my-account") {
+    if (!authUser) {
+      return <Navigate to="/login" replace />;
+    }
+
+    return (
+      <Suspense fallback={<RouteLoadingScreen />}>
+        <MyAccountPage />
       </Suspense>
     );
   }

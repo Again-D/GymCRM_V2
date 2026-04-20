@@ -3,8 +3,8 @@
 | 항목 | 내용 |
 |------|------|
 | 프로젝트명 | 중소형 헬스장 웹 기반 회원관리 시스템 (GymCRM) |
-| 문서 버전 | v1.16.0 |
-| 작성일 | 2026-02-20 |
+| 문서 버전 | v1.17.0 |
+| 작성일 | 2026-04-20 |
 | 기술 스택 | Java Spring Boot 3.0, PostgreSQL, React.js + TypeScript |
 | 인프라 | AWS EC2, RDS |
 
@@ -97,6 +97,8 @@ Link: </api/v2/members>; rel="successor-version"
   "exp": 1740000900
 }
 ```
+
+> `passwordChangeRequired`는 JWT 클레임이 아니라 사용자 레코드 상태를 반영하며, `/api/v1/auth/login`, `/api/v1/auth/refresh`, `/api/v1/auth/me`, `/api/v1/auth/users` 응답에 포함된다.
 
 **역할(Role) 정의:**
 
@@ -367,13 +369,15 @@ X-RateLimit-Reset: 1740001860
 |---|--------|-----|------|------|------|
 | 1 | `POST` | `/api/v1/auth/login` | 로그인 (JWT 발급) | X | - |
 | 2 | `POST` | `/api/v1/auth/logout` | 로그아웃 (토큰 무효화) | O | ALL |
-| 3 | `POST` | `/api/v1/auth/refresh-token` | 액세스 토큰 갱신 | X (쿠키) | - |
+| 3 | `POST` | `/api/v1/auth/refresh` | 액세스 토큰 갱신 (refresh cookie 사용) | X (쿠키) | - |
 | 4 | `PATCH` | `/api/v1/auth/password` | 비밀번호 변경 | O | ALL |
-| 5 | `GET` | `/api/v1/auth/me` | 내 정보 조회 | O | ALL |
-| 6 | `GET` | `/api/v1/auth/users` | 사용자 목록 조회 (검색/필터/페이징) | O | ADMIN |
-| 7 | `POST` | `/api/v1/auth/users/{userId}/revoke-access` | 사용자 access token 강제 무효화 | O | ADMIN |
-| 8 | `POST` | `/api/v1/auth/users/{userId}/role` | 사용자 역할 변경 | O | ADMIN |
-| 9 | `POST` | `/api/v1/auth/users/{userId}/status` | 사용자 상태 변경 | O | ADMIN |
+| 5 | `GET` | `/api/v1/auth/me` | 내 정보 조회 (passwordChangeRequired 포함) | O | ALL |
+| 6 | `POST` | `/api/v1/auth/users` | 사용자 계정 생성 (임시 비밀번호 발급) | O | ADMIN |
+| 7 | `POST` | `/api/v1/auth/users/{userId}/password-reset` | 사용자 비밀번호 초기화 (임시 비밀번호 재발급) | O | ADMIN |
+| 8 | `GET` | `/api/v1/auth/users` | 사용자 목록 조회 (검색/필터/페이징, passwordChangeRequired 포함) | O | ADMIN |
+| 9 | `POST` | `/api/v1/auth/users/{userId}/revoke-access` | 사용자 access token 강제 무효화 | O | ADMIN |
+| 10 | `POST` | `/api/v1/auth/users/{userId}/role` | 사용자 역할 변경 | O | ADMIN |
+| 11 | `POST` | `/api/v1/auth/users/{userId}/status` | 사용자 상태 변경 | O | ADMIN |
 
 ### 3.2 회원 관리 API (`/api/v1/members`)
 
@@ -599,6 +603,7 @@ X-RateLimit-Reset: 1740001860
       "loginId": "center-admin",
       "userName": "센터 관리자",
       "roleCode": "ROLE_ADMIN",
+      "passwordChangeRequired": false,
       "primaryRole": "ROLE_ADMIN",
       "roles": ["ROLE_ADMIN"]
     }
@@ -636,6 +641,249 @@ Set-Cookie: refreshToken=eyJhbGciOiJIUzI1NiIs...; Path=/api/v1/auth; HttpOnly; S
 - 5회 연속 로그인 실패 시 계정을 30분간 잠금 처리한다.
 - 로그인 시도 기록(IP, User-Agent, 성공/실패)은 보안 로그에 저장한다.
 - 비밀번호는 bcrypt로 해싱되어 비교한다.
+- `passwordChangeRequired`는 서버가 현재 사용자 레코드에서 계산해 응답하며 JWT 클레임에 저장하지 않는다.
+- `passwordChangeRequired=true`인 계정은 비밀번호를 바꾸기 전까지 `/api/v1/auth/me`, `/api/v1/auth/refresh`, `/api/v1/auth/logout`, `/api/v1/auth/password`만 사용할 수 있다.
+
+---
+
+### 4.1.1 토큰 갱신 API
+
+| 항목 | 내용 |
+|------|------|
+| **URL** | `POST /api/v1/auth/refresh` |
+| **설명** | HttpOnly refresh cookie로 액세스 토큰을 재발급한다. |
+| **인증** | 필요 없음 (쿠키) |
+
+**Response Body (성공 - 200):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "accessTokenExpiresInSeconds": 900,
+    "accessTokenExpiresAt": "2026-04-20T10:15:00Z",
+    "user": {
+      "userId": 1,
+      "centerId": 1,
+      "loginId": "center-admin",
+      "userName": "센터 관리자",
+      "roleCode": "ROLE_ADMIN",
+      "passwordChangeRequired": false,
+      "primaryRole": "ROLE_ADMIN",
+      "roles": ["ROLE_ADMIN"]
+    }
+  },
+  "message": "토큰이 재발급되었습니다.",
+  "timestamp": "2026-04-20T10:00:00+09:00"
+}
+```
+
+> Refresh Token은 로그인과 동일하게 HttpOnly Secure 쿠키로 재발급된다.
+
+**비즈니스 규칙:**
+- refresh 응답은 로그인 응답과 같은 session envelope를 유지한다.
+- `passwordChangeRequired`는 현재 사용자 레코드 상태를 그대로 반영한다.
+- `passwordChangeRequired=true`인 세션도 토큰 갱신은 계속 사용할 수 있다.
+
+---
+
+### 4.1.2 내 정보 조회 API
+
+| 항목 | 내용 |
+|------|------|
+| **URL** | `GET /api/v1/auth/me` |
+| **설명** | 현재 로그인한 사용자의 세션 정보를 조회한다. |
+| **인증** | 필요 |
+
+**Response Body (성공 - 200):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "userId": 1,
+    "centerId": 1,
+    "loginId": "center-admin",
+    "userName": "센터 관리자",
+    "roleCode": "ROLE_ADMIN",
+    "passwordChangeRequired": false,
+    "primaryRole": "ROLE_ADMIN",
+    "roles": ["ROLE_ADMIN"]
+  },
+  "message": "현재 사용자 정보입니다.",
+  "timestamp": "2026-04-20T10:00:00+09:00"
+}
+```
+
+**비즈니스 규칙:**
+- `passwordChangeRequired`는 현재 사용자 레코드에서 읽은 서버 권위 상태다.
+- `passwordChangeRequired=true`인 세션도 `/api/v1/auth/me`는 계속 사용할 수 있다.
+
+---
+
+### 4.1.3 비밀번호 변경 API
+
+| 항목 | 내용 |
+|------|------|
+| **URL** | `PATCH /api/v1/auth/password` |
+| **설명** | 현재 로그인한 사용자의 비밀번호를 변경한다. |
+| **인증** | 필요 |
+| **권한** | ALL |
+
+**Request Body:**
+
+```json
+{
+  "currentPassword": "P@ssw0rd!2025",
+  "newPassword": "P@ssw0rd!2026",
+  "newPasswordConfirmation": "P@ssw0rd!2026"
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `currentPassword` | String | X (`passwordChangeRequired=false`일 때만 필요) | 현재 비밀번호 |
+| `newPassword` | String | O | 새 비밀번호 |
+| `newPasswordConfirmation` | String | O | 새 비밀번호 확인 |
+
+**Response Body (성공 - 200):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "userId": 1,
+    "centerId": 1,
+    "loginId": "center-admin",
+    "userName": "센터 관리자",
+    "roleCode": "ROLE_ADMIN",
+    "userStatus": "ACTIVE",
+    "passwordChangeRequired": false,
+    "accessRevokedAfter": "2026-04-20T01:00:00Z",
+    "revokedRefreshTokenCount": 1
+  },
+  "message": "비밀번호가 변경되었습니다.",
+  "timestamp": "2026-04-20T10:00:00+09:00"
+}
+```
+
+**비즈니스 규칙:**
+- `passwordChangeRequired=false`인 경우 `currentPassword`는 필수이며 현재 비밀번호와 일치해야 한다.
+- `passwordChangeRequired=true`인 경우 `currentPassword`는 생략할 수 있다.
+- `newPassword`와 `newPasswordConfirmation`은 반드시 동일해야 한다.
+- 새 비밀번호는 임시 비밀번호와 동일한 정책(8자 이상, 영문+숫자+특수문자)을 따른다.
+- 성공 시 현재 사용자 세션과 refresh token이 모두 무효화되고 `passwordChangeRequired`는 `false`로 전환된다.
+
+---
+
+### 4.1.4 사용자 계정 생성 API
+
+| 항목 | 내용 |
+|------|------|
+| **URL** | `POST /api/v1/auth/users` |
+| **설명** | 현재 센터에 사용자 계정을 생성하고 임시 비밀번호를 발급한다. |
+| **인증** | 필요 |
+| **권한** | ADMIN |
+
+**Request Body:**
+
+```json
+{
+  "loginId": "trainer01",
+  "userName": "홍길동",
+  "roleCode": "ROLE_TRAINER",
+  "temporaryPassword": "Temp@1234"
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `loginId` | String | O | 로그인 ID (4~20자, 영문+숫자) |
+| `userName` | String | O | 사용자 이름 |
+| `roleCode` | String | O | `ROLE_SUPER_ADMIN`, `ROLE_ADMIN`, `ROLE_MANAGER`, `ROLE_TRAINER`, `ROLE_DESK` |
+| `temporaryPassword` | String | O | 임시 비밀번호 (8자 이상, 영문+숫자+특수문자) |
+
+**Response Body (성공 - 200):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "userId": 42,
+    "centerId": 1,
+    "loginId": "trainer01",
+    "userName": "홍길동",
+    "roleCode": "ROLE_TRAINER",
+    "userStatus": "ACTIVE",
+    "passwordChangeRequired": true,
+    "accessRevokedAfter": null,
+    "revokedRefreshTokenCount": 0
+  },
+  "message": "사용자 계정을 생성했습니다.",
+  "timestamp": "2026-04-20T10:00:00+09:00"
+}
+```
+
+**비즈니스 규칙:**
+- 계정은 현재 센터 범위에서만 생성된다.
+- 생성된 계정은 `userStatus=ACTIVE`이고 `passwordChangeRequired=true`다.
+- 임시 비밀번호는 로그인 비밀번호와 동일한 정책을 만족해야 한다.
+- `ROLE_SUPER_ADMIN`은 `ROLE_ADMIN` 계정만 생성할 수 있다.
+- `ROLE_ADMIN`은 `ROLE_MANAGER`, `ROLE_TRAINER`, `ROLE_DESK` 계정만 생성할 수 있다.
+- 현재 센터에 동일한 `loginId`가 있으면 `409 CONFLICT`다.
+
+---
+
+### 4.1.5 사용자 비밀번호 초기화 API
+
+| 항목 | 내용 |
+|------|------|
+| **URL** | `POST /api/v1/auth/users/{userId}/password-reset` |
+| **설명** | 현재 센터의 기존 사용자 비밀번호를 임시 비밀번호로 초기화한다. |
+| **인증** | 필요 |
+| **권한** | ADMIN |
+
+**Request Body:**
+
+```json
+{
+  "temporaryPassword": "Reset@1234"
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `temporaryPassword` | String | O | 임시 비밀번호 (8자 이상, 영문+숫자+특수문자) |
+
+**Response Body (성공 - 200):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "userId": 42,
+    "centerId": 1,
+    "loginId": "trainer01",
+    "userName": "홍길동",
+    "roleCode": "ROLE_TRAINER",
+    "userStatus": "ACTIVE",
+    "passwordChangeRequired": true,
+    "accessRevokedAfter": "2026-04-20T01:00:00Z",
+    "revokedRefreshTokenCount": 1
+  },
+  "message": "사용자 비밀번호가 초기화되었습니다.",
+  "timestamp": "2026-04-20T10:00:00+09:00"
+}
+```
+
+**비즈니스 규칙:**
+- 비밀번호 초기화는 현재 센터의 대상 사용자에게만 적용된다.
+- 자기 계정은 이 API로 초기화할 수 없고 `/api/v1/auth/password` 또는 `/my-account` 흐름을 사용해야 한다.
+- `ROLE_SUPER_ADMIN`은 `ROLE_ADMIN` 계정만 초기화할 수 있다.
+- `ROLE_ADMIN`은 `ROLE_MANAGER`, `ROLE_TRAINER`, `ROLE_DESK` 계정만 초기화할 수 있다.
+- 성공 시 대상 계정의 기존 세션과 refresh token이 무효화되고 `passwordChangeRequired`는 `true`로 전환된다.
+- 임시 비밀번호는 로그인 비밀번호와 동일한 정책을 만족해야 한다.
 
 ---
 
@@ -2356,7 +2604,7 @@ Binary file download with:
 | 항목 | 내용 |
 |------|------|
 | **URL** | `GET /api/v1/auth/users` |
-| **설명** | 현재 센터의 사용자 목록을 검색/필터/페이징하여 조회한다. |
+| **설명** | 현재 센터의 사용자 목록을 검색/필터/페이징하여 조회한다. `passwordChangeRequired`가 포함된다. |
 | **인증** | 필요 |
 | **권한** | ADMIN |
 
@@ -2378,11 +2626,12 @@ Binary file download with:
   "data": {
     "items": [
       {
-        "userId": 1,
-        "loginId": "center-admin",
-        "userName": "센터 관리자",
-        "roleCode": "ROLE_ADMIN",
+        "userId": 42,
+        "loginId": "trainer01",
+        "userName": "홍길동",
+        "roleCode": "ROLE_TRAINER",
         "userStatus": "ACTIVE",
+        "passwordChangeRequired": true,
         "lastLoginAt": "2026-04-16T09:00:00Z",
         "accessRevokedAfter": null
       }
@@ -2402,6 +2651,8 @@ Binary file download with:
 **비즈니스 규칙:**
 - 목록은 현재 센터로 범위가 제한된다.
 - 목록은 `userId` 오름차순으로 정렬한다.
+- `passwordChangeRequired=true`는 임시 비밀번호 또는 강제 초기화 상태를 의미한다.
+- `passwordChangeRequired=true`와 `userStatus=ACTIVE`는 동시에 성립할 수 있다.
 - 역할 변경 정책은 행위자 권한에 따라 분기된다.
   - `ROLE_ADMIN`은 운영 역할(`ROLE_MANAGER`, `ROLE_DESK`, `ROLE_TRAINER`)만 부여/변경할 수 있다.
   - `ROLE_SUPER_ADMIN`은 `ROLE_ADMIN` 및 `ROLE_SUPER_ADMIN`을 포함한 전 역할 부여/변경이 가능하다.
@@ -2744,6 +2995,7 @@ X-Cache: HIT
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| v1.17.0 | 2026-04-20 | auth password lifecycle: `/api/v1/auth/refresh` 표기를 현재 구현과 맞추고, `passwordChangeRequired`를 login/refresh/me/users 응답에 반영했으며, `/api/v1/auth/users` 생성/비밀번호 초기화 API와 `/api/v1/auth/password` 강제 변경 규칙을 현재 구현 기준으로 동기화 | Codex |
 | v1.16.0 | 2026-04-17 | RBAC contract cleanup: JWT payload/인증 응답 사용자 role 모델을 `roleCode + primaryRole + roles[]`로 정렬하고, 권한 표기 규칙 및 관리자/슈퍼관리자 역할 변경 정책을 현재 구현 기준으로 동기화 | Codex |
 | v1.15.0 | 2026-04-17 | `GET /api/v1/centers/me` 센터 프로필 조회/수정 API와 `GET /api/v1/auth/users` 사용자 목록 조회 및 계정 운영 API를 추가하고, 관리자 전용 RBAC 계약을 현재 구현 기준으로 동기화 | Codex |
 | v1.14.0 | 2026-04-13 | `trainer_settlements` bridge를 retire 대상으로 정렬하여 `/trainer-payroll`, `/trainer-payroll/confirm`, `/trainer-payroll/document` 계약을 canonical monthly settlement/detail source-of-truth 기준으로 갱신하고 legacy snapshot fallback 문구를 제거 | Codex |
