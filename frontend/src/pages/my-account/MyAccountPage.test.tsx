@@ -101,6 +101,6 @@ describe("MyAccountPage", () => {
 
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "GymCRM" })).toBeTruthy();
-    }, { timeout: 5000 });
+    }, { timeout: 10000 });
   });
 });

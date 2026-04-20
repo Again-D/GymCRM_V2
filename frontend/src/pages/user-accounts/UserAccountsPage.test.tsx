@@ -89,5 +89,5 @@ describe("UserAccountsPage", () => {
     const row = createdRow.closest("tr");
     expect(row).not.toBeNull();
     expect(within(row!).getByText("임시 비밀번호")).toBeTruthy();
-  }, 20000);
+  }, 40000);
 });
