@@ -363,6 +363,7 @@ export default function UserAccountsPage() {
             form={createForm}
             layout="vertical"
             requiredMark={false}
+            initialValues={{ roleCode: createRoleOptions[0]?.value }}
             onFinish={(values) => void saveCreateAccount(values)}
           >
             <Form.Item

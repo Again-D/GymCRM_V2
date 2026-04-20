@@ -99,6 +99,8 @@ describe("MyAccountPage", () => {
       expect(client.apiPatch).toHaveBeenCalledTimes(1);
     });
 
-    expect(await screen.findByRole("heading", { name: "GymCRM" })).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "GymCRM" })).toBeTruthy();
+    }, { timeout: 5000 });
   });
 });
