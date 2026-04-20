@@ -23,6 +23,12 @@ import java.util.List;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+    private static final String API_PREFIX = "/api/v1/";
+    private static final String PATH_AUTH_ME = "/api/v1/auth/me";
+    private static final String PATH_AUTH_LOGOUT = "/api/v1/auth/logout";
+    private static final String PATH_AUTH_PASSWORD = "/api/v1/auth/password";
+    private static final String PATH_ACTUATOR_PROMETHEUS = "/actuator/prometheus";
+
     private final JwtTokenService jwtTokenService;
     private final AuthUserRepository authUserRepository;
     private final AccessTokenDenylistService accessTokenDenylistService;
@@ -69,7 +75,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 throw new ApiException(com.gymcrm.common.error.ErrorCode.AUTHENTICATION_FAILED, "활성 사용자 정보를 찾을 수 없습니다.");
             }
             if (user.passwordChangeRequired() && !isPasswordChangeAllowedRequest(request)) {
-                throw new ApiException(com.gymcrm.common.error.ErrorCode.ACCESS_DENIED, "비밀번호 변경이 필요합니다.");
+                throw new ApiException(com.gymcrm.common.error.ErrorCode.PASSWORD_CHANGE_REQUIRED, "비밀번호 변경이 필요합니다.");
             }
 
             AuthenticatedUserPrincipal principal = new AuthenticatedUserPrincipal(
@@ -112,10 +118,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (path == null) {
             return false;
         }
-        return path.equals("/api/v1/auth/me")
-                || path.equals("/api/v1/auth/refresh")
-                || path.equals("/api/v1/auth/logout")
-                || path.equals("/api/v1/auth/password");
+        return path.equals(PATH_AUTH_ME)
+                || path.equals(PATH_AUTH_LOGOUT)
+                || path.equals(PATH_AUTH_PASSWORD);
     }
 
     @Override
@@ -124,6 +129,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (path == null) {
             return true;
         }
-        return !path.startsWith("/api/v1/") && !path.equals("/actuator/prometheus");
+        return !path.startsWith(API_PREFIX) && !path.equals(PATH_ACTUATOR_PROMETHEUS);
     }
 }

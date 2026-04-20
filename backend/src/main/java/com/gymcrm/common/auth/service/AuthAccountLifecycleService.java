@@ -86,9 +86,9 @@ public class AuthAccountLifecycleService {
                 "USER",
                 String.valueOf(created.userId()),
                 "{\"loginId\":\"%s\",\"roleCode\":\"%s\",\"userName\":\"%s\"}".formatted(
-                        created.loginId(),
-                        created.roleCode(),
-                        created.userName()
+                        jsonEscape(created.loginId()),
+                        jsonEscape(created.roleCode()),
+                        jsonEscape(created.userName())
                 )
         );
         return new AccountLifecycleResult(created, null, 0);
@@ -102,6 +102,11 @@ public class AuthAccountLifecycleService {
         String temporaryPassword = normalizePassword(command.temporaryPassword(), "temporaryPassword");
         validatePasswordPolicy(temporaryPassword, "temporaryPassword");
 
+        OffsetDateTime revokedAfter = OffsetDateTime.now(ZoneOffset.UTC);
+        if (authAccessRevocationService.revokeAccessAfter(targetUser.userId(), revokedAfter, actor.userId()) != 1) {
+            throw new ApiException(ErrorCode.INTERNAL_ERROR, "사용자 access revoke marker를 갱신하지 못했습니다. userId=" + targetUserId);
+        }
+
         AuthUser updated = authUserRepository.updatePassword(
                 targetUser.userId(),
                 passwordEncoder.encode(temporaryPassword),
@@ -112,10 +117,6 @@ public class AuthAccountLifecycleService {
             throw new ApiException(ErrorCode.NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + targetUserId);
         }
 
-        OffsetDateTime revokedAfter = OffsetDateTime.now(ZoneOffset.UTC);
-        if (authAccessRevocationService.revokeAccessAfter(updated.userId(), revokedAfter, actor.userId()) != 1) {
-            throw new ApiException(ErrorCode.CONFLICT, "사용자 access revoke marker를 갱신하지 못했습니다. userId=" + targetUserId);
-        }
         int revokedRefreshTokenCount = authRefreshTokenRepository.revokeActiveByUserId(updated.userId(), "PASSWORD_RESET");
         auditLogService.recordEvent(
                 "ACCOUNT_PASSWORD_RESET",
@@ -151,6 +152,11 @@ public class AuthAccountLifecycleService {
             }
         }
 
+        OffsetDateTime revokedAfter = OffsetDateTime.now(ZoneOffset.UTC);
+        if (authAccessRevocationService.revokeAccessAfter(actor.userId(), revokedAfter, actor.userId()) != 1) {
+            throw new ApiException(ErrorCode.INTERNAL_ERROR, "사용자 access revoke marker를 갱신하지 못했습니다. userId=" + actor.userId());
+        }
+
         AuthUser updated = authUserRepository.updatePassword(
                 actor.userId(),
                 passwordEncoder.encode(newPassword),
@@ -161,10 +167,6 @@ public class AuthAccountLifecycleService {
             throw new ApiException(ErrorCode.NOT_FOUND, "활성 사용자 정보를 찾을 수 없습니다.");
         }
 
-        OffsetDateTime revokedAfter = OffsetDateTime.now(ZoneOffset.UTC);
-        if (authAccessRevocationService.revokeAccessAfter(updated.userId(), revokedAfter, actor.userId()) != 1) {
-            throw new ApiException(ErrorCode.CONFLICT, "사용자 access revoke marker를 갱신하지 못했습니다. userId=" + actor.userId());
-        }
         int revokedRefreshTokenCount = authRefreshTokenRepository.revokeActiveByUserId(updated.userId(), "PASSWORD_CHANGED");
         auditLogService.recordEvent(
                 "ACCOUNT_PASSWORD_CHANGE",
@@ -188,14 +190,11 @@ public class AuthAccountLifecycleService {
 
     private void ensureCreateRoleAllowed(AuthUser actor, String requestedRoleCode) {
         if (ROLE_SUPER_ADMIN.equals(actor.roleCode())) {
-            if (!ROLE_ADMIN.equals(requestedRoleCode)) {
-                throw new ApiException(ErrorCode.ACCESS_DENIED, "슈퍼 관리자만 관리자 계정을 생성할 수 있습니다.");
-            }
             return;
         }
         if (ROLE_ADMIN.equals(actor.roleCode())) {
             if (!ADMIN_CREATABLE_ROLE_CODES.contains(requestedRoleCode)) {
-                throw new ApiException(ErrorCode.ACCESS_DENIED, "관리자 역할은 지정된 운영 역할만 생성할 수 있습니다.");
+                throw new ApiException(ErrorCode.ACCESS_DENIED, "해당 역할의 계정을 생성할 권한이 없습니다.");
             }
             return;
         }
@@ -207,14 +206,11 @@ public class AuthAccountLifecycleService {
             throw new ApiException(ErrorCode.ACCESS_DENIED, "자기 계정은 /my-account에서만 변경할 수 있습니다.");
         }
         if (ROLE_SUPER_ADMIN.equals(actor.roleCode())) {
-            if (!ROLE_ADMIN.equals(targetUser.roleCode())) {
-                throw new ApiException(ErrorCode.ACCESS_DENIED, "슈퍼 관리자만 관리자 계정을 초기화할 수 있습니다.");
-            }
             return;
         }
         if (ROLE_ADMIN.equals(actor.roleCode())) {
             if (!ADMIN_RESETTABLE_ROLE_CODES.contains(targetUser.roleCode())) {
-                throw new ApiException(ErrorCode.ACCESS_DENIED, "관리자 역할은 지정된 운영 역할만 초기화할 수 있습니다.");
+                throw new ApiException(ErrorCode.ACCESS_DENIED, "해당 역할의 비밀번호를 초기화할 권한이 없습니다.");
             }
             return;
         }
@@ -271,6 +267,12 @@ public class AuthAccountLifecycleService {
                 || !password.matches(".*[^A-Za-z0-9].*")) {
             throw new ApiException(ErrorCode.VALIDATION_ERROR, fieldName + " must be at least 8 characters and include letters, numbers, and special characters");
         }
+    }
+
+    private static String jsonEscape(String value) {
+        if (value == null) return "null";
+        return value.replace("\\", "\\\\").replace("\"", "\\\"")
+                    .replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t");
     }
 
     public record CreateUserCommand(

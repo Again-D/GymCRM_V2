@@ -17,6 +17,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.core.env.Environment;
 import org.springframework.data.domain.Page;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -28,6 +29,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.OffsetDateTime;
@@ -165,6 +167,7 @@ public class AuthController {
     }
 
     @PostMapping("/users")
+    @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize(AccessPolicies.PROTOTYPE_OR_ADMIN)
     public ApiResponse<AccountLifecycleResponse> createUser(@Valid @RequestBody CreateUserRequest request) {
         AuthAccountLifecycleService.AccountLifecycleResult result = authAccountLifecycleService.createUser(
@@ -192,7 +195,7 @@ public class AuthController {
     }
 
     @PatchMapping("/password")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK_OR_TRAINER)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_ANY_ROLE)
     public ApiResponse<AccountLifecycleResponse> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
         AuthAccountLifecycleService.AccountLifecycleResult result = authAccountLifecycleService.changePassword(
                 new AuthAccountLifecycleService.ChangePasswordCommand(

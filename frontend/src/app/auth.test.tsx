@@ -86,21 +86,21 @@ describe("AuthStateProvider bootstrap", () => {
       status: 200,
         json: async () => ({
           success: true,
-              data: {
-              accessToken: "token-1",
-              user: {
-                userId: 7,
-                loginId: "center-admin",
-                userName: "센터 관리자",
-                primaryRole: "ROLE_ADMIN",
-                roles: ["ROLE_ADMIN"],
-                passwordChangeRequired: true
-              }
-            },
-        message: "토큰이 재발급되었습니다.",
-        timestamp: "",
-        traceId: ""
-      })
+          data: {
+            accessToken: "token-1",
+            user: {
+              userId: 7,
+              loginId: "center-admin",
+              userName: "센터 관리자",
+              primaryRole: "ROLE_ADMIN",
+              roles: ["ROLE_ADMIN"],
+              passwordChangeRequired: true
+            }
+          },
+          message: "토큰이 재발급되었습니다.",
+          timestamp: "",
+          traceId: ""
+        })
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -258,16 +258,16 @@ describe("AuthStateProvider bootstrap", () => {
       status: 200,
       json: async () => ({
         success: true,
-            data: {
-              accessToken: "token-refresh",
-              user: {
-                userId: 11,
-                loginId: "center-admin",
-                userName: "센터 관리자",
-                primaryRole: "ROLE_ADMIN",
-                roles: ["ROLE_ADMIN"]
-              }
-            },
+        data: {
+          accessToken: "token-refresh",
+          user: {
+            userId: 11,
+            loginId: "center-admin",
+            userName: "센터 관리자",
+            primaryRole: "ROLE_ADMIN",
+            roles: ["ROLE_ADMIN"]
+          }
+        },
         message: "기존 세션을 복구했습니다.",
         timestamp: "",
         traceId: ""

@@ -3022,9 +3022,6 @@ function updateMockUserAccount(
 
 function ensureMockCreateRoleAllowed(actorRole: string, requestedRoleCode: string) {
   if (actorRole === ROLE_SUPER_ADMIN) {
-    if (requestedRoleCode !== ROLE_ADMIN) {
-      throwMockApiError(403, "ACCESS_DENIED", "슈퍼 관리자만 관리자 계정을 생성할 수 있습니다.");
-    }
     return;
   }
 
@@ -3044,9 +3041,6 @@ function ensureMockResetAllowed(actorRole: string, targetRoleCode: string, actor
   }
 
   if (actorRole === ROLE_SUPER_ADMIN) {
-    if (targetRoleCode !== ROLE_ADMIN) {
-      throwMockApiError(403, "ACCESS_DENIED", "슈퍼 관리자만 관리자 계정을 초기화할 수 있습니다.");
-    }
     return;
   }
 

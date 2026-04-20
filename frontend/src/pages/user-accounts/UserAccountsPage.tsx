@@ -63,7 +63,7 @@ export default function UserAccountsPage() {
   const canEditAdminUsers = hasRole(authUser, "ROLE_SUPER_ADMIN");
   const canCreateAccounts = hasAnyRole(authUser, ["ROLE_SUPER_ADMIN", "ROLE_ADMIN"]);
   const isSuperAdmin = hasRole(authUser, "ROLE_SUPER_ADMIN");
-  const createRoleOptions = getCreateRoleOptions(isSuperAdmin);
+  const createRoleOptions = useMemo(() => getCreateRoleOptions(isSuperAdmin), [isSuperAdmin]);
 
   const columns = useMemo<ColumnsType<UserAccountRecord>>(
     () => [

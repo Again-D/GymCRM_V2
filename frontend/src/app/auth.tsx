@@ -66,7 +66,7 @@ type AuthTokenResponse = {
     primaryRole?: string;
     roles?: string[];
     roleCode?: string;
-    passwordChangeRequired?: boolean;
+    passwordChangeRequired: boolean;
   };
 };
 
