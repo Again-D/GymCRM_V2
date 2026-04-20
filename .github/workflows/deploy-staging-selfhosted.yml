@@ -73,7 +73,7 @@ jobs:
             set STAGING_HTTP_PORT=8088
           )
 
-          set BASE_URL=http://localhost:%STAGING_HTTP_PORT%
+          set BASE_URL=http://ajw0831.iptime.org:%STAGING_HTTP_PORT%
 
           call :wait_for "%BASE_URL%/" 60 2 || exit /b 1
           call :wait_for "%BASE_URL%/api/v1/health" 60 2 || exit /b 1
