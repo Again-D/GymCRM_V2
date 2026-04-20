@@ -68,6 +68,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (!user.isActive()) {
                 throw new ApiException(com.gymcrm.common.error.ErrorCode.AUTHENTICATION_FAILED, "활성 사용자 정보를 찾을 수 없습니다.");
             }
+            if (user.passwordChangeRequired() && !isPasswordChangeAllowedRequest(request)) {
+                throw new ApiException(com.gymcrm.common.error.ErrorCode.ACCESS_DENIED, "비밀번호 변경이 필요합니다.");
+            }
 
             AuthenticatedUserPrincipal principal = new AuthenticatedUserPrincipal(
                     user.userId(),
@@ -95,7 +98,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return false;
         }
         var revokeAfter = accessRevocationMarkerService.resolveRevokeAfter(user.userId(), user.accessRevokedAfter());
-        return revokeAfter != null && !claims.issuedAt().isAfter(revokeAfter);
+        if (revokeAfter == null) {
+            return false;
+        }
+        // Strict: any token issued at or before the revoke marker is revoked.
+        // JwtTokenService.issueAccessToken() already pushes newly minted iat forward
+        // past revokeAfter, so no grace window is needed on the validation side.
+        return !claims.issuedAt().isAfter(revokeAfter);
+    }
+
+    private boolean isPasswordChangeAllowedRequest(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        if (path == null) {
+            return false;
+        }
+        return path.equals("/api/v1/auth/me")
+                || path.equals("/api/v1/auth/refresh")
+                || path.equals("/api/v1/auth/logout")
+                || path.equals("/api/v1/auth/password");
     }
 
     @Override

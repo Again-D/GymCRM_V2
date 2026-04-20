@@ -68,7 +68,7 @@ class TrainerManagementApiIntegrationTest {
     void centerAdminGetsTrainerAggregatesAndDeskGetsMaskedDetail() throws Exception {
         String adminToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
         String trainerLoginId = "trainer-agg-" + shortId();
-        long trainerUserId = createTrainer(adminToken, trainerLoginId, "집계 트레이너");
+        long trainerUserId = ensureUser(CENTER_ID, trainerLoginId, "trainer-agg-1234!", "집계 트레이너", "ROLE_TRAINER");
         long memberId = createMember(adminToken, "트레이너집계회원-" + shortId());
         long productId = insertDurationProductFixture("트레이너회원권-" + shortId());
         long membershipId = purchaseMembership(adminToken, memberId, productId, trainerUserId);
@@ -119,7 +119,7 @@ class TrainerManagementApiIntegrationTest {
     @Test
     void deskCannotMutateTrainerAndTrainerCannotAccessTrainerManagement() throws Exception {
         String adminToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
-        long trainerUserId = createTrainer(adminToken, "trainer-mutate-" + shortId(), "상태 변경 대상");
+        long trainerUserId = ensureUser(CENTER_ID, "trainer-mutate-" + shortId(), "trainer-mutate-1234!", "상태 변경 대상", "ROLE_TRAINER");
         String deskToken = loginAndGetAccessToken("desk-trainer-mgmt", "desk-pass-1234!");
 
         mockMvc.perform(patch("/api/v1/trainers/{userId}/status", trainerUserId)
@@ -142,24 +142,8 @@ class TrainerManagementApiIntegrationTest {
     void managerCanMutateTrainerManagement() throws Exception {
         ensureUser(CENTER_ID, "manager-trainer-mgmt", "manager-pass-1234!", "Manager Trainer", "ROLE_MANAGER");
         String managerToken = loginAndGetAccessToken("manager-trainer-mgmt", "manager-pass-1234!");
-        String adminToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
         String trainerLoginId = "trainer-manager-deny-" + shortId();
-        long trainerUserId = createTrainer(adminToken, trainerLoginId, "매니저 제한 대상");
-
-        mockMvc.perform(post("/api/v1/trainers")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + managerToken)
-                        .contentType("application/json")
-                        .content("""
-                                {
-                                  "centerId": 1,
-                                  "loginId": "manager-trainer-create-%s",
-                                  "password": "trainer-pass-1234!",
-                                  "userName": "Manager Denied",
-                                  "phone": "010-2222-3333"
-                                }
-                                """.formatted(shortId())))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.userName").value("Manager Denied"));
+        long trainerUserId = ensureUser(CENTER_ID, trainerLoginId, "trainer-manager-deny-1234!", "매니저 제한 대상", "ROLE_TRAINER");
 
         mockMvc.perform(patch("/api/v1/trainers/{userId}", trainerUserId)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + managerToken)
@@ -214,8 +198,7 @@ class TrainerManagementApiIntegrationTest {
                                   "phone": "010-5555-6666"
                                 }
                                 """))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.error.code").value("ACCESS_DENIED"));
+                .andExpect(status().isMethodNotAllowed());
     }
 
     @Test
@@ -224,23 +207,7 @@ class TrainerManagementApiIntegrationTest {
         String createLoginId = "super-cross-trainer-" + shortId();
         String updatedLoginId = "super-cross-trainer-updated-" + shortId();
 
-        MvcResult createResult = mockMvc.perform(post("/api/v1/trainers")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + superAdminToken)
-                        .contentType("application/json")
-                        .content("""
-                                {
-                                  "centerId": 2,
-                                  "loginId": "%s",
-                                  "password": "super-cross-1234!",
-                                  "userName": "Super Cross Trainer",
-                                  "phone": "010-4444-5555"
-                                }
-                                """.formatted(createLoginId)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.centerId").value(2))
-                .andReturn();
-
-        long trainerUserId = jsonLong(createResult, "/data/userId");
+        long trainerUserId = ensureUser(OTHER_CENTER_ID, createLoginId, "super-cross-1234!", "Super Cross Trainer", "ROLE_TRAINER");
 
         mockMvc.perform(get("/api/v1/trainers")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + superAdminToken)
@@ -278,37 +245,17 @@ class TrainerManagementApiIntegrationTest {
     }
 
     @Test
-    void centerAdminCanCreateAndUpdateTrainerSettlementRates() throws Exception {
+    void centerAdminCanUpdateTrainerSettlementRates() throws Exception {
         String adminToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
         String loginId = "trainer-rate-" + shortId();
 
-        MvcResult createResult = mockMvc.perform(post("/api/v1/trainers")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
-                        .contentType("application/json")
-                        .content("""
-                                {
-                                  "centerId": 1,
-                                  "loginId": "%s",
-                                  "password": "trainer-rate-1234!",
-                                  "userName": "정산 단가 트레이너",
-                                  "phone": "010-1111-2222",
-                                  "ptSessionUnitPrice": 55000,
-                                  "gxSessionUnitPrice": 22000
-                                }
-                                """.formatted(loginId)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.userName").value("정산 단가 트레이너"))
-                .andExpect(jsonPath("$.data.ptSessionUnitPrice").value(55000))
-                .andExpect(jsonPath("$.data.gxSessionUnitPrice").value(22000))
-                .andReturn();
-
-        long trainerUserId = jsonLong(createResult, "/data/userId");
+        long trainerUserId = ensureUser(CENTER_ID, loginId, "trainer-rate-1234!", "정산 단가 트레이너", "ROLE_TRAINER");
 
         mockMvc.perform(get("/api/v1/trainers/{userId}", trainerUserId)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.ptSessionUnitPrice").value(55000))
-                .andExpect(jsonPath("$.data.gxSessionUnitPrice").value(22000));
+                .andExpect(jsonPath("$.data.ptSessionUnitPrice").doesNotExist())
+                .andExpect(jsonPath("$.data.gxSessionUnitPrice").doesNotExist());
 
         mockMvc.perform(patch("/api/v1/trainers/{userId}", trainerUserId)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
@@ -347,24 +294,6 @@ class TrainerManagementApiIntegrationTest {
 
         org.junit.jupiter.api.Assertions.assertEquals(new BigDecimal("66000.00"), persistedPtRate);
         org.junit.jupiter.api.Assertions.assertEquals(new BigDecimal("33000.00"), persistedGxRate);
-    }
-
-    private long createTrainer(String adminToken, String loginId, String displayName) throws Exception {
-        MvcResult result = mockMvc.perform(post("/api/v1/trainers")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
-                        .contentType("application/json")
-                        .content("""
-                                {
-                                  "centerId": 1,
-                                  "loginId": "%s",
-                                  "password": "trainer-create-1234!",
-                                  "userName": "%s",
-                                  "phone": "010-1234-5678"
-                                }
-                                """.formatted(loginId, displayName)))
-                .andExpect(status().isOk())
-                .andReturn();
-        return jsonLong(result, "/data/userId");
     }
 
     private long createMember(String adminToken, String memberName) throws Exception {
@@ -505,7 +434,7 @@ class TrainerManagementApiIntegrationTest {
                 .update();
     }
 
-    private void ensureUser(long centerId, String loginId, String password, String displayName, String roleCode) {
+    private long ensureUser(long centerId, String loginId, String password, String displayName, String roleCode) {
         int updated = jdbcClient.sql("""
                 UPDATE users
                 SET password_hash = :passwordHash,
@@ -561,6 +490,7 @@ class TrainerManagementApiIntegrationTest {
         }
 
         replaceUserRole(userId, roleCode);
+        return userId;
     }
 
     private void replaceUserRole(Long userId, String roleCode) {

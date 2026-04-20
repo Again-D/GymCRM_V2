@@ -76,11 +76,63 @@ public class AuthAccessRevocationService {
     }
 
     @Transactional
+    public ForceRevokeResult forceRevokeUserAccessInCurrentCenter(Long targetUserId) {
+        Long centerId = currentUserProvider.currentCenterId();
+        Long actorUserId = currentUserProvider.currentUserId();
+        AuthUser targetUser = requireScopedUserInCurrentCenter(centerId, targetUserId);
+        OffsetDateTime revokedAfter = OffsetDateTime.now(ZoneOffset.UTC);
+        int updated = authUserRepository.updateAccessRevokedAfter(targetUser.userId(), revokedAfter, actorUserId);
+        if (updated != 1) {
+            throw new ApiException(ErrorCode.CONFLICT, "사용자 access revoke marker를 갱신하지 못했습니다. userId=" + targetUserId);
+        }
+        accessRevocationMarkerService.mirrorRevokeAfter(targetUser.userId(), revokedAfter);
+        int revokedRefreshTokens = authRefreshTokenRepository.revokeActiveByUserId(targetUser.userId(), "FORCED_REVOKE");
+        auditLogService.recordEvent(
+                "ACCOUNT_ACCESS_REVOKE",
+                "USER",
+                String.valueOf(targetUser.userId()),
+                "{\"targetUserId\":%d,\"revokedRefreshTokens\":%d}".formatted(targetUser.userId(), revokedRefreshTokens)
+        );
+        return new ForceRevokeResult(targetUser.userId(), revokedAfter, revokedRefreshTokens);
+    }
+
+    @Transactional
     public UpdateUserRoleResult updateRoleAndRevoke(Long targetUserId, String requestedRoleCode) {
         Long centerId = currentUserProvider.currentCenterId();
         Long actorUserId = currentUserProvider.currentUserId();
         AuthUser actor = requireActor();
         AuthUser targetUser = requireScopedUser(centerId, targetUserId);
+        String normalizedRoleCode = normalizeRoleCode(requestedRoleCode);
+        ensureRoleChangeAllowed(actor, targetUser, normalizedRoleCode);
+        OffsetDateTime revokedAfter = OffsetDateTime.now(ZoneOffset.UTC);
+
+        int updatedRole = authUserRepository.updateRoleCode(targetUser.userId(), normalizedRoleCode, actorUserId);
+        if (updatedRole != 1) {
+            throw new ApiException(ErrorCode.CONFLICT, "사용자 역할을 갱신하지 못했습니다. userId=" + targetUserId);
+        }
+        authUserRepository.updateAccessRevokedAfter(targetUser.userId(), revokedAfter, actorUserId);
+        accessRevocationMarkerService.mirrorRevokeAfter(targetUser.userId(), revokedAfter);
+        int revokedRefreshTokens = authRefreshTokenRepository.revokeActiveByUserId(targetUser.userId(), "ROLE_CHANGED");
+        auditLogService.recordEvent(
+                "ACCOUNT_ROLE_CHANGE",
+                "USER",
+                String.valueOf(targetUser.userId()),
+                "{\"targetUserId\":%d,\"previousRoleCode\":\"%s\",\"roleCode\":\"%s\",\"revokedRefreshTokens\":%d}".formatted(
+                        targetUser.userId(),
+                        targetUser.roleCode(),
+                        normalizedRoleCode,
+                        revokedRefreshTokens
+                )
+        );
+        return new UpdateUserRoleResult(targetUser.userId(), normalizedRoleCode, revokedAfter, revokedRefreshTokens);
+    }
+
+    @Transactional
+    public UpdateUserRoleResult updateRoleAndRevokeInCurrentCenter(Long targetUserId, String requestedRoleCode) {
+        Long centerId = currentUserProvider.currentCenterId();
+        Long actorUserId = currentUserProvider.currentUserId();
+        AuthUser actor = requireActor();
+        AuthUser targetUser = requireScopedUserInCurrentCenter(centerId, targetUserId);
         String normalizedRoleCode = normalizeRoleCode(requestedRoleCode);
         ensureRoleChangeAllowed(actor, targetUser, normalizedRoleCode);
         OffsetDateTime revokedAfter = OffsetDateTime.now(ZoneOffset.UTC);
@@ -135,12 +187,46 @@ public class AuthAccessRevocationService {
         return new UpdateUserStatusResult(targetUser.userId(), normalizedUserStatus, revokedAfter, revokedRefreshTokens);
     }
 
+    @Transactional
+    public UpdateUserStatusResult updateStatusAndRevokeInCurrentCenter(Long targetUserId, String requestedUserStatus) {
+        Long centerId = currentUserProvider.currentCenterId();
+        Long actorUserId = currentUserProvider.currentUserId();
+        AuthUser targetUser = requireScopedUserInCurrentCenter(centerId, targetUserId);
+        String normalizedUserStatus = normalizeUserStatus(requestedUserStatus);
+        OffsetDateTime revokedAfter = OffsetDateTime.now(ZoneOffset.UTC);
+
+        int updatedStatus = authUserRepository.updateUserStatus(targetUser.userId(), normalizedUserStatus, actorUserId);
+        if (updatedStatus != 1) {
+            throw new ApiException(ErrorCode.CONFLICT, "사용자 user_status를 갱신하지 못했습니다. userId=" + targetUserId);
+        }
+        authUserRepository.updateAccessRevokedAfter(targetUser.userId(), revokedAfter, actorUserId);
+        accessRevocationMarkerService.mirrorRevokeAfter(targetUser.userId(), revokedAfter);
+        int revokedRefreshTokens = authRefreshTokenRepository.revokeActiveByUserId(targetUser.userId(), "STATUS_CHANGED");
+        auditLogService.recordEvent(
+                "ACCOUNT_STATUS_CHANGE",
+                "USER",
+                String.valueOf(targetUser.userId()),
+                "{\"targetUserId\":%d,\"previousUserStatus\":\"%s\",\"userStatus\":\"%s\",\"revokedRefreshTokens\":%d}".formatted(
+                        targetUser.userId(),
+                        targetUser.userStatus(),
+                        normalizedUserStatus,
+                        revokedRefreshTokens
+                )
+        );
+        return new UpdateUserStatusResult(targetUser.userId(), normalizedUserStatus, revokedAfter, revokedRefreshTokens);
+    }
+
     private AuthUser requireScopedUser(Long centerId, Long targetUserId) {
         AuthUser actor = requireActor();
         if (ROLE_SUPER_ADMIN.equals(actor.roleCode())) {
             return authUserRepository.findById(targetUserId)
                     .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + targetUserId));
         }
+        return authUserRepository.findActiveByCenterAndUserId(centerId, targetUserId)
+                .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + targetUserId));
+    }
+
+    private AuthUser requireScopedUserInCurrentCenter(Long centerId, Long targetUserId) {
         return authUserRepository.findActiveByCenterAndUserId(centerId, targetUserId)
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "사용자를 찾을 수 없습니다. userId=" + targetUserId));
     }

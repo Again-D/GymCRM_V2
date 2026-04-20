@@ -52,7 +52,15 @@ public class JwtTokenService {
 
     public IssuedAccessToken issueAccessToken(AuthUser user) {
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-        OffsetDateTime expiresAt = now.plusMinutes(accessTokenMinutes);
+        OffsetDateTime issuedAt = now;
+        OffsetDateTime revokeAfter = user.accessRevokedAfter();
+        if (revokeAfter != null) {
+            OffsetDateTime minimumIssuedAt = revokeAfter.plusSeconds(1);
+            if (issuedAt.isBefore(minimumIssuedAt)) {
+                issuedAt = minimumIssuedAt;
+            }
+        }
+        OffsetDateTime expiresAt = issuedAt.plusMinutes(accessTokenMinutes);
         String jti = UUID.randomUUID().toString();
         String roleCode = requireRoleCode(user.roleCode());
 
@@ -60,7 +68,7 @@ public class JwtTokenService {
                 .issuer(issuer)
                 .audience().add(audience).and()
                 .subject(String.valueOf(user.userId()))
-                .issuedAt(Date.from(now.toInstant()))
+                .issuedAt(Date.from(issuedAt.toInstant()))
                 .notBefore(Date.from(now.toInstant()))
                 .expiration(Date.from(expiresAt.toInstant()))
                 .id(jti)

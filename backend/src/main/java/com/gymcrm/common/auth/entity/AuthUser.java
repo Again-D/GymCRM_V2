@@ -11,6 +11,7 @@ public record AuthUser(
         String phone,
         String roleCode,
         String userStatus,
+        boolean passwordChangeRequired,
         OffsetDateTime lastLoginAt,
         OffsetDateTime accessRevokedAfter
 ) {

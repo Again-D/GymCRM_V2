@@ -76,6 +76,7 @@ class AuthControllerIntegrationTest {
                 .andExpect(jsonPath("$.data.accessToken").isString())
                 .andExpect(jsonPath("$.data.user.loginId").value("center-admin"))
                 .andExpect(jsonPath("$.data.user.roleCode").value("ROLE_ADMIN"))
+                .andExpect(jsonPath("$.data.user.passwordChangeRequired").value(false))
                 .andExpect(jsonPath("$.data.user.primaryRole").value("ROLE_ADMIN"))
                 .andExpect(jsonPath("$.data.user.roles[0]").value("ROLE_ADMIN"))
                 .andExpect(cookie().exists(AuthCookieSupport.REFRESH_COOKIE_NAME))
@@ -95,6 +96,7 @@ class AuthControllerIntegrationTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.loginId").value("center-admin"))
                 .andExpect(jsonPath("$.data.roleCode").value("ROLE_ADMIN"))
+                .andExpect(jsonPath("$.data.passwordChangeRequired").value(false))
                 .andExpect(jsonPath("$.data.primaryRole").value("ROLE_ADMIN"))
                 .andExpect(jsonPath("$.data.roles[0]").value("ROLE_ADMIN"));
 
@@ -103,6 +105,7 @@ class AuthControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.accessToken").isString())
+                .andExpect(jsonPath("$.data.user.passwordChangeRequired").value(false))
                 .andExpect(cookie().exists(AuthCookieSupport.REFRESH_COOKIE_NAME))
                 .andReturn();
 
@@ -206,7 +209,8 @@ class AuthControllerIntegrationTest {
                 .andExpect(jsonPath("$.data.page.totalPages").value(4))
                 .andExpect(jsonPath("$.data.items[0].loginId").value("manager-list-b"))
                 .andExpect(jsonPath("$.data.items[0].roleCode").value("ROLE_MANAGER"))
-                .andExpect(jsonPath("$.data.items[0].userStatus").value("ACTIVE"));
+                .andExpect(jsonPath("$.data.items[0].userStatus").value("ACTIVE"))
+                .andExpect(jsonPath("$.data.items[0].passwordChangeRequired").value(false));
     }
 
     @Test
@@ -238,6 +242,55 @@ class AuthControllerIntegrationTest {
                 .andExpect(jsonPath("$.error.code").value("ACCESS_DENIED"));
     }
 
+    @Test
+    void passwordChangeRequiredSessionCanOnlyUseAuthLifecycleEndpoints() throws Exception {
+        setPasswordChangeRequired("center-admin", true);
+        try {
+            MvcResult loginResult = mockMvc.perform(post("/api/v1/auth/login")
+                            .contentType("application/json")
+                            .content("""
+                                    {
+                                      "loginId": "center-admin",
+                                      "password": "dev-admin-1234!"
+                                    }
+                                    """))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.user.passwordChangeRequired").value(true))
+                    .andReturn();
+
+            String accessToken = JsonExtractors.readString(loginResult.getResponse().getContentAsString(), "$.data.accessToken");
+            String refreshCookieHeader = loginResult.getResponse().getHeader(HttpHeaders.SET_COOKIE);
+            String refreshToken = CookieExtractors.extractCookieValue(refreshCookieHeader, AuthCookieSupport.REFRESH_COOKIE_NAME);
+
+            mockMvc.perform(get("/api/v1/auth/me")
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.passwordChangeRequired").value(true));
+
+            mockMvc.perform(get("/api/v1/auth/users")
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.success").value(false))
+                    .andExpect(jsonPath("$.error.code").value("ACCESS_DENIED"))
+                    .andExpect(jsonPath("$.error.detail", containsString("비밀번호 변경")));
+
+            MvcResult refreshResult = mockMvc.perform(post("/api/v1/auth/refresh")
+                            .cookie(new MockCookie(AuthCookieSupport.REFRESH_COOKIE_NAME, refreshToken)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.user.passwordChangeRequired").value(true))
+                    .andReturn();
+
+            String nextRefreshCookieHeader = refreshResult.getResponse().getHeader(HttpHeaders.SET_COOKIE);
+            String nextRefreshToken = CookieExtractors.extractCookieValue(nextRefreshCookieHeader, AuthCookieSupport.REFRESH_COOKIE_NAME);
+
+            mockMvc.perform(post("/api/v1/auth/logout")
+                            .cookie(new MockCookie(AuthCookieSupport.REFRESH_COOKIE_NAME, nextRefreshToken)))
+                    .andExpect(status().isOk());
+        } finally {
+            setPasswordChangeRequired("center-admin", false);
+        }
+    }
+
     private void ensureTrainerUser() {
         ensureUserByRole("trainer-user", "trainer-user-1234!", "ROLE_TRAINER", "Trainer User");
     }
@@ -254,7 +307,11 @@ class AuthControllerIntegrationTest {
         ensureUserByRole(loginId, loginId + "-1234!", "ROLE_MANAGER", displayName);
     }
 
-    private void ensureUserByRole(String loginId, String password, String roleCode, String displayName) {
+    private Long ensureUserByRole(String loginId, String password, String roleCode, String displayName) {
+        return ensureUserByRole(1L, loginId, password, roleCode, displayName);
+    }
+
+    private Long ensureUserByRole(long centerId, String loginId, String password, String roleCode, String displayName) {
         int updated = jdbcClient.sql("""
                 UPDATE users
                 SET password_hash = :passwordHash,
@@ -265,9 +322,10 @@ class AuthControllerIntegrationTest {
                     deleted_by = NULL,
                     updated_at = CURRENT_TIMESTAMP,
                     updated_by = 0
-                WHERE center_id = 1
+                WHERE center_id = :centerId
                   AND login_id = :loginId
                 """)
+                .param("centerId", centerId)
                 .param("loginId", loginId)
                 .param("passwordHash", passwordEncoder.encode(password))
                 .param("displayName", displayName)
@@ -281,11 +339,12 @@ class AuthControllerIntegrationTest {
                         created_by, updated_by
                     )
                     VALUES (
-                        1, :loginId, :passwordHash, :displayName, 'ACTIVE',
+                        :centerId, :loginId, :passwordHash, :displayName, 'ACTIVE',
                         0, 0
                     )
                     RETURNING user_id
                     """)
+                    .param("centerId", centerId)
                     .param("loginId", loginId)
                     .param("passwordHash", passwordEncoder.encode(password))
                     .param("displayName", displayName)
@@ -295,9 +354,10 @@ class AuthControllerIntegrationTest {
             userId = jdbcClient.sql("""
                     SELECT user_id
                     FROM users
-                    WHERE center_id = 1
+                    WHERE center_id = :centerId
                       AND login_id = :loginId
                     """)
+                    .param("centerId", centerId)
                     .param("loginId", loginId)
                     .query(Long.class)
                     .single();
@@ -314,6 +374,22 @@ class AuthControllerIntegrationTest {
                 """)
                 .param("userId", userId)
                 .param("roleCode", roleCode)
+                .update();
+
+        return userId;
+    }
+
+    private void setPasswordChangeRequired(String loginId, boolean passwordChangeRequired) {
+        jdbcClient.sql("""
+                UPDATE users
+                SET password_change_required = :passwordChangeRequired,
+                    updated_at = CURRENT_TIMESTAMP,
+                    updated_by = 0
+                WHERE center_id = 1
+                  AND login_id = :loginId
+                """)
+                .param("loginId", loginId)
+                .param("passwordChangeRequired", passwordChangeRequired)
                 .update();
     }
 

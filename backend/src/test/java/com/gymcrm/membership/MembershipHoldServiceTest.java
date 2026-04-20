@@ -236,6 +236,6 @@ class MembershipHoldServiceTest {
     }
 
     private AuthUser activeUser(String roleCode) {
-        return new AuthUser(1L, 1L, "tester", "hash", "Tester", "010-0000-0000", roleCode, "ACTIVE", null, null);
+        return new AuthUser(1L, 1L, "tester", "hash", "Tester", "010-0000-0000", roleCode, "ACTIVE", false, null, null);
     }
 }
