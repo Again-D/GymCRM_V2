@@ -16,11 +16,15 @@ Windows PC에서 self-hosted runner로 `staging` 환경을 돌리고, MacBook에
 - R2. `staging`은 인증 없이 인터넷에 공개되지 않아야 한다.
 - R3. `staging` 접근 권한은 최소한의 인원으로 제한되어야 한다(팀원/테스터).
 - R3a. 외부 접속은 공유기 VPN(WireGuard)로 제한한다(포트포워딩으로 서비스 직접 노출 금지).
+- R3b. `staging`의 접속 주소는 DDNS 도메인으로 고정하고, 해당 주소는 VPN 내부에서만 HTTPS로 접근 가능해야 한다.
+- R3c. VPN 내부에서는 DDNS 도메인이 staging 호스트로 올바르게 해석되어야 한다.
+- R3d. 외부 QA의 기본 보안 전제는 VPN 접근이며, 앱 내부 인증은 별도 계층으로 유지할 수 있어야 한다.
 
 **Deployment Loop**
 - R4. `develop` 기준으로 Windows PC의 `staging`이 갱신된다(자동 또는 수동 트리거).
 - R5. 갱신 후 최소 smoke 체크(`/api/v1/health`, `/`)가 자동 수행되어야 한다.
-- R5a. 수동 QA를 위해 frontend 포함 단일 진입점(예: `http://<vpn-ip>/`)을 제공하고, `/api`는 backend로 프록시한다.
+- R5a. 수동 QA를 위해 frontend 포함 단일 진입점(예: `https://<ddns-domain>/`)을 제공하고, `/api`는 backend로 프록시한다.
+- R5b. 단일 진입점은 HTTPS를 사용하고, backend는 reverse proxy 뒤에서 그대로 HTTP로 유지할 수 있어야 한다.
 
 **Operations**
 - R6. Windows PC 재부팅/네트워크 변동에도 복구 절차가 단순해야 한다.
@@ -36,21 +40,24 @@ Windows PC에서 self-hosted runner로 `staging` 환경을 돌리고, MacBook에
 
 ## Key Decisions
 - [External access] ipTime 공유기 WireGuard VPN + DDNS 사용
+- [Staging URL] DDNS 도메인을 canonical staging address로 사용
+- [TLS] HTTPS는 reverse proxy에서 종단하고, VPN 내부에서만 신뢰되는 인증서를 사용
 - [Frontend] backend뿐 아니라 frontend까지 포함해 수동 QA 가능하게 구성
 
 ## Dependencies / Assumptions
 - Windows PC에 Docker Desktop(or Engine)과 GitHub self-hosted runner가 설치된다.
 - `compose.yaml`은 현재 DB/Redis만 포함하므로, backend/frontend 구동 방식은 이후 결정/추가가 필요하다.
 - ipTime DDNS가 설정되어 있고, MacBook에서 DDNS endpoint로 VPN 연결이 가능하다.
+- WireGuard VPN 안에서는 DDNS 도메인이 staging 호스트의 내부 경로로 해석되도록 DNS 또는 라우팅이 구성되어야 한다.
+- MacBook과 Windows PC는 internal CA 또는 해당 인증서를 신뢰하도록 설정되어야 한다.
 
 ## Outstanding Questions
 
-### Resolve Before Planning
-- [Affects R5a][User decision] 단일 진입점 reverse proxy 선택: Nginx vs Caddy(또는 다른 프록시)
-
 ### Deferred to Planning
+- [Affects R3b-R3c][Technical] internal DNS / split-DNS / 라우팅 방식: DDNS 이름을 VPN 내부에서 staging으로 연결하는 구체 방법
+- [Affects R3b][Technical] internal CA/인증서 신뢰 배포 방식: mkcert류 로컬 CA vs 다른 내부 인증서 방식
 - [Affects R4-R5][Technical] backend/frontend를 Windows PC에서 어떤 형태로 띄울지: 컨테이너 이미지 기반 vs 로컬 빌드 산출물 기반
 - [Affects R5][Technical] smoke/E2E 테스트 범위: health만 vs 로그인 포함 핵심 시나리오 1~2개
 
 ## Next Steps
-→ Resume /ce:brainstorm to choose the external access method, then /ce:plan.
+→ `/ce:plan` for implementation planning.

@@ -39,7 +39,7 @@ jobs:
         shell: cmd
         env:
           STAGING_POSTGRES_PASSWORD: ${{ secrets.STAGING_SELFHOSTED_POSTGRES_PASSWORD }}
-          STAGING_HTTP_PORT: ${{ vars.STAGING_SELFHOSTED_HTTP_PORT }}
+          STAGING_HOSTNAME: ${{ vars.STAGING_SELFHOSTED_HOSTNAME }}
           APP_PROTOTYPE_ALLOWED_ORIGINS: ${{ vars.STAGING_SELFHOSTED_ALLOWED_ORIGINS }}
         run: |
           @echo off
@@ -52,48 +52,21 @@ jobs:
             echo Missing secret: STAGING_SELFHOSTED_POSTGRES_PASSWORD ^(mapped to STAGING_POSTGRES_PASSWORD^)
             exit /b 1
           )
-          if "%STAGING_HTTP_PORT%"=="" (
-            set STAGING_HTTP_PORT=8088
-          )
 
-          if not "%APP_PROTOTYPE_ALLOWED_ORIGINS%"=="" (
-            echo Using APP_PROTOTYPE_ALLOWED_ORIGINS=%APP_PROTOTYPE_ALLOWED_ORIGINS%
+          if "%STAGING_HOSTNAME%"=="" (
+            echo Missing variable: STAGING_SELFHOSTED_HOSTNAME ^(mapped to STAGING_HOSTNAME^). Set it in the staging-selfhosted GitHub Environment.
+            exit /b 1
           )
 
           docker compose -p gymcrm-staging -f compose.selfhosted-staging.yaml up -d --build --remove-orphans
           docker compose -p gymcrm-staging -f compose.selfhosted-staging.yaml ps
 
       - name: Smoke test (/, /api/v1/health)
-        shell: cmd
+        shell: pwsh
         env:
-          STAGING_HTTP_PORT: ${{ vars.STAGING_SELFHOSTED_HTTP_PORT }}
+          STAGING_HOSTNAME: ${{ vars.STAGING_SELFHOSTED_HOSTNAME }}
         run: |
-          @echo off
-          if "%STAGING_HTTP_PORT%"=="" (
-            set STAGING_HTTP_PORT=8088
-          )
-
-          set BASE_URL=http://ajw0831.iptime.org:%STAGING_HTTP_PORT%
-
-          call :wait_for "%BASE_URL%/" 60 2 || exit /b 1
-          call :wait_for "%BASE_URL%/api/v1/health" 60 2 || exit /b 1
-          exit /b 0
-
-          :wait_for
-          set TARGET=%~1
-          set RETRIES=%~2
-          set SLEEP_SECS=%~3
-
-          echo Waiting for %TARGET%
-          for /l %%i in (1,1,%RETRIES%) do (
-            curl -fsS "%TARGET%" >NUL 2>&1
-            if not errorlevel 1 (
-              exit /b 0
-            )
-            ping -n %SLEEP_SECS% 127.0.0.1 >NUL
-          )
-          echo Smoke check failed for %TARGET%
-          exit /b 1
+          .\docs\observability\tools\validate_selfhosted_staging_https.ps1
 
       - name: Dump logs on failure
         if: failure()
