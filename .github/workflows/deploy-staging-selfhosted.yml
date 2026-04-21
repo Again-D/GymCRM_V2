@@ -35,6 +35,14 @@ jobs:
           docker version
           docker compose version
 
+      - name: Validate TLS bundle
+        shell: cmd
+        env:
+          STAGING_HOSTNAME: ${{ vars.STAGING_SELFHOSTED_HOSTNAME }}
+        run: |
+          @echo off
+          powershell -NoProfile -ExecutionPolicy Bypass -File .\docs\observability\tools\validate_selfhosted_staging_tls_bundle.ps1
+
       - name: Deploy (docker compose up --build)
         shell: cmd
         env:
