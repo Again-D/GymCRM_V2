@@ -5,9 +5,9 @@
     GymCRM self-hosted staging TLS.
 
 .DESCRIPTION
-    Generates an internal CA and a server certificate (with DDNS + loopback
-    SANs) using only built-in Windows PKI cmdlets. No external tools
-    (mkcert, OpenSSL) are required.
+    Generates an internal CA and a server certificate (with DDNS hostname and
+    localhost DNS SANs) using only built-in Windows PKI cmdlets. No external
+    tools (mkcert, OpenSSL) are required.
 
     Requires PowerShell 7 or later (for RSA private-key PEM export via
     ExportPkcs8PrivateKey). Must be run as Administrator.
@@ -185,13 +185,12 @@ Write-Host "    Thumbprint : $($caCert.Thumbprint)"
 
 # ---------------------------------------------------------------------------
 # Create server certificate signed by the CA
-# SANs: DDNS hostname + localhost (DNS) + 127.0.0.1 (IP)
+# SANs: DDNS hostname + localhost (DNS)
 # ---------------------------------------------------------------------------
-Write-Host "[*] Creating server certificate (SANs: $Hostname, localhost, 127.0.0.1)..."
+Write-Host "[*] Creating server certificate (SANs: $Hostname, localhost)..."
 $serverCert = New-SelfSignedCertificate `
     -Subject           "CN=$Hostname" `
     -DnsName           $Hostname, 'localhost' `
-    -IPAddress         '127.0.0.1' `
     -CertStoreLocation 'Cert:\LocalMachine\My' `
     -Signer            $caCert `
     -KeyUsage          DigitalSignature, KeyEncipherment `
