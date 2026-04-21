@@ -130,10 +130,10 @@ set COMPOSE_PROJECT_NAME=
 ```
 
 Smoke check:
-- `https://localhost/`
-- `https://localhost/api/v1/health`
+- `https://<STAGING_HOSTNAME>/`
+- `https://<STAGING_HOSTNAME>/api/v1/health`
 
-> Windows 호스트에서 `validate_selfhosted_staging_https.ps1` 스크립트를 실행하면 동일한 검증을 수행할 수 있다.
+> Windows 호스트에서 `validate_selfhosted_staging_https.ps1` 스크립트를 실행하면 동일한 canonical hostname 검증을 수행할 수 있다.
 
 JWT 기본 관리자(빈 DB 최초 기동 시 자동 생성):
 - loginId: `center-admin`
@@ -196,6 +196,6 @@ VPN 연결 후:
 
 1. Docker Desktop 실행 상태 확인
 2. `docker compose -f compose.selfhosted-staging.yaml ps`
-3. `https://localhost/api/v1/health` 확인 (또는 `.\docs\observability\tools\validate_selfhosted_staging_https.ps1` 실행)
+3. `https://<STAGING_HOSTNAME>/api/v1/health` 확인 (또는 `.\docs\observability\tools\validate_selfhosted_staging_https.ps1` 실행)
 4. 필요 시 재기동:
    - `docker compose -p gymcrm-staging -f compose.selfhosted-staging.yaml up -d --build --remove-orphans`

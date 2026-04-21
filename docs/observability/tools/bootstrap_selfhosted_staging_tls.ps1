@@ -87,10 +87,51 @@ $SrvFriendly = 'GymCRM Staging Server'
 # ---------------------------------------------------------------------------
 # Idempotency guard
 # ---------------------------------------------------------------------------
-if ((Test-Path $ServerCrtPath) -and -not $Force) {
-    Write-Warning "server.crt already exists at '$ServerCrtPath'."
-    Write-Warning "Pass -Force to regenerate. NOTE: -Force rotation requires re-importing the CA on all clients."
-    exit 0
+function Get-ExistingBundleStatus {
+    param([string]$ExpectedHostname)
+
+    if (-not (Test-Path $CaCrtPath) -or -not (Test-Path $ServerCrtPath) -or -not (Test-Path $ServerKeyPath)) {
+        return [pscustomobject]@{ Status = 'Incomplete' }
+    }
+
+    try {
+        $existingCert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::CreateFromPemFile($ServerCrtPath, $ServerKeyPath)
+        $sanExt = $existingCert.Extensions | Where-Object { $_.Oid.Value -eq '2.5.29.17' }
+        if (-not $sanExt) {
+            return [pscustomobject]@{ Status = 'Invalid' }
+        }
+
+        $sanText = $sanExt.Format($false)
+        if (
+            ($existingCert.Subject -match [regex]::Escape("CN=$ExpectedHostname")) -and
+            ($sanText -match [regex]::Escape($ExpectedHostname))
+        ) {
+            return [pscustomobject]@{ Status = 'Match' }
+        }
+
+        return [pscustomobject]@{ Status = 'Mismatch' }
+    } catch {
+        return [pscustomobject]@{ Status = 'Invalid' }
+    }
+}
+
+if (-not $Force) {
+    $bundleStatus = Get-ExistingBundleStatus -ExpectedHostname $Hostname
+    switch ($bundleStatus.Status) {
+        'Match' {
+            Write-Warning "TLS bundle already exists at '$OutDir' and matches hostname '$Hostname'."
+            Write-Warning "Pass -Force to rotate the CA/cert bundle. NOTE: -Force rotation requires re-importing the CA on all clients."
+            exit 0
+        }
+        'Mismatch' {
+            Write-Warning "Existing TLS bundle at '$OutDir' does not match hostname '$Hostname'."
+            Write-Warning "Pass -Force to rotate the CA/cert bundle for the new hostname."
+            exit 1
+        }
+        default {
+            Write-Warning "Existing TLS bundle at '$OutDir' is incomplete or unreadable. Regenerating a fresh bundle."
+        }
+    }
 }
 
 # ---------------------------------------------------------------------------
@@ -100,6 +141,8 @@ if (-not (Test-Path $OutDir)) {
     New-Item -ItemType Directory -Path $OutDir -Force | Out-Null
     Write-Host "[+] Created output directory: $OutDir"
 }
+
+Remove-Item $CaCrtPath, $ServerCrtPath, $ServerKeyPath, $TempPfxPath -Force -ErrorAction SilentlyContinue
 
 # ---------------------------------------------------------------------------
 # Helper: encode bytes as PEM base64 body (64-char wrapped lines, LF endings)

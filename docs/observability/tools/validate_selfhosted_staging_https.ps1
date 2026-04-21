@@ -7,11 +7,11 @@
     the TLS certificate is trusted natively, and the certificate's Subject
     Alternative Names include the canonical staging hostname.
 
-    Targets https://127.0.0.1/ (loopback). The certificate issued by the
-    bootstrap script includes 127.0.0.1 as an IP SAN, so TLS validation against
-    the loopback address succeeds without any hostname override or certificate
-    trust bypass. The CA is installed in LocalMachine\Root by the bootstrap
-    script, so no -SkipCertificateCheck is needed.
+    Targets the canonical staging hostname over HTTPS. The certificate issued
+    by the bootstrap script includes the DDNS hostname as a SAN, so TLS
+    validation succeeds against the same URL that users and the deploy workflow
+    consume. The CA is installed in LocalMachine\Root by the bootstrap script,
+    so no -SkipCertificateCheck is needed.
 
     Requires PowerShell 7 or later (pwsh). Compatible with a Windows GitHub
     Actions self-hosted runner.
@@ -46,7 +46,7 @@ if (-not $Hostname) {
     exit 1
 }
 
-$BaseUrl    = 'https://127.0.0.1'
+$BaseUrl    = "https://$Hostname"
 $MaxRetries = 30
 $SleepSecs  = 2
 $AllPassed  = $true
@@ -54,7 +54,7 @@ $AllPassed  = $true
 Write-Host '==================================================='
 Write-Host ' GymCRM staging HTTPS smoke validation'
 Write-Host "  Hostname : $Hostname"
-Write-Host "  Target   : $BaseUrl  (loopback + IP SAN)"
+Write-Host "  Target   : $BaseUrl  (canonical hostname)"
 Write-Host '==================================================='
 Write-Host ''
 
@@ -124,10 +124,11 @@ if (-not (Wait-UrlOk -Url "$BaseUrl/api/v1/health" `
 
 # ---------------------------------------------------------------------------
 # Check 3: TLS cert SAN includes the canonical hostname
-# Connects via SSL to capture the server certificate, then inspects the SAN
-# extension. Trust check bypass (return $true in callback) is intentional here
-# because the purpose of this step is cert inspection only — TLS trust was
-# already exercised by Invoke-WebRequest in checks 1 and 2 above.
+# Connects via SSL to the canonical hostname to capture the server certificate,
+# then inspects the SAN extension. Trust check bypass (return $true in
+# callback) is intentional here because the purpose of this step is cert
+# inspection only — TLS trust was already exercised by Invoke-WebRequest in
+# checks 1 and 2 above.
 # ---------------------------------------------------------------------------
 Write-Host ''
 Write-Host "--- Check 3: TLS cert SAN includes '$Hostname' ---"
@@ -143,14 +144,15 @@ try {
         return $true   # Accept solely for cert capture; trust verified above
     }
 
-    $tcpClient = [System.Net.Sockets.TcpClient]::new('127.0.0.1', 443)
+    $tcpClient = [System.Net.Sockets.TcpClient]::new($Hostname, 443)
     $sslStream  = $null
     try {
         $sslStream = [System.Net.Security.SslStream]::new(
             $tcpClient.GetStream(), $false, $captureCallback
         )
-        # Authenticate to 127.0.0.1; cert has 127.0.0.1 as an IP SAN
-        $sslStream.AuthenticateAsClient('127.0.0.1')
+        # Authenticate to the canonical hostname so SNI and hostname matching
+        # are exercised on the same URL used by the smoke checks.
+        $sslStream.AuthenticateAsClient($Hostname)
     } finally {
         if ($null -ne $sslStream) { $sslStream.Dispose() }
         $tcpClient.Dispose()
