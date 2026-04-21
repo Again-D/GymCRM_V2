@@ -4,9 +4,16 @@ Date: 2026-02-27
 Status: active
 Owner: Platform/Backend (temporary: Center Admin engineering owner)
 
+## 0) Scope / HTTPS 전제
+
+- Canonical staging URL: `https://<STAGING_HOSTNAME>/` (WireGuard VPN 내부에서만 접근 가능)
+- Health endpoint: `https://<STAGING_HOSTNAME>/api/v1/health`
+- TLS는 Nginx에서 종료된다. 내부 CA 신뢰 설정이 없으면 브라우저 경고가 발생한다.
+- Pre-check 이전에 WireGuard VPN 연결 및 CA 신뢰 설정 완료 여부를 확인한다.
+
 ## 1) Pre-check (Telemetry health)
 
-- [ ] Staging app up (`/api/v1/health` 200)
+- [ ] Staging app up (`https://<STAGING_HOSTNAME>/api/v1/health` 200, HTTPS, TLS 신뢰 확인)
 - [ ] Actuator metrics endpoint reachable (`/actuator/prometheus`, authenticated)
 - [ ] Metrics ingestion pipeline healthy (no scrape gap alert)
 - [ ] Dashboard query returns recent data (< 5m latency)
