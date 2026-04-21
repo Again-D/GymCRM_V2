@@ -62,11 +62,12 @@ jobs:
           docker compose -p gymcrm-staging -f compose.selfhosted-staging.yaml ps
 
       - name: Smoke test (/, /api/v1/health)
-        shell: powershell
+        shell: cmd
         env:
           STAGING_HOSTNAME: ${{ vars.STAGING_SELFHOSTED_HOSTNAME }}
         run: |
-          .\docs\observability\tools\validate_selfhosted_staging_https.ps1
+          @echo off
+          powershell -NoProfile -ExecutionPolicy Bypass -File .\docs\observability\tools\validate_selfhosted_staging_https.ps1
 
       - name: Dump logs on failure
         if: failure()
