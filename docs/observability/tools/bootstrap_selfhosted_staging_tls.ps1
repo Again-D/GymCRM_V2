@@ -9,14 +9,14 @@
     localhost DNS SANs) using only built-in Windows PKI cmdlets. No external
     tools (mkcert, OpenSSL) are required.
 
-    Requires PowerShell 7 or later (for RSA private-key PEM export via
-    ExportPkcs8PrivateKey). Must be run as Administrator.
+    Requires Windows PowerShell 5.1 or PowerShell 7+. Must be run as
+    Administrator.
 
     Outputs to C:\ProgramData\gymcrm-staging-tls\:
         ca.crt     - CA certificate in DER format
                      (import to Windows/macOS trust store; Docker volume mount)
         server.crt - Server certificate in PEM format
-        server.key - Server private key in PEM format (PKCS#8)
+        server.key - Server private key in PEM format (PKCS#1 RSA)
 
 .PARAMETER Hostname
     The staging DDNS hostname (e.g. ajw0831.iptime.org).
@@ -48,17 +48,6 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 # ---------------------------------------------------------------------------
-# PowerShell version check (ExportPkcs8PrivateKey requires PS7 / .NET 5+)
-# ---------------------------------------------------------------------------
-if ($PSVersionTable.PSVersion.Major -lt 7) {
-    Write-Error (
-        "This script requires PowerShell 7 or later. " +
-        "Current version: $($PSVersionTable.PSVersion). " +
-        "Install from https://aka.ms/powershell"
-    )
-    exit 1
-}
-
 # ---------------------------------------------------------------------------
 # Resolve hostname
 # ---------------------------------------------------------------------------
@@ -95,7 +84,8 @@ function Get-ExistingBundleStatus {
     }
 
     try {
-        $existingCert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::CreateFromPemFile($ServerCrtPath, $ServerKeyPath)
+        $existingCertBytes = Get-PemCertificateBytes -Path $ServerCrtPath
+        $existingCert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2 -ArgumentList (, $existingCertBytes)
         $sanExt = $existingCert.Extensions | Where-Object { $_.Oid.Value -eq '2.5.29.17' }
         if (-not $sanExt) {
             return [pscustomobject]@{ Status = 'Invalid' }
@@ -154,6 +144,100 @@ function ConvertTo-PemBody {
         $b64.Substring($i, [Math]::Min(64, $b64.Length - $i))
     }
     return ($lines -join "`n")
+}
+
+function ConvertTo-DerLengthBytes {
+    param([int]$Length)
+
+    if ($Length -lt 0x80) {
+        return [byte[]]@([byte]$Length)
+    }
+
+    $value = $Length
+    $lengthBytes = New-Object System.Collections.Generic.List[byte]
+    while ($value -gt 0) {
+        $lengthBytes.Insert(0, [byte]($value -band 0xFF))
+        $value = $value -shr 8
+    }
+
+    $prefix = [byte](0x80 -bor $lengthBytes.Count)
+    $result = New-Object System.Collections.Generic.List[byte]
+    $result.Add($prefix)
+    $result.AddRange([byte[]]$lengthBytes.ToArray())
+    return $result.ToArray()
+}
+
+function ConvertTo-DerIntegerBytes {
+    param([byte[]]$Bytes)
+
+    if ($null -eq $Bytes -or $Bytes.Length -eq 0) {
+        $Bytes = [byte[]]@(0)
+    } else {
+        $Bytes = [byte[]]$Bytes
+
+        $startIndex = 0
+        while ($startIndex -lt ($Bytes.Length - 1) -and $Bytes[$startIndex] -eq 0) {
+            $startIndex++
+        }
+
+        if ($startIndex -gt 0) {
+            $Bytes = $Bytes[$startIndex..($Bytes.Length - 1)]
+        }
+
+        if (($Bytes[0] -band 0x80) -ne 0) {
+            $Bytes = [byte[]]@(0) + $Bytes
+        }
+    }
+
+    $lengthBytes = ConvertTo-DerLengthBytes -Length $Bytes.Length
+    $result = New-Object System.Collections.Generic.List[byte]
+    $result.Add(0x02)
+    $result.AddRange([byte[]]$lengthBytes)
+    $result.AddRange([byte[]]$Bytes)
+    return $result.ToArray()
+}
+
+function ConvertTo-RsaPrivateKeyDer {
+    param([System.Security.Cryptography.RSAParameters]$Parameters)
+
+    $parts = New-Object System.Collections.Generic.List[byte]
+    foreach ($segment in @(
+        (ConvertTo-DerIntegerBytes -Bytes ([byte[]]@(0))),
+        (ConvertTo-DerIntegerBytes -Bytes $Parameters.Modulus),
+        (ConvertTo-DerIntegerBytes -Bytes $Parameters.Exponent),
+        (ConvertTo-DerIntegerBytes -Bytes $Parameters.D),
+        (ConvertTo-DerIntegerBytes -Bytes $Parameters.P),
+        (ConvertTo-DerIntegerBytes -Bytes $Parameters.Q),
+        (ConvertTo-DerIntegerBytes -Bytes $Parameters.DP),
+        (ConvertTo-DerIntegerBytes -Bytes $Parameters.DQ),
+        (ConvertTo-DerIntegerBytes -Bytes $Parameters.InverseQ)
+    )) {
+        $parts.AddRange([byte[]]$segment)
+    }
+
+    $sequenceLength = ConvertTo-DerLengthBytes -Length $parts.Count
+    $der = New-Object System.Collections.Generic.List[byte]
+    $der.Add(0x30)
+    $der.AddRange([byte[]]$sequenceLength)
+    $der.AddRange($parts)
+    return $der.ToArray()
+}
+
+function Get-PemCertificateBytes {
+    param([string]$Path)
+
+    $pem = Get-Content -Raw -Path $Path
+    $match = [regex]::Match(
+        $pem,
+        '-----BEGIN CERTIFICATE-----\s*(?<body>.*?)\s*-----END CERTIFICATE-----',
+        [System.Text.RegularExpressions.RegexOptions]::Singleline
+    )
+    if (-not $match.Success) {
+        throw "File is not a PEM certificate: $Path"
+    }
+
+    $body = ($match.Groups['body'].Value -replace '\s', '')
+    return [Convert]::FromBase64String($body)
 }
 
 # ---------------------------------------------------------------------------
@@ -234,17 +318,17 @@ try {
         [System.IO.File]::WriteAllText($ServerCrtPath, $serverCrtPem)
         Write-Host "[+] Written: $ServerCrtPath"
 
-        # --- server.key (PKCS#8 PEM) — requires .NET 5+ / PowerShell 7+ ---
-        $rsaKey = $pfxCert.GetRSAPrivateKey()
+        # --- server.key (PKCS#1 PEM) — compatible with Windows PowerShell 5.1+ ---
+        $rsaKey = $pfxCert.PrivateKey
         if (-not $rsaKey) {
             throw "RSA private key not found in PFX. Verify -KeyExportPolicy Exportable was used."
         }
 
         $keyBytes = $null
         try {
-            $keyBytes     = $rsaKey.ExportPkcs8PrivateKey()
+            $keyBytes     = ConvertTo-RsaPrivateKeyDer -Parameters $rsaKey.ExportParameters($true)
             $keyPemBody   = ConvertTo-PemBody -Bytes $keyBytes
-            $serverKeyPem = "-----BEGIN PRIVATE KEY-----`n$keyPemBody`n-----END PRIVATE KEY-----`n"
+            $serverKeyPem = "-----BEGIN RSA PRIVATE KEY-----`n$keyPemBody`n-----END RSA PRIVATE KEY-----`n"
             [System.IO.File]::WriteAllText($ServerKeyPath, $serverKeyPem)
             Write-Host "[+] Written: $ServerKeyPath"
         } finally {

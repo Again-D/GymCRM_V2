@@ -55,7 +55,12 @@ foreach ($fileName in $RequiredFiles) {
     }
 }
 
-$tempDir = Join-Path $env:TEMP ("gymcrm-staging-nginx-" + [Guid]::NewGuid().ToString('N'))
+$tempRoot = Join-Path $PSScriptRoot '_tmp'
+if (-not (Test-Path $tempRoot)) {
+    New-Item -ItemType Directory -Path $tempRoot -Force | Out-Null
+}
+
+$tempDir = Join-Path $tempRoot ("gymcrm-staging-nginx-" + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
 
 $tempConfigPath = Join-Path $tempDir 'nginx.conf'
