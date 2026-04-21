@@ -13,8 +13,9 @@
     consume. The CA is installed in LocalMachine\Root by the bootstrap script,
     so no -SkipCertificateCheck is needed.
 
-    Requires PowerShell 7 or later (pwsh). Compatible with a Windows GitHub
-    Actions self-hosted runner.
+    Compatible with Windows PowerShell 5.1+ and PowerShell 7+. The GitHub
+    Actions self-hosted runner can invoke it with the built-in `powershell`
+    shell.
 
 .PARAMETER Hostname
     Canonical staging hostname (e.g. ajw0831.iptime.org).

@@ -62,7 +62,7 @@ jobs:
           docker compose -p gymcrm-staging -f compose.selfhosted-staging.yaml ps
 
       - name: Smoke test (/, /api/v1/health)
-        shell: pwsh
+        shell: powershell
         env:
           STAGING_HOSTNAME: ${{ vars.STAGING_SELFHOSTED_HOSTNAME }}
         run: |
