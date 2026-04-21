@@ -73,8 +73,8 @@ http {
 [System.IO.File]::WriteAllText($tempConfigPath, $config)
 
 try {
-    $mountBundle = "$BundleDir:/etc/nginx/certs:ro"
-    $mountConfig = "$tempConfigPath:/etc/nginx/nginx.conf:ro"
+    $mountBundle = "${BundleDir}:/etc/nginx/certs:ro"
+    $mountConfig = "${tempConfigPath}:/etc/nginx/nginx.conf:ro"
     $args = @(
         'run', '--rm',
         '-v', $mountBundle,
