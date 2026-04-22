@@ -144,6 +144,34 @@ describe("mockData membership propagation", () => {
     expect(detail.memo).toBe("비활성화 처리");
   });
 
+  it("returns a failed envelope for duplicate locker batch registration in mock mode", () => {
+    const response = getMockResponse(
+      "/api/v1/lockers/batch",
+      "POST",
+      {
+        items: [
+          {
+            lockerZone: "qa-test",
+            lockerNumber: 1,
+            lockerGrade: "STANDARD",
+            lockerStatus: "AVAILABLE",
+            memo: ""
+          },
+          {
+            lockerZone: "qa-test",
+            lockerNumber: 1,
+            lockerGrade: "PREMIUM",
+            lockerStatus: "AVAILABLE",
+            memo: ""
+          }
+        ]
+      },
+    );
+
+    expect(response?.success).toBe(false);
+    expect(response?.message).toContain("중복 라커 코드");
+  });
+
   it("filters members by memberStatus in mock responses", () => {
     const activeMembers = getMockResponse("/api/v1/members?memberStatus=ACTIVE")?.data as MemberSummary[];
     const inactiveMembers = getMockResponse("/api/v1/members?memberStatus=INACTIVE")?.data as MemberSummary[];
