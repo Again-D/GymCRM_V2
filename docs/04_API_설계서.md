@@ -3,8 +3,8 @@
 | 항목 | 내용 |
 |------|------|
 | 프로젝트명 | 중소형 헬스장 웹 기반 회원관리 시스템 (GymCRM) |
-| 문서 버전 | v1.17.0 |
-| 작성일 | 2026-04-20 |
+| 문서 버전 | v1.18.0 |
+| 작성일 | 2026-04-22 |
 | 기술 스택 | Java Spring Boot 3.0, PostgreSQL, React.js + TypeScript |
 | 인프라 | AWS EC2, RDS |
 
@@ -500,13 +500,18 @@ X-RateLimit-Reset: 1740001860
 |---|--------|-----|------|------|------|
 | 1 | `GET` | `/api/v1/lockers` | 라커 목록 조회 (상태별 필터) | O | ALL |
 | 2 | `GET` | `/api/v1/lockers/{lockerId}` | 라커 상세 조회 | O | ALL |
-| 3 | `POST` | `/api/v1/lockers` | 라커 등록 (신규 라커 추가) | O | ADMIN |
+| 3 | `POST` | `/api/v1/lockers` | 라커 등록 (구역 + 번호 기반 코드 자동 생성) | O | ADMIN |
 | 4 | `POST` | `/api/v1/lockers/{lockerId}/assign` | 라커 배정 | O | ADMIN, MANAGER, DESK |
 | 5 | `POST` | `/api/v1/lockers/{lockerId}/release` | 라커 반납 | O | ADMIN, MANAGER, DESK |
 | 6 | `POST` | `/api/v1/lockers/{lockerId}/report-lost-key` | 키 분실 신고 | O | ADMIN, MANAGER, DESK |
 | 7 | `POST` | `/api/v1/lockers/{lockerId}/replace-key` | 키 교체 완료 처리 | O | ADMIN, MANAGER, DESK |
 | 8 | `PATCH` | `/api/v1/lockers/{lockerId}` | 라커 정보 수정 (상태/메모) | O | ADMIN, MANAGER |
 | 9 | `GET` | `/api/v1/lockers/expiring` | 만료 임박 라커 목록 | O | ADMIN, MANAGER, DESK |
+
+- `POST /api/v1/lockers/batch`는 다건 라커 등록을 처리한다.
+- 등록 요청에서 `lockerCode`는 클라이언트가 보내지 않으며, 서버가 `lockerZone` + `lockerNumber`를 결합해 `ZONE-NN` 형식으로 자동 생성한다.
+- `lockerZone`은 대문자 정규화 후 저장되고, `lockerNumber`는 1 이상의 정수여야 한다.
+- batch 등록은 모든 행이 유효해야 성공한다. 하나라도 실패하면 전체 등록이 취소된다.
 
 ### 3.7 매출/정산 API (`/api/v1/settlements`)
 
@@ -2995,6 +3000,7 @@ X-Cache: HIT
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| v1.18.0 | 2026-04-22 | 라커 등록 요청을 구역 + 번호 기반 자동 생성으로 전환하고, `POST /api/v1/lockers/batch` 다건 등록 API를 추가해 현재 구현과 계약을 동기화 | Codex |
 | v1.17.0 | 2026-04-20 | auth password lifecycle: `/api/v1/auth/refresh` 표기를 현재 구현과 맞추고, `passwordChangeRequired`를 login/refresh/me/users 응답에 반영했으며, `/api/v1/auth/users` 생성/비밀번호 초기화 API와 `/api/v1/auth/password` 강제 변경 규칙을 현재 구현 기준으로 동기화 | Codex |
 | v1.16.0 | 2026-04-17 | RBAC contract cleanup: JWT payload/인증 응답 사용자 role 모델을 `roleCode + primaryRole + roles[]`로 정렬하고, 권한 표기 규칙 및 관리자/슈퍼관리자 역할 변경 정책을 현재 구현 기준으로 동기화 | Codex |
 | v1.15.0 | 2026-04-17 | `GET /api/v1/centers/me` 센터 프로필 조회/수정 API와 `GET /api/v1/auth/users` 사용자 목록 조회 및 계정 운영 API를 추가하고, 관리자 전용 RBAC 계약을 현재 구현 기준으로 동기화 | Codex |

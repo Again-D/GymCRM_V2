@@ -4,8 +4,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { apiPost, isMockApiMode } from "../../../api/client";
 import { queryKeys } from "../../../app/queryHelpers";
 import {
+  buildLockerCode,
   createEmptyLockerAssignForm,
+  createEmptyLockerCreateRow,
   type LockerAssignForm,
+  type LockerCreateRow,
   type LockerFilters,
 } from "./types";
 
@@ -18,7 +21,11 @@ export function useLockerPrototypeState(selectedMemberId?: number | null) {
   const [lockerAssignForm, setLockerAssignForm] = useState<LockerAssignForm>(
     () => createEmptyLockerAssignForm(selectedMemberId),
   );
+  const [lockerCreateRows, setLockerCreateRows] = useState<LockerCreateRow[]>([
+    createEmptyLockerCreateRow(),
+  ]);
   const [lockerAssignSubmitting, setLockerAssignSubmitting] = useState(false);
+  const [lockerCreateSubmitting, setLockerCreateSubmitting] = useState(false);
   const [lockerReturnSubmittingId, setLockerReturnSubmittingId] = useState<
     number | null
   >(null);
@@ -26,7 +33,21 @@ export function useLockerPrototypeState(selectedMemberId?: number | null) {
     null,
   );
   const [lockerPanelError, setLockerPanelError] = useState<string | null>(null);
+  const [lockerCreatePanelMessage, setLockerCreatePanelMessage] = useState<
+    string | null
+  >(null);
+  const [lockerCreatePanelError, setLockerCreatePanelError] = useState<
+    string | null
+  >(null);
   const useMockMutations = isMockApiMode();
+
+  function isFailedMutationResult(result: unknown) {
+    if (!result || typeof result !== "object") {
+      return false;
+    }
+    const candidate = result as { ok?: boolean; success?: boolean };
+    return candidate.ok === false || candidate.success === false;
+  }
 
   useEffect(() => {
     setLockerAssignForm(createEmptyLockerAssignForm(selectedMemberId));
@@ -41,9 +62,113 @@ export function useLockerPrototypeState(selectedMemberId?: number | null) {
     setLockerPanelError(null);
   }
 
+  function clearLockerCreateFeedback() {
+    setLockerCreatePanelMessage(null);
+    setLockerCreatePanelError(null);
+  }
+
   const invalidateLockers = async () => {
     await queryClient.invalidateQueries({ queryKey: queryKeys.lockers.all });
   };
+
+  function createBlankLockerRow() {
+    return createEmptyLockerCreateRow();
+  }
+
+  function appendLockerCreateRow() {
+    clearLockerCreateFeedback();
+    setLockerCreateRows((prev) => [...prev, createBlankLockerRow()]);
+  }
+
+  function updateLockerCreateRow(
+    index: number,
+    updater: (row: LockerCreateRow) => LockerCreateRow,
+  ) {
+    clearLockerCreateFeedback();
+    setLockerCreateRows((prev) =>
+      prev.map((row, currentIndex) =>
+        currentIndex === index ? updater(row) : row,
+      ),
+    );
+  }
+
+  function removeLockerCreateRow(index: number) {
+    clearLockerCreateFeedback();
+    setLockerCreateRows((prev) => {
+      const next = prev.filter((_, currentIndex) => currentIndex !== index);
+      return next.length > 0 ? next : [createBlankLockerRow()];
+    });
+  }
+
+  function resetLockerCreateRows() {
+    setLockerCreateRows([createBlankLockerRow()]);
+  }
+
+  async function handleLockerCreateBatch() {
+    clearLockerCreateFeedback();
+    setLockerCreateSubmitting(true);
+    try {
+      const normalizedItems = lockerCreateRows.map((row, index) => {
+        const lockerZone = row.lockerZone.trim();
+        if (!lockerZone) {
+          throw new Error(`${index + 1}행: 구역을 입력해야 합니다.`);
+        }
+        if (row.lockerNumber == null || !Number.isInteger(row.lockerNumber) || row.lockerNumber < 1) {
+          throw new Error(`${index + 1}행: 번호를 입력해야 합니다.`);
+        }
+
+        const lockerCode = buildLockerCode(lockerZone, row.lockerNumber);
+        if (!lockerCode) {
+          throw new Error(`${index + 1}행: 라커 코드를 생성할 수 없습니다.`);
+        }
+
+        return {
+          lockerZone,
+          lockerNumber: row.lockerNumber,
+          lockerGrade: row.lockerGrade.trim() || null,
+          lockerStatus: row.lockerStatus,
+          memo: row.memo.trim() || null,
+        };
+      });
+
+      const duplicateCode = normalizedItems
+        .map((item) => buildLockerCode(item.lockerZone, item.lockerNumber))
+        .find((code, index, codes) => codes.indexOf(code) !== index);
+      if (duplicateCode) {
+        setLockerCreatePanelError(`중복 라커 코드가 있습니다: ${duplicateCode}`);
+        return false;
+      }
+
+      const result = useMockMutations
+        ? await import("../../../api/mockData").then(
+            ({ createMockLockerSlots }) =>
+              createMockLockerSlots(normalizedItems),
+          )
+        : await apiPost("/api/v1/lockers/batch", {
+            items: normalizedItems,
+          });
+
+      if (isFailedMutationResult(result)) {
+        setLockerCreatePanelError((result as any).message);
+        return false;
+      }
+
+      await invalidateLockers();
+
+      setLockerCreatePanelMessage(
+        (result as any).message || "라커가 일괄 등록되었습니다.",
+      );
+      resetLockerCreateRows();
+      return true;
+    } catch (error) {
+      setLockerCreatePanelError(
+        error instanceof Error ? error.message : "라커 등록 중 오류가 발생했습니다.",
+      );
+      return false;
+    } finally {
+      setLockerCreateSubmitting(false);
+    }
+  }
 
   async function handleLockerAssign() {
     clearLockerFeedback();
@@ -73,12 +198,12 @@ export function useLockerPrototypeState(selectedMemberId?: number | null) {
             memo: lockerAssignForm.memo.trim() || null,
           });
 
-      await invalidateLockers();
-      
-      if ("ok" in (result as any) && !(result as any).ok) {
+      if (isFailedMutationResult(result)) {
         setLockerPanelError((result as any).message);
         return false;
       }
+
+      await invalidateLockers();
       setLockerPanelMessage((result as any).message || "라커가 성공적으로 배정되었습니다.");
       setLockerAssignForm(createEmptyLockerAssignForm(selectedMemberId));
       return true;
@@ -101,12 +226,12 @@ export function useLockerPrototypeState(selectedMemberId?: number | null) {
             {},
           );
 
-      await invalidateLockers();
-
-      if ("ok" in (result as any) && !(result as any).ok) {
+      if (isFailedMutationResult(result)) {
         setLockerPanelError((result as any).message);
         return false;
       }
+
+      await invalidateLockers();
       setLockerPanelMessage((result as any).message || "라커가 반납 처리되었습니다.");
       return true;
     } finally {
@@ -119,12 +244,23 @@ export function useLockerPrototypeState(selectedMemberId?: number | null) {
     setLockerFilters,
     lockerAssignForm,
     setLockerAssignForm,
+    lockerCreateRows,
+    setLockerCreateRows,
     lockerAssignSubmitting,
+    lockerCreateSubmitting,
     lockerReturnSubmittingId,
     lockerPanelMessage,
     lockerPanelError,
+    lockerCreatePanelMessage,
+    lockerCreatePanelError,
     clearLockerFeedback,
+    clearLockerCreateFeedback,
+    appendLockerCreateRow,
+    updateLockerCreateRow,
+    removeLockerCreateRow,
+    resetLockerCreateRows,
     handleLockerAssign,
     handleLockerReturn,
+    handleLockerCreateBatch,
   } as const;
 }
