@@ -215,6 +215,10 @@ sudo sed -i '' '/ajw0831.iptime.org/d' /etc/hosts
 
 접속 전 아래 명령어로 환경이 정상인지 최종 확인한다.
 
+> **검증 역할 구분:**
+> - `docs/observability/tools/validate_selfhosted_staging_https.ps1` → **[AUTOMATED / WORKFLOW GATE]** Windows runner canonical-host smoke 검증
+> - `docs/observability/tools/validate_mac_trust_selfhosted_staging.sh` → **[MANUAL / QA PRE-CHECK]** Mac 외부 QA 사전/최종 신뢰 검증
+
 1. **CA 인증서 등록 여부 확인**
    ```bash
    security find-certificate -a -c "GymCRM Staging CA" /Library/Keychains/System.keychain
@@ -234,7 +238,16 @@ sudo sed -i '' '/ajw0831.iptime.org/d' /etc/hosts
    ```
 
 > 위 검증 명령어를 자동화한 헬퍼 스크립트:
-> `docs/observability/tools/validate_mac_trust_selfhosted_staging.sh`
+> - **사전 진단(preflight)**: `bash docs/observability/tools/validate_mac_trust_selfhosted_staging.sh`
+>   - CA 등록, `curl --resolve` 기반 canonical-host TLS, `127.0.0.1` 오설정 guard를 검증한다.
+>   - hosts override 미적용 상태는 **WARN** 으로만 보고된다.
+> - **최종 GO gate**: `bash docs/observability/tools/validate_mac_trust_selfhosted_staging.sh --final-go`
+>   - CA 등록, hosts override(`ajw0831.iptime.org -> 10.170.47.3`), plain canonical-host HTTPS 성공까지 모두 충족해야 통과한다.
+
+Mac 브라우저 기준 최종 GO는 아래 3가지를 모두 만족해야 한다.
+- `GymCRM Staging CA`가 macOS **System** keychain에 등록되어 있을 것
+- `ajw0831.iptime.org`가 `/etc/hosts` 또는 동등한 로컬 해상도 경로를 통해 `10.170.47.3`으로 해석될 것
+- `curl --fail --silent https://ajw0831.iptime.org/api/v1/health` 가 `--resolve` 없이 성공할 것
 
 ### 5.5 Windows 방화벽 체크
 
