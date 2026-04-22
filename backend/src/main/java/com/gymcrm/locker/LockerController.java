@@ -4,7 +4,9 @@ import com.gymcrm.common.api.ApiResponse;
 import com.gymcrm.common.security.AccessPolicies;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -32,12 +34,12 @@ public class LockerController {
         this.lockerService = lockerService;
     }
 
-    @PostMapping("/slots")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER)
+    @PostMapping
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_ADMIN)
     public ApiResponse<LockerSlotResponse> createSlot(@Valid @RequestBody CreateLockerSlotRequest request) {
         LockerSlot slot = lockerService.createSlot(new LockerService.CreateSlotRequest(
-                request.lockerCode(),
                 request.lockerZone(),
+                request.lockerNumber(),
                 request.lockerGrade(),
                 request.lockerStatus(),
                 request.memo()
@@ -45,7 +47,26 @@ public class LockerController {
         return ApiResponse.success(LockerSlotResponse.from(slot), "라커가 등록되었습니다.");
     }
 
-    @GetMapping("/slots")
+    @PostMapping("/batch")
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_ADMIN)
+    public ApiResponse<List<LockerSlotResponse>> createSlots(@Valid @RequestBody CreateLockerSlotsRequest request) {
+        List<LockerSlotResponse> items = lockerService.createSlots(
+                request.items().stream()
+                        .map(item -> new LockerService.CreateSlotRequest(
+                                item.lockerZone(),
+                                item.lockerNumber(),
+                                item.lockerGrade(),
+                                item.lockerStatus(),
+                                item.memo()
+                        ))
+                        .toList()
+        ).stream()
+                .map(LockerSlotResponse::from)
+                .toList();
+        return ApiResponse.success(items, "라커가 일괄 등록되었습니다.");
+    }
+
+    @GetMapping
     @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<List<LockerSlotResponse>> listSlots(
             @RequestParam(required = false)
@@ -100,12 +121,20 @@ public class LockerController {
     }
 
     public record CreateLockerSlotRequest(
-            @NotBlank(message = "lockerCode is required") String lockerCode,
-            String lockerZone,
+            @NotBlank(message = "lockerZone is required") String lockerZone,
+            @NotNull(message = "lockerNumber is required")
+            @Min(value = 1, message = "lockerNumber must be at least 1")
+            Integer lockerNumber,
             String lockerGrade,
             @Pattern(regexp = "^(?i)(AVAILABLE|ASSIGNED|MAINTENANCE)?$", message = "lockerStatus is invalid")
             String lockerStatus,
             String memo
+    ) {
+    }
+
+    public record CreateLockerSlotsRequest(
+            @NotEmpty(message = "items is required")
+            List<@NotNull @Valid CreateLockerSlotRequest> items
     ) {
     }
 

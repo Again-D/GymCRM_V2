@@ -911,6 +911,7 @@ let reservationIdSeed = 5002;
 let scheduleIdSeed = 7101;
 let accessSessionIdSeed = 92000;
 let accessEventIdSeed = 97000;
+let lockerSlotIdSeed = Math.max(0, ...initialLockerSlots.map((slot) => slot.lockerSlotId)) + 1;
 let lockerAssignmentIdSeed = 98000;
 let productIdSeed = 200;
 let crmMessageEventIdSeed = 12050;
@@ -963,6 +964,43 @@ function cloneAccessEvents(source: AccessEventRow[]) {
 
 function cloneLockerSlots(source: LockerSlot[]) {
   return source.map((slot) => ({ ...slot }));
+}
+
+function buildMockLockerCode(lockerZone: string, lockerNumber: number) {
+  const normalizedZone = lockerZone.trim().toUpperCase();
+  const normalizedNumber =
+    lockerNumber < 100 ? String(lockerNumber).padStart(2, "0") : String(lockerNumber);
+  return `${normalizedZone}-${normalizedNumber}`;
+}
+
+function nextMockLockerSlotId() {
+  return lockerSlotIdSeed++;
+}
+
+type MockLockerCreateInput = {
+  lockerZone: string;
+  lockerNumber: number;
+  lockerGrade: string | null;
+  lockerStatus: LockerSlot["lockerStatus"];
+  memo: string | null;
+};
+
+function createMockLockerSlotRecord(input: MockLockerCreateInput) {
+  const now = new Date().toISOString();
+  const lockerCode = buildMockLockerCode(input.lockerZone, input.lockerNumber);
+  const nextSlot: LockerSlot = {
+    lockerSlotId: nextMockLockerSlotId(),
+    centerId: 1,
+    lockerCode,
+    lockerZone: input.lockerZone.trim().toUpperCase(),
+    lockerGrade: input.lockerGrade,
+    lockerStatus: input.lockerStatus,
+    memo: input.memo,
+    createdAt: now,
+    updatedAt: now,
+  };
+  mockLockerSlots = [...mockLockerSlots, nextSlot];
+  return nextSlot;
 }
 
 function cloneLockerAssignments(source: LockerAssignment[]) {
@@ -1018,6 +1056,23 @@ function envelope<T>(data: T, message = "mock ok"): ApiEnvelope<T> {
     message,
     timestamp: "2026-03-12T00:00:00Z",
     traceId: "mock-trace",
+  };
+}
+
+function mutationEnvelope<T>(result: { ok: boolean; message: string; data?: T }): ApiEnvelope<T | null> {
+  return {
+    success: result.ok,
+    data: result.ok ? (result.data ?? null) : null,
+    message: result.message,
+    timestamp: "2026-03-12T00:00:00Z",
+    traceId: "mock-trace",
+    error: result.ok
+      ? null
+      : {
+          code: "MOCK_VALIDATION_ERROR",
+          status: 400,
+          detail: result.message,
+        },
   };
 }
 
@@ -1200,8 +1255,8 @@ function deriveAccessPresenceSummary(): AccessPresenceSummary {
 }
 
 function filterLockerSlots(url: URL) {
-  const lockerStatus = url.searchParams.get("lockerStatus")?.trim() ?? "";
-  const lockerZone = url.searchParams.get("lockerZone")?.trim() ?? "";
+  const lockerStatus = url.searchParams.get("lockerStatus")?.trim().toUpperCase() ?? "";
+  const lockerZone = url.searchParams.get("lockerZone")?.trim().toUpperCase() ?? "";
 
   return mockLockerSlots.filter((slot) => {
     const matchesStatus = !lockerStatus || slot.lockerStatus === lockerStatus;
@@ -2078,6 +2133,10 @@ export function resetMockData() {
   scheduleIdSeed = 7101;
   accessSessionIdSeed = 92000;
   accessEventIdSeed = 97000;
+  lockerSlotIdSeed = Math.max(
+    0,
+    ...initialLockerSlots.map((slot) => slot.lockerSlotId),
+  ) + 1;
   lockerAssignmentIdSeed = 98000;
   productIdSeed = 200;
   crmMessageEventIdSeed = 12050;
@@ -2594,6 +2653,64 @@ export function createMockLockerAssignment(input: {
   return {
     ok: true as const,
     message: `라커 ${slot.lockerCode}를 회원 #${input.memberId}에 배정했습니다.`,
+  };
+}
+
+export function createMockLockerSlots(input: MockLockerCreateInput[]) {
+  if (input.length === 0) {
+    return { ok: false as const, message: "등록할 라커가 없습니다." };
+  }
+
+  const existingCodes = new Set(mockLockerSlots.map((slot) => slot.lockerCode));
+  const prepared: MockLockerCreateInput[] = [];
+  const seenCodes = new Set<string>();
+
+  for (const [index, row] of input.entries()) {
+    const lockerZone = row.lockerZone.trim();
+    if (!lockerZone) {
+      return { ok: false as const, message: `${index + 1}행: 구역을 입력해야 합니다.` };
+    }
+    if (!Number.isInteger(row.lockerNumber) || row.lockerNumber < 1) {
+      return { ok: false as const, message: `${index + 1}행: 번호를 입력해야 합니다.` };
+    }
+
+    const lockerCode = buildMockLockerCode(lockerZone, row.lockerNumber);
+    if (seenCodes.has(lockerCode)) {
+      return { ok: false as const, message: `중복 라커 코드가 있습니다: ${lockerCode}` };
+    }
+    if (existingCodes.has(lockerCode)) {
+      return { ok: false as const, message: `이미 존재하는 라커 코드입니다: ${lockerCode}` };
+    }
+
+    seenCodes.add(lockerCode);
+    prepared.push({
+      lockerZone,
+      lockerNumber: row.lockerNumber,
+      lockerGrade: row.lockerGrade ? row.lockerGrade.trim() || null : null,
+      lockerStatus: row.lockerStatus,
+      memo: row.memo ? row.memo.trim() || null : null,
+    });
+  }
+
+  const createdSlots = prepared.map((row) => createMockLockerSlotRecord(row));
+  bumpMockDataVersion();
+
+  return {
+    ok: true as const,
+    message: "라커가 일괄 등록되었습니다.",
+    data: createdSlots.map((slot) => ({ ...slot })),
+  };
+}
+
+export function createMockLockerSlot(input: MockLockerCreateInput) {
+  const result = createMockLockerSlots([input]);
+  if (!result.ok) {
+    return result;
+  }
+  return {
+    ok: true as const,
+    message: "라커가 등록되었습니다.",
+    data: result.data[0],
   };
 }
 
@@ -3721,7 +3838,17 @@ export function getMockResponse(
     return envelope(getMockGxScheduleSnapshot(month));
   }
 
-  if (url.pathname === "/api/v1/lockers/slots") {
+  if (url.pathname === "/api/v1/lockers" && method === "POST") {
+    return mutationEnvelope(createMockLockerSlot(body as MockLockerCreateInput));
+  }
+
+  if (url.pathname === "/api/v1/lockers/batch" && method === "POST") {
+    return mutationEnvelope(
+      createMockLockerSlots((body as { items?: MockLockerCreateInput[] })?.items ?? []),
+    );
+  }
+
+  if (url.pathname === "/api/v1/lockers") {
     return envelope(filterLockerSlots(url).map((slot) => ({ ...slot })));
   }
 

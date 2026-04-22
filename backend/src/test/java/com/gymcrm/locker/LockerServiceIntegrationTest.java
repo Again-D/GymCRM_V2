@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -36,8 +37,8 @@ class LockerServiceIntegrationTest {
     @Transactional
     void createAssignReturnLockerFlowWorks() {
         LockerSlot slot = lockerService.createSlot(new LockerService.CreateSlotRequest(
-                "A-" + UUID.randomUUID().toString().substring(0, 6),
                 "GENERAL",
+                1,
                 "STANDARD",
                 "AVAILABLE",
                 null
@@ -77,8 +78,8 @@ class LockerServiceIntegrationTest {
     @Transactional
     void cannotAssignAlreadyAssignedLockerSlot() {
         LockerSlot slot = lockerService.createSlot(new LockerService.CreateSlotRequest(
-                "B-" + UUID.randomUUID().toString().substring(0, 6),
                 "GENERAL",
+                2,
                 "STANDARD",
                 "AVAILABLE",
                 null
@@ -109,15 +110,15 @@ class LockerServiceIntegrationTest {
     @Transactional
     void cannotAssignTwoActiveLockersToSameMember() {
         LockerSlot slot1 = lockerService.createSlot(new LockerService.CreateSlotRequest(
-                "C1-" + UUID.randomUUID().toString().substring(0, 4),
                 "GENERAL",
+                3,
                 "STANDARD",
                 "AVAILABLE",
                 null
         ));
         LockerSlot slot2 = lockerService.createSlot(new LockerService.CreateSlotRequest(
-                "C2-" + UUID.randomUUID().toString().substring(0, 4),
                 "GENERAL",
+                4,
                 "STANDARD",
                 "AVAILABLE",
                 null
@@ -141,6 +142,37 @@ class LockerServiceIntegrationTest {
         )));
 
         assertEquals(com.gymcrm.common.error.ErrorCode.CONFLICT, ex.getErrorCode());
+    }
+
+    @Test
+    @Transactional
+    void createSlotsGeneratesCodesFromZoneAndNumber() {
+        String zoneOne = "qa-" + UUID.randomUUID().toString().substring(0, 8);
+        String zoneTwo = "qb-" + UUID.randomUUID().toString().substring(0, 8);
+
+        var slots = lockerService.createSlots(List.of(
+                new LockerService.CreateSlotRequest(zoneOne, 11, "STANDARD", "AVAILABLE", "first"),
+                new LockerService.CreateSlotRequest(zoneTwo, 2, "PREMIUM", null, null)
+        ));
+
+        assertEquals(2, slots.size());
+        assertEquals(zoneOne.toUpperCase() + "-11", slots.get(0).lockerCode());
+        assertEquals(zoneOne.toUpperCase(), slots.get(0).lockerZone());
+        assertEquals(zoneTwo.toUpperCase() + "-02", slots.get(1).lockerCode());
+        assertEquals("AVAILABLE", slots.get(1).lockerStatus());
+    }
+
+    @Test
+    @Transactional
+    void createSlotsRejectsWholeBatchWhenAnyRowIsInvalid() {
+        int beforeCount = lockerService.listSlots(null, null).size();
+
+        assertThrows(ApiException.class, () -> lockerService.createSlots(List.of(
+                new LockerService.CreateSlotRequest("general", 10, "STANDARD", "AVAILABLE", null),
+                new LockerService.CreateSlotRequest("", 11, "STANDARD", "AVAILABLE", null)
+        )));
+
+        assertEquals(beforeCount, lockerService.listSlots(null, null).size());
     }
 
     private Member createMember() {

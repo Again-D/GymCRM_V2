@@ -23,7 +23,7 @@ export function useLockerQueries(filters?: LockerFilters, activeOnly = false) {
       }
       const query = params.toString();
       const response = await apiGet<LockerSlot[]>(
-        `/api/v1/lockers/slots${query ? `?${query}` : ""}`,
+        `/api/v1/lockers${query ? `?${query}` : ""}`,
       );
       return response.data;
     },

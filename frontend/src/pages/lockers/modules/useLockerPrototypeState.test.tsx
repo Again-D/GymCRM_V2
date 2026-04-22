@@ -69,6 +69,63 @@ describe("useLockerPrototypeState", () => {
     expect(result.current.lockerPanelMessage).toContain("반납");
   });
 
+  it("creates locker slots through live API mode batch endpoint", async () => {
+    setMockApiModeForTests(false);
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: [
+          {
+            lockerSlotId: 7001,
+            centerId: 1,
+            lockerCode: "A-01",
+            lockerZone: "A",
+            lockerGrade: "STANDARD",
+            lockerStatus: "AVAILABLE",
+            memo: null,
+            createdAt: "2026-03-13T00:00:00Z",
+            updatedAt: "2026-03-13T00:00:00Z",
+          },
+        ],
+        message: "라커가 일괄 등록되었습니다.",
+        timestamp: "2026-03-13T00:00:00Z",
+        traceId: "trace-locker-batch",
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const queryClient = createTestQueryClient();
+    const { result } = renderHook(() => useLockerPrototypeState(), {
+      wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper>,
+    });
+
+    await act(async () => {
+      result.current.setLockerCreateRows([
+        {
+          lockerZone: "a",
+          lockerNumber: 1,
+          lockerGrade: "STANDARD",
+          lockerStatus: "AVAILABLE",
+          memo: "",
+        },
+      ]);
+    });
+
+    await act(async () => {
+      await result.current.handleLockerCreateBatch();
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/lockers/batch",
+      expect.objectContaining({
+        method: "POST",
+        credentials: "include",
+      }),
+    );
+    expect(result.current.lockerCreatePanelMessage).toBe("라커가 일괄 등록되었습니다.");
+  });
+
   it("assigns lockers through live API mode", async () => {
     setMockApiModeForTests(false);
     const fetchMock = vi.fn().mockResolvedValue({

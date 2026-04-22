@@ -30,7 +30,7 @@ describe("useLockerQueries", () => {
 
   it("loads filtered locker slots and assignments separately", async () => {
     const fetchMock = vi.fn(async (input: string) => {
-      if (input.includes("/api/v1/lockers/slots")) {
+      if (input.includes("/api/v1/lockers?") || input.endsWith("/api/v1/lockers")) {
         return {
           ok: true,
           json: async () => ({

@@ -1,6 +1,8 @@
 import {
 	HistoryOutlined,
 	LockOutlined,
+	MinusOutlined,
+	PlusOutlined,
 	SolutionOutlined,
 } from "@ant-design/icons";
 import {
@@ -13,6 +15,7 @@ import {
 	Flex,
 	Form,
 	Input,
+	InputNumber,
 	Modal,
 	Row,
 	Select,
@@ -24,10 +27,9 @@ import {
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import dayjs from "dayjs";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { useAuthState } from "../../app/auth";
-import { hasAnyRole } from "../../app/roles";
 import { usePagination } from "../../shared/hooks/usePagination";
 import { SelectedMemberContextBadge } from "../members/components/SelectedMemberContextBadge";
 import { useSelectedMemberStore } from "../members/modules/SelectedMemberContext";
@@ -35,6 +37,14 @@ import type { MemberSummary } from "../members/modules/types";
 import { useMembersQuery } from "../members/modules/useMembersQuery";
 import { useLockerPrototypeState } from "./modules/useLockerPrototypeState";
 import { useLockerQueries } from "./modules/useLockerQueries";
+import {
+	buildLockerCode,
+	type LockerCreateRow,
+} from "./modules/types";
+import {
+	canAccessLockerWorkspace,
+	canRegisterLockerSlots,
+} from "./modules/lockerPermissions";
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -51,6 +61,7 @@ export default function LockersPage() {
 	const { authUser, isMockMode } = useAuthState();
 	const { selectedMemberId } = useSelectedMemberStore();
 	const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+	const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
 	const { members } = useMembersQuery({
 		name: "",
@@ -66,12 +77,22 @@ export default function LockersPage() {
 		setLockerFilters,
 		lockerAssignForm,
 		setLockerAssignForm,
+		lockerCreateRows,
+		lockerCreateSubmitting,
+		lockerCreatePanelMessage,
+		lockerCreatePanelError,
 		lockerAssignSubmitting,
 		lockerReturnSubmittingId,
 		lockerPanelMessage,
 		lockerPanelError,
+		appendLockerCreateRow,
+		updateLockerCreateRow,
+		removeLockerCreateRow,
+		resetLockerCreateRows,
+		clearLockerCreateFeedback,
 		handleLockerAssign,
 		handleLockerReturn,
+		handleLockerCreateBatch,
 	} = useLockerPrototypeState(selectedMemberId);
 
 	const {
@@ -82,9 +103,11 @@ export default function LockersPage() {
 		lockerQueryError,
 	} = useLockerQueries(lockerFilters);
 
-	const isLiveLockerRoleSupported =
-		isMockMode ||
-		hasAnyRole(authUser, ["ROLE_SUPER_ADMIN", "ROLE_ADMIN", "ROLE_MANAGER", "ROLE_DESK"]);
+	const isLiveLockerWorkspaceSupported = canAccessLockerWorkspace(
+		authUser,
+		isMockMode,
+	);
+	const canCreateLockerSlots = canRegisterLockerSlots(authUser, isMockMode);
 
 	const slotsPagination = usePagination(lockerSlots, {
 		initialPageSize: 10,
@@ -104,18 +127,16 @@ export default function LockersPage() {
 		[lockerSlots],
 	);
 
-	useEffect(() => {
-		if (!isLiveLockerRoleSupported) {
-			return;
-		}
-	}, [isLiveLockerRoleSupported]);
-
 	async function runLockerAssign() {
 		const ok = await handleLockerAssign();
 		if (ok) {
 			setIsAssignModalOpen(false);
 		}
 	}
+
+  async function runLockerCreateBatch() {
+		await handleLockerCreateBatch();
+  }
 
 	async function runLockerReturn(lockerAssignmentId: number) {
 		await handleLockerReturn(lockerAssignmentId);
@@ -195,7 +216,7 @@ export default function LockersPage() {
 						size="small"
 						disabled={
 							lockerReturnSubmittingId === assignment.lockerAssignmentId ||
-							!isLiveLockerRoleSupported
+							!isLiveLockerWorkspaceSupported
 						}
 						onClick={() => void runLockerReturn(assignment.lockerAssignmentId)}
 					>
@@ -205,7 +226,131 @@ export default function LockersPage() {
 					</Button>
 				) : (
 					buildStatusTag(assignment.assignmentStatus)
-				),
+			),
+		},
+	];
+
+	const createColumns: ColumnsType<LockerCreateRow> = [
+		{
+			title: "구역",
+			key: "lockerZone",
+			width: 120,
+			render: (_, row, index) => (
+				<Input
+					value={row.lockerZone}
+					placeholder="예: A"
+					onChange={(event) =>
+						updateLockerCreateRow(index, (prev) => ({
+							...prev,
+							lockerZone: event.target.value,
+						}))
+					}
+				/>
+			),
+		},
+		{
+			title: "번호",
+			key: "lockerNumber",
+			width: 110,
+			render: (_, row, index) => (
+				<InputNumber
+					min={1}
+					precision={0}
+					style={{ width: "100%" }}
+					value={row.lockerNumber ?? undefined}
+					placeholder="1"
+					onChange={(value) =>
+						updateLockerCreateRow(index, (prev) => ({
+							...prev,
+							lockerNumber:
+								typeof value === "number" && Number.isFinite(value)
+									? value
+									: null,
+						}))
+					}
+				/>
+			),
+		},
+		{
+			title: "자동 코드",
+			key: "lockerCode",
+			render: (_, row) => {
+				const lockerCode = buildLockerCode(row.lockerZone, row.lockerNumber);
+				return <Text strong>{lockerCode || "-"}</Text>;
+			},
+		},
+		{
+			title: "등급",
+			key: "lockerGrade",
+			width: 140,
+			render: (_, row, index) => (
+				<Select
+					value={row.lockerGrade}
+					onChange={(value) =>
+						updateLockerCreateRow(index, (prev) => ({
+							...prev,
+							lockerGrade: value,
+						}))
+					}
+					options={[
+						{ label: "STANDARD", value: "STANDARD" },
+						{ label: "PREMIUM", value: "PREMIUM" },
+					]}
+				/>
+			),
+		},
+		{
+			title: "상태",
+			key: "lockerStatus",
+			width: 140,
+			render: (_, row, index) => (
+				<Select
+					value={row.lockerStatus}
+					onChange={(value) =>
+						updateLockerCreateRow(index, (prev) => ({
+							...prev,
+							lockerStatus: value as LockerCreateRow["lockerStatus"],
+						}))
+					}
+					options={[
+						{ label: "사용 가능", value: "AVAILABLE" },
+						{ label: "배정됨", value: "ASSIGNED" },
+						{ label: "점검 중", value: "MAINTENANCE" },
+					]}
+				/>
+			),
+		},
+		{
+			title: "메모",
+			key: "memo",
+			render: (_, row, index) => (
+				<Input
+					value={row.memo}
+					placeholder="선택 입력"
+					onChange={(event) =>
+						updateLockerCreateRow(index, (prev) => ({
+							...prev,
+							memo: event.target.value,
+						}))
+					}
+				/>
+			),
+		},
+		{
+			title: "행 관리",
+			key: "actions",
+			width: 96,
+			align: "right",
+			render: (_, __, index) => (
+				<Button
+					danger
+					size="small"
+					icon={<MinusOutlined />}
+					onClick={() => removeLockerCreateRow(index)}
+				>
+					삭제
+				</Button>
+			),
 		},
 	];
 
@@ -253,15 +398,29 @@ export default function LockersPage() {
 							<Tag color="purple">회원 연동 모달</Tag>
 						</Space>
 					</Space>
-					<Button
-						type="primary"
-						size="large"
-						icon={<LockOutlined />}
-						onClick={() => setIsAssignModalOpen(true)}
-						disabled={!isLiveLockerRoleSupported}
-					>
-						신규 배정
-					</Button>
+					<Space wrap>
+						<Button
+							size="large"
+							icon={<PlusOutlined />}
+							onClick={() => {
+								resetLockerCreateRows();
+								clearLockerCreateFeedback();
+								setIsCreateModalOpen(true);
+							}}
+							disabled={!canCreateLockerSlots}
+						>
+							라커 등록
+						</Button>
+						<Button
+							type="primary"
+							size="large"
+							icon={<LockOutlined />}
+							onClick={() => setIsAssignModalOpen(true)}
+							disabled={!isLiveLockerWorkspaceSupported}
+						>
+							신규 배정
+						</Button>
+					</Space>
 				</Flex>
 			</Card>
 
@@ -286,8 +445,8 @@ export default function LockersPage() {
 					},
 					{
 						label: "시스템 권한",
-						value: isLiveLockerRoleSupported ? "풀 액세스" : "조회 전용",
-						hint: isLiveLockerRoleSupported ? "운영 가능" : "작업 제한",
+						value: isLiveLockerWorkspaceSupported ? "풀 액세스" : "조회 전용",
+						hint: isLiveLockerWorkspaceSupported ? "운영 가능" : "작업 제한",
 					},
 				].map((stat) => (
 					<Col xs={12} sm={6} key={stat.label}>
@@ -341,7 +500,7 @@ export default function LockersPage() {
 									<Form.Item label="상태 필터" style={{ marginBottom: 0 }}>
 										<Select
 											value={lockerFilters.lockerStatus}
-											disabled={!isLiveLockerRoleSupported}
+											disabled={!isLiveLockerWorkspaceSupported}
 											onChange={(value) =>
 												setLockerFilters((prev) => ({
 													...prev,
@@ -361,7 +520,7 @@ export default function LockersPage() {
 									<Form.Item label="구역 검색" style={{ marginBottom: 0 }}>
 										<Input
 											value={lockerFilters.lockerZone}
-											disabled={!isLiveLockerRoleSupported}
+											disabled={!isLiveLockerWorkspaceSupported}
 											onChange={(event) =>
 												setLockerFilters((prev) => ({
 													...prev,
@@ -374,7 +533,7 @@ export default function LockersPage() {
 								</Col>
 							</Row>
 
-							{!isLiveLockerRoleSupported && (
+							{!isLiveLockerWorkspaceSupported && (
 								<Alert
 									type="warning"
 									showIcon
@@ -476,7 +635,7 @@ export default function LockersPage() {
 							/>
 						</Card>
 
-						{!isLiveLockerRoleSupported && (
+						{!isLiveLockerWorkspaceSupported && (
 							<Alert
 								type="warning"
 								showIcon
@@ -609,6 +768,101 @@ export default function LockersPage() {
 							/>
 						</Form.Item>
 					</Form>
+				</Flex>
+			</Modal>
+
+			<Modal
+				open={isCreateModalOpen}
+				onCancel={() => {
+					resetLockerCreateRows();
+					clearLockerCreateFeedback();
+					setIsCreateModalOpen(false);
+				}}
+				title={
+					<Space>
+						<PlusOutlined />
+						<Text strong style={{ fontSize: "1.1rem" }}>
+							라커 일괄 등록
+						</Text>
+					</Space>
+				}
+				footer={[
+					<Button
+						key="cancel"
+						onClick={() => {
+							resetLockerCreateRows();
+							clearLockerCreateFeedback();
+							setIsCreateModalOpen(false);
+						}}
+					>
+						취소
+					</Button>,
+					<Button
+						key="add"
+						onClick={appendLockerCreateRow}
+						icon={<PlusOutlined />}
+					>
+						행 추가
+					</Button>,
+					<Button
+						key="submit"
+						type="primary"
+						onClick={() => void runLockerCreateBatch()}
+						loading={lockerCreateSubmitting}
+						disabled={
+							lockerCreateRows.length === 0 ||
+							lockerCreateRows.some(
+								(row) =>
+									!row.lockerZone.trim() ||
+									row.lockerNumber == null ||
+									row.lockerNumber < 1,
+							)
+						}
+					>
+						일괄 등록
+					</Button>,
+				]}
+				width={1120}
+			>
+				<Flex vertical gap={16} style={{ marginTop: 16 }}>
+					<Alert
+						type="info"
+						showIcon
+						message="구역 + 번호로 라커 코드가 자동 생성됩니다."
+						description="모든 행이 유효해야 저장됩니다. 예: 구역 A, 번호 1 → A-01"
+					/>
+					{lockerCreatePanelMessage && (
+						<Alert
+							type="success"
+							showIcon
+							message={lockerCreatePanelMessage}
+							closable
+						/>
+					)}
+					{lockerCreatePanelError && (
+						<Alert
+							type="error"
+							showIcon
+							message={lockerCreatePanelError}
+							closable
+						/>
+					)}
+					<Flex justify="space-between" align="center" wrap="wrap" gap={12}>
+						<Text type="secondary">
+							행을 추가해 한 번에 여러 라커를 등록할 수 있습니다.
+						</Text>
+						<Button icon={<PlusOutlined />} onClick={appendLockerCreateRow}>
+							행 추가
+						</Button>
+					</Flex>
+					<Table
+						rowKey={(_, index) => String(index)}
+						columns={createColumns}
+						dataSource={lockerCreateRows}
+						pagination={false}
+						size="small"
+						scroll={{ x: 960 }}
+					/>
 				</Flex>
 			</Modal>
 		</Flex>

@@ -13,7 +13,9 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class LockerService {
@@ -36,19 +38,39 @@ public class LockerService {
 
     @Transactional
     public LockerSlot createSlot(CreateSlotRequest request) {
-        String code = normalizeLockerCode(request.lockerCode());
-        String status = normalizeSlotStatus(request.lockerStatus());
+        return createSlots(List.of(request)).get(0);
+    }
+
+    @Transactional
+    public List<LockerSlot> createSlots(List<CreateSlotRequest> requests) {
+        if (requests == null || requests.isEmpty()) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "items is required");
+        }
+
+        Long centerId = currentUserProvider.currentCenterId();
+        Long actorUserId = currentUserProvider.currentUserId();
+        Set<String> seenCodes = new HashSet<>();
+        List<NormalizedSlotRequest> normalizedRequests = requests.stream()
+                .map(this::normalizeCreateSlotRequest)
+                .peek(request -> {
+                    if (!seenCodes.add(request.lockerCode())) {
+                        throw new ApiException(ErrorCode.VALIDATION_ERROR, "duplicate lockerCode in request: " + request.lockerCode());
+                    }
+                })
+                .toList();
 
         try {
-            return lockerSlotRepository.insert(new LockerSlotRepository.InsertCommand(
-                    currentUserProvider.currentCenterId(),
-                    code,
-                    normalizeNullable(request.lockerZone()),
-                    normalizeNullable(request.lockerGrade()),
-                    status,
-                    request.memo(),
-                    currentUserProvider.currentUserId()
-            ));
+            return normalizedRequests.stream()
+                    .map(request -> lockerSlotRepository.insert(new LockerSlotRepository.InsertCommand(
+                            centerId,
+                            request.lockerCode(),
+                            request.lockerZone(),
+                            request.lockerGrade(),
+                            request.lockerStatus(),
+                            request.memo(),
+                            actorUserId
+                    )))
+                    .toList();
         } catch (DataAccessException ex) {
             throw mapSlotWriteError(ex);
         }
@@ -57,7 +79,7 @@ public class LockerService {
     @Transactional(readOnly = true)
     public List<LockerSlot> listSlots(String lockerStatus, String lockerZone) {
         String normalizedStatus = lockerStatus == null ? null : normalizeSlotStatus(lockerStatus);
-        String normalizedZone = normalizeNullable(lockerZone);
+        String normalizedZone = normalizeLockerZoneOrNull(lockerZone);
         return lockerSlotRepository.findAll(currentUserProvider.currentCenterId(), normalizedStatus, normalizedZone);
     }
 
@@ -140,11 +162,46 @@ public class LockerService {
         return closed;
     }
 
-    private String normalizeLockerCode(String lockerCode) {
-        if (lockerCode == null || lockerCode.isBlank()) {
-            throw new ApiException(ErrorCode.VALIDATION_ERROR, "lockerCode is required");
+    private NormalizedSlotRequest normalizeCreateSlotRequest(CreateSlotRequest request) {
+        String lockerZone = normalizeRequiredLockerZone(request.lockerZone());
+        Integer lockerNumber = normalizeLockerNumber(request.lockerNumber());
+        String lockerCode = buildLockerCode(lockerZone, lockerNumber);
+        return new NormalizedSlotRequest(
+                lockerCode,
+                lockerZone,
+                normalizeNullable(request.lockerGrade()),
+                normalizeSlotStatus(request.lockerStatus()),
+                request.memo()
+        );
+    }
+
+    private String normalizeRequiredLockerZone(String lockerZone) {
+        String normalized = normalizeNullable(lockerZone);
+        if (normalized == null) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "lockerZone is required");
         }
-        return lockerCode.trim().toUpperCase();
+        return normalized.toUpperCase();
+    }
+
+    private String normalizeLockerZoneOrNull(String lockerZone) {
+        String normalized = normalizeNullable(lockerZone);
+        return normalized == null ? null : normalized.toUpperCase();
+    }
+
+    private Integer normalizeLockerNumber(Integer lockerNumber) {
+        if (lockerNumber == null || lockerNumber < 1) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "lockerNumber is required");
+        }
+        return lockerNumber;
+    }
+
+    private String buildLockerCode(String lockerZone, Integer lockerNumber) {
+        String numberPart = lockerNumber < 100 ? String.format("%02d", lockerNumber) : lockerNumber.toString();
+        String code = lockerZone + "-" + numberPart;
+        if (code.length() > 40) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "lockerCode is too long");
+        }
+        return code;
     }
 
     private String normalizeSlotStatus(String lockerStatus) {
@@ -186,6 +243,15 @@ public class LockerService {
     }
 
     public record CreateSlotRequest(
+            String lockerZone,
+            Integer lockerNumber,
+            String lockerGrade,
+            String lockerStatus,
+            String memo
+    ) {
+    }
+
+    private record NormalizedSlotRequest(
             String lockerCode,
             String lockerZone,
             String lockerGrade,

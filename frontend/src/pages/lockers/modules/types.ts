@@ -48,6 +48,14 @@ export type LockerAssignForm = {
   memo: string;
 };
 
+export type LockerCreateRow = {
+  lockerZone: string;
+  lockerNumber: number | null;
+  lockerGrade: string;
+  lockerStatus: LockerStatus;
+  memo: string;
+};
+
 export function createEmptyLockerAssignForm(selectedMemberId?: number | null): LockerAssignForm {
   const today = todayLocalDate();
   return {
@@ -57,4 +65,23 @@ export function createEmptyLockerAssignForm(selectedMemberId?: number | null): L
     endDate: today,
     memo: ""
   };
+}
+
+export function createEmptyLockerCreateRow(): LockerCreateRow {
+  return {
+    lockerZone: "",
+    lockerNumber: null,
+    lockerGrade: "STANDARD",
+    lockerStatus: "AVAILABLE",
+    memo: "",
+  };
+}
+
+export function buildLockerCode(lockerZone: string, lockerNumber: number | null) {
+  const normalizedZone = lockerZone.trim().toUpperCase();
+  if (!normalizedZone || lockerNumber == null || Number.isNaN(lockerNumber)) {
+    return "";
+  }
+  const normalizedNumber = lockerNumber < 100 ? String(lockerNumber).padStart(2, "0") : String(lockerNumber);
+  return `${normalizedZone}-${normalizedNumber}`;
 }

@@ -3,13 +3,14 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, ".", "");
+  const maxWorkers = env.CI === "true" ? 1 : 4;
 
   return {
     plugins: [react()],
     test: {
       environment: "jsdom",
       minWorkers: 1,
-      maxWorkers: 4,
+      maxWorkers,
       setupFiles: ["./src/setupTests.ts"],
     },
     server: {
