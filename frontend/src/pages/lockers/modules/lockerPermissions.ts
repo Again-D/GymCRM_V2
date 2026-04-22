@@ -11,7 +11,6 @@ const WORKSPACE_ROLES = [
 const REGISTRATION_ROLES = [
   "ROLE_SUPER_ADMIN",
   "ROLE_ADMIN",
-  "ROLE_MANAGER",
 ];
 
 export function canAccessLockerWorkspace(

@@ -15,7 +15,7 @@ describe("lockerPermissions", () => {
     expect(canRegisterLockerSlots(deskUser, false)).toBe(false);
   });
 
-  it("allows managers to register lockers", () => {
+  it("does not allow managers to register lockers", () => {
     const managerUser = {
       userId: 2,
       username: "manager-user",
@@ -23,6 +23,6 @@ describe("lockerPermissions", () => {
       roles: ["ROLE_MANAGER"],
     };
 
-    expect(canRegisterLockerSlots(managerUser, false)).toBe(true);
+    expect(canRegisterLockerSlots(managerUser, false)).toBe(false);
   });
 });

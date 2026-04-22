@@ -35,7 +35,7 @@ public class LockerController {
     }
 
     @PostMapping
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_ADMIN)
     public ApiResponse<LockerSlotResponse> createSlot(@Valid @RequestBody CreateLockerSlotRequest request) {
         LockerSlot slot = lockerService.createSlot(new LockerService.CreateSlotRequest(
                 request.lockerZone(),
@@ -48,7 +48,7 @@ public class LockerController {
     }
 
     @PostMapping("/batch")
-    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER)
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_ADMIN)
     public ApiResponse<List<LockerSlotResponse>> createSlots(@Valid @RequestBody CreateLockerSlotsRequest request) {
         List<LockerSlotResponse> items = lockerService.createSlots(
                 request.items().stream()
