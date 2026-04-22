@@ -178,15 +178,62 @@ DB 데이터는 `gymcrm-staging-postgres-data` 볼륨에 유지된다.
 ### 5.2 접속 URL
 
 VPN 연결 후:
-- `https://<STAGING_HOSTNAME>/`
+- **`https://ajw0831.iptime.org/` (외부 QA용 공식 URL)**
 - `https://<STAGING_HOSTNAME>/api/v1/health`
 
 `<STAGING_HOSTNAME>`은 GitHub Environment variable `STAGING_SELFHOSTED_HOSTNAME`에 설정된 DDNS 호스트명이다.
 예: `https://ajw0831.iptime.org/`
 
-로그인/리프레시 요청이 403으로 막히면, GitHub Environment variable `STAGING_SELFHOSTED_ALLOWED_ORIGINS`에 해당 HTTPS origin을 추가한다.
+> **주의:** 외부 QA 시 `https://10.170.47.3` (raw IP) 브라우징은 진단용일 뿐, 최종 검증 대상이 아니다. 반드시 도메인(`ajw0831.iptime.org`)으로 접속해야 한다.
 
-### 5.3 Windows 방화벽 체크
+### 5.3 Mac용 Trusted Browser 설정 (hosts override)
+
+Mac에서 공식 URL로 접속하려면 호스트 파일 수정이 필요하다. (ipTime DNS가 VPN 내부 IP를 직접 반환하지 않는 경우)
+
+**1. hosts 파일 수정**
+
+```bash
+# hosts 항목 추가 (ajw0831.iptime.org -> Windows PC의 WireGuard IP)
+sudo sh -c 'echo "10.170.47.3 ajw0831.iptime.org" >> /etc/hosts'
+
+# 반영 확인
+dscacheutil -q host -a name ajw0831.iptime.org
+# (ip_address: 10.170.47.3 가 출력되어야 함)
+```
+
+**2. QA 종료 후 원복 (필수)**
+
+다른 환경(로컬 개발 등)과의 충돌을 방지하기 위해 QA 종료 후 반드시 항목을 제거한다.
+
+```bash
+sudo sed -i '' '/ajw0831.iptime.org/d' /etc/hosts
+```
+
+> **주의:** `ajw0831.iptime.org`를 `127.0.0.1`로 매핑하면 안 된다. 반드시 Windows 호스트의 WireGuard IP인 `10.170.47.3`으로 매핑해야 한다.
+
+### 5.4 Mac 신뢰 및 접속 검증 체크리스트
+
+접속 전 아래 명령어로 환경이 정상인지 최종 확인한다.
+
+1. **CA 인증서 등록 여부 확인**
+   ```bash
+   security find-certificate -a -c "GymCRM Staging CA" /Library/Keychains/System.keychain
+   ```
+2. **호스트명 해상도 확인**
+   ```bash
+   dscacheutil -q host -a name ajw0831.iptime.org
+   # ip_address: 10.170.47.3 인지 확인
+   ```
+3. **Canonical Host 사전 검증 (CURL)**
+   ```bash
+   curl --fail --silent --show-error --resolve ajw0831.iptime.org:443:10.170.47.3 https://ajw0831.iptime.org/api/v1/health
+   ```
+4. **최종 접속 확인**
+   ```bash
+   curl --fail --silent https://ajw0831.iptime.org/api/v1/health
+   ```
+
+### 5.5 Windows 방화벽 체크
 
 접속이 안 되면 우선 다음을 확인한다.
 
