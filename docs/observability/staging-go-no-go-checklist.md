@@ -6,14 +6,20 @@ Owner: Platform/Backend (temporary: Center Admin engineering owner)
 
 ## 0) Scope / HTTPS 전제
 
-- Canonical staging URL: `https://<STAGING_HOSTNAME>/` (WireGuard VPN 내부에서만 접근 가능)
-- Health endpoint: `https://<STAGING_HOSTNAME>/api/v1/health`
-- TLS는 Nginx에서 종료된다. 내부 CA 신뢰 설정이 없으면 브라우저 경고가 발생한다.
-- Pre-check 이전에 WireGuard VPN 연결 및 CA 신뢰 설정 완료 여부를 확인한다.
+- Canonical staging URL: `https://ajw0831.iptime.org/` (WireGuard VPN 내부에서만 접근 가능)
+- Canonical staging IP: `10.170.47.3` (Windows host WireGuard IP)
+- Health endpoint: `https://ajw0831.iptime.org/api/v1/health`
+- TLS는 Nginx에서 종료된다. 내부 CA(`GymCRM Staging CA`) 신뢰 설정이 없으면 브라우저 경고가 발생한다.
+- **Trusted Access Model:**
+  - **Windows Runner Smoke:** GitHub Actions Runner가 서버 측 HTTPS(TLS SAN 포함)를 검증한다. 이는 Mac 브라우저 신뢰를 보장하지 않는다.
+  - **Mac Browser Trust:** Mac에서 브라우저 경고 없이 접근하려면 (1) CA를 시스템 키체인에 등록하고, (2) 호스트 파일에서 `ajw0831.iptime.org`를 `10.170.47.3`으로 강제 매핑해야 한다.
+- Pre-check 이전에 WireGuard VPN 연결 및 Mac 신뢰 설정 완료 여부를 확인한다.
 
 ## 1) Pre-check (Telemetry health)
 
-- [ ] Staging app up (`https://<STAGING_HOSTNAME>/api/v1/health` 200, HTTPS, TLS 신뢰 확인)
+- [ ] Mac CA trust verified: `security find-certificate -a -c "GymCRM Staging CA" /Library/Keychains/System.keychain`
+- [ ] Mac hosts override active: `dscacheutil -q host -a name ajw0831.iptime.org` returns `ip_address: 10.170.47.3`
+- [ ] Staging app up (`https://ajw0831.iptime.org/api/v1/health` 200, HTTPS, TLS 신뢰 확인)
 - [ ] Actuator metrics endpoint reachable (`/actuator/prometheus`, authenticated)
 - [ ] Metrics ingestion pipeline healthy (no scrape gap alert)
 - [ ] Dashboard query returns recent data (< 5m latency)
