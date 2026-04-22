@@ -34,6 +34,7 @@ frontend/vite.config.d.ts
 # Etc
 .tooling/
 .worktrees
+.sisyphus/
 .agents/
 .aider*
 docs/prompts/execution.txt
