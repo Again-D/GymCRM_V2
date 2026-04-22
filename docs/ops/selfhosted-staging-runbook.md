@@ -233,6 +233,9 @@ sudo sed -i '' '/ajw0831.iptime.org/d' /etc/hosts
    curl --fail --silent https://ajw0831.iptime.org/api/v1/health
    ```
 
+> 위 검증 명령어를 자동화한 헬퍼 스크립트:
+> `docs/observability/tools/validate_mac_trust_selfhosted_staging.sh`
+
 ### 5.5 Windows 방화벽 체크
 
 접속이 안 되면 우선 다음을 확인한다.
