@@ -51,7 +51,7 @@ jobs:
       - name: Test
         if: steps.changes.outputs.any_changed == 'true'
         working-directory: frontend
-        run: npm test
+        run: npm test -- --no-cache
 
       - name: Biome check (changed files only)
         if: steps.changes.outputs.any_changed == 'true'
