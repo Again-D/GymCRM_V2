@@ -8,6 +8,9 @@ COPY frontend/ ./
 RUN npm run build
 
 FROM nginx:1.27-alpine
-COPY deploy/selfhosted/nginx/nginx.conf /etc/nginx/conf.d/default.conf.template
+COPY deploy/selfhosted/nginx/nginx.conf /etc/nginx/templates/https.conf.template
+COPY deploy/selfhosted/nginx/nginx.bootstrap.conf /etc/nginx/templates/bootstrap.conf.template
+COPY deploy/selfhosted/nginx/docker-entrypoint.sh /usr/local/bin/gymcrm-nginx-entrypoint
 COPY --from=frontend-build /app/dist /usr/share/nginx/html
-CMD ["/bin/sh", "-c", "envsubst '${NGINX_HOSTNAME}' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
+RUN chmod +x /usr/local/bin/gymcrm-nginx-entrypoint
+CMD ["/usr/local/bin/gymcrm-nginx-entrypoint"]
