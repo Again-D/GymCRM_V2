@@ -1,29 +1,34 @@
-# Self-hosted Staging Runbook (Windows + Docker + Nginx + WireGuard VPN)
+# Self-hosted Staging Runbook (Windows + Docker + Nginx + Certbot)
 
 이 문서는 **집 Windows PC 1대**에서 `staging`을 Docker Compose로 상시 구동하고, GitHub Actions(self-hosted runner)로 `develop` 변경을 자동 반영하는 절차를 정리한다.
 
 ## 0) Scope / 보안 전제
 
-- 서비스는 **인터넷에 직접 노출하지 않는다 (VPN only)**.
-- 외부 QA는 ipTime **WireGuard VPN** 접속 후에만 수행한다.
+- 공개 진입점은 `nginx` 하나만 유지한다.
+- `backend`, `postgres`, `redis`는 Compose 내부 네트워크 전용으로 둔다.
+- TLS는 **Certbot HTTP-01 webroot** 방식으로 발급/갱신한다.
 - 비밀정보(DB 비밀번호 등)는 **repo에 커밋하지 않는다**. GitHub Environment secrets/vars로 주입한다.
 
 ## 1) 구성 개요
 
 - Reverse proxy: `nginx` (단일 진입점)
-  - `/` → frontend 정적 자산
-  - `/api/*` → backend proxy
+  - `80/tcp` → ACME challenge + HTTP bootstrap
+  - `443/tcp` → frontend 정적 자산 + `/api/*` backend proxy
 - backend: Spring Boot (`PORT=8080`)
 - postgres / redis: compose 내부 네트워크 전용
+- certbot: `certbot/certbot` 컨테이너 + named volume (`/etc/letsencrypt`, `/var/www/certbot`)
 
 관련 파일:
 - `compose.selfhosted-staging.yaml`
 - `deploy/selfhosted/nginx/nginx.conf`
-- `deploy/selfhosted/nginx/Dockerfile`
-- `backend/Dockerfile`
+- `deploy/selfhosted/nginx/nginx.bootstrap.conf`
+- `deploy/selfhosted/nginx/docker-entrypoint.sh`
 - `.github/workflows/deploy-staging-selfhosted.yml`
+- `docs/observability/tools/validate_selfhosted_staging_certbot_preflight.ps1`
+- `docs/observability/tools/validate_selfhosted_staging_https.ps1`
 
 기본 포트:
+- HTTP(nginx): `80` (host) → `80` (container)
 - HTTPS(nginx): `443` (host) → `443` (container)
 
 ## 2) Windows PC 준비 (1회)
@@ -42,85 +47,37 @@
 
 > workflow `deploy-staging-selfhosted.yml`은 `runs-on: [self-hosted, windows, gymcrm-staging]` 로 제한한다.
 
-### 2.3 GitHub Environment 구성
+### 2.3 네트워크 / DNS 준비
+
+- `STAGING_HOSTNAME` (예: `ajw0831.iptime.org`) 이 Windows 호스트의 **공인 IP**로 공개 DNS 해석되어야 한다.
+- 라우터/공유기에서 `80/tcp`, `443/tcp` 를 Windows 호스트로 포워딩해야 한다.
+- Windows 방화벽에서 `80/tcp`, `443/tcp` 인바운드를 허용해야 한다.
+
+> HTTP-01 challenge 특성상 **Let’s Encrypt가 80/tcp로 직접 접근 가능해야 한다.**
+
+### 2.4 GitHub Environment 구성
 
 GitHub repo에 Environment `staging-selfhosted` 를 만들고 다음을 설정한다.
 
 **Secrets**
 - `STAGING_SELFHOSTED_POSTGRES_PASSWORD`: staging DB password
 
-**Variables (optional)**
-- `STAGING_SELFHOSTED_HOSTNAME` (**필수**): canonical DDNS 호스트명. 예: `ajw0831.iptime.org`. Nginx `server_name` 및 스모크 검증에 사용된다. 설정하지 않으면 배포가 실패한다.
-- `STAGING_SELFHOSTED_ALLOWED_ORIGINS`: CORS 허용 origin 목록 (쉼표 구분). 기본값: `https://localhost,https://127.0.0.1`. DDNS 호스트명 origin을 추가할 때만 설정한다.
+**Variables**
+- `STAGING_SELFHOSTED_HOSTNAME` (**필수**): canonical DDNS 호스트명. 예: `ajw0831.iptime.org`
+- `STAGING_SELFHOSTED_CERTBOT_EMAIL` (**필수**): Let’s Encrypt 연락 이메일. 예: `ops@example.com`
+- `STAGING_SELFHOSTED_ALLOWED_ORIGINS` (optional): CORS 허용 origin 목록 (쉼표 구분)
   - 예: `https://ajw0831.iptime.org`
-  - GitHub Actions deploy workflow는 compose 전에 TLS bundle preflight를 실행한다. `server.crt`/`server.key`가 없거나 nginx가 읽지 못하면 배포가 중단된다.
 
-### 2.4 TLS Bootstrap (1회)
+## 3) 수동 첫 기동 / 재발급 절차
 
-Windows PC 초기 설정 시, 또는 호스트를 새로 교체할 때 1회 실행한다.
+### 3.1 환경변수 준비
 
-**1. 환경변수 설정 후 스크립트 실행**
-
-PowerShell **관리자 권한** 터미널에서:
-
-```powershell
-$env:STAGING_HOSTNAME = "ajw0831.iptime.org"  # 실제 DDNS 호스트명으로 교체
-.\docs\observability\tools\bootstrap_selfhosted_staging_tls.ps1
-```
-
-스크립트는 Windows PowerShell 5.1 또는 PowerShell 7+에서 실행할 수 있다. 이미 인증서가 존재하는 상태에서 재발급이 필요하면 `-Force` 옵션을 추가한다.
-
-> **주의:** `-Force` 로 CA를 교체하면 모든 클라이언트(MacBook 포함)에서 CA를 다시 가져와야 한다.
-
-**2. 인증서 번들 위치**
-
-스크립트 실행 후 다음 파일이 생성된다.
-
-| 파일 | 형식 | 용도 |
-|------|------|------|
-| `C:\ProgramData\gymcrm-staging-tls\ca.crt` | DER | 클라이언트 신뢰 저장소 가져오기, Docker 볼륨 마운트 |
-| `C:\ProgramData\gymcrm-staging-tls\server.crt` | PEM | Nginx SSL 인증서 |
-| `C:\ProgramData\gymcrm-staging-tls\server.key` | PEM | Nginx SSL 개인키 |
-
-> 인증서 파일은 **git에 커밋하지 않는다**. 호스트를 교체하거나 분실한 경우 `-Force` 옵션으로 재생성한다.
-
-**3. MacBook에 CA 인증서 가져오기**
-
-`ca.crt`를 Windows PC에서 MacBook으로 복사한 뒤 아래 중 하나를 실행한다.
-
-*CLI (권장):*
+PowerShell 또는 CMD에서 아래 값을 준비한다.
 
 ```bash
-sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ca.crt
-```
-
-*Keychain Access (UI):*
-
-1. `ca.crt` 파일을 더블클릭 → Keychain Access에서 **시스템** 키체인에 추가
-2. 추가된 인증서를 선택 → 정보 보기 → **신뢰** → "이 인증서 사용 시" → **항상 신뢰**로 변경
-
-CA SHA-256 지문은 스크립트 출력 마지막에 표시된다. 가져온 뒤 지문이 일치하는지 확인한다.
-
-**4. VPN 내 DNS 확인**
-
-WireGuard VPN 연결 상태에서 다음을 실행해 DDNS 호스트명이 Windows 호스트 IP를 반환하는지 확인한다.
-
-```powershell
-Resolve-DnsName <STAGING_HOSTNAME>
-```
-
-반환된 IP가 Windows 호스트 IP와 일치해야 한다. 일치하지 않으면 ipTime DDNS / VPN DNS 설정을 점검한다.
-
-## 3) 수동 구동 (로컬에서 바로 확인)
-
-Windows PC에서(또는 동일 머신에서) 다음을 실행한다.
-
-```bash
-set STAGING_POSTGRES_PASSWORD=...  # PowerShell이면 $env:STAGING_POSTGRES_PASSWORD="..."
-set STAGING_HOSTNAME=ajw0831.iptime.org   REM 실제 DDNS 호스트명으로 교체
-
-docker compose -p gymcrm-staging -f compose.selfhosted-staging.yaml up -d --build
-docker compose -p gymcrm-staging -f compose.selfhosted-staging.yaml ps
+set STAGING_POSTGRES_PASSWORD=...  REM PowerShell이면 $env:STAGING_POSTGRES_PASSWORD="..."
+set STAGING_HOSTNAME=ajw0831.iptime.org
+set STAGING_CERTBOT_EMAIL=ops@example.com
 ```
 
 만약 runner/PC에 `COMPOSE_FILE` 같은 전역 환경변수가 세팅되어 있으면, 의도치 않게 다른 compose 파일이 합쳐질 수 있다. 그 경우 아래처럼 환경변수를 제거한 뒤 실행한다.
@@ -130,136 +87,133 @@ set COMPOSE_FILE=
 set COMPOSE_PROJECT_NAME=
 ```
 
-Smoke check:
+### 3.2 Certbot preflight
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\docs\observability\tools\validate_selfhosted_staging_certbot_preflight.ps1
+```
+
+이 단계는 다음을 확인한다.
+- hostname / certbot email 입력값이 올바른지
+- `docker compose -f compose.selfhosted-staging.yaml config` 가 정상 렌더링되는지
+
+### 3.3 Bootstrap stack 기동
+
+```bash
+docker compose -p gymcrm-staging -f compose.selfhosted-staging.yaml up -d --build --remove-orphans
+docker compose -p gymcrm-staging -f compose.selfhosted-staging.yaml ps
+```
+
+인증서가 아직 없으면 nginx는 **HTTP bootstrap mode** 로 시작한다.
+- `/.well-known/acme-challenge/` 는 바로 서비스된다.
+- 앱 자체는 일시적으로 `http://<STAGING_HOSTNAME>` 로만 응답한다.
+
+> **운영 판단:** 이 상태는 **초기 발급/복구용 임시 상태**일 뿐이며, staging `GO` 상태가 아니다. 최초 cutover 중 HTTP-only 로 머물면 외부 QA는 진행하지 말고 `HOLD` 로 처리한다.
+
+### 3.4 최초 인증서 발급 / 필요 시 재실행
+
+```bash
+docker compose -p gymcrm-staging -f compose.selfhosted-staging.yaml run --rm certbot ^
+  certonly --webroot -w /var/www/certbot ^
+  --agree-tos --no-eff-email --non-interactive --keep-until-expiring ^
+  --email %STAGING_CERTBOT_EMAIL% -d %STAGING_HOSTNAME%
+```
+
+발급/갱신이 끝나면 nginx를 다시 올려 HTTPS 설정을 읽게 한다.
+
+```bash
+docker compose -p gymcrm-staging -f compose.selfhosted-staging.yaml up -d --force-recreate nginx certbot
+docker compose -p gymcrm-staging -f compose.selfhosted-staging.yaml ps
+```
+
+만약 `certbot certonly` 가 실패하면 아래처럼 대응한다.
+
+- staging 상태는 즉시 `HOLD` 로 둔다. (`https://<STAGING_HOSTNAME>` 가 성공하기 전까지 QA 진행 금지)
+- 공개 DNS / `80/tcp` 포트포워딩 / Windows 방화벽을 먼저 점검한다.
+- `docker logs gymcrm-staging-nginx`, `docker logs gymcrm-staging-certbot` 로 ACME challenge 경로를 확인한다.
+- 문제를 수정한 뒤 `certbot certonly --webroot ...` 를 다시 실행한다.
+- 필요 시 HTTP bootstrap 노출 자체를 중단하려면 `docker compose ... stop nginx` 로 임시 차단한다.
+
+### 3.5 Smoke check
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\docs\observability\tools\validate_selfhosted_staging_https.ps1
+```
+
+또는 수동으로 아래를 확인한다.
 - `https://<STAGING_HOSTNAME>/`
 - `https://<STAGING_HOSTNAME>/api/v1/health`
-
-> Windows 호스트에서 `validate_selfhosted_staging_https.ps1` 스크립트를 실행하면 동일한 canonical hostname 검증을 수행할 수 있다.
 
 JWT 기본 관리자(빈 DB 최초 기동 시 자동 생성):
 - loginId: `center-admin`
 - initial password: `dev-admin-1234!`
 
-> 초기 비밀번호는 GitHub Environment secret로 교체하는 것을 권장한다. (`app.security.dev-admin.initial-password`)
-
-로그:
-```bash
-docker logs gymcrm-staging-nginx
-docker logs gymcrm-staging-backend
-```
-
-중지:
-```bash
-docker compose -p gymcrm-staging -f compose.selfhosted-staging.yaml down
-```
-
-DB 데이터는 `gymcrm-staging-postgres-data` 볼륨에 유지된다.
-
 ## 4) 자동 배포 (GitHub Actions)
 
 - `develop` 브랜치에 push → `deploy-staging-selfhosted` workflow가 실행된다.
-- Windows runner에서 다음을 수행한다:
-  - `docker compose -f compose.selfhosted-staging.yaml up -d --build`
-  - smoke test: `/` + `/api/v1/health`
+- Windows runner에서 다음 순서로 진행한다.
+  1. Certbot preflight (`validate_selfhosted_staging_certbot_preflight.ps1`)
+  2. `docker compose up -d --build --remove-orphans postgres redis backend nginx certbot`
+  3. `docker compose run --rm certbot certonly --webroot ...`
+  4. `docker compose up -d --force-recreate nginx certbot`
+  5. HTTPS smoke test (`validate_selfhosted_staging_https.ps1`)
+
+> workflow deploy step은 각 compose/certbot 명령이 실패하면 즉시 중단된다. `certonly` 실패를 `ps` 출력이 가리는 상태로 넘기지 않는다.
 
 실패 시 확인:
 - Actions 로그에서 실패 단계 확인
 - runner에서 `docker compose ... ps` / `docker logs ...` 로 원인 파악
 
-## 5) 외부 QA (MacBook → WireGuard VPN)
+## 5) Mac / 외부 QA
 
-### 5.1 ipTime WireGuard + DDNS (개념)
+공개 HTTPS 모델에서는 **CA 수동 설치나 hosts override가 필요 없다.**
 
-세부 설정은 ipTime UI에 따르되, 목표는 다음 2가지다.
+검증 역할 구분:
+- `docs/observability/tools/validate_selfhosted_staging_https.ps1`
+  - **[AUTOMATED / WORKFLOW GATE]** Windows runner canonical-host smoke 검증
+- `docs/observability/tools/validate_mac_trust_selfhosted_staging.sh`
+  - **[MANUAL / QA PRE-CHECK]** Mac 공인 DNS / 공개 HTTPS / SAN 검증
 
-- MacBook이 외부망(LTE 등)에서도 WireGuard로 집 네트워크에 붙는다.
-- VPN 연결 후 Windows PC의 **VPN 내부 IP**로 접근 가능하다.
-
-### 5.2 접속 URL
-
-VPN 연결 후:
-- **`https://ajw0831.iptime.org/` (외부 QA용 공식 URL)**
-- `https://<STAGING_HOSTNAME>/api/v1/health`
-
-`<STAGING_HOSTNAME>`은 GitHub Environment variable `STAGING_SELFHOSTED_HOSTNAME`에 설정된 DDNS 호스트명이다.
-예: `https://ajw0831.iptime.org/`
-
-> **주의:** 외부 QA 시 `https://10.170.47.3` (raw IP) 브라우징은 진단용일 뿐, 최종 검증 대상이 아니다. 반드시 도메인(`ajw0831.iptime.org`)으로 접속해야 한다.
-
-### 5.3 Mac용 Trusted Browser 설정 (hosts override)
-
-Mac에서 공식 URL로 접속하려면 호스트 파일 수정이 필요하다. (ipTime DNS가 VPN 내부 IP를 직접 반환하지 않는 경우)
-
-**1. hosts 파일 수정**
+Mac에서 실행:
 
 ```bash
-# hosts 항목 추가 (ajw0831.iptime.org -> Windows PC의 WireGuard IP)
-sudo sh -c 'echo "10.170.47.3 ajw0831.iptime.org" >> /etc/hosts'
-
-# 반영 확인
-dscacheutil -q host -a name ajw0831.iptime.org
-# (ip_address: 10.170.47.3 가 출력되어야 함)
+bash docs/observability/tools/validate_mac_trust_selfhosted_staging.sh
+bash docs/observability/tools/validate_mac_trust_selfhosted_staging.sh --final-go
 ```
 
-**2. QA 종료 후 원복 (필수)**
+최종 GO 기준:
+- `ajw0831.iptime.org` 가 공개 DNS로 해석될 것
+- stale hosts override (`127.0.0.1`, `10.170.47.3`) 가 없을 것
+- `https://ajw0831.iptime.org/api/v1/health` 가 plain curl 로 성공할 것
+- live certificate SAN 에 `ajw0831.iptime.org` 가 포함될 것
 
-다른 환경(로컬 개발 등)과의 충돌을 방지하기 위해 QA 종료 후 반드시 항목을 제거한다.
+## 6) 운영 / 갱신 메모
+
+- `certbot` 서비스는 Compose 내부에서 `certbot renew --webroot -w /var/www/certbot` 를 주기적으로 실행한다.
+- renew 성공 시 shared webroot volume에 reload 신호를 남기고, nginx entrypoint가 이를 감지해 HTTPS 모드 전환 또는 `nginx -s reload` 를 수행한다.
+- 수동 갱신 dry-run:
 
 ```bash
-sudo sed -i '' '/ajw0831.iptime.org/d' /etc/hosts
+docker compose -p gymcrm-staging -f compose.selfhosted-staging.yaml run --rm certbot renew --dry-run --webroot -w /var/www/certbot
 ```
 
-> **주의:** `ajw0831.iptime.org`를 `127.0.0.1`로 매핑하면 안 된다. 반드시 Windows 호스트의 WireGuard IP인 `10.170.47.3`으로 매핑해야 한다.
+- nginx는 인증서 파일 존재 여부를 컨테이너 시작 시점에 판단하고, 이후 renew 신호를 감지하면 자동으로 reload 한다. 수동으로 바로 반영하고 싶으면 아래처럼 재기동한다.
 
-### 5.4 Mac 신뢰 및 접속 검증 체크리스트
+```bash
+docker compose -p gymcrm-staging -f compose.selfhosted-staging.yaml up -d --force-recreate nginx certbot
+```
 
-접속 전 아래 명령어로 환경이 정상인지 최종 확인한다.
+## 7) 장애 시 확인 순서
 
-> **검증 역할 구분:**
-> - `docs/observability/tools/validate_selfhosted_staging_https.ps1` → **[AUTOMATED / WORKFLOW GATE]** Windows runner canonical-host smoke 검증
-> - `docs/observability/tools/validate_mac_trust_selfhosted_staging.sh` → **[MANUAL / QA PRE-CHECK]** Mac 외부 QA 사전/최종 신뢰 검증
+1. 공개 DNS가 `STAGING_HOSTNAME` 을 올바른 공인 IP로 돌려주는지 확인
+2. `80/tcp`, `443/tcp` 포트포워딩 / Windows 방화벽 확인
+3. `docker compose -p gymcrm-staging -f compose.selfhosted-staging.yaml ps`
+4. `docker logs gymcrm-staging-nginx`
+5. `docker logs gymcrm-staging-certbot`
+6. `powershell -NoProfile -ExecutionPolicy Bypass -File .\docs\observability\tools\validate_selfhosted_staging_https.ps1`
 
-1. **CA 인증서 등록 여부 확인**
-   ```bash
-   security find-certificate -a -c "GymCRM Staging CA" /Library/Keychains/System.keychain
-   ```
-2. **호스트명 해상도 확인**
-   ```bash
-   dscacheutil -q host -a name ajw0831.iptime.org
-   # ip_address: 10.170.47.3 인지 확인
-   ```
-3. **Canonical Host 사전 검증 (CURL)**
-   ```bash
-   curl --fail --silent --show-error --resolve ajw0831.iptime.org:443:10.170.47.3 https://ajw0831.iptime.org/api/v1/health
-   ```
-4. **최종 접속 확인**
-   ```bash
-   curl --fail --silent https://ajw0831.iptime.org/api/v1/health
-   ```
+필요 시 재기동:
 
-> 위 검증 명령어를 자동화한 헬퍼 스크립트:
-> - **사전 진단(preflight)**: `bash docs/observability/tools/validate_mac_trust_selfhosted_staging.sh`
->   - CA 등록, `curl --resolve` 기반 canonical-host TLS, `127.0.0.1` 오설정 guard를 검증한다.
->   - hosts override 미적용 상태는 **WARN** 으로만 보고된다.
-> - **최종 GO gate**: `bash docs/observability/tools/validate_mac_trust_selfhosted_staging.sh --final-go`
->   - CA 등록, hosts override(`ajw0831.iptime.org -> 10.170.47.3`), plain canonical-host HTTPS 성공까지 모두 충족해야 통과한다.
-
-Mac 브라우저 기준 최종 GO는 아래 3가지를 모두 만족해야 한다.
-- `GymCRM Staging CA`가 macOS **System** keychain에 등록되어 있을 것
-- `ajw0831.iptime.org`가 `/etc/hosts` 또는 동등한 로컬 해상도 경로를 통해 `10.170.47.3`으로 해석될 것
-- `curl --fail --silent https://ajw0831.iptime.org/api/v1/health` 가 `--resolve` 없이 성공할 것
-
-### 5.5 Windows 방화벽 체크
-
-접속이 안 되면 우선 다음을 확인한다.
-
-- Windows 방화벽에서 `443/tcp` 인바운드가 VPN 인터페이스/사설망에서 허용되는지
-- Docker Desktop 네트워크가 정상인지 (`docker ps`, `docker compose ps`)
-
-## 6) 재부팅 / 네트워크 변동 시 복구 체크
-
-1. Docker Desktop 실행 상태 확인
-2. `docker compose -f compose.selfhosted-staging.yaml ps`
-3. `https://<STAGING_HOSTNAME>/api/v1/health` 확인 (또는 `.\docs\observability\tools\validate_selfhosted_staging_https.ps1` 실행)
-4. 필요 시 재기동:
-   - `docker compose -p gymcrm-staging -f compose.selfhosted-staging.yaml up -d --build --remove-orphans`
+```bash
+docker compose -p gymcrm-staging -f compose.selfhosted-staging.yaml up -d --build --remove-orphans
+```
