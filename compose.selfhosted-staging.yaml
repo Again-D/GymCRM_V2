@@ -85,9 +85,10 @@ services:
     image: certbot/certbot:latest
     container_name: gymcrm-staging-certbot
     restart: unless-stopped
-    command:
+    entrypoint:
       - /bin/sh
       - -c
+    command:
       - trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet --deploy-hook "date +%s > /var/www/certbot/.certbot-reload"; sleep 43200; done
     volumes:
       - gymcrm-staging-certbot-etc:/etc/letsencrypt
