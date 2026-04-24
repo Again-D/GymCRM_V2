@@ -6,21 +6,20 @@ Owner: Platform/Backend (temporary: Center Admin engineering owner)
 
 ## 0) Scope / HTTPS 전제
 
-- Canonical staging URL: `https://ajw0831.iptime.org/` (WireGuard VPN 내부에서만 접근 가능)
-- Canonical staging IP: `10.170.47.3` (Windows host WireGuard IP)
+- Canonical staging URL: `https://ajw0831.iptime.org/` (공개 HTTPS ingress)
 - Health endpoint: `https://ajw0831.iptime.org/api/v1/health`
-- TLS는 Nginx에서 종료된다. 내부 CA(`GymCRM Staging CA`) 신뢰 설정이 없으면 브라우저 경고가 발생한다.
+- TLS는 Nginx에서 종료된다. 공개 인증서는 Compose 내부의 Certbot HTTP-01 webroot 플로우로 발급/갱신된다.
 - **Trusted Access Model:**
-  - **Windows Runner Smoke [AUTOMATED / WORKFLOW GATE]:** GitHub Actions Runner가 서버 측 HTTPS(TLS SAN 포함)를 검증한다. 이는 Mac 브라우저 신뢰를 보장하지 않는다.
-  - **Mac Browser Trust [MANUAL / QA PRE-CHECK]:** Mac에서 브라우저 경고 없이 접근하려면 (1) CA를 시스템 키체인에 등록하고, (2) 호스트 파일에서 `ajw0831.iptime.org`를 `10.170.47.3`으로 강제 매핑하고, (3) plain canonical-host HTTPS가 `--resolve` 없이 성공해야 한다.
-- Pre-check 이전에 WireGuard VPN 연결 및 Mac 신뢰 설정 완료 여부를 확인한다.
+  - **Windows Runner Smoke [AUTOMATED / WORKFLOW GATE]:** GitHub Actions Runner가 공개 인증서 기반 canonical-host HTTPS(`/`, `/api/v1/health`, TLS SAN)를 검증한다.
+  - **Mac Browser Trust [MANUAL / QA PRE-CHECK]:** Mac은 공개 DNS + 공개 인증서 경로 그대로 접속해야 한다. 예전 VPN/hosts override(`10.170.47.3`, `127.0.0.1`)가 남아 있으면 NO-GO다.
+- Pre-check 이전에 공개 DNS와 `80/tcp`, `443/tcp` ingress가 정상인지 확인한다.
 
 ## 1) Pre-check & Access Gate (Telemetry health)
 
-- [ ] [MANUAL / QA PRE-CHECK] Mac CA trust verified: `security find-certificate -a -c "GymCRM Staging CA" /Library/Keychains/System.keychain`
-- [ ] [MANUAL / QA PRE-CHECK] Mac hosts override active: `dscacheutil -q host -a name ajw0831.iptime.org` returns `ip_address: 10.170.47.3`
+- [ ] [MANUAL / QA PRE-CHECK] Public DNS resolves `ajw0831.iptime.org` without stale hosts override (`127.0.0.1`, `10.170.47.3`)
 - [ ] [MANUAL / QA PRE-CHECK] Final Mac trust gate passes: `bash docs/observability/tools/validate_mac_trust_selfhosted_staging.sh --final-go`
 - [ ] [AUTOMATED / WORKFLOW GATE] Staging app up (`https://ajw0831.iptime.org/api/v1/health` 200, HTTPS, TLS 신뢰 확인 via Windows runner smoke)
+- [ ] [ROLLOUT ACCEPTANCE] First cutover is not stuck in HTTP bootstrap mode (`http://...` only). If Certbot issuance fails or HTTPS is unavailable, mark `HOLD` and fix DNS/80 ingress before QA.
 - [ ] Actuator metrics endpoint reachable (`/actuator/prometheus`, authenticated)
 - [ ] Metrics ingestion pipeline healthy (no scrape gap alert)
 - [ ] Dashboard query returns recent data (< 5m latency)

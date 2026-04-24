@@ -68,17 +68,32 @@ services:
     container_name: gymcrm-staging-nginx
     restart: unless-stopped
     ports:
+      - "80:80"
       - "443:443"
     environment:
       NGINX_HOSTNAME: ${STAGING_HOSTNAME}
     volumes:
-      - type: bind
-        source: "C:\\ProgramData\\gymcrm-staging-tls"
-        target: /etc/nginx/certs
+      - type: volume
+        source: gymcrm-staging-certbot-etc
+        target: /etc/letsencrypt
         read_only: true
-    depends_on:
-      backend:
-        condition: service_healthy
+      - type: volume
+        source: gymcrm-staging-certbot-webroot
+        target: /var/www/certbot
+        read_only: true
+  certbot:
+    image: certbot/certbot:latest
+    container_name: gymcrm-staging-certbot
+    restart: unless-stopped
+    command:
+      - /bin/sh
+      - -c
+      - trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet --deploy-hook "date +%s > /var/www/certbot/.certbot-reload"; sleep 43200; done
+    volumes:
+      - gymcrm-staging-certbot-etc:/etc/letsencrypt
+      - gymcrm-staging-certbot-webroot:/var/www/certbot
 
 volumes:
   gymcrm-staging-postgres-data:
+  gymcrm-staging-certbot-etc:
+  gymcrm-staging-certbot-webroot:
