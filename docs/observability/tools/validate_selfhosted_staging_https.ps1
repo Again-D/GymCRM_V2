@@ -7,11 +7,10 @@
     the TLS certificate is trusted natively, and the certificate's Subject
     Alternative Names include the canonical staging hostname.
 
-    Targets the canonical staging hostname over HTTPS. The certificate issued
-    by the bootstrap script includes the DDNS hostname as a SAN, so TLS
-    validation succeeds against the same URL that users and the deploy workflow
-    consume. The CA is installed in LocalMachine\Root by the bootstrap script,
-    so no -SkipCertificateCheck is needed.
+    Targets the canonical staging hostname over HTTPS after the staging stack
+    has completed the Certbot HTTP-01 webroot flow. The live public certificate
+    must validate natively on the Windows runner, so no -SkipCertificateCheck
+    is needed.
 
     Compatible with Windows PowerShell 5.1+ and PowerShell 7+. The GitHub
     Actions self-hosted runner can invoke it with the built-in `powershell`
@@ -74,8 +73,8 @@ function Wait-UrlOk {
 
     for ($attempt = 1; $attempt -le $MaxRetries; $attempt++) {
         try {
-            # No -SkipCertificateCheck — TLS trust is validated natively via
-            # the CA installed in LocalMachine\Root by the bootstrap script.
+            # No -SkipCertificateCheck — TLS trust must validate natively on
+            # the Windows runner with the live public certificate.
             $resp = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 10
 
             if ($resp.StatusCode -ne 200) {
