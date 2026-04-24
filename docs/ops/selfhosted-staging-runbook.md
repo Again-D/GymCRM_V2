@@ -94,6 +94,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\docs\observability\tools\v
 ```
 
 이 단계는 다음을 확인한다.
+- Docker CLI / `docker compose` 가 Windows runner에서 실행 가능한지
+- 로컬 DNS에서 `<STAGING_HOSTNAME>` 이 해석되는지
 - hostname / certbot email 입력값이 올바른지
 - `docker compose -f compose.selfhosted-staging.yaml config` 가 정상 렌더링되는지
 

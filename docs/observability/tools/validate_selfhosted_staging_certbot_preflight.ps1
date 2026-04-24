@@ -54,6 +54,18 @@ if (-not (Test-Path $composeFile)) {
     exit 1
 }
 
+$dockerCommand = Get-Command docker -ErrorAction SilentlyContinue
+if (-not $dockerCommand) {
+    Write-Error 'docker command not found in PATH. Install Docker Desktop / Docker CLI first.'
+    exit 1
+}
+
+$dnsCommand = Get-Command Resolve-DnsName -ErrorAction SilentlyContinue
+if (-not $dnsCommand) {
+    Write-Error 'Resolve-DnsName command is not available. Run this preflight on the Windows self-hosted runner.'
+    exit 1
+}
+
 Write-Host '==================================================='
 Write-Host ' GymCRM staging Certbot preflight'
 Write-Host "  Hostname      : $Hostname"
@@ -68,7 +80,23 @@ if (-not $env:STAGING_POSTGRES_PASSWORD) {
     $env:STAGING_POSTGRES_PASSWORD = 'preflight-placeholder'
 }
 
-$args = @(
+Write-Host '[*] Checking docker compose availability...'
+& docker 'compose' 'version' | Out-Null
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "docker compose version failed (exit code $LASTEXITCODE)."
+    exit 1
+}
+
+Write-Host "[*] Resolving hostname via local DNS: $Hostname"
+try {
+    Resolve-DnsName -Name $Hostname -ErrorAction Stop | Out-Null
+}
+catch {
+    Write-Error "Local DNS resolution failed for '$Hostname'. Confirm the hostname resolves before running the deploy workflow. $($_.Exception.Message)"
+    exit 1
+}
+
+$dockerComposeArgs = @(
     'compose',
     '-p', 'gymcrm-staging',
     '-f', $composeFile,
@@ -76,11 +104,11 @@ $args = @(
 )
 
 Write-Host '[*] Rendering docker compose configuration...'
-& docker @args | Out-Null
+& docker @dockerComposeArgs | Out-Null
 if ($LASTEXITCODE -ne 0) {
     Write-Error "docker compose config failed (exit code $LASTEXITCODE)."
     exit 1
 }
 
-Write-Host '[PASS] Hostname/email inputs are valid and docker compose renders successfully.'
+Write-Host '[PASS] Docker, local DNS, hostname/email inputs, and docker compose rendering all succeeded.'
 exit 0
