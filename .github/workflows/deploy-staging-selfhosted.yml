@@ -74,7 +74,7 @@ jobs:
           )
 
           docker compose -p gymcrm-staging -f compose.selfhosted-staging.yaml up -d --build --remove-orphans postgres redis backend nginx certbot || exit /b 1
-          docker compose -p gymcrm-staging -f compose.selfhosted-staging.yaml run --rm certbot certonly --webroot -w /var/www/certbot --agree-tos --no-eff-email --non-interactive --keep-until-expiring --email "%STAGING_CERTBOT_EMAIL%" -d "%STAGING_HOSTNAME%" || exit /b 1
+          docker compose -p gymcrm-staging -f compose.selfhosted-staging.yaml run --rm --entrypoint certbot certbot certonly --webroot -w /var/www/certbot --agree-tos --no-eff-email --non-interactive --keep-until-expiring --email "%STAGING_CERTBOT_EMAIL%" -d "%STAGING_HOSTNAME%" || exit /b 1
           docker compose -p gymcrm-staging -f compose.selfhosted-staging.yaml up -d --force-recreate nginx certbot || exit /b 1
           docker compose -p gymcrm-staging -f compose.selfhosted-staging.yaml ps || exit /b 1
 
