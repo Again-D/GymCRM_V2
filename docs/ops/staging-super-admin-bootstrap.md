@@ -25,9 +25,9 @@ WHERE r.role_code = 'ROLE_SUPER_ADMIN'
 
 -- 2. 상속받을 center-admin 정보 확인 (is_deleted = FALSE 체크 포함)
 -- login_id가 'center-admin'인 계정을 확인합니다.
-SELECT user_id, center_id, login_id, user_name, user_status 
-FROM users 
-WHERE login_id = 'center-admin' 
+SELECT user_id, center_id, login_id, user_name, user_status
+FROM users
+WHERE login_id = 'center-admin'
   AND user_status = 'ACTIVE'
   AND is_deleted = FALSE;
 
@@ -58,10 +58,10 @@ DECLARE
 BEGIN
     -- 1. 상속받을 기준 계정(center-admin) 정보 조회
     SELECT center_id, user_id INTO v_center_id, v_creator_id
-    FROM users 
-    WHERE login_id = 'center-admin' 
-      AND user_status = 'ACTIVE' 
-      AND is_deleted = FALSE 
+    FROM users
+    WHERE login_id = 'center-admin'
+      AND user_status = 'ACTIVE'
+      AND is_deleted = FALSE
     LIMIT 1;
 
     IF v_center_id IS NULL THEN
@@ -70,7 +70,7 @@ BEGIN
 
     -- 2. 역할 ID 조회
     SELECT role_id INTO v_role_id FROM roles WHERE role_code = 'ROLE_SUPER_ADMIN';
-    
+
     IF v_role_id IS NULL THEN
         RAISE EXCEPTION 'ROLE_SUPER_ADMIN not found in roles table';
     END IF;
@@ -83,16 +83,16 @@ BEGIN
 
     -- 4. staging-super-admin 사용자 생성
     INSERT INTO users (
-        center_id, 
+        center_id,
         login_id,
-        user_name, 
-        password_hash, 
+        user_name,
+        password_hash,
         user_status,
         password_change_required,
         is_deleted,
-        created_at, 
-        created_by, 
-        updated_at, 
+        created_at,
+        created_by,
+        updated_at,
         updated_by
     ) VALUES (
         v_center_id,
@@ -135,13 +135,13 @@ END $$;
 생성된 계정과 권한을 최종 확인합니다.
 
 ```sql
-SELECT 
-    u.user_id, 
+SELECT
+    u.user_id,
     u.login_id,
-    u.user_name, 
+    u.user_name,
     u.user_status,
     u.password_change_required,
-    r.role_code 
+    r.role_code
 FROM users u
 JOIN user_roles ur ON u.user_id = ur.user_id
 JOIN roles r ON ur.role_id = r.role_id
@@ -249,13 +249,13 @@ BEGIN;
 
 -- 1. 리프레시 토큰 무효화 (기존 세션 강제 종료)
 -- auth_refresh_tokens 테이블의 revoked_at을 설정하여 모든 토큰을 무효화합니다.
-UPDATE auth_refresh_tokens 
+UPDATE auth_refresh_tokens
 SET revoked_at = CURRENT_TIMESTAMP,
     revoke_reason = 'SUPER_ADMIN_REVOKED_BY_OPS'
 WHERE user_id = (SELECT user_id FROM users WHERE login_id = 'staging-super-admin' AND is_deleted = FALSE);
 
 -- 2. 계정 비활성화 및 접근 차단
-UPDATE users 
+UPDATE users
 SET user_status = 'INACTIVE',
     access_revoked_after = CURRENT_TIMESTAMP,
     updated_at = CURRENT_TIMESTAMP,
