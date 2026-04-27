@@ -34,7 +34,7 @@ import { useMembersQuery } from "../modules/useMembersQuery";
 import { useSelectedMemberStore } from "../modules/SelectedMemberContext";
 import { useThemeStore } from "../../../app/theme";
 import type { MemberSummary } from "../modules/types";
-import { useTrainersQuery } from "../../trainers/modules/useTrainersQuery";
+import { useTrainerOptionsQuery } from "../../memberships/modules/useTrainerOptionsQuery";
 import { useProductsQuery } from "../../products/modules/useProductsQuery";
 
 const { Title, Text, Paragraph } = Typography;
@@ -93,7 +93,7 @@ export function MemberListSection() {
     dateTo: dateFilter.dateTo
   });
 
-  const { trainers } = useTrainersQuery({ centerId: 0, keyword: "", status: "" });
+  const { trainerOptions } = useTrainerOptionsQuery();
   const { products } = useProductsQuery({ category: "", status: "" });
 
   const pagination = usePagination(members, {
@@ -367,7 +367,7 @@ export function MemberListSection() {
                   placeholder="전체 트레이너"
                   value={trainerId}
                   onChange={(val: number | undefined) => setTrainerId(val)}
-                  options={trainers.map(t => ({ label: t.userName, value: t.userId }))}
+                  options={trainerOptions.map((t) => ({ label: t.userName, value: t.userId }))}
                 />
               </Form.Item>
             </Col>

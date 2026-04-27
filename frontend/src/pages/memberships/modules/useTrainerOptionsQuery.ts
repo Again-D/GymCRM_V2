@@ -12,8 +12,9 @@ export type TrainerOption = {
 };
 
 export function useTrainerOptionsQuery() {
+  // Selection-only trainer list for dropdowns and other compact pickers.
   const query = useQuery({
-    queryKey: queryKeys.trainers.lists(),
+    queryKey: queryKeys.authUsers.lists(),
     queryFn: async () => {
       const response = await apiGet<TrainerOption[]>("/api/v1/auth/trainers");
       return response.data;

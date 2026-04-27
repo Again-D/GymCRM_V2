@@ -90,13 +90,13 @@ vi.mock("../modules/useMembersQuery", () => ({
 	},
 }));
 
-vi.mock("../../trainers/modules/useTrainersQuery", () => ({
-	useTrainersQuery: () => ({
-		trainers: [
+vi.mock("../../memberships/modules/useTrainerOptionsQuery", () => ({
+	useTrainerOptionsQuery: () => ({
+		trainerOptions: [
 			{ userId: 41, userName: "박트레이너", centerId: 1, status: "ACTIVE" },
 		],
-		trainersLoading: false,
-		trainersQueryError: null,
+		trainerOptionsLoading: false,
+		trainerOptionsError: null,
 	}),
 }));
 
