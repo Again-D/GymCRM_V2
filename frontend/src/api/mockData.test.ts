@@ -172,6 +172,41 @@ describe("mockData membership propagation", () => {
     expect(response?.message).toContain("중복 라커 코드");
   });
 
+  it("filters members by trainerId returning only members with matching assigned trainer", () => {
+    const members = getMockResponse("/api/v1/members?trainerId=41")?.data as MemberSummary[];
+
+    expect(members.length).toBe(1);
+    expect(members[0]?.memberId).toBe(101);
+  });
+
+  it("filters members by productId returning members whose membership uses that product", () => {
+    const members = getMockResponse("/api/v1/members?productId=2")?.data as MemberSummary[];
+    const memberIds = members.map((m) => m.memberId);
+
+    expect(memberIds).toContain(101);
+    expect(memberIds).toContain(102);
+  });
+
+  it("requires trainerId and productId to match the same membership row", () => {
+    const members = getMockResponse("/api/v1/members?trainerId=41&productId=1")?.data as MemberSummary[];
+
+    expect(members).toHaveLength(0);
+  });
+
+  it("filters members by dateFrom using the membership window", () => {
+    const members = getMockResponse("/api/v1/members?dateFrom=2026-07-21")?.data as MemberSummary[];
+
+    expect(members).toHaveLength(0);
+  });
+
+  it("combines trainerId and memberStatus filters correctly", () => {
+    const members = getMockResponse("/api/v1/members?memberStatus=ACTIVE&trainerId=41")?.data as MemberSummary[];
+
+    expect(members.length).toBe(1);
+    expect(members[0]?.memberId).toBe(101);
+    expect(members[0]?.memberStatus).toBe("ACTIVE");
+  });
+
   it("filters members by memberStatus in mock responses", () => {
     const activeMembers = getMockResponse("/api/v1/members?memberStatus=ACTIVE")?.data as MemberSummary[];
     const inactiveMembers = getMockResponse("/api/v1/members?memberStatus=INACTIVE")?.data as MemberSummary[];

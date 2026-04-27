@@ -14,7 +14,7 @@ export function useMembersQuery(filters: MemberQueryFilters) {
   const query = useQuery({
     queryKey: queryKeys.members.list(filters as Record<string, unknown>),
     queryFn: async () => {
-      const { name, phone, memberStatus, membershipOperationalStatus, dateFrom, dateTo } = filters;
+      const { name, phone, memberStatus, membershipOperationalStatus, dateFrom, dateTo, trainerId, productId } = filters;
       const params = new URLSearchParams();
       if (name?.trim()) params.set("name", name.trim());
       if (phone?.trim()) params.set("phone", phone.trim());
@@ -23,6 +23,8 @@ export function useMembersQuery(filters: MemberQueryFilters) {
         params.set("membershipOperationalStatus", membershipOperationalStatus.trim());
       if (dateFrom?.trim()) params.set("dateFrom", dateFrom.trim());
       if (dateTo?.trim()) params.set("dateTo", dateTo.trim());
+      if (trainerId != null && trainerId > 0) params.set("trainerId", String(trainerId));
+      if (productId != null && productId > 0) params.set("productId", String(productId));
       
       const qString = params.toString();
       const response = await apiGet<MemberSummary[]>(`/api/v1/members${qString ? `?${qString}` : ""}`);

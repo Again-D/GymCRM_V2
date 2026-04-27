@@ -123,6 +123,8 @@ export type MemberQueryFilters = {
   membershipOperationalStatus: string;
   dateFrom: string;
   dateTo: string;
+  trainerId?: number;
+  productId?: number;
 };
 
 export function createEmptyMemberForm(): MemberFormState {

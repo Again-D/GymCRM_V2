@@ -34,6 +34,8 @@ import { useMembersQuery } from "../modules/useMembersQuery";
 import { useSelectedMemberStore } from "../modules/SelectedMemberContext";
 import { useThemeStore } from "../../../app/theme";
 import type { MemberSummary } from "../modules/types";
+import { useTrainersQuery } from "../../trainers/modules/useTrainersQuery";
+import { useProductsQuery } from "../../products/modules/useProductsQuery";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -52,6 +54,8 @@ export function MemberListSection() {
   const [phone, setPhone] = useState("");
   const [memberStatus, setMemberStatus] = useState("");
   const [membershipOperationalStatus, setMembershipOperationalStatus] = useState("");
+  const [trainerId, setTrainerId] = useState<number | undefined>(undefined);
+  const [productId, setProductId] = useState<number | undefined>(undefined);
   const { selectedMemberId, selectedMember, selectedMemberLoading, clearSelectedMember, selectMember } = useSelectedMemberStore();
   
   const {
@@ -83,13 +87,18 @@ export function MemberListSection() {
     phone,
     memberStatus,
     membershipOperationalStatus,
+    trainerId,
+    productId,
     dateFrom: dateFilter.dateFrom,
     dateTo: dateFilter.dateTo
   });
 
+  const { trainers } = useTrainersQuery({ centerId: 0, keyword: "", status: "" });
+  const { products } = useProductsQuery({ category: "", status: "" });
+
   const pagination = usePagination(members, {
     initialPageSize: 20,
-    resetDeps: [name, phone, memberStatus, membershipOperationalStatus, dateFilter.presetRange, dateFilter.dateFrom, dateFilter.dateTo, members.length]
+    resetDeps: [name, phone, memberStatus, membershipOperationalStatus, trainerId, productId, dateFilter.presetRange, dateFilter.dateFrom, dateFilter.dateTo, members.length]
   });
 
   useEffect(() => {
@@ -349,6 +358,32 @@ export function MemberListSection() {
               />
             </Col>
           </Row>
+          <Row gutter={[16, 0]}>
+            <Col xs={24} sm={12}>
+              <Form.Item label="트레이너">
+                <Select
+                  allowClear
+                  showSearch
+                  placeholder="전체 트레이너"
+                  value={trainerId}
+                  onChange={(val: number | undefined) => setTrainerId(val)}
+                  options={trainers.map(t => ({ label: t.userName, value: t.userId }))}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item label="상품">
+                <Select
+                  allowClear
+                  showSearch
+                  placeholder="전체 상품"
+                  value={productId}
+                  onChange={(val: number | undefined) => setProductId(val)}
+                  options={products.map(p => ({ label: p.productName, value: p.productId }))}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
           <Flex justify="flex-end" gap={8} style={{ marginTop: 16 }}>
             <Button
               icon={<RestOutlined />}
@@ -357,6 +392,8 @@ export function MemberListSection() {
                 setPhone("");
                 setMemberStatus("");
                 setMembershipOperationalStatus("");
+                setTrainerId(undefined);
+                setProductId(undefined);
                 reset();
               }}
             >

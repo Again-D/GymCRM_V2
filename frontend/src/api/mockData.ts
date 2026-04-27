@@ -1742,6 +1742,14 @@ function filterMembers(url: URL) {
   const memberStatus = url.searchParams.get("memberStatus")?.trim() ?? "";
   const status =
     url.searchParams.get("membershipOperationalStatus")?.trim() ?? "";
+  const trainerIdParam = url.searchParams.get("trainerId")?.trim() ?? "";
+  const productIdParam = url.searchParams.get("productId")?.trim() ?? "";
+  const dateFrom = url.searchParams.get("dateFrom")?.trim() ?? "";
+  const dateTo = url.searchParams.get("dateTo")?.trim() ?? "";
+  const trainerId = parseOptionalPositiveInteger(trainerIdParam);
+  const productId = parseOptionalPositiveInteger(productIdParam);
+  const hasMembershipInclusionFilters =
+    trainerId != null || productId != null || !!dateFrom || !!dateTo;
 
   return deriveMembers().filter((member) => {
     const matchesName = !name || member.memberName.includes(name);
@@ -1750,7 +1758,31 @@ function filterMembers(url: URL) {
       !memberStatus || member.memberStatus === memberStatus;
     const matchesStatus =
       !status || member.membershipOperationalStatus === status;
-    return matchesName && matchesPhone && matchesMemberStatus && matchesStatus;
+    const visibleMemberships = getVisibleMemberships(member.memberId);
+    const matchesMembershipFilters =
+      !hasMembershipInclusionFilters ||
+      visibleMemberships.some((membership) => {
+        const matchesTrainer =
+          trainerId == null || membership.assignedTrainerId === trainerId;
+        const matchesProduct =
+          productId == null || membership.productId === productId;
+        const matchesDateFrom =
+          !dateFrom || !membership.endDate || membership.endDate >= dateFrom;
+        const matchesDateTo = !dateTo || membership.startDate <= dateTo;
+        return (
+          matchesTrainer &&
+          matchesProduct &&
+          matchesDateFrom &&
+          matchesDateTo
+        );
+      });
+    return (
+      matchesName &&
+      matchesPhone &&
+      matchesMemberStatus &&
+      matchesStatus &&
+      matchesMembershipFilters
+    );
   });
 }
 
@@ -2033,6 +2065,14 @@ function normalizeMockOptionalText(value: string | null) {
 function parsePositiveInteger(value: string | null, fallback: number) {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function parseOptionalPositiveInteger(value: string) {
+  if (!value) {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
 function bumpMockDataVersion() {
