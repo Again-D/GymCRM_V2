@@ -923,7 +923,7 @@ function SettlementsManagerView() {
             <Card
               title={
                 <Space direction="vertical" size={2}>
-                  <Title level={5} style={{ margin: 0 }}><FileSearchOutlined /> 기간 추이 증빙</Title>
+                  <Title level={5} style={{ margin: 0 }}><FileSearchOutlined /> 기간 추이 기준</Title>
                   <Text type="secondary" style={{ fontSize: "0.84rem" }}>일/주/월/연 단위 흐름과 상품별 집계를 확인합니다.</Text>
                 </Space>
               }

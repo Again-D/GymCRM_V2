@@ -408,9 +408,11 @@ describe("SettlementsPage", () => {
     expect(screen.getByTestId("settlement-sales-trend-chart")).toBeTruthy();
     expect(screen.getByTestId("settlement-sales-trend-chart").getAttribute("data-points")).toBe("2");
     expect(screen.getByText("운영 요약과 추이 증빙을 확인합니다.")).toBeTruthy();
+    expect(screen.getByText("기간 기준 preview와 정산 작업을 분리해 관리합니다.")).toBeTruthy();
     expect(screen.getByText("현재 운영 요약")).toBeTruthy();
     expect(screen.getByText("오늘 실매출")).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "기간 추이 증빙" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: /기간 추이 기준/ })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: /기간 추이 증빙/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: "운영 리포트 Excel 다운로드" })).toBeTruthy();
     expect(screen.getByText("최근 환불 증빙")).toBeTruthy();
     expect(screen.getByText("3개월 PT")).toBeTruthy();
