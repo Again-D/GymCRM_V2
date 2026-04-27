@@ -10,7 +10,7 @@ export const settlementTabs: SettlementTabDefinition[] = [
   {
     key: "salesAnalytics",
     label: "매출 분석",
-    description: "운영 상황판, 기간 추이, 최근 환불을 확인합니다."
+    description: "운영 요약과 추이 증빙을 확인합니다."
   },
   {
     key: "trainerPayroll",
