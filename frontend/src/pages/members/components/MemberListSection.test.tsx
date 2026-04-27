@@ -11,6 +11,7 @@ import { AuthStateProvider } from "../../../app/auth";
 import { MemberListSection } from "./MemberListSection";
 
 const navigateMock = vi.fn();
+let lastMembersQueryFilters: unknown;
 let currentRefetch = vi.fn();
 let currentSelectedMemberId: number | null = null;
 let currentSelectedMember: {
@@ -66,23 +67,46 @@ vi.mock("../modules/SelectedMemberContext", () => ({
 }));
 
 vi.mock("../modules/useMembersQuery", () => ({
-	useMembersQuery: () => ({
-		members: [
-			{
-				memberId: 101,
-				centerId: 1,
-				memberName: "김민수",
-				phone: "010-1234-5678",
-				memberStatus: "ACTIVE",
-				joinDate: "2026-01-04",
-				membershipOperationalStatus: "홀딩중",
-				membershipExpiryDate: "2026-06-30",
-				remainingPtCount: 8,
-			},
+	useMembersQuery: (filters: unknown) => {
+		lastMembersQueryFilters = filters;
+		return {
+			members: [
+				{
+					memberId: 101,
+					centerId: 1,
+					memberName: "김민수",
+					phone: "010-1234-5678",
+					memberStatus: "ACTIVE",
+					joinDate: "2026-01-04",
+					membershipOperationalStatus: "홀딩중",
+					membershipExpiryDate: "2026-06-30",
+					remainingPtCount: 8,
+				},
+			],
+			membersLoading: false,
+			membersQueryError: null,
+			refetch: currentRefetch,
+		};
+	},
+}));
+
+vi.mock("../../trainers/modules/useTrainersQuery", () => ({
+	useTrainersQuery: () => ({
+		trainers: [
+			{ userId: 41, userName: "박트레이너", centerId: 1, status: "ACTIVE" },
 		],
-		membersLoading: false,
-		membersQueryError: null,
-		refetch: currentRefetch,
+		trainersLoading: false,
+		trainersQueryError: null,
+	}),
+}));
+
+vi.mock("../../products/modules/useProductsQuery", () => ({
+	useProductsQuery: () => ({
+		products: [
+			{ productId: 1, productName: "3개월 회원권", category: "MEMBERSHIP", status: "ACTIVE" },
+		],
+		productsLoading: false,
+		productsQueryError: null,
 	}),
 }));
 
@@ -130,6 +154,7 @@ describe("MemberListSection", () => {
 		currentSelectedMemberId = null;
 		currentSelectedMember = null;
 		selectMemberMock = vi.fn();
+		lastMembersQueryFilters = undefined;
 		queryClient.clear();
 		vi.stubGlobal(
 			"matchMedia",
@@ -324,4 +349,21 @@ describe("MemberListSection", () => {
 			(screen.getByPlaceholderText("010-...") as HTMLInputElement).value,
 		).toBe("");
 	}, 15000);
+
+	it("renders trainer and product form labels in the filter card", () => {
+		renderWithAuth();
+
+		expect(screen.getByText("트레이너")).toBeTruthy();
+		expect(screen.getByText("상품")).toBeTruthy();
+	});
+
+	it("reset clears trainerId and productId", () => {
+		renderWithAuth();
+
+		fireEvent.click(screen.getByRole("button", { name: /초기화/ }));
+
+		const filters = lastMembersQueryFilters as Record<string, unknown>;
+		expect(filters.trainerId).toBeUndefined();
+		expect(filters.productId).toBeUndefined();
+	});
 });

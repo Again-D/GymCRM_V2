@@ -149,6 +149,94 @@ describe("useMembersQuery", () => {
     expect(result.current.members.map((member) => member.memberId)).toEqual([101]);
   });
 
+  it("includes trainerId and productId in request when both are present", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: [],
+        message: "ok",
+        timestamp: "2026-03-12T00:00:00Z",
+        traceId: "trace-1",
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { rerender } = renderHook((filters: MemberQueryFilters) => useMembersQuery(filters), {
+      wrapper,
+      initialProps: defaultFilters,
+    });
+
+    rerender({ ...defaultFilters, trainerId: 5, productId: 12 });
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringMatching(/trainerId=5/),
+        expect.anything(),
+      );
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringMatching(/productId=12/),
+        expect.anything(),
+      );
+    });
+  });
+
+  it("omits trainerId and productId from request when absent", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: [],
+        message: "ok",
+        timestamp: "2026-03-12T00:00:00Z",
+        traceId: "trace-1",
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderHook(() => useMembersQuery(defaultFilters), { wrapper });
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+
+    const calledUrl: string = fetchMock.mock.calls[0][0];
+    expect(calledUrl).not.toMatch(/trainerId/);
+    expect(calledUrl).not.toMatch(/productId/);
+  });
+
+  it("keeps existing filters when trainer/product filters are added alongside", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: [],
+        message: "ok",
+        timestamp: "2026-03-12T00:00:00Z",
+        traceId: "trace-1",
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { rerender } = renderHook((filters: MemberQueryFilters) => useMembersQuery(filters), {
+      wrapper,
+      initialProps: defaultFilters,
+    });
+
+    rerender({ ...defaultFilters, name: "김회원", trainerId: 3 });
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringMatching(/name=%EA%B9%80%ED%9A%8C%EC%9B%90/),
+        expect.anything(),
+      );
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringMatching(/trainerId=3/),
+        expect.anything(),
+      );
+    });
+  });
+
   it("uses current active filters for requests", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,

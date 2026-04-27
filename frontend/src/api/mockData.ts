@@ -1742,6 +1742,10 @@ function filterMembers(url: URL) {
   const memberStatus = url.searchParams.get("memberStatus")?.trim() ?? "";
   const status =
     url.searchParams.get("membershipOperationalStatus")?.trim() ?? "";
+  const trainerIdParam = url.searchParams.get("trainerId")?.trim() ?? "";
+  const productIdParam = url.searchParams.get("productId")?.trim() ?? "";
+  const trainerId = trainerIdParam ? Number(trainerIdParam) : null;
+  const productId = productIdParam ? Number(productIdParam) : null;
 
   return deriveMembers().filter((member) => {
     const matchesName = !name || member.memberName.includes(name);
@@ -1750,7 +1754,17 @@ function filterMembers(url: URL) {
       !memberStatus || member.memberStatus === memberStatus;
     const matchesStatus =
       !status || member.membershipOperationalStatus === status;
-    return matchesName && matchesPhone && matchesMemberStatus && matchesStatus;
+    const matchesTrainer =
+      trainerId == null ||
+      getVisibleMemberships(member.memberId).some(
+        (m) => m.assignedTrainerId === trainerId,
+      );
+    const matchesProduct =
+      productId == null ||
+      getVisibleMemberships(member.memberId).some(
+        (m) => m.productId === productId,
+      );
+    return matchesName && matchesPhone && matchesMemberStatus && matchesStatus && matchesTrainer && matchesProduct;
   });
 }
 
