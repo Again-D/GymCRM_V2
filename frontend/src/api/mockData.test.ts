@@ -187,6 +187,18 @@ describe("mockData membership propagation", () => {
     expect(memberIds).toContain(102);
   });
 
+  it("requires trainerId and productId to match the same membership row", () => {
+    const members = getMockResponse("/api/v1/members?trainerId=41&productId=1")?.data as MemberSummary[];
+
+    expect(members).toHaveLength(0);
+  });
+
+  it("filters members by dateFrom using the membership window", () => {
+    const members = getMockResponse("/api/v1/members?dateFrom=2026-07-21")?.data as MemberSummary[];
+
+    expect(members).toHaveLength(0);
+  });
+
   it("combines trainerId and memberStatus filters correctly", () => {
     const members = getMockResponse("/api/v1/members?memberStatus=ACTIVE&trainerId=41")?.data as MemberSummary[];
 
