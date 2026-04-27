@@ -134,34 +134,34 @@ type RecentAdjustmentRow = ReturnType<typeof useSettlementRecentAdjustmentsQuery
 function createDashboardStats(dashboard: SalesDashboard | null, token: ReturnType<typeof theme.useToken>["token"]) {
   return [
     {
-      label: "오늘 순매출",
+      label: "오늘 실매출",
       value: formatCurrency(dashboard?.todayNetSales ?? 0),
-      hint: "오늘 기준 실매출 흐름",
+      hint: "오늘 기준 현재 상태",
       icon: <DollarOutlined />,
       color: token.colorSuccess
     },
     {
-      label: "이번 달 순매출",
+      label: "이번 달 누적",
       value: formatCurrency(dashboard?.monthNetSales ?? 0),
-      hint: "이번 달 누적 순매출",
+      hint: "월 누적 운영 수치",
       icon: <BarChartOutlined />
     },
     {
-      label: "신규 회원",
+      label: "오늘 신규",
       value: dashboard?.newMemberCount ?? 0,
-      hint: "오늘 가입 회원 수",
+      hint: "오늘 유입된 회원",
       icon: <TeamOutlined />
     },
     {
-      label: "만료 예정",
+      label: "만료 임박",
       value: dashboard?.expiringMemberCount ?? 0,
-      hint: `${dashboard?.expiringWithinDays ?? 7}일 이내 만료`,
+      hint: `${dashboard?.expiringWithinDays ?? 7}일 안에 확인`,
       icon: <CalendarOutlined />
     },
     {
-      label: "환불 신호",
+      label: "환불 확인",
       value: dashboard?.refundCount ?? 0,
-      hint: "오늘 확인이 필요한 환불 건수",
+      hint: "오늘 점검할 환불 건수",
       icon: <ReloadOutlined />,
       color: token.colorError
     }
@@ -825,7 +825,7 @@ function SettlementsManagerView() {
           downloadMockSalesSettlementReport(settlementFilters)
         );
         if (!result.ok || result.content == null || result.fileName == null) {
-          setSettlementPanelError("매출 리포트 다운로드에 실패했습니다.");
+          setSettlementPanelError("운영 리포트 다운로드에 실패했습니다.");
           return;
         }
         triggerBrowserDownload(
@@ -852,9 +852,9 @@ function SettlementsManagerView() {
           result.filename ?? `sales-report-${settlementFilters.startDate}-to-${settlementFilters.endDate}.xlsx`
         );
       }
-      setSettlementPanelMessage("Excel 리포트 다운로드를 시작했습니다.");
+      setSettlementPanelMessage("운영 리포트 Excel 다운로드를 시작했습니다.");
     } catch (error) {
-      setSettlementPanelError(toUserFacingErrorMessage(error, "매출 리포트 다운로드에 실패했습니다."));
+      setSettlementPanelError(toUserFacingErrorMessage(error, "운영 리포트 다운로드에 실패했습니다."));
     } finally {
       setSalesReportDownloading(false);
     }
@@ -867,7 +867,14 @@ function SettlementsManagerView() {
 
   const tabItems = settlementTabs.map((tab) => ({
     key: tab.key,
-    label: tab.label,
+    label: (
+      <Flex vertical gap={0}>
+        <Text strong>{tab.label}</Text>
+        <Text type="secondary" style={{ fontSize: "0.72rem", lineHeight: 1.2 }}>
+          {tab.description}
+        </Text>
+      </Flex>
+    ),
     children: tab.key === "salesAnalytics" ? (
       <Flex vertical gap={24}>
         <Row gutter={[16, 16]}>
@@ -891,21 +898,21 @@ function SettlementsManagerView() {
             <Card
               title={
                 <Space direction="vertical" size={2}>
-                  <Title level={5} style={{ margin: 0 }}>운영 방향성</Title>
-                  <Text type="secondary" style={{ fontSize: "0.84rem" }}>최근 추이에서 현재 흐름을 빠르게 읽습니다.</Text>
+                  <Title level={5} style={{ margin: 0 }}>현재 운영 요약</Title>
+                  <Text type="secondary" style={{ fontSize: "0.84rem" }}>지금 상태를 빠르게 읽는 KPI만 모았습니다.</Text>
                 </Space>
               }
               loading={settlementReportLoading}
             >
               <Flex vertical gap={12}>
                 <div className={styles.trendHero}>
-                  <Text type="secondary">현재 버킷</Text>
+                  <Text type="secondary">현재 기준</Text>
                   <Title level={3} style={{ margin: 0 }}>{formatTrendHint(latestTrendPoint)}</Title>
                   <Text type="secondary">
                     직전 버킷 {previousTrendPoint ? formatTrendHint(previousTrendPoint) : "비교 데이터 없음"}
                   </Text>
                   <Text type="secondary" style={{ fontSize: "0.82rem" }}>
-                    차트와 표에서 최근 흐름을 함께 확인합니다.
+                    아래 추이와 환불 증빙은 이 요약을 뒷받침하는 참고 정보입니다.
                   </Text>
                 </div>
               </Flex>
@@ -916,8 +923,8 @@ function SettlementsManagerView() {
             <Card
               title={
                 <Space direction="vertical" size={2}>
-                  <Title level={5} style={{ margin: 0 }}><FileSearchOutlined /> 리포트 조건</Title>
-                  <Text type="secondary" style={{ fontSize: "0.84rem" }}>조회 기간과 분석 단위를 조정합니다.</Text>
+                  <Title level={5} style={{ margin: 0 }}><FileSearchOutlined /> 기간 추이 증빙</Title>
+                  <Text type="secondary" style={{ fontSize: "0.84rem" }}>일/주/월/연 단위 흐름과 상품별 집계를 확인합니다.</Text>
                 </Space>
               }
               extra={
@@ -1020,7 +1027,7 @@ function SettlementsManagerView() {
             <Card
               title={
                 <Space direction="vertical" size={2}>
-                  <Title level={5} style={{ margin: 0 }}>기간 추이 리포트</Title>
+                  <Title level={5} style={{ margin: 0 }}>기간 추이 증빙</Title>
                   <Text type="secondary" style={{ fontSize: "0.84rem" }}>
                     {settlementFilters.trendGranularity === "DAILY" ? "일" : settlementFilters.trendGranularity === "WEEKLY" ? "주" : settlementFilters.trendGranularity === "MONTHLY" ? "월" : "연"} 단위 흐름과 상품별 집계를 함께 봅니다.
                   </Text>
@@ -1032,7 +1039,7 @@ function SettlementsManagerView() {
                   onClick={() => void handleSalesReportDownload()}
                   loading={salesReportDownloading}
                 >
-                  Excel 다운로드
+                  운영 리포트 Excel 다운로드
                 </Button>
               }
             >
@@ -1114,8 +1121,8 @@ function SettlementsManagerView() {
             <Card
               title={
                 <Space direction="vertical" size={2}>
-                  <Title level={5} style={{ margin: 0 }}>최근 환불</Title>
-                  <Text type="secondary" style={{ fontSize: "0.84rem" }}>선택 조건 안에서 숫자 변화의 원인을 최근 환불 기준으로 확인합니다.</Text>
+                  <Title level={5} style={{ margin: 0 }}>최근 환불 증빙</Title>
+                  <Text type="secondary" style={{ fontSize: "0.84rem" }}>선택 조건 안에서 최근 환불만 빠르게 확인합니다.</Text>
                 </Space>
               }
             >
@@ -1128,8 +1135,8 @@ function SettlementsManagerView() {
                 dataSource={recentAdjustments}
                 locale={{
                   emptyText: recentAdjustmentsLoading
-                    ? "최근 조정 목록을 불러오는 중입니다..."
-                    : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="최근 환불 내역이 없습니다." />
+                    ? "최근 환불 증빙을 불러오는 중입니다..."
+                    : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="최근 환불 증빙이 없습니다." />
                 }}
               />
             </Card>

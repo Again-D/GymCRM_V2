@@ -385,7 +385,7 @@ describe("SettlementsPage", () => {
       </FoundationProviders>
     );
 
-    fireEvent.click(screen.getAllByRole("tab", { name: "트레이너 정산" })[0]);
+    fireEvent.click(screen.getAllByRole("tab", { name: /트레이너 정산/ })[0]);
 
     expect(screen.getByText("정산 운영 센터")).toBeTruthy();
     expect(screen.getAllByText("트레이너 정산").length).toBeGreaterThan(0);
@@ -403,12 +403,16 @@ describe("SettlementsPage", () => {
       </FoundationProviders>
     );
 
-    fireEvent.click(screen.getAllByRole("tab", { name: "매출 분석" })[0]);
+    fireEvent.click(screen.getAllByRole("tab", { name: /매출 분석/ })[0]);
 
     expect(screen.getByTestId("settlement-sales-trend-chart")).toBeTruthy();
     expect(screen.getByTestId("settlement-sales-trend-chart").getAttribute("data-points")).toBe("2");
-    expect(screen.getByText("기간 추이 리포트")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Excel 다운로드" })).toBeTruthy();
+    expect(screen.getByText("운영 요약과 추이 증빙을 확인합니다.")).toBeTruthy();
+    expect(screen.getByText("현재 운영 요약")).toBeTruthy();
+    expect(screen.getByText("오늘 실매출")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "기간 추이 증빙" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "운영 리포트 Excel 다운로드" })).toBeTruthy();
+    expect(screen.getByText("최근 환불 증빙")).toBeTruthy();
     expect(screen.getByText("3개월 PT")).toBeTruthy();
 
     mockSettlementFilters = {
@@ -436,7 +440,7 @@ describe("SettlementsPage", () => {
       </FoundationProviders>
     );
 
-    fireEvent.click(screen.getAllByRole("tab", { name: "매출 분석" })[0]);
+    fireEvent.click(screen.getAllByRole("tab", { name: /매출 분석/ })[0]);
     expect(screen.getByTestId("settlement-sales-trend-chart").getAttribute("data-points")).toBe("1");
   }, 30000);
 
@@ -501,7 +505,7 @@ describe("SettlementsPage", () => {
     );
 
     const scoped = within(view.container);
-    fireEvent.click(scoped.getAllByRole("tab", { name: "트레이너 정산" })[0]);
+    fireEvent.click(scoped.getAllByRole("tab", { name: /트레이너 정산/ })[0]);
 
     expect(scoped.getAllByText("PT 단가").length).toBeGreaterThan(0);
     expect(scoped.getAllByText("GX 단가").length).toBeGreaterThan(0);
