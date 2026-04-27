@@ -12,6 +12,7 @@ export type TrainerOption = {
 };
 
 export function useTrainerOptionsQuery() {
+  // Selection-only trainer list for dropdowns and other compact pickers.
   const query = useQuery({
     queryKey: queryKeys.trainers.lists(),
     queryFn: async () => {
