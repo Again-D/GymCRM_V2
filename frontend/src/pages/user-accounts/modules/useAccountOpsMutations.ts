@@ -30,6 +30,17 @@ export function useAccountOpsMutations() {
     return response.data;
   }
 
+  async function resetPassword(user: UserAccountRecord, temporaryPassword: string) {
+    const response = await apiPost<UserAccountLifecycleResponse>(
+      `/api/v1/auth/users/${user.userId}/password-reset`,
+      {
+        temporaryPassword,
+      },
+    );
+    await refreshAccounts();
+    return response.data;
+  }
+
   async function revokeAccess(user: UserAccountRecord) {
     if (isMockApiMode()) {
       const { revokeMockUserAccess } = await import("../../../api/mockData");
@@ -68,6 +79,7 @@ export function useAccountOpsMutations() {
 
   return {
     createAccount,
+    resetPassword,
     revokeAccess,
     changeRole,
     changeStatus,
