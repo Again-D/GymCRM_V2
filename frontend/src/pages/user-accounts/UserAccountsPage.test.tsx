@@ -57,6 +57,28 @@ describe("UserAccountsPage", () => {
     ).toBe(true);
   });
 
+  it("shows an enabled password reset action for super-admin", async () => {
+    render(
+      <FoundationProviders
+        authValue={{
+          authUser: {
+            userId: 99,
+            username: "super-admin",
+            primaryRole: "ROLE_SUPER_ADMIN",
+            roles: ["ROLE_SUPER_ADMIN"],
+          },
+        }}
+      >
+        <UserAccountsPage />
+      </FoundationProviders>,
+    );
+
+    await screen.findAllByText("center-admin");
+    const resetButtons = screen.getAllByRole("button", { name: "비밀번호 초기화" });
+    expect(resetButtons.length).toBeGreaterThan(0);
+    expect(resetButtons.some((button) => !(button as HTMLButtonElement).disabled)).toBe(true);
+  });
+
   it("creates a user account and refreshes the table", async () => {
     render(
       <FoundationProviders

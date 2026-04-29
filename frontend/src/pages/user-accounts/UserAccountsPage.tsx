@@ -56,10 +56,16 @@ export default function UserAccountsPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createSubmitting, setCreateSubmitting] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [resetTargetUser, setResetTargetUser] = useState<UserAccountRecord | null>(null);
+  const [resetSubmitting, setResetSubmitting] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [resetForm] = Form.useForm<{ temporaryPassword: string }>();
 
   const { userAccounts, userAccountsPage, userAccountsLoading, userAccountsError } =
     useUserAccountsQuery(appliedFilters);
-  const { createAccount, revokeAccess, changeRole, changeStatus } = useAccountOpsMutations();
+  const { createAccount, resetPassword, revokeAccess, changeRole, changeStatus } =
+    useAccountOpsMutations();
   const canEditAdminUsers = hasRole(authUser, "ROLE_SUPER_ADMIN");
   const canCreateAccounts = hasAnyRole(authUser, ["ROLE_SUPER_ADMIN", "ROLE_ADMIN"]);
   const isSuperAdmin = hasRole(authUser, "ROLE_SUPER_ADMIN");
@@ -139,6 +145,13 @@ export default function UserAccountsPage() {
             <Button size="small" onClick={() => void confirmRevokeAccess(user)}>
               접속 취소
             </Button>
+            <Button
+              size="small"
+              onClick={() => openResetDialog(user)}
+              disabled={user.userId === authUser?.userId || (user.roleCode === "ROLE_ADMIN" && !canEditAdminUsers)}
+            >
+              비밀번호 초기화
+            </Button>
             <Button size="small" onClick={() => void confirmStatusToggle(user)}>
               {user.userStatus === "ACTIVE" ? "비활성화" : "활성화"}
             </Button>
@@ -180,6 +193,21 @@ export default function UserAccountsPage() {
     setCreateDialogOpen(false);
     setCreateError(null);
     createForm.resetFields();
+  }
+
+  function openResetDialog(user: UserAccountRecord) {
+    setResetTargetUser(user);
+    setResetError(null);
+    resetForm.resetFields();
+    resetForm.setFieldsValue({ temporaryPassword: "" });
+    setResetDialogOpen(true);
+  }
+
+  function closeResetDialog() {
+    setResetDialogOpen(false);
+    setResetTargetUser(null);
+    setResetError(null);
+    resetForm.resetFields();
   }
 
   function passwordPolicyValidator(_: unknown, value: string | undefined) {
@@ -254,6 +282,23 @@ export default function UserAccountsPage() {
       setCreateError(error instanceof Error ? error.message : "사용자 계정을 생성하지 못했습니다.");
     } finally {
       setCreateSubmitting(false);
+    }
+  }
+
+  async function saveResetPassword(values: { temporaryPassword: string }) {
+    if (!resetTargetUser) {
+      return;
+    }
+    setResetSubmitting(true);
+    setResetError(null);
+    try {
+      await resetPassword(resetTargetUser, values.temporaryPassword);
+      message.success("비밀번호를 초기화했습니다.");
+      closeResetDialog();
+    } catch (error) {
+      setResetError(error instanceof Error ? error.message : "비밀번호를 초기화하지 못했습니다.");
+    } finally {
+      setResetSubmitting(false);
     }
   }
 
@@ -361,7 +406,7 @@ export default function UserAccountsPage() {
         okText="생성"
         cancelText="닫기"
         confirmLoading={createSubmitting}
-        destroyOnClose
+        destroyOnHidden
       >
         <Space direction="vertical" style={{ width: "100%" }} size="middle">
           <Text type="secondary">새 계정은 생성 직후 비밀번호 변경 필요 상태로 시작합니다.</Text>
@@ -397,6 +442,42 @@ export default function UserAccountsPage() {
               <Select options={createRoleOptions} />
             </Form.Item>
 
+            <Form.Item
+              label="임시 비밀번호"
+              name="temporaryPassword"
+              rules={[
+                { required: true, message: "임시 비밀번호를 입력하세요." },
+                { validator: passwordPolicyValidator },
+              ]}
+            >
+              <Input.Password placeholder="8자 이상, 문자/숫자/특수문자 포함" />
+            </Form.Item>
+          </Form>
+        </Space>
+      </Modal>
+
+      <Modal
+        title="비밀번호 초기화"
+        open={resetDialogOpen}
+        onCancel={closeResetDialog}
+        onOk={() => void resetForm.submit()}
+        okText="초기화"
+        cancelText="닫기"
+        confirmLoading={resetSubmitting}
+        destroyOnHidden
+      >
+        <Space direction="vertical" style={{ width: "100%" }} size="middle">
+          <Text type="secondary">
+            {resetTargetUser ? `${resetTargetUser.userName} (${resetTargetUser.loginId})` : "선택한 사용자"}의 비밀번호를 초기화합니다.
+          </Text>
+          <Text type="secondary">초기화 후에는 새 임시 비밀번호로 다시 로그인해야 합니다.</Text>
+          {resetError ? <Alert type="error" showIcon message={resetError} /> : null}
+          <Form<{ temporaryPassword: string }>
+            form={resetForm}
+            layout="vertical"
+            requiredMark={false}
+            onFinish={(values) => void saveResetPassword(values)}
+          >
             <Form.Item
               label="임시 비밀번호"
               name="temporaryPassword"
