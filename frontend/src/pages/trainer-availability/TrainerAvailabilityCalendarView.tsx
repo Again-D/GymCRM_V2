@@ -38,6 +38,40 @@ const localizer = {
   parse: (value: string) => new Date(value),
   startOfWeek: () => 0,
   getFirstDayOfWeek: () => 0,
+  eq: (date1: Date, date2: Date) => date1.getTime() === date2.getTime(),
+  neq: (date1: Date, date2: Date) => date1.getTime() !== date2.getTime(),
+  lt: (date1: Date, date2: Date) => date1.getTime() < date2.getTime(),
+  lte: (date1: Date, date2: Date) => date1.getTime() <= date2.getTime(),
+  gt: (date1: Date, date2: Date) => date1.getTime() > date2.getTime(),
+  gte: (date1: Date, date2: Date) => date1.getTime() >= date2.getTime(),
+  add: (date: Date, amount: number, unit: string) => {
+    const result = new Date(date);
+    if (unit === "day") result.setDate(result.getDate() + amount);
+    if (unit === "month") result.setMonth(result.getMonth() + amount);
+    if (unit === "hour") result.setHours(result.getHours() + amount);
+    if (unit === "minute") result.setMinutes(result.getMinutes() + amount);
+    return result;
+  },
+  subtract: (date: Date, amount: number, unit: string) => {
+    const result = new Date(date);
+    if (unit === "day") result.setDate(result.getDate() - amount);
+    if (unit === "month") result.setMonth(result.getMonth() - amount);
+    if (unit === "hour") result.setHours(result.getHours() - amount);
+    if (unit === "minute") result.setMinutes(result.getMinutes() - amount);
+    return result;
+  },
+  diff: (date1: Date, date2: Date, unit: string) => {
+    const diffMs = date1.getTime() - date2.getTime();
+    if (unit === "day") return Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    if (unit === "hour") return Math.floor(diffMs / (1000 * 60 * 60));
+    if (unit === "minute") return Math.floor(diffMs / (1000 * 60));
+    return diffMs;
+  },
+  getNow: () => new Date(),
+  getTotalDuration: (start: Date, end: Date) => {
+    const diffMs = end.getTime() - start.getTime();
+    return { milliseconds: diffMs, seconds: diffMs / 1000, minutes: diffMs / (1000 * 60), hours: diffMs / (1000 * 60 * 60), days: diffMs / (1000 * 60 * 60 * 24) };
+  },
 };
 
 export function TrainerAvailabilityCalendarView({
