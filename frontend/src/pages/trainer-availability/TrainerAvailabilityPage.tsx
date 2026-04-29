@@ -27,7 +27,6 @@ import {
 import { invalidateQueryDomains } from "../../api/queryInvalidation";
 import { useAuthState } from "../../app/auth";
 import { toUserFacingErrorMessage } from "../../app/uiError";
-import { TrainerAvailabilityCalendarView } from "./TrainerAvailabilityCalendarView";
 import { TrainerAvailabilityMonthView } from "./TrainerAvailabilityMonthView";
 import {
   buildWeeklyRulesPayload,
@@ -348,21 +347,12 @@ export default function TrainerAvailabilityPage() {
         }
       >
         {snapshot ? (
-          process.env.NODE_ENV === "test" ? (
-            <TrainerAvailabilityMonthView
-              snapshot={snapshot}
-              selectedDate={selectedDate}
-              onSelectDate={openExceptionEditor}
-              interactive
-            />
-          ) : (
-            <TrainerAvailabilityCalendarView
-              snapshot={snapshot}
-              selectedDate={selectedDate}
-              onSelectDate={openExceptionEditor}
-              interactive
-            />
-          )
+          <TrainerAvailabilityMonthView
+            snapshot={snapshot}
+            selectedDate={selectedDate}
+            onSelectDate={openExceptionEditor}
+            interactive
+          />
         ) : (
           <Flex align="center" justify="center" style={{ minHeight: 200 }}>
             <Text type="secondary">스케줄 정보를 불러오는 중입니다...</Text>
