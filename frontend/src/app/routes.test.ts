@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   canAccessShellRoute,
   canSeeShellRoute,
+  getDashboardRoutes,
   getSidebarRoutes,
   shellRoutes,
 } from "./routes";
@@ -26,6 +27,20 @@ const managerUser = {
   username: "manager",
   primaryRole: "ROLE_MANAGER",
   roles: ["ROLE_MANAGER"],
+};
+
+const deskUser = {
+  userId: 13,
+  username: "desk",
+  primaryRole: "ROLE_DESK",
+  roles: ["ROLE_DESK"],
+};
+
+const trainerUser = {
+  userId: 14,
+  username: "trainer",
+  primaryRole: "ROLE_TRAINER",
+  roles: ["ROLE_TRAINER"],
 };
 
 describe("shell routes", () => {
@@ -59,5 +74,19 @@ describe("shell routes", () => {
     expect(canAccessShellRoute(userAccountsRoute!, superAdminUser, false)).toBe(true);
     expect(canSeeShellRoute(userAccountsRoute!, managerUser, false)).toBe(false);
     expect(canAccessShellRoute(userAccountsRoute!, managerUser, false)).toBe(false);
+  });
+
+  it("keeps settlements visible for trainers and hidden from desk users", () => {
+    const settlementsRoute = shellRoutes.find((route) => route.path === "/settlements");
+
+    expect(settlementsRoute).toBeTruthy();
+
+    expect(getDashboardRoutes(trainerUser, false).map((route) => route.path)).not.toContain("/settlements");
+    expect(getDashboardRoutes(deskUser, false).map((route) => route.path)).not.toContain("/settlements");
+
+    expect(canSeeShellRoute(settlementsRoute!, trainerUser, false)).toBe(true);
+    expect(canAccessShellRoute(settlementsRoute!, trainerUser, false)).toBe(true);
+    expect(canSeeShellRoute(settlementsRoute!, deskUser, false)).toBe(false);
+    expect(canAccessShellRoute(settlementsRoute!, deskUser, false)).toBe(false);
   });
 });
