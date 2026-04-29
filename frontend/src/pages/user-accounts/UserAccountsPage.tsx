@@ -268,6 +268,13 @@ export default function UserAccountsPage() {
         </Paragraph>
       </Space>
 
+      <Alert
+        type="info"
+        showIcon
+        message="비밀번호 분실 복구"
+        description="비밀번호를 잊은 스태프는 현재 센터 관리자에게 문의한 뒤, 기존 비밀번호 초기화 절차로 복구합니다."
+      />
+
       {userAccountsError ? (
         <Alert type="error" showIcon message={userAccountsError} />
       ) : null}

@@ -20,6 +20,9 @@ import { useAuthState } from "../app/auth";
 const { Title, Paragraph, Text } = Typography;
 const { Content } = Layout;
 
+const RECOVERY_GUIDANCE_MESSAGE =
+  "비밀번호를 잊으셨다면 현재 센터 관리자에게 문의하세요. 관리자가 비밀번호를 초기화한 뒤 다시 로그인할 수 있습니다.";
+
 type LoginFormValues = {
   loginId: string;
   password: string;
@@ -68,6 +71,13 @@ export default function Login() {
                         인증 없이 셸, 권한, 업무 화면 흐름을 바로 점검할 수 있습니다.
                       </Paragraph>
                     </div>
+
+                    <Alert
+                      type="info"
+                      showIcon
+                      message="비밀번호를 잊으셨나요?"
+                      description={RECOVERY_GUIDANCE_MESSAGE}
+                    />
                     
                     <Flex vertical gap={12}>
                       <Button 
@@ -113,6 +123,13 @@ export default function Login() {
                         운영자 계정으로 로그인해 실서비스 운영 콘솔에 진입합니다.
                       </Paragraph>
                     </div>
+
+                    <Alert
+                      type="info"
+                      showIcon
+                      message="비밀번호를 잊으셨나요?"
+                      description={RECOVERY_GUIDANCE_MESSAGE}
+                    />
 
                     <Form<LoginFormValues> layout="vertical" onFinish={handleSubmit} requiredMark={false}>
                       <Form.Item 

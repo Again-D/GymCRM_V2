@@ -271,7 +271,7 @@ class AuthControllerIntegrationTest {
                             .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                     .andExpect(status().isForbidden())
                     .andExpect(jsonPath("$.success").value(false))
-                    .andExpect(jsonPath("$.error.code").value("ACCESS_DENIED"))
+                    .andExpect(jsonPath("$.error.code").value("PASSWORD_CHANGE_REQUIRED"))
                     .andExpect(jsonPath("$.error.detail", containsString("비밀번호 변경")));
 
             MvcResult refreshResult = mockMvc.perform(post("/api/v1/auth/refresh")
