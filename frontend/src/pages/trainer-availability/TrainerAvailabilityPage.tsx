@@ -27,7 +27,7 @@ import {
 import { invalidateQueryDomains } from "../../api/queryInvalidation";
 import { useAuthState } from "../../app/auth";
 import { toUserFacingErrorMessage } from "../../app/uiError";
-import { TrainerAvailabilityMonthView } from "./TrainerAvailabilityMonthView";
+import { TrainerAvailabilityCalendarView } from "./TrainerAvailabilityCalendarView";
 import {
   buildWeeklyRulesPayload,
   createDefaultWeeklyRuleDrafts,
@@ -347,7 +347,7 @@ export default function TrainerAvailabilityPage() {
         }
       >
         {snapshot ? (
-          <TrainerAvailabilityMonthView
+          <TrainerAvailabilityCalendarView
             snapshot={snapshot}
             selectedDate={selectedDate}
             onSelectDate={openExceptionEditor}
