@@ -79,7 +79,10 @@ describe("UserAccountsPage", () => {
       .map((element) => element.closest("tr"))
       .find((row): row is HTMLTableRowElement => row != null);
 
-    expect(managerRow).toBeDefined();
+    if (!managerRow) {
+      throw new Error("Expected manager-user row to be rendered");
+    }
+
     expect(
       within(managerRow).getByRole("button", { name: "비밀번호 초기화" }),
     ).toHaveProperty("disabled", false);
