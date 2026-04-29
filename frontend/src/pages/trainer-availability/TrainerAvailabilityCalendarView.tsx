@@ -1,77 +1,18 @@
 import { useMemo, useCallback } from "react";
-import { Calendar } from "react-big-calendar";
+import { Calendar, dayjsLocalizer } from "react-big-calendar";
 import "react-big-calendar/lib/css/react-big-calendar.css";
+import dayjs from "dayjs";
 import type { TrainerAvailabilitySnapshot } from "./modules/types";
 import { transformEffectiveDaysToEvents, type CalendarEvent } from "./modules/calendarUtils";
 import { CalendarEventCell } from "./modules/CalendarEventCell";
+
+const localizer = dayjsLocalizer(dayjs);
 
 type TrainerAvailabilityCalendarViewProps = {
   snapshot: TrainerAvailabilitySnapshot;
   selectedDate?: string | null;
   onSelectDate?: (date: string) => void;
   interactive?: boolean;
-};
-
-// @ts-ignore - localizer type mismatch with @types/react-big-calendar
-const localizer = {
-  format: (date: Date, formatStr: string) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    const dayOfWeek = date.getDay();
-    const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
-
-    if (formatStr === "headerFormat") {
-      return weekdays[dayOfWeek];
-    }
-    if (formatStr === "dayFormat") {
-      return day;
-    }
-    if (formatStr === "monthFormat") {
-      return `${year}-${month}`;
-    }
-    if (formatStr === "weekdayFormat") {
-      return weekdays[dayOfWeek];
-    }
-    return `${year}-${month}-${day}`;
-  },
-  parse: (value: string) => new Date(value),
-  startOfWeek: () => 0,
-  getFirstDayOfWeek: () => 0,
-  eq: (date1: Date, date2: Date) => date1.getTime() === date2.getTime(),
-  neq: (date1: Date, date2: Date) => date1.getTime() !== date2.getTime(),
-  lt: (date1: Date, date2: Date) => date1.getTime() < date2.getTime(),
-  lte: (date1: Date, date2: Date) => date1.getTime() <= date2.getTime(),
-  gt: (date1: Date, date2: Date) => date1.getTime() > date2.getTime(),
-  gte: (date1: Date, date2: Date) => date1.getTime() >= date2.getTime(),
-  add: (date: Date, amount: number, unit: string) => {
-    const result = new Date(date);
-    if (unit === "day") result.setDate(result.getDate() + amount);
-    if (unit === "month") result.setMonth(result.getMonth() + amount);
-    if (unit === "hour") result.setHours(result.getHours() + amount);
-    if (unit === "minute") result.setMinutes(result.getMinutes() + amount);
-    return result;
-  },
-  subtract: (date: Date, amount: number, unit: string) => {
-    const result = new Date(date);
-    if (unit === "day") result.setDate(result.getDate() - amount);
-    if (unit === "month") result.setMonth(result.getMonth() - amount);
-    if (unit === "hour") result.setHours(result.getHours() - amount);
-    if (unit === "minute") result.setMinutes(result.getMinutes() - amount);
-    return result;
-  },
-  diff: (date1: Date, date2: Date, unit: string) => {
-    const diffMs = date1.getTime() - date2.getTime();
-    if (unit === "day") return Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    if (unit === "hour") return Math.floor(diffMs / (1000 * 60 * 60));
-    if (unit === "minute") return Math.floor(diffMs / (1000 * 60));
-    return diffMs;
-  },
-  getNow: () => new Date(),
-  getTotalDuration: (start: Date, end: Date) => {
-    const diffMs = end.getTime() - start.getTime();
-    return { milliseconds: diffMs, seconds: diffMs / 1000, minutes: diffMs / (1000 * 60), hours: diffMs / (1000 * 60 * 60), days: diffMs / (1000 * 60 * 60 * 24) };
-  },
 };
 
 export function TrainerAvailabilityCalendarView({
@@ -99,20 +40,18 @@ export function TrainerAvailabilityCalendarView({
   const defaultDate = new Date(year, month - 1, 1);
 
   const eventPropGetter = useCallback(
-    (_event: CalendarEvent) => {
-      return {
-        style: {
-          backgroundColor: "transparent",
-          border: "none",
-        },
-      };
-    },
+    () => ({
+      style: {
+        backgroundColor: "transparent",
+        border: "none",
+      },
+    }),
     []
   );
 
   return (
     <Calendar
-      localizer={localizer as unknown as React.ComponentProps<typeof Calendar>["localizer"]}
+      localizer={localizer}
       events={events}
       startAccessor="start"
       endAccessor="end"
