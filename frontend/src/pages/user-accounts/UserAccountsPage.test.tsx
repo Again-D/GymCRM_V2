@@ -73,10 +73,19 @@ describe("UserAccountsPage", () => {
       </FoundationProviders>,
     );
 
-    await screen.findAllByText("center-admin");
-    const resetButtons = screen.getAllByRole("button", { name: "비밀번호 초기화" });
-    expect(resetButtons.length).toBeGreaterThan(0);
-    expect(resetButtons.some((button) => !(button as HTMLButtonElement).disabled)).toBe(true);
+    await screen.findAllByText("manager-user");
+    const managerRow = screen
+      .getAllByText("manager-user")
+      .map((element) => element.closest("tr"))
+      .find((row): row is HTMLTableRowElement => row != null);
+
+    if (!managerRow) {
+      throw new Error("Expected manager-user row to be rendered");
+    }
+
+    expect(
+      within(managerRow).getByRole("button", { name: "비밀번호 초기화" }),
+    ).toHaveProperty("disabled", false);
   });
 
   it("creates a user account and refreshes the table", async () => {
