@@ -12,6 +12,9 @@ describe("UserAccountsPage", () => {
       </FoundationProviders>,
     );
 
+    expect(screen.getByText("비밀번호 분실 복구")).toBeTruthy();
+    expect(screen.getByText(/현재 센터 관리자에게 문의한 뒤/)).toBeTruthy();
+
     await screen.findAllByText("center-admin");
     await waitFor(() => {
       expect(screen.getByText("center-admin")).toBeTruthy();

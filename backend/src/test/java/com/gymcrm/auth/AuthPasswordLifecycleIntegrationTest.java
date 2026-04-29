@@ -410,7 +410,7 @@ class AuthPasswordLifecycleIntegrationTest {
                                   "temporaryPassword": "%s"
                                 }
                                 """.formatted(loginId, userName, roleCode, temporaryPassword)))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andReturn();
         Long userId = queryUserId(CENTER_ID, loginId);
         createdUserIds.add(userId);
