@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { 
   Button, 
   Card, 
@@ -32,6 +32,7 @@ import { useProductsQuery } from "../products/modules/useProductsQuery";
 import { useMembersQuery } from "../members/modules/useMembersQuery";
 import { useMembershipPrototypeState } from "./modules/useMembershipPrototypeState";
 import { useTrainerOptionsQuery } from "./modules/useTrainerOptionsQuery";
+import type { TransferCalculation, ExtendCalculation } from "./modules/types";
 
 import styles from "./MembershipsPage.module.css";
 
@@ -149,15 +150,17 @@ export default function MembershipsPage() {
     memo: ""
   });
   const [memberSearchTerm, setMemberSearchTerm] = useState("");
+  const [debouncedMemberSearch, setDebouncedMemberSearch] = useState("");
+  const memberSearchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { members: searchResults, membersLoading: searchLoading } = useMembersQuery({ 
-    name: memberSearchTerm, 
+    name: activeModal === 'transfer' ? debouncedMemberSearch : "",
     phone: "", 
     memberStatus: "", 
     membershipOperationalStatus: "", 
     dateFrom: "", 
     dateTo: "" 
   });
-  const [transferPreviewData, setTransferPreviewData] = useState<any>(null);
+  const [transferPreviewData, setTransferPreviewData] = useState<TransferCalculation | null>(null);
 
   const [extendForm, setExtendForm] = useState({
     extensionDays: 1,
@@ -165,7 +168,7 @@ export default function MembershipsPage() {
     reason: "",
     memo: ""
   });
-  const [extendPreviewData, setExtendPreviewData] = useState<any>(null);
+  const [extendPreviewData, setExtendPreviewData] = useState<ExtendCalculation | null>(null);
 
   useEffect(() => {
     if (selectedMemberId == null) {
@@ -189,6 +192,9 @@ export default function MembershipsPage() {
     clearPanelFeedback();
     setTransferForm({ transfereeMemberId: null, transferFee: "", reason: "", memo: "" });
     setTransferPreviewData(null);
+    setMemberSearchTerm("");
+    setDebouncedMemberSearch("");
+    if (memberSearchDebounceRef.current) clearTimeout(memberSearchDebounceRef.current);
     setExtendForm({ extensionDays: 1, customAmount: "", reason: "", memo: "" });
     setExtendPreviewData(null);
   };
@@ -707,7 +713,11 @@ export default function MembershipsPage() {
                 placeholder="회원 검색..."
                 loading={searchLoading}
                 filterOption={false}
-                onSearch={(val) => setMemberSearchTerm(val)}
+                onSearch={(val) => {
+                  setMemberSearchTerm(val);
+                  if (memberSearchDebounceRef.current) clearTimeout(memberSearchDebounceRef.current);
+                  memberSearchDebounceRef.current = setTimeout(() => setDebouncedMemberSearch(val), 300);
+                }}
                 value={transferForm.transfereeMemberId}
                 onChange={(val) => {
                   setTransferForm(prev => ({ ...prev, transfereeMemberId: val }));

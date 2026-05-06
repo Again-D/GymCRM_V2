@@ -208,6 +208,9 @@ export function useMembershipPrototypeState(
       if (selectedMemberId) {
         void queryClient.invalidateQueries({ queryKey: queryKeys.memberships.list({ memberId: selectedMemberId }) });
       }
+    },
+    onError: (error) => {
+      setMembershipPanelError(toUserFacingErrorMessage(error, "회원권 양도에 실패했습니다."));
     }
   });
 
@@ -234,6 +237,9 @@ export function useMembershipPrototypeState(
       if (selectedMemberId) {
         void queryClient.invalidateQueries({ queryKey: queryKeys.memberships.list({ memberId: selectedMemberId }) });
       }
+    },
+    onError: (error) => {
+      setMembershipPanelError(toUserFacingErrorMessage(error, "회원권 연장에 실패했습니다."));
     }
   });
 

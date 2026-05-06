@@ -60,6 +60,7 @@ public class MembershipTransferService {
         Product product = getProduct(transferorMembership.productId());
 
         Member transfereeMember = getMember(request.transfereeMemberId());
+        validateNotSelfTransfer(transferorMembership, transfereeMember);
         validateSameCenter(transferorMembership, transfereeMember);
 
         return calculateTransfer(transferorMembership, product, request.transferFee());
@@ -79,6 +80,7 @@ public class MembershipTransferService {
         Product product = getProduct(transferorMembership.productId());
 
         Member transfereeMember = getMember(request.transfereeMemberId());
+        validateNotSelfTransfer(transferorMembership, transfereeMember);
         validateSameCenter(transferorMembership, transfereeMember);
 
         TransferCalculation calculation = calculateTransfer(transferorMembership, product, request.transferFee());
@@ -234,6 +236,12 @@ public class MembershipTransferService {
                 MembershipStatus.valueOf(membership.membershipStatus()),
                 MembershipStatus.TRANSFERRED
         );
+    }
+
+    private void validateNotSelfTransfer(MemberMembership transferorMembership, Member transfereeMember) {
+        if (transferorMembership.memberId().equals(transfereeMember.memberId())) {
+            throw new ApiException(ErrorCode.BUSINESS_RULE, "자신의 회원권을 본인에게 양도할 수 없습니다.");
+        }
     }
 
     private void validateSameCenter(MemberMembership transferorMembership, Member transfereeMember) {
