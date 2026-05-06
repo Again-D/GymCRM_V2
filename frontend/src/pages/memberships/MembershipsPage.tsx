@@ -29,6 +29,7 @@ import { useSelectedMemberStore } from "../members/modules/SelectedMemberContext
 import type { MembershipPaymentRecord, PurchasedMembership } from "../members/modules/types";
 import { createDefaultProductFilters } from "../products/modules/types";
 import { useProductsQuery } from "../products/modules/useProductsQuery";
+import { useMembersQuery } from "../members/modules/useMembersQuery";
 import { useMembershipPrototypeState } from "./modules/useMembershipPrototypeState";
 import { useTrainerOptionsQuery } from "./modules/useTrainerOptionsQuery";
 
@@ -123,7 +124,11 @@ export default function MembershipsPage() {
     handleHoldSubmit,
     handleResumeSubmit,
     handleRefundPreview,
-    handleRefundSubmit
+    handleRefundSubmit,
+    previewTransfer,
+    transferMembership,
+    previewExtend,
+    extendMembership,
   } = useMembershipPrototypeState({
     selectedMemberId,
     availableProducts: products,
@@ -134,8 +139,33 @@ export default function MembershipsPage() {
     refundMembership
   });
 
-  const [activeModal, setActiveModal] = useState<'purchase' | 'hold' | 'resume' | 'refund' | null>(null);
+  const [activeModal, setActiveModal] = useState<'purchase' | 'hold' | 'resume' | 'refund' | 'transfer' | 'extend' | null>(null);
   const [targetMembership, setTargetMembership] = useState<PurchasedMembership | null>(null);
+
+  const [transferForm, setTransferForm] = useState({
+    transfereeMemberId: null as number | null,
+    transferFee: "",
+    reason: "",
+    memo: ""
+  });
+  const [memberSearchTerm, setMemberSearchTerm] = useState("");
+  const { members: searchResults, membersLoading: searchLoading } = useMembersQuery({ 
+    name: memberSearchTerm, 
+    phone: "", 
+    memberStatus: "", 
+    membershipOperationalStatus: "", 
+    dateFrom: "", 
+    dateTo: "" 
+  });
+  const [transferPreviewData, setTransferPreviewData] = useState<any>(null);
+
+  const [extendForm, setExtendForm] = useState({
+    extensionDays: 1,
+    customAmount: "",
+    reason: "",
+    memo: ""
+  });
+  const [extendPreviewData, setExtendPreviewData] = useState<any>(null);
 
   useEffect(() => {
     if (selectedMemberId == null) {
@@ -157,6 +187,10 @@ export default function MembershipsPage() {
     setActiveModal(null);
     setTargetMembership(null);
     clearPanelFeedback();
+    setTransferForm({ transfereeMemberId: null, transferFee: "", reason: "", memo: "" });
+    setTransferPreviewData(null);
+    setExtendForm({ extensionDays: 1, customAmount: "", reason: "", memo: "" });
+    setExtendPreviewData(null);
   };
 
   const currentDraft = targetMembership ? getMembershipActionDraft(targetMembership.membershipId) : null;
@@ -204,47 +238,74 @@ export default function MembershipsPage() {
       title: "액션",
       key: "actions",
       align: "right",
-      render: (_, record) => (
-        <Space size="small">
-          {record.membershipStatus === 'ACTIVE' && (
-            <>
+      render: (_, record) => {
+        const product = products.find(p => p.productId === record.productId);
+        const allowTransfer = product?.allowTransfer ?? false;
+        
+        return (
+          <Space size="small" wrap style={{ justifyContent: "flex-end", maxWidth: 200 }}>
+            {record.membershipStatus === 'ACTIVE' && (
+              <>
+                <Button 
+                  size="small" 
+                  onClick={() => {
+                    setTargetMembership(record);
+                    setActiveModal('hold');
+                  }}
+                >
+                  홀딩
+                </Button>
+                <Button 
+                  size="small" 
+                  danger
+                  onClick={() => {
+                    setTargetMembership(record);
+                    setActiveModal('refund');
+                    // Trigger initial preview calculation
+                    void handleRefundPreview(record);
+                  }}
+                >
+                  환불
+                </Button>
+              </>
+            )}
+            {record.membershipStatus === 'ACTIVE' && allowTransfer && (
               <Button 
                 size="small" 
                 onClick={() => {
                   setTargetMembership(record);
-                  setActiveModal('hold');
+                  setActiveModal('transfer');
                 }}
               >
-                홀딩
+                양도
               </Button>
+            )}
+            {(record.membershipStatus === 'ACTIVE' || (record.membershipStatus as string) === 'EXTENDED') && record.productTypeSnapshot === 'DURATION' && (
               <Button 
                 size="small" 
-                danger
                 onClick={() => {
                   setTargetMembership(record);
-                  setActiveModal('refund');
-                  // Trigger initial preview calculation
-                  void handleRefundPreview(record);
+                  setActiveModal('extend');
                 }}
               >
-                환불
+                연장
               </Button>
-            </>
-          )}
-          {record.membershipStatus === 'HOLDING' && record.activeHoldStatus === 'ACTIVE' && (
-            <Button 
-              size="small" 
-              type="primary"
-              onClick={() => {
-                setTargetMembership(record);
-                setActiveModal('resume');
-              }}
-            >
-              재개
-            </Button>
-          )}
-        </Space>
-      )
+            )}
+            {record.membershipStatus === 'HOLDING' && record.activeHoldStatus === 'ACTIVE' && (
+              <Button 
+                size="small" 
+                type="primary"
+                onClick={() => {
+                  setTargetMembership(record);
+                  setActiveModal('resume');
+                }}
+              >
+                재개
+              </Button>
+            )}
+          </Space>
+        );
+      }
     }
   ];
 
@@ -604,7 +665,281 @@ export default function MembershipsPage() {
                               <Text>- 최대 홀딩 횟수({limits.maxCount}회)를 모두 사용했습니다. (사용: {limits.usedCount}회)</Text>
                             )}
                             <Text strong style={{ marginTop: 4 }}>관리자 권한으로 강제 진행하시겠습니까?</Text>
-                          </Flex>
+      {/* TRANSFER MODAL */}
+      <AntdModal
+        title="회원권 양도"
+        open={activeModal === 'transfer' && targetMembership != null}
+        onCancel={handleCloseModal}
+        width={600}
+        footer={[
+          <Button key="cancel" onClick={handleCloseModal}>취소</Button>,
+          <Button 
+            key="submit" 
+            type="primary"
+            loading={transferMembership.isPending}
+            disabled={!transferForm.transfereeMemberId}
+            onClick={() => {
+              if (targetMembership && transferForm.transfereeMemberId) {
+                transferMembership.mutate({
+                  memberId: targetMembership.memberId,
+                  membershipId: targetMembership.membershipId,
+                  transfereeMemberId: transferForm.transfereeMemberId,
+                  transferFee: transferForm.transferFee,
+                  reason: transferForm.reason,
+                  memo: transferForm.memo
+                }, {
+                  onSuccess: () => {
+                    handleCloseModal();
+                  }
+                });
+              }
+            }}
+          >
+            양도 확정
+          </Button>
+        ]}
+      >
+        {targetMembership && (
+          <Form layout="vertical">
+            <Form.Item label="양수자 선택 (이름/전화번호 검색)" required>
+              <Select
+                showSearch
+                placeholder="회원 검색..."
+                loading={searchLoading}
+                filterOption={false}
+                onSearch={(val) => setMemberSearchTerm(val)}
+                value={transferForm.transfereeMemberId}
+                onChange={(val) => {
+                  setTransferForm(prev => ({ ...prev, transfereeMemberId: val }));
+                  setTransferPreviewData(null);
+                }}
+                options={searchResults
+                  .filter(m => m.memberId !== targetMembership.memberId)
+                  .map(m => ({
+                    label: `${m.memberName} (${m.phone})`,
+                    value: m.memberId
+                  }))
+                }
+              />
+            </Form.Item>
+            <Form.Item label="양도 수수료 (선택)">
+              <Input 
+                type="number"
+                placeholder="0"
+                value={transferForm.transferFee}
+                onChange={(e) => {
+                  setTransferForm(prev => ({ ...prev, transferFee: e.target.value }));
+                  setTransferPreviewData(null);
+                }}
+                addonAfter="원"
+              />
+            </Form.Item>
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item label="사유">
+                  <Input.TextArea 
+                    rows={2}
+                    value={transferForm.reason}
+                    onChange={(e) => setTransferForm(prev => ({ ...prev, reason: e.target.value }))}
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label="메모">
+                  <Input.TextArea 
+                    rows={2}
+                    value={transferForm.memo}
+                    onChange={(e) => setTransferForm(prev => ({ ...prev, memo: e.target.value }))}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Button 
+              type="default" 
+              block 
+              loading={previewTransfer.isPending}
+              disabled={!transferForm.transfereeMemberId}
+              onClick={() => {
+                if (transferForm.transfereeMemberId) {
+                  previewTransfer.mutate({
+                    memberId: targetMembership.memberId,
+                    membershipId: targetMembership.membershipId,
+                    transfereeMemberId: transferForm.transfereeMemberId,
+                    transferFee: transferForm.transferFee
+                  }, {
+                    onSuccess: (data) => setTransferPreviewData(data)
+                  });
+                }
+              }}
+              style={{ marginBottom: 16 }}
+            >
+              양도 미리보기 계산
+            </Button>
+
+            {transferPreviewData && (
+              <Card size="small" className={styles.previewCard}>
+                <Flex vertical gap={8}>
+                  <Flex justify="space-between">
+                    <Text>상품 타입</Text>
+                    <span>{transferPreviewData.productType}</span>
+                  </Flex>
+                  {transferPreviewData.productType === 'COUNT' ? (
+                    <Flex justify="space-between">
+                      <Text>양도 횟수</Text>
+                      <span>{transferPreviewData.newRemainingCount}회</span>
+                    </Flex>
+                  ) : (
+                    <Flex justify="space-between">
+                      <Text>새 만료일</Text>
+                      <span>{transferPreviewData.newEndDate}</span>
+                    </Flex>
+                  )}
+                  <Divider style={{ margin: '8px 0' }} />
+                  <Flex justify="space-between">
+                    <Text strong>양도 수수료</Text>
+                    <Text strong style={{ fontSize: '1.1rem' }}>
+                      {formatCurrency(Number(transferPreviewData.transferFee || 0))}
+                    </Text>
+                  </Flex>
+                </Flex>
+              </Card>
+            )}
+          </Form>
+        )}
+      </AntdModal>
+
+      {/* EXTEND MODAL */}
+      <AntdModal
+        title="회원권 연장"
+        open={activeModal === 'extend' && targetMembership != null}
+        onCancel={handleCloseModal}
+        width={500}
+        footer={[
+          <Button key="cancel" onClick={handleCloseModal}>취소</Button>,
+          <Button 
+            key="submit" 
+            type="primary"
+            loading={extendMembership.isPending}
+            disabled={!extendForm.extensionDays || extendForm.extensionDays < 1}
+            onClick={() => {
+              if (targetMembership && extendForm.extensionDays >= 1) {
+                extendMembership.mutate({
+                  memberId: targetMembership.memberId,
+                  membershipId: targetMembership.membershipId,
+                  extensionDays: extendForm.extensionDays,
+                  customAmount: extendForm.customAmount,
+                  reason: extendForm.reason,
+                  memo: extendForm.memo
+                }, {
+                  onSuccess: () => {
+                    handleCloseModal();
+                  }
+                });
+              }
+            }}
+          >
+            연장 확정
+          </Button>
+        ]}
+      >
+        {targetMembership && (
+          <Form layout="vertical">
+            <Form.Item label="연장 일수" required>
+              <Input 
+                type="number"
+                min={1}
+                value={extendForm.extensionDays}
+                onChange={(e) => {
+                  setExtendForm(prev => ({ ...prev, extensionDays: parseInt(e.target.value) || 0 }));
+                  setExtendPreviewData(null);
+                }}
+                addonAfter="일"
+              />
+            </Form.Item>
+            <Form.Item label="수동 금액 지정 (선택)">
+              <Input 
+                type="number"
+                placeholder="비워두면 자동 계산됩니다"
+                value={extendForm.customAmount}
+                onChange={(e) => {
+                  setExtendForm(prev => ({ ...prev, customAmount: e.target.value }));
+                  setExtendPreviewData(null);
+                }}
+                addonAfter="원"
+              />
+            </Form.Item>
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item label="사유">
+                  <Input.TextArea 
+                    rows={2}
+                    value={extendForm.reason}
+                    onChange={(e) => setExtendForm(prev => ({ ...prev, reason: e.target.value }))}
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label="메모">
+                  <Input.TextArea 
+                    rows={2}
+                    value={extendForm.memo}
+                    onChange={(e) => setExtendForm(prev => ({ ...prev, memo: e.target.value }))}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Button 
+              type="default" 
+              block 
+              loading={previewExtend.isPending}
+              disabled={!extendForm.extensionDays || extendForm.extensionDays < 1}
+              onClick={() => {
+                if (extendForm.extensionDays >= 1) {
+                  previewExtend.mutate({
+                    memberId: targetMembership.memberId,
+                    membershipId: targetMembership.membershipId,
+                    extensionDays: extendForm.extensionDays
+                  }, {
+                    onSuccess: (data) => setExtendPreviewData(data)
+                  });
+                }
+              }}
+              style={{ marginBottom: 16 }}
+            >
+              연장 미리보기 계산
+            </Button>
+
+            {extendPreviewData && (
+              <Card size="small" className={styles.previewCard}>
+                <Flex vertical gap={8}>
+                  <Flex justify="space-between">
+                    <Text>기존 만료일</Text>
+                    <Text type="secondary">{extendPreviewData.originalEndDate}</Text>
+                  </Flex>
+                  <Flex justify="space-between">
+                    <Text strong>새 만료일</Text>
+                    <Text strong style={{ color: token.colorSuccess }}>{extendPreviewData.newEndDate}</Text>
+                  </Flex>
+                  <Divider style={{ margin: '8px 0' }} />
+                  <Flex justify="space-between">
+                    <Text>계산된 금액</Text>
+                    <Text>{formatCurrency(Number(extendPreviewData.calculatedFee || 0))}</Text>
+                  </Flex>
+                  <Flex justify="space-between">
+                    <Text strong>실제 청구 금액</Text>
+                    <Text strong style={{ fontSize: '1.1rem' }}>
+                      {formatCurrency(Number(extendPreviewData.actualFee || extendPreviewData.calculatedFee || 0))}
+                    </Text>
+                  </Flex>
+                </Flex>
+              </Card>
+            )}
+          </Form>
+        )}
+      </AntdModal>
+    </Flex>
                         }
                       />
                     )}

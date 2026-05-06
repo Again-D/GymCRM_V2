@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
+import { apiPost } from "../../../api/client";
+import { queryKeys } from "../../../app/queryHelpers";
 import { toUserFacingErrorMessage } from "../../../app/uiError";
 import type {
   MembershipPaymentRecord,
   PurchasedMembership,
 } from "../../members/modules/types";
 import type { ProductRecord } from "../../products/modules/types";
+import type { TransferCalculation, ExtendCalculation } from "./types";
 import { addDaysToLocalDate, todayLocalDate } from "../../../shared/date";
 
 type PaymentMethod = "CASH" | "CARD" | "TRANSFER" | "ETC";
@@ -177,6 +181,61 @@ export function useMembershipPrototypeState(
   const [membershipRefundPreviewById, setMembershipRefundPreviewById] =
     useState<Record<number, RefundPreview>>({});
   const paymentIdSeedRef = useRef(88000);
+
+  const queryClient = useQueryClient();
+
+  const previewTransfer = useMutation({
+    mutationFn: async (input: { memberId: number, membershipId: number, transfereeMemberId: number, transferFee?: string }) => {
+      const res = await apiPost<{ calculation: TransferCalculation }>(`/api/v1/members/${input.memberId}/memberships/${input.membershipId}/transfer/preview`, {
+        transfereeMemberId: input.transfereeMemberId,
+        transferFee: input.transferFee ? Number(input.transferFee) : 0
+      });
+      return res.data.calculation;
+    }
+  });
+
+  const transferMembership = useMutation({
+    mutationFn: async (input: { memberId: number, membershipId: number, transfereeMemberId: number, transferFee?: string, reason?: string, memo?: string }) => {
+      const res = await apiPost(`/api/v1/members/${input.memberId}/memberships/${input.membershipId}/transfer`, {
+        transfereeMemberId: input.transfereeMemberId,
+        transferFee: input.transferFee ? Number(input.transferFee) : 0,
+        reason: input.reason,
+        memo: input.memo
+      });
+      return res.data;
+    },
+    onSuccess: () => {
+      if (selectedMemberId) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.memberships.list({ memberId: selectedMemberId }) });
+      }
+    }
+  });
+
+  const previewExtend = useMutation({
+    mutationFn: async (input: { memberId: number, membershipId: number, extensionDays: number }) => {
+      const res = await apiPost<{ calculation: ExtendCalculation }>(`/api/v1/members/${input.memberId}/memberships/${input.membershipId}/extend/preview`, {
+        extensionDays: input.extensionDays
+      });
+      return res.data.calculation;
+    }
+  });
+
+  const extendMembership = useMutation({
+    mutationFn: async (input: { memberId: number, membershipId: number, extensionDays: number, customAmount?: string, reason?: string, memo?: string }) => {
+      const res = await apiPost(`/api/v1/members/${input.memberId}/memberships/${input.membershipId}/extend`, {
+        extensionDays: input.extensionDays,
+        customAmount: input.customAmount ? Number(input.customAmount) : null,
+        reason: input.reason,
+        memo: input.memo
+      });
+      return res.data;
+    },
+    onSuccess: () => {
+      if (selectedMemberId) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.memberships.list({ memberId: selectedMemberId }) });
+      }
+    }
+  });
 
   useEffect(() => {
     setPurchaseForm(createEmptyPurchaseForm());
@@ -565,5 +624,9 @@ export function useMembershipPrototypeState(
     handleResumeSubmit,
     handleRefundPreview,
     handleRefundSubmit,
+    previewTransfer,
+    transferMembership,
+    previewExtend,
+    extendMembership,
   } as const;
 }
