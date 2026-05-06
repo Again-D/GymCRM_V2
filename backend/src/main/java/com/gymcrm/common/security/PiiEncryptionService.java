@@ -1,6 +1,5 @@
 package com.gymcrm.common.security;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.Cipher;
@@ -8,7 +7,6 @@ import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Base64;
 
@@ -18,36 +16,48 @@ public class PiiEncryptionService {
     private static final int GCM_TAG_LENGTH = 128;
     private static final int IV_LENGTH = 12;
 
-    private final SecretKeySpec secretKeySpec;
+    private final PiiKeyProvider piiKeyProvider;
     private final SecureRandom secureRandom = new SecureRandom();
 
-    public PiiEncryptionService(@Value("${app.security.pii.encryption-key:dev-only-pii-key-change-me}") String encryptionKey) {
-        this.secretKeySpec = new SecretKeySpec(sha256(encryptionKey), "AES");
+    public PiiEncryptionService(PiiKeyProvider piiKeyProvider) {
+        this.piiKeyProvider = piiKeyProvider;
     }
 
     public String encrypt(String plain) {
+        return encryptWithActiveVersion(plain).cipherText();
+    }
+
+    public EncryptedPii encryptWithActiveVersion(String plain) {
         if (plain == null) {
-            return null;
+            return new EncryptedPii(null, piiKeyProvider.activeKeyVersion());
         }
         try {
             byte[] iv = new byte[IV_LENGTH];
             secureRandom.nextBytes(iv);
 
             Cipher cipher = Cipher.getInstance(AES_GCM);
-            cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, new GCMParameterSpec(GCM_TAG_LENGTH, iv));
+            cipher.init(Cipher.ENCRYPT_MODE, piiKeyProvider.activeKeySpec(), new GCMParameterSpec(GCM_TAG_LENGTH, iv));
             byte[] encrypted = cipher.doFinal(plain.getBytes(StandardCharsets.UTF_8));
 
             byte[] payload = ByteBuffer.allocate(iv.length + encrypted.length)
                     .put(iv)
                     .put(encrypted)
                     .array();
-            return Base64.getEncoder().encodeToString(payload);
+            return new EncryptedPii(Base64.getEncoder().encodeToString(payload), piiKeyProvider.activeKeyVersion());
         } catch (Exception ex) {
             throw new IllegalStateException("Failed to encrypt PII", ex);
         }
     }
 
+    public int activeKeyVersion() {
+        return piiKeyProvider.activeKeyVersion();
+    }
+
     public String decrypt(String encrypted) {
+        return decrypt(encrypted, piiKeyProvider.activeKeyVersion());
+    }
+
+    public String decrypt(String encrypted, int keyVersion) {
         if (encrypted == null || encrypted.isBlank()) {
             return null;
         }
@@ -62,19 +72,14 @@ public class PiiEncryptionService {
             System.arraycopy(payload, IV_LENGTH, cipherText, 0, cipherText.length);
 
             Cipher cipher = Cipher.getInstance(AES_GCM);
-            cipher.init(Cipher.DECRYPT_MODE, secretKeySpec, new GCMParameterSpec(GCM_TAG_LENGTH, iv));
+            SecretKeySpec keySpec = piiKeyProvider.keySpecForVersion(keyVersion);
+            cipher.init(Cipher.DECRYPT_MODE, keySpec, new GCMParameterSpec(GCM_TAG_LENGTH, iv));
             return new String(cipher.doFinal(cipherText), StandardCharsets.UTF_8);
         } catch (Exception ex) {
             throw new IllegalStateException("Failed to decrypt PII", ex);
         }
     }
 
-    private byte[] sha256(String raw) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            return digest.digest(raw.getBytes(StandardCharsets.UTF_8));
-        } catch (Exception ex) {
-            throw new IllegalStateException("Failed to initialize PII encryption key", ex);
-        }
+    public record EncryptedPii(String cipherText, int keyVersion) {
     }
 }
