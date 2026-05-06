@@ -39,7 +39,7 @@ import { useProductsQuery } from "../../products/modules/useProductsQuery";
 
 const { Title, Text, Paragraph } = Typography;
 
-function operationalStatusColor(status: "정상" | "홀딩중" | "만료임박" | "만료" | "없음" | string) {
+function operationalStatusColor(status: "정상" | "홀딩중" | "만료임박" | "만료" | "없음" | string): "success" | "processing" | "warning" | "error" | "default" {
   if (status === "정상") return "success";
   if (status === "홀딩중") return "processing";
   if (status === "만료임박") return "warning";
@@ -114,12 +114,20 @@ export function MemberListSection() {
     }
   }
 
-  async function goToMemberContext(path: "/memberships" | "/reservations", memberId: number) {
+  const goToMemberContext = useCallback(async (path: "/memberships" | "/reservations", memberId: number) => {
     const loaded = await selectMember(memberId);
     if (loaded) {
       navigate(path);
     }
-  }
+  }, [navigate, selectMember]);
+
+  const handleGoToMemberships = useCallback((memberId: number) => {
+    void goToMemberContext("/memberships", memberId);
+  }, [goToMemberContext]);
+
+  const handleGoToReservations = useCallback((memberId: number) => {
+    void goToMemberContext("/reservations", memberId);
+  }, [goToMemberContext]);
 
   function goToSelectedMemberContext(path: "/memberships" | "/reservations") {
     if (!selectedMemberId) {
@@ -138,14 +146,6 @@ export function MemberListSection() {
         : "회원 정보";
   const deactivationMemberId = modalState.kind === "deactivate" ? modalState.memberId : null;
   const deletionMemberId = modalState.kind === "delete" ? modalState.memberId : null;
-
-  const handleGoToMemberships = useCallback((memberId: number) => {
-    void goToMemberContext("/memberships", memberId);
-  }, [goToMemberContext]);
-
-  const handleGoToReservations = useCallback((memberId: number) => {
-    void goToMemberContext("/reservations", memberId);
-  }, [goToMemberContext]);
 
   const columns = useMemo<ColumnsType<MemberSummary>>(() => [
     {
