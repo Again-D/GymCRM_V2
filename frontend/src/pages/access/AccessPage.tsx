@@ -16,7 +16,7 @@ import {
 	Typography,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useAuthState } from "../../app/auth";
 import { hasAnyRole } from "../../app/roles";
@@ -45,6 +45,19 @@ const eventLabel: Record<string, { label: string; color: string }> = {
 	EXIT: { label: "퇴장", color: "default" },
 	ENTRY_DENIED: { label: "입장 거부", color: "error" },
 };
+
+interface KpiItem {
+	label: string;
+	value: number;
+	hint: string;
+}
+
+const KPI_CONFIG: KpiItem[] = [
+	{ label: "현재 입장", value: 0, hint: "현재 센터 내부에 있는 총 회원 수" },
+	{ label: "오늘 입장", value: 0, hint: "금일 승인된 입장 총계" },
+	{ label: "오늘 퇴장", value: 0, hint: "금일 기록된 퇴장 총계" },
+	{ label: "입장 거부", value: 0, hint: "승인되지 않은 무효한 시도" },
+];
 
 export default function AccessPage() {
 	const { authUser, isMockMode } = useAuthState();
@@ -105,6 +118,21 @@ export default function AccessPage() {
 		resetDeps: [selectedMemberId, accessEvents.length],
 	});
 
+	const kpiData = useMemo(() => KPI_CONFIG.map((kpi) => {
+		switch (kpi.label) {
+			case "현재 입장":
+				return { ...kpi, value: accessPresence?.openSessionCount ?? 0 };
+			case "오늘 입장":
+				return { ...kpi, value: accessPresence?.todayEntryGrantedCount ?? 0 };
+			case "오늘 퇴장":
+				return { ...kpi, value: accessPresence?.todayExitCount ?? 0 };
+			case "입장 거부":
+				return { ...kpi, value: accessPresence?.todayEntryDeniedCount ?? 0 };
+			default:
+				return kpi;
+		}
+	}), [accessPresence]);
+
 	useEffect(() => {
 		if (!isLiveAccessRoleSupported) {
 			return;
@@ -115,7 +143,7 @@ export default function AccessPage() {
 		await action();
 	}
 
-	const memberColumns: ColumnsType<MemberSummary> = [
+	const memberColumns = useMemo<ColumnsType<MemberSummary>>(() => [
 		{
 			title: "회원 정보",
 			key: "info",
@@ -163,7 +191,7 @@ export default function AccessPage() {
 				</Button>
 			),
 		},
-	];
+	], [selectedMemberId, selectMember]);
 
 	return (
 		<Flex vertical gap={24}>
@@ -209,28 +237,7 @@ export default function AccessPage() {
 				<Divider />
 
 				<Row gutter={[16, 16]}>
-					{[
-						{
-							label: "현재 입장",
-							value: accessPresence?.openSessionCount ?? 0,
-							hint: "현재 센터 내부에 있는 총 회원 수",
-						},
-						{
-							label: "오늘 입장",
-							value: accessPresence?.todayEntryGrantedCount ?? 0,
-							hint: "금일 승인된 입장 총계",
-						},
-						{
-							label: "오늘 퇴장",
-							value: accessPresence?.todayExitCount ?? 0,
-							hint: "금일 기록된 퇴장 총계",
-						},
-						{
-							label: "입장 거부",
-							value: accessPresence?.todayEntryDeniedCount ?? 0,
-							hint: "승인되지 않은 무효한 시도",
-						},
-					].map((kpi) => (
+					{kpiData.map((kpi) => (
 						<Col xs={12} sm={6} key={kpi.label}>
 							<Statistic
 								title={

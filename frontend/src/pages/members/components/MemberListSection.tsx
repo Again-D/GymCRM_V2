@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Button,
@@ -139,7 +139,15 @@ export function MemberListSection() {
   const deactivationMemberId = modalState.kind === "deactivate" ? modalState.memberId : null;
   const deletionMemberId = modalState.kind === "delete" ? modalState.memberId : null;
 
-  const columns: ColumnsType<MemberSummary> = [
+  const handleGoToMemberships = useCallback((memberId: number) => {
+    void goToMemberContext("/memberships", memberId);
+  }, [goToMemberContext]);
+
+  const handleGoToReservations = useCallback((memberId: number) => {
+    void goToMemberContext("/reservations", memberId);
+  }, [goToMemberContext]);
+
+  const columns = useMemo<ColumnsType<MemberSummary>>(() => [
     {
       title: "ID",
       dataIndex: "memberId",
@@ -208,7 +216,7 @@ export function MemberListSection() {
             size="small"
             onClick={(event) => {
               event.stopPropagation();
-              void goToMemberContext("/memberships", record.memberId);
+              handleGoToMemberships(record.memberId);
             }}
           >
             회원권
@@ -217,7 +225,7 @@ export function MemberListSection() {
             size="small"
             onClick={(event) => {
               event.stopPropagation();
-              void goToMemberContext("/reservations", record.memberId);
+              handleGoToReservations(record.memberId);
             }}
           >
             예약
@@ -225,7 +233,7 @@ export function MemberListSection() {
         </Space>
       )
     }
-  ];
+  ], [handleGoToMemberships, handleGoToReservations]);
 
   return (
     <Flex vertical gap={24}>
