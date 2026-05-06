@@ -11,6 +11,7 @@ import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -330,6 +331,29 @@ public class MemberQueryRepository {
         return count != null && count.longValue() > 0;
     }
 
+    public List<MemberPiiRotationCandidate> findStalePiiRotationCandidates(
+            int activeKeyVersion,
+            OffsetDateTime updatedBefore,
+            int limit
+    ) {
+        return queryFactory
+                .select(Projections.constructor(
+                        MemberPiiRotationCandidate.class,
+                        memberEntity.memberId,
+                        memberEntity.piiKeyVersion
+                ))
+                .from(memberEntity)
+                .where(
+                        memberEntity.isDeleted.isFalse(),
+                        memberEntity.piiKeyVersion.isNotNull(),
+                        memberEntity.piiKeyVersion.ne(activeKeyVersion),
+                        memberEntity.updatedAt.loe(updatedBefore)
+                )
+                .orderBy(memberEntity.updatedAt.asc(), memberEntity.memberId.asc())
+                .limit(limit)
+                .fetch();
+    }
+
     public static final class BaseMemberRow {
         private final Long memberId;
         private final Long centerId;
@@ -407,6 +431,12 @@ public class MemberQueryRepository {
             Long createdBy,
             java.time.OffsetDateTime updatedAt,
             Long updatedBy
+    ) {
+    }
+
+    public record MemberPiiRotationCandidate(
+            Long memberId,
+            Integer piiKeyVersion
     ) {
     }
 
