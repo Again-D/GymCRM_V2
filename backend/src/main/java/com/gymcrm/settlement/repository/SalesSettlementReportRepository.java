@@ -31,10 +31,10 @@ public class SalesSettlementReportRepository {
         String sql = """
                 SELECT
                     %s AS "bucketStartDate",
-                    SUM(CASE WHEN p.payment_type = 'PURCHASE' THEN p.amount ELSE 0 END) AS "grossSales",
+                    SUM(CASE WHEN p.payment_type IN ('PURCHASE', 'TRANSFER_FEE', 'EXTENSION') THEN p.amount ELSE 0 END) AS "grossSales",
                     SUM(CASE WHEN p.payment_type = 'REFUND' THEN p.amount ELSE 0 END) AS "refundAmount",
                     SUM(CASE
-                        WHEN p.payment_type = 'PURCHASE' THEN p.amount
+                        WHEN p.payment_type IN ('PURCHASE', 'TRANSFER_FEE', 'EXTENSION') THEN p.amount
                         WHEN p.payment_type = 'REFUND' THEN -p.amount
                         ELSE 0
                     END) AS "netSales",
@@ -89,10 +89,10 @@ public class SalesSettlementReportRepository {
                 SELECT
                     COALESCE(mm.product_name_snapshot, 'UNKNOWN') AS "productName",
                     p.payment_method AS "paymentMethod",
-                    SUM(CASE WHEN p.payment_type = 'PURCHASE' THEN p.amount ELSE 0 END) AS "grossSales",
+                    SUM(CASE WHEN p.payment_type IN ('PURCHASE', 'TRANSFER_FEE', 'EXTENSION') THEN p.amount ELSE 0 END) AS "grossSales",
                     SUM(CASE WHEN p.payment_type = 'REFUND' THEN p.amount ELSE 0 END) AS "refundAmount",
                     SUM(CASE
-                        WHEN p.payment_type = 'PURCHASE' THEN p.amount
+                        WHEN p.payment_type IN ('PURCHASE', 'TRANSFER_FEE', 'EXTENSION') THEN p.amount
                         WHEN p.payment_type = 'REFUND' THEN -p.amount
                         ELSE 0
                     END) AS "netSales",
