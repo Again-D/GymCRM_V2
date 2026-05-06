@@ -97,6 +97,13 @@ app:
     pii:
       encryption-key: ${APP_SECURITY_PII_ENCRYPTION_KEY:dev-only-pii-key-change-me}
       key-version: ${APP_SECURITY_PII_KEY_VERSION:1}
+      rotation-enabled: ${APP_SECURITY_PII_ROTATION_ENABLED:false}
+      keys: {}
+      rotation-batch:
+        enabled: ${APP_SECURITY_PII_ROTATION_BATCH_ENABLED:false}
+        cron: ${APP_SECURITY_PII_ROTATION_BATCH_CRON:0 */5 * * * *}
+        batch-size: ${APP_SECURITY_PII_ROTATION_BATCH_SIZE:100}
+        stale-updated-before: ${APP_SECURITY_PII_ROTATION_BATCH_STALE_UPDATED_BEFORE:PT5M}
     jwt:
       issuer: ${APP_SECURITY_JWT_ISSUER:gymcrm}
       audience: ${APP_SECURITY_JWT_AUDIENCE:gymcrm-admin}

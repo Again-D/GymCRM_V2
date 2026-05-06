@@ -5,6 +5,7 @@ import com.gymcrm.member.entity.MemberEntity;
 import com.gymcrm.member.enums.Gender;
 import com.gymcrm.member.enums.MemberStatus;
 import jakarta.persistence.EntityManager;
+import com.querydsl.jpa.impl.JPAQueryFactory;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,15 +19,18 @@ public class MemberRepository {
     private final MemberJpaRepository memberJpaRepository;
     private final MemberQueryRepository memberQueryRepository;
     private final EntityManager entityManager;
+    private final JPAQueryFactory queryFactory;
 
     public MemberRepository(
             MemberJpaRepository memberJpaRepository,
             MemberQueryRepository memberQueryRepository,
-            EntityManager entityManager
+            EntityManager entityManager,
+            JPAQueryFactory queryFactory
     ) {
         this.memberJpaRepository = memberJpaRepository;
         this.memberQueryRepository = memberQueryRepository;
         this.entityManager = entityManager;
+        this.queryFactory = queryFactory;
     }
 
     public Member insert(MemberCreateCommand command) {
@@ -98,6 +102,17 @@ public class MemberRepository {
         return memberQueryRepository.existsActiveTrainerScopedMembership(centerId, memberId, trainerUserId);
     }
 
+    public List<MemberPiiRotationCandidate> findStalePiiRotationCandidates(
+            int activeKeyVersion,
+            OffsetDateTime updatedBefore,
+            int limit
+    ) {
+        return memberQueryRepository.findStalePiiRotationCandidates(activeKeyVersion, updatedBefore, limit)
+                .stream()
+                .map(candidate -> new MemberPiiRotationCandidate(candidate.memberId(), candidate.piiKeyVersion()))
+                .toList();
+    }
+
     public Member update(MemberUpdateCommand command) {
         MemberEntity entity = memberJpaRepository.findByMemberIdAndIsDeletedFalse(command.memberId())
                 .orElseThrow();
@@ -119,6 +134,26 @@ public class MemberRepository {
         MemberEntity saved = memberJpaRepository.saveAndFlush(entity);
         entityManager.refresh(saved);
         return toDomain(saved);
+    }
+
+    public boolean rotatePiiIfVersionMatches(MemberPiiRotationCommand command) {
+        long updated = queryFactory.update(com.gymcrm.member.entity.QMemberEntity.memberEntity)
+                .set(com.gymcrm.member.entity.QMemberEntity.memberEntity.phone, command.phone())
+                .set(com.gymcrm.member.entity.QMemberEntity.memberEntity.phoneEncrypted, command.phoneEncrypted())
+                .set(com.gymcrm.member.entity.QMemberEntity.memberEntity.birthDate, command.birthDate())
+                .set(com.gymcrm.member.entity.QMemberEntity.memberEntity.birthDateEncrypted, command.birthDateEncrypted())
+                .set(com.gymcrm.member.entity.QMemberEntity.memberEntity.piiKeyVersion, command.newPiiKeyVersion())
+                .set(com.gymcrm.member.entity.QMemberEntity.memberEntity.updatedAt, OffsetDateTime.now())
+                .set(com.gymcrm.member.entity.QMemberEntity.memberEntity.updatedBy, command.actorUserId())
+                .where(
+                        com.gymcrm.member.entity.QMemberEntity.memberEntity.memberId.eq(command.memberId()),
+                        com.gymcrm.member.entity.QMemberEntity.memberEntity.isDeleted.isFalse(),
+                        command.expectedPiiKeyVersion() == null
+                                ? com.gymcrm.member.entity.QMemberEntity.memberEntity.piiKeyVersion.isNull()
+                                : com.gymcrm.member.entity.QMemberEntity.memberEntity.piiKeyVersion.eq(command.expectedPiiKeyVersion())
+                )
+                .execute();
+        return updated > 0;
     }
 
     @Transactional
@@ -210,5 +245,21 @@ public class MemberRepository {
             String membershipOperationalStatus,
             LocalDate membershipExpiryDate,
             Integer remainingPtCount
+    ) {}
+
+    public record MemberPiiRotationCommand(
+            Long memberId,
+            String phone,
+            String phoneEncrypted,
+            LocalDate birthDate,
+            String birthDateEncrypted,
+            Integer newPiiKeyVersion,
+            Integer expectedPiiKeyVersion,
+            Long actorUserId
+    ) {}
+
+    public record MemberPiiRotationCandidate(
+            Long memberId,
+            Integer piiKeyVersion
     ) {}
 }

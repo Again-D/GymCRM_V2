@@ -11,6 +11,7 @@ import com.gymcrm.member.entity.Member;
 import com.gymcrm.member.enums.Gender;
 import com.gymcrm.member.enums.MemberStatus;
 import com.gymcrm.member.repository.MemberRepository;
+import com.gymcrm.member.service.MemberPiiRotationService;
 import com.gymcrm.member.service.MemberService;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -22,6 +23,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -33,12 +35,20 @@ class MemberServiceTest {
     private final AuthUserRepository authUserRepository = mock(AuthUserRepository.class);
     private final CurrentUserProvider currentUserProvider = mock(CurrentUserProvider.class);
     private final PiiEncryptionService piiEncryptionService = mock(PiiEncryptionService.class);
-    private final MemberService service = new MemberService(memberRepository, authUserRepository, currentUserProvider, piiEncryptionService, 1);
+    private final MemberPiiRotationService memberPiiRotationService = mock(MemberPiiRotationService.class);
+    private final MemberService service = new MemberService(
+            memberRepository,
+            authUserRepository,
+            currentUserProvider,
+            piiEncryptionService,
+            memberPiiRotationService
+    );
 
     @Test
     void mapsDuplicatePhoneConstraintToConflict() {
         when(currentUserProvider.currentUserId()).thenReturn(1L);
-        when(piiEncryptionService.encrypt(any())).thenReturn("enc");
+        when(piiEncryptionService.encryptWithActiveVersion(any()))
+                .thenReturn(new PiiEncryptionService.EncryptedPii("enc", 1));
         when(memberRepository.insert(any())).thenThrow(new DataIntegrityViolationException(
                 "insert failed",
                 new RuntimeException("duplicate key value violates unique constraint \"uk_members_center_phone_active\"")
@@ -66,8 +76,10 @@ class MemberServiceTest {
     @Test
     void trimsAndNormalizesCreatePayloadBeforeInsert() {
         when(currentUserProvider.currentUserId()).thenReturn(99L);
-        when(piiEncryptionService.encrypt(any())).thenReturn("enc");
+        when(piiEncryptionService.encryptWithActiveVersion(any()))
+                .thenReturn(new PiiEncryptionService.EncryptedPii("enc", 1));
         when(memberRepository.insert(any())).thenReturn(sampleMember());
+        when(memberPiiRotationService.resolveForRead(any(), anyLong())).thenAnswer(invocation -> invocation.getArgument(0));
 
         Member result = service.create(new MemberCreateRequest(
                 "  테스트회원  ",
@@ -88,8 +100,10 @@ class MemberServiceTest {
     @Test
     void createAcceptsLowercaseAndTrimmedStatusAndGender() {
         when(currentUserProvider.currentUserId()).thenReturn(99L);
-        when(piiEncryptionService.encrypt(any())).thenReturn("enc");
+        when(piiEncryptionService.encryptWithActiveVersion(any()))
+                .thenReturn(new PiiEncryptionService.EncryptedPii("enc", 1));
         when(memberRepository.insert(any())).thenReturn(sampleMember());
+        when(memberPiiRotationService.resolveForRead(any(), anyLong())).thenAnswer(invocation -> invocation.getArgument(0));
 
         service.create(new MemberCreateRequest(
                 "테스트회원",
@@ -110,6 +124,8 @@ class MemberServiceTest {
     @Test
     void updateRejectsBlankMemberName() {
         when(memberRepository.findById(1L)).thenReturn(Optional.of(sampleMember()));
+        when(memberPiiRotationService.resolveForRead(any(), anyLong())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(currentUserProvider.currentUserId()).thenReturn(99L);
 
         ApiException exception = assertThrows(ApiException.class, () -> service.update(
                 1L,
@@ -135,6 +151,8 @@ class MemberServiceTest {
     @Test
     void updateRejectsBlankPhone() {
         when(memberRepository.findById(1L)).thenReturn(Optional.of(sampleMember()));
+        when(memberPiiRotationService.resolveForRead(any(), anyLong())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(currentUserProvider.currentUserId()).thenReturn(99L);
 
         ApiException exception = assertThrows(ApiException.class, () -> service.update(
                 1L,

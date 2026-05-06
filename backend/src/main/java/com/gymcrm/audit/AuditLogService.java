@@ -84,6 +84,18 @@ public class AuditLogService {
             OffsetDateTime completedAt,
             String detailsJson
     ) {
+        return recordRetentionJobRun(jobName, status, startedAt, completedAt, detailsJson, null);
+    }
+
+    @Transactional
+    public AuditRetentionJobRun recordRetentionJobRun(
+            String jobName,
+            String status,
+            OffsetDateTime startedAt,
+            OffsetDateTime completedAt,
+            String detailsJson,
+            Long actorUserId
+    ) {
         if (jobName == null || jobName.isBlank()) {
             throw new ApiException(ErrorCode.VALIDATION_ERROR, "jobName is required");
         }
@@ -99,7 +111,7 @@ public class AuditLogService {
                 start,
                 end,
                 detailsJson,
-                currentUserProvider.currentUserId()
+                actorUserId == null ? currentUserProvider.currentUserId() : actorUserId
         ));
     }
 

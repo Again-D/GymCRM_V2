@@ -12,7 +12,6 @@ import com.gymcrm.member.entity.Member;
 import com.gymcrm.member.enums.Gender;
 import com.gymcrm.member.enums.MemberStatus;
 import com.gymcrm.member.repository.MemberRepository;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,20 +29,20 @@ public class MemberService {
     private final AuthUserRepository authUserRepository;
     private final CurrentUserProvider currentUserProvider;
     private final PiiEncryptionService piiEncryptionService;
-    private final int piiKeyVersion;
+    private final MemberPiiRotationService memberPiiRotationService;
 
     public MemberService(
             MemberRepository memberRepository,
             AuthUserRepository authUserRepository,
             CurrentUserProvider currentUserProvider,
             PiiEncryptionService piiEncryptionService,
-            @Value("${app.security.pii.key-version:1}") int piiKeyVersion
+            MemberPiiRotationService memberPiiRotationService
     ) {
         this.memberRepository = memberRepository;
         this.authUserRepository = authUserRepository;
         this.currentUserProvider = currentUserProvider;
         this.piiEncryptionService = piiEncryptionService;
-        this.piiKeyVersion = piiKeyVersion;
+        this.memberPiiRotationService = memberPiiRotationService;
     }
 
     @Transactional
@@ -54,18 +53,20 @@ public class MemberService {
         String normalizedPhone = requireTrimmedValue(request.phone(), "phone");
 
         try {
-            String encryptedPhone = piiEncryptionService.encrypt(normalizedPhone);
-            String encryptedBirthDate = request.birthDate() == null ? null : piiEncryptionService.encrypt(request.birthDate().toString());
+            PiiEncryptionService.EncryptedPii encryptedPhone = piiEncryptionService.encryptWithActiveVersion(normalizedPhone);
+            String encryptedBirthDate = request.birthDate() == null
+                    ? null
+                    : piiEncryptionService.encryptWithActiveVersion(request.birthDate().toString()).cipherText();
             return resolvePii(memberRepository.insert(new MemberRepository.MemberCreateCommand(
                     DEFAULT_CENTER_ID,
                     normalizedMemberName,
                     normalizedPhone,
-                    encryptedPhone,
+                    encryptedPhone.cipherText(),
                     trimToNull(request.email()),
                     gender,
                     request.birthDate(),
                     encryptedBirthDate,
-                    piiKeyVersion,
+                    encryptedPhone.keyVersion(),
                     memberStatus,
                     request.joinDate() == null ? LocalDate.now() : request.joinDate(),
                     request.consentSms() != null && request.consentSms(),
@@ -126,7 +127,7 @@ public class MemberService {
                 .toList();
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public Member get(Long memberId) {
         guardTrainerMemberAccess(memberId);
         return memberRepository.findById(memberId)
@@ -153,16 +154,17 @@ public class MemberService {
 
         try {
             LocalDate nextBirthDate = request.birthDate() == null ? current.birthDate() : request.birthDate();
+            PiiEncryptionService.EncryptedPii encryptedPhone = piiEncryptionService.encryptWithActiveVersion(nextPhone);
             return resolvePii(memberRepository.update(new MemberRepository.MemberUpdateCommand(
                     memberId,
                     nextMemberName,
                     nextPhone,
-                    piiEncryptionService.encrypt(nextPhone),
+                    encryptedPhone.cipherText(),
                     request.email() == null ? current.email() : trimToNull(request.email()),
                     nextGender,
                     nextBirthDate,
-                    nextBirthDate == null ? null : piiEncryptionService.encrypt(nextBirthDate.toString()),
-                    piiKeyVersion,
+                    nextBirthDate == null ? null : piiEncryptionService.encryptWithActiveVersion(nextBirthDate.toString()).cipherText(),
+                    encryptedPhone.keyVersion(),
                     nextStatus,
                     request.joinDate() == null ? current.joinDate() : request.joinDate(),
                     request.consentSms() == null ? current.consentSms() : request.consentSms(),
@@ -194,36 +196,7 @@ public class MemberService {
     }
 
     private Member resolvePii(Member member) {
-        String phone = member.phone();
-        LocalDate birthDate = member.birthDate();
-        if ((phone == null || phone.isBlank()) && member.phoneEncrypted() != null) {
-            phone = piiEncryptionService.decrypt(member.phoneEncrypted());
-        }
-        if (birthDate == null && member.birthDateEncrypted() != null) {
-            birthDate = LocalDate.parse(piiEncryptionService.decrypt(member.birthDateEncrypted()));
-        }
-        return new Member(
-                member.memberId(),
-                member.centerId(),
-                member.memberCode(),
-                member.memberName(),
-                phone,
-                member.phoneEncrypted(),
-                member.email(),
-                member.gender(),
-                birthDate,
-                member.birthDateEncrypted(),
-                member.piiKeyVersion(),
-                member.memberStatus(),
-                member.joinDate(),
-                member.consentSms(),
-                member.consentMarketing(),
-                member.memo(),
-                member.createdAt(),
-                member.createdBy(),
-                member.updatedAt(),
-                member.updatedBy()
-        );
+        return memberPiiRotationService.resolveForRead(member, currentUserProvider.currentUserId());
     }
 
     private MemberStatus parseRequiredMemberStatus(String status) {
