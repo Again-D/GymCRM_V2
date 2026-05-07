@@ -1,8 +1,20 @@
 import { act, renderHook } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { useMembershipPrototypeState } from "./useMembershipPrototypeState";
 import type { ProductRecord } from "../../products/modules/types";
+
+function createTestQueryClient() {
+  return new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } }
+  });
+}
+
+function TestWrapper({ client, children }: { client: QueryClient; children: ReactNode }) {
+  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+}
 
 const availableProducts: ProductRecord[] = [
   {
@@ -43,6 +55,7 @@ const availableProducts: ProductRecord[] = [
 
 describe("useMembershipPrototypeState", () => {
   it("creates a membership and purchase payment from the preview", async () => {
+    const queryClient = createTestQueryClient();
     const createMembership = vi.fn().mockResolvedValue({
       membership: {
         membershipId: 99001,
@@ -80,7 +93,8 @@ describe("useMembershipPrototypeState", () => {
         resumeMembership,
         previewMembershipRefund,
         refundMembership
-      })
+      }),
+      { wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper> }
     );
 
     act(() => {
@@ -116,6 +130,7 @@ describe("useMembershipPrototypeState", () => {
   });
 
   it("blocks PT purchase submission when assigned trainer is missing", async () => {
+    const queryClient = createTestQueryClient();
     const createMembership = vi.fn();
     const { result } = renderHook(() =>
       useMembershipPrototypeState({
@@ -126,7 +141,8 @@ describe("useMembershipPrototypeState", () => {
         resumeMembership: vi.fn(),
         previewMembershipRefund: vi.fn(),
         refundMembership: vi.fn()
-      })
+      }),
+      { wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper> }
     );
 
     act(() => {
@@ -145,6 +161,7 @@ describe("useMembershipPrototypeState", () => {
   });
 
   it("runs hold, resume, and refund mutations through the async action layer", async () => {
+    const queryClient = createTestQueryClient();
     const createMembership = vi.fn();
     const holdMembership = vi.fn().mockResolvedValue({ membership: { membershipId: 9002 } });
     const resumeMembership = vi.fn().mockResolvedValue({ membership: { membershipId: 9002 } });
@@ -199,7 +216,8 @@ describe("useMembershipPrototypeState", () => {
         resumeMembership,
         previewMembershipRefund,
         refundMembership
-      })
+      }),
+      { wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper> }
     );
 
     await act(async () => {

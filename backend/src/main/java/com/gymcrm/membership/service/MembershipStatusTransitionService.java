@@ -42,10 +42,12 @@ public class MembershipStatusTransitionService {
 
     private static Map<MembershipStatus, Set<MembershipStatus>> buildAllowedTransitions() {
         Map<MembershipStatus, Set<MembershipStatus>> transitions = new EnumMap<>(MembershipStatus.class);
-        transitions.put(MembershipStatus.ACTIVE, EnumSet.of(MembershipStatus.HOLDING, MembershipStatus.REFUNDED, MembershipStatus.EXPIRED));
+        transitions.put(MembershipStatus.ACTIVE, EnumSet.of(MembershipStatus.HOLDING, MembershipStatus.REFUNDED, MembershipStatus.EXPIRED, MembershipStatus.TRANSFERRED, MembershipStatus.EXTENDED));
         transitions.put(MembershipStatus.HOLDING, EnumSet.of(MembershipStatus.ACTIVE, MembershipStatus.REFUNDED, MembershipStatus.EXPIRED));
         transitions.put(MembershipStatus.REFUNDED, EnumSet.noneOf(MembershipStatus.class));
         transitions.put(MembershipStatus.EXPIRED, EnumSet.noneOf(MembershipStatus.class));
+        transitions.put(MembershipStatus.TRANSFERRED, EnumSet.noneOf(MembershipStatus.class));
+        transitions.put(MembershipStatus.EXTENDED, EnumSet.of(MembershipStatus.HOLDING, MembershipStatus.REFUNDED, MembershipStatus.EXTENDED, MembershipStatus.EXPIRED));
         return transitions;
     }
 }

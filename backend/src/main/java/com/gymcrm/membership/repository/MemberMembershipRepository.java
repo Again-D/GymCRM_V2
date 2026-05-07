@@ -141,6 +141,31 @@ public class MemberMembershipRepository {
                 .orElseThrow();
     }
 
+    public MemberMembership updateEndDate(
+            Long membershipId,
+            LocalDate newEndDate,
+            String newStatus,
+            Long actorUserId
+    ) {
+        long updated = queryFactory.update(memberMembershipEntity)
+                .set(memberMembershipEntity.endDate, newEndDate)
+                .set(memberMembershipEntity.membershipStatus, newStatus)
+                .set(memberMembershipEntity.updatedAt, OffsetDateTime.now())
+                .set(memberMembershipEntity.updatedBy, actorUserId)
+                .where(
+                        memberMembershipEntity.membershipId.eq(membershipId),
+                        memberMembershipEntity.isDeleted.isFalse()
+                )
+                .execute();
+        if (updated == 0) {
+            throw new IllegalStateException("Membership updateEndDate target not found: " + membershipId);
+        }
+        entityManager.clear();
+        return memberMembershipJpaRepository.findByMembershipIdAndIsDeletedFalse(membershipId)
+                .map(this::toDomain)
+                .orElseThrow();
+    }
+
     public Optional<MemberMembership> consumeOneCountIfEligible(Long membershipId, Long actorUserId) {
         long updated = queryFactory.update(memberMembershipEntity)
                 .set(memberMembershipEntity.remainingCount, memberMembershipEntity.remainingCount.subtract(1))
