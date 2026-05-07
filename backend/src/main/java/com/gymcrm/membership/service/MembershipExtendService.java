@@ -123,8 +123,6 @@ public class MembershipExtendService {
             Integer extensionDays,
             BigDecimal customAmount
     ) {
-        validateExtendEligibility(membership, extensionDays);
-        validateDurationProduct(product);
 
         if (membership.endDate() == null) {
             throw new ApiException(ErrorCode.BUSINESS_RULE, "종료일이 없는 회원권은 연장할 수 없습니다.");
