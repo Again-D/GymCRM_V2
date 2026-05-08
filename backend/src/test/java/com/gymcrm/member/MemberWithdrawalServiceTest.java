@@ -91,7 +91,14 @@ class MemberWithdrawalServiceTest {
         assertEquals(BigDecimal.valueOf(50000), response.refundAmount());
         verify(membershipHoldService).resume(any());
         verify(memberRepository).withdraw(member.memberId(), actor.userId());
-        verify(auditLogService).recordEvent("MEMBER_WITHDRAWN", "MEMBER", String.valueOf(member.memberId()), "{\"actorUserId\":99}");
+        verify(auditLogService).recordEvent(
+                member.centerId(),
+                actor.userId(),
+                "MEMBER_WITHDRAWN",
+                "MEMBER",
+                String.valueOf(member.memberId()),
+                "{\"actorUserId\":99}"
+        );
     }
 
     @Test
@@ -143,6 +150,21 @@ class MemberWithdrawalServiceTest {
 
         assertThrows(ApiException.class, () -> service.withdraw(member, actor));
 
+        verify(memberRepository, never()).withdraw(anyLong(), anyLong());
+        verify(auditLogService, never()).recordEvent(any(), any(), any(), any());
+    }
+
+    @Test
+    void withdrawFailsFastWhenMemberAlreadyWithdrawnBeforeSideEffects() {
+        Member member = sampleMember(MemberStatus.WITHDRAWN);
+        AuthUser actor = sampleActor();
+
+        ApiException exception = assertThrows(ApiException.class, () -> service.withdraw(member, actor));
+
+        assertEquals(ErrorCode.VALIDATION_ERROR, exception.getErrorCode());
+        verify(memberMembershipRepository, never()).findWithdrawalRelevantMemberships(anyLong(), anyLong(), any());
+        verify(membershipHoldService, never()).resume(any());
+        verify(membershipRefundService, never()).refund(any());
         verify(memberRepository, never()).withdraw(anyLong(), anyLong());
         verify(auditLogService, never()).recordEvent(any(), any(), any(), any());
     }

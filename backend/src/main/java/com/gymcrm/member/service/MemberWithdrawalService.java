@@ -46,6 +46,10 @@ public class MemberWithdrawalService {
 
     @Transactional
     public MemberWithdrawResponse withdraw(Member member, AuthUser actor) {
+        if (MemberStatus.WITHDRAWN == member.memberStatus()) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "이미 탈퇴 처리된 회원입니다. memberId=" + member.memberId());
+        }
+
         LocalDate businessDate = LocalDate.now(BUSINESS_ZONE);
         List<MemberMembershipRepository.WithdrawalRelevantMembershipProjection> relevantMemberships =
                 memberMembershipRepository.findWithdrawalRelevantMemberships(member.centerId(), member.memberId(), businessDate);
@@ -81,12 +85,10 @@ public class MemberWithdrawalService {
             refundAmount = refundAmount.add(refundResult.calculation().refundAmount());
         }
 
-        if (MemberStatus.WITHDRAWN == member.memberStatus()) {
-            throw new ApiException(ErrorCode.VALIDATION_ERROR, "이미 탈퇴 처리된 회원입니다. memberId=" + member.memberId());
-        }
-
         memberRepository.withdraw(member.memberId(), actor.userId());
         auditLogService.recordEvent(
+                member.centerId(),
+                actor.userId(),
                 "MEMBER_WITHDRAWN",
                 "MEMBER",
                 String.valueOf(member.memberId()),
