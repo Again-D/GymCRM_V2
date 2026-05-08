@@ -2,6 +2,7 @@ package com.gymcrm.membership.repository;
 
 import com.gymcrm.membership.entity.MemberMembership;
 import com.gymcrm.membership.entity.MemberMembershipEntity;
+import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Repository;
@@ -226,6 +227,39 @@ public class MemberMembershipRepository {
         return fetched != null;
     }
 
+    public List<WithdrawalRelevantMembershipProjection> findWithdrawalRelevantMemberships(Long centerId, Long memberId, LocalDate referenceDate) {
+        return queryFactory
+                .select(Projections.constructor(
+                        WithdrawalRelevantMembershipProjection.class,
+                        memberMembershipEntity.membershipId,
+                        memberMembershipEntity.membershipStatus,
+                        memberMembershipEntity.productCategorySnapshot,
+                        memberMembershipEntity.productTypeSnapshot,
+                        memberMembershipEntity.endDate,
+                        memberMembershipEntity.remainingCount,
+                        memberMembershipEntity.memberId,
+                        memberMembershipEntity.centerId
+                ))
+                .from(memberMembershipEntity)
+                .where(
+                        memberMembershipEntity.centerId.eq(centerId),
+                        memberMembershipEntity.memberId.eq(memberId),
+                        memberMembershipEntity.isDeleted.isFalse(),
+                        memberMembershipEntity.membershipStatus.in("ACTIVE", "HOLDING"),
+                        memberMembershipEntity.productTypeSnapshot.eq("DURATION")
+                                .and(memberMembershipEntity.endDate.isNull().or(memberMembershipEntity.endDate.goe(referenceDate)))
+                                .or(memberMembershipEntity.productTypeSnapshot.eq("COUNT")
+                                        .and(memberMembershipEntity.remainingCount.isNotNull())
+                                        .and(memberMembershipEntity.remainingCount.gt(0)))
+                )
+                .orderBy(memberMembershipEntity.membershipId.asc())
+                .fetch();
+    }
+
+    public List<WithdrawalRelevantMembershipProjection> findWithdrawalRelevantMemberships(Long centerId, Long memberId) {
+        return findWithdrawalRelevantMemberships(centerId, memberId, LocalDate.now());
+    }
+
     private MemberMembership toDomain(MemberMembershipEntity entity) {
         return new MemberMembership(
                 entity.getMembershipId(),
@@ -284,4 +318,23 @@ public class MemberMembershipRepository {
             Integer holdCountUsed,
             Long actorUserId
     ) {}
+
+    public record WithdrawalRelevantMembershipProjection(
+            Long membershipId,
+            String membershipStatus,
+            String productCategorySnapshot,
+            String productTypeSnapshot,
+            LocalDate endDate,
+            Integer remainingCount,
+            Long memberId,
+            Long centerId
+    ) {
+        public boolean requiresResumeBeforeRefund() {
+            return "HOLDING".equals(membershipStatus);
+        }
+
+        public boolean directlyRefundable() {
+            return "ACTIVE".equals(membershipStatus);
+        }
+    }
 }

@@ -26,7 +26,7 @@ source: docs/01_요구사항_분석서.md
 | ID | 구분 | 현재 상태 | 남은 갭 | 추적 근거 |
 |---|---|---|---|---|
 | FR-MBR-001 | 회원 | 부분 구현 | 회원 등록 시 사진, 비상연락처 등 요구 입력 항목을 저장/조회 경로까지 일치시켜야 한다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/member/dto/request/MemberCreateRequest.java` |
-| FR-MBR-003 | 회원 | 부분 구현 | 상태 전환(`WITHDRAWN`) + `withdrawnAt` 기록 + 탈퇴 API 완료. 잔여 활성 회원권 확인/자동 처리 연계는 비즈니스 정책 미확정(가드 거부 vs 자동 취소 vs 운영자 수동 처리) 사유로 Sprint 1 범위 외로 분리. Sprint 2 이후 별도 티켓으로 처리 예정. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/member/service/MemberService.java`, `backend/src/main/java/com/gymcrm/member/controller/MemberController.java` |
+| FR-MBR-003 | 회원 | 완료 | `POST /api/v1/members/{memberId}/withdraw`가 잔여 회원권 조회, `HOLDING` 재개 후 환불, 최종 `WITHDRAWN` 전환, `withdrawnAt` 기록, 성공 감사 로그까지 포함하는 원자적 워크플로우로 구현됐다. 응답은 처리 요약(`memberId`, `withdrawn`, `refundedMembershipCount`, `resumedHoldingCount`, `refundAmount`)을 반환한다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/member/service/MemberWithdrawalService.java`, `backend/src/main/java/com/gymcrm/member/service/MemberService.java`, `backend/src/main/java/com/gymcrm/member/controller/MemberController.java` |
 | FR-RSV-004/005/006/009 | 예약 | 부분 구현 | GX 대기열, 자동 전환, 취소 정책, 예약 알림, 차감 시점 선택을 요구사항 수준으로 정리해야 한다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/reservation/service/ReservationService.java` |
 | FR-ACC-001 | 출입 | 부분 구현 | 회원이 모바일 웹에서 자기 QR을 직접 확인하고 Dynamic QR로 주기 갱신되는 흐름을 완성해야 한다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/access/QrCodeService.java`, `frontend/src/app/routes.ts` |
 | FR-LKR-001 | 라커 | 미구현 | 라커 시각적 맵/UI가 없다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/locker/LockerService.java` |
@@ -80,7 +80,7 @@ source: docs/01_요구사항_분석서.md
 - ✅ `NFR-012` HTTPS/TLS 1.2 이상 적용 여부 확정 → `docs/ops/tls-enforcement.md` (인프라 배포 확인 필요)
 - ✅ `NFR-013` 비밀번호 정책 정리, 90일 변경 권고 구현 → `docs/ops/password-policy.md`
 - ✅ `NFR-015` 감사 로그 1년 보존 자동화 → `AuditLogRetentionScheduler`
-- ✅ `FR-MBR-003` 회원 탈퇴 플로우 보강 → `POST /api/v1/members/{memberId}/withdraw` (잔여 회원권 연계는 정책 미확정으로 후속 분리, 아래 미해결 항목 참고)
+- ✅ `FR-MBR-003` 회원 탈퇴 플로우 보강 → `POST /api/v1/members/{memberId}/withdraw` (잔여 회원권 조회, 홀딩 해제 후 환불, 최종 탈퇴, 감사 로그까지 포함)
 - ✅ `NFR-016` 탈퇴 회원 개인정보 5년 후 파기 정책 정리 → `MemberPiiDestructionScheduler`
 
 **완료 기준**
@@ -94,14 +94,15 @@ source: docs/01_요구사항_분석서.md
 
 **Sprint 1 미해결 항목 (후속 스프린트 이관)**
 
-| 항목 | 사유 | 후속 처리 |
-|---|---|---|
-| `FR-MBR-003` 잔여 활성 회원권 연계 | 탈퇴 시 활성 회원권 처리 정책(가드 거부 / 자동 취소 / 운영자 수동 처리) 미확정. 비즈니스 결정 필요. | Sprint 2 진입 전 정책 확정 후 별도 티켓으로 구현. `MemberMembershipRepository.existsNonTerminalPtMembership()` 및 `MembershipRefundService`가 이미 존재하므로 연계 비용은 낮음. |
+없음. 기존 `FR-MBR-003` 잔여 회원권 연계 갭은 refund-inclusive withdrawal workflow 구현으로 해소되었다.
 
 ### Sprint 2: 핵심 운영 흐름 정리
 
 **목표**
 - 데스크와 현장 운영에서 가장 자주 쓰는 흐름을 안정화한다.
+
+**실행 플랜**
+- [2026-05-08-002-feat-sprint2-core-ops-flow-plan.md](/Users/abc/projects/GymCRM_V2/docs/plans/2026-05-08-002-feat-sprint2-core-ops-flow-plan.md)
 
 **포함 항목**
 - `FR-ACC-001` 회원 모바일 QR 표시 + Dynamic QR 갱신
