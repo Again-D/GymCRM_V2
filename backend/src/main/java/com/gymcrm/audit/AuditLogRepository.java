@@ -4,6 +4,7 @@ import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 
 @Repository
@@ -42,6 +43,11 @@ public class AuditLogRepository {
     public List<AuditLog> findRecent(Long centerId, String eventType, int limit) {
         entityManager.clear();
         return auditLogQueryRepository.findRecent(centerId, eventType, limit);
+    }
+
+    @Transactional
+    public int deleteOlderThan(OffsetDateTime cutoff) {
+        return auditLogJpaRepository.deleteByEventAtBefore(cutoff);
     }
 
     private AuditLog toDomain(AuditLogEntity entity) {

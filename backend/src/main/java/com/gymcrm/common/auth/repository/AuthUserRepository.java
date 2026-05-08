@@ -172,6 +172,9 @@ public class AuthUserRepository {
         }
         entity.setPasswordHash(passwordHash);
         entity.setPasswordChangeRequired(passwordChangeRequired);
+        if (!passwordChangeRequired) {
+            entity.setPasswordChangedAt(OffsetDateTime.now());
+        }
         entity.setUpdatedAt(OffsetDateTime.now());
         entity.setUpdatedBy(updatedBy == null ? userId : updatedBy);
         return toDomain(authUserJpaRepository.saveAndFlush(entity));
@@ -188,6 +191,7 @@ public class AuthUserRepository {
                 entity.getRoles().stream().map(RoleEntity::getRoleCode).findFirst().orElse(null),
                 entity.getUserStatus(),
                 entity.isPasswordChangeRequired(),
+                entity.getPasswordChangedAt(),
                 entity.getLastLoginAt(),
                 entity.getAccessRevokedAfter()
         );

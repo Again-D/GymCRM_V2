@@ -106,4 +106,11 @@ public class MemberController {
         memberService.delete(memberId);
         return ApiResponse.success(null, "회원이 삭제되었습니다.");
     }
+
+    @PostMapping("/{memberId}/withdraw")
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
+    public ApiResponse<Void> withdraw(@PathVariable Long memberId) {
+        memberService.withdraw(memberId);
+        return ApiResponse.success(null, "회원 탈퇴 처리가 완료되었습니다.");
+    }
 }

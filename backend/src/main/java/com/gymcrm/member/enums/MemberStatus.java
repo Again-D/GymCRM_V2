@@ -7,7 +7,8 @@ import java.util.Locale;
 
 public enum MemberStatus {
     ACTIVE,
-    INACTIVE;
+    INACTIVE,
+    WITHDRAWN;
 
     @JsonCreator
     public static MemberStatus from(String value) {
@@ -17,7 +18,7 @@ public enum MemberStatus {
         try {
             return MemberStatus.valueOf(value.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException ex) {
-            throw new IllegalArgumentException("memberStatus must be ACTIVE or INACTIVE");
+            throw new IllegalArgumentException("memberStatus must be ACTIVE, INACTIVE, or WITHDRAWN");
         }
     }
 
