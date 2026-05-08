@@ -206,6 +206,7 @@ class MemberServiceTest {
 
         MemberWithdrawResponse expected = new MemberWithdrawResponse(
                 1L,
+                com.gymcrm.member.enums.MemberStatus.WITHDRAWN,
                 true,
                 1,
                 1,
