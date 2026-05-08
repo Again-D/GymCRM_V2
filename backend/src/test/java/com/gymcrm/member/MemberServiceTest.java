@@ -1,6 +1,5 @@
 package com.gymcrm.member;
 
-import com.gymcrm.audit.AuditLogService;
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
@@ -8,12 +7,15 @@ import com.gymcrm.common.security.PiiEncryptionService;
 import com.gymcrm.common.auth.repository.AuthUserRepository;
 import com.gymcrm.member.dto.request.MemberCreateRequest;
 import com.gymcrm.member.dto.request.MemberUpdateRequest;
+import com.gymcrm.member.dto.response.MemberWithdrawResponse;
 import com.gymcrm.member.entity.Member;
 import com.gymcrm.member.enums.Gender;
 import com.gymcrm.member.enums.MemberStatus;
 import com.gymcrm.member.repository.MemberRepository;
 import com.gymcrm.member.service.MemberPiiRotationService;
 import com.gymcrm.member.service.MemberService;
+import com.gymcrm.member.service.MemberWithdrawalService;
+import com.gymcrm.common.auth.entity.AuthUser;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
 
@@ -25,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -37,13 +40,14 @@ class MemberServiceTest {
     private final CurrentUserProvider currentUserProvider = mock(CurrentUserProvider.class);
     private final PiiEncryptionService piiEncryptionService = mock(PiiEncryptionService.class);
     private final MemberPiiRotationService memberPiiRotationService = mock(MemberPiiRotationService.class);
+    private final MemberWithdrawalService memberWithdrawalService = mock(MemberWithdrawalService.class);
     private final MemberService service = new MemberService(
             memberRepository,
             authUserRepository,
             currentUserProvider,
             piiEncryptionService,
             memberPiiRotationService,
-            mock(AuditLogService.class)
+            memberWithdrawalService
     );
 
     @Test
@@ -175,6 +179,72 @@ class MemberServiceTest {
         assertEquals(ErrorCode.VALIDATION_ERROR, exception.getErrorCode());
         assertEquals("phone is required", exception.getMessage());
         verify(memberRepository, never()).update(any());
+    }
+
+    @Test
+    void withdrawDelegatesToMemberWithdrawalServiceWithoutChangingDuplicateWithdrawSemantics() {
+        AuthUser actor = new AuthUser(
+                99L,
+                1L,
+                "center-admin",
+                "pw",
+                "센터관리자",
+                "010-1234-5678",
+                "ROLE_MANAGER",
+                "ACTIVE",
+                false,
+                null,
+                null,
+                null
+        );
+        Member activeMember = sampleMember();
+        when(currentUserProvider.currentUserId()).thenReturn(99L);
+        when(currentUserProvider.currentCenterId()).thenReturn(1L);
+        when(authUserRepository.findActiveById(99L)).thenReturn(Optional.of(actor));
+        when(memberRepository.findById(1L)).thenReturn(Optional.of(activeMember));
+
+        MemberWithdrawResponse expected = new MemberWithdrawResponse(
+                1L,
+                true,
+                1,
+                1,
+                java.math.BigDecimal.valueOf(10000)
+        );
+        when(memberWithdrawalService.withdraw(eq(activeMember), eq(actor))).thenReturn(expected);
+
+        MemberWithdrawResponse actual = service.withdraw(1L);
+
+        assertEquals(expected, actual);
+        verify(memberWithdrawalService).withdraw(eq(activeMember), eq(actor));
+
+        Member withdrawnMember = new Member(
+                activeMember.memberId(),
+                activeMember.centerId(),
+                activeMember.memberCode(),
+                activeMember.memberName(),
+                activeMember.phone(),
+                activeMember.phoneEncrypted(),
+                activeMember.email(),
+                activeMember.gender(),
+                activeMember.birthDate(),
+                activeMember.birthDateEncrypted(),
+                activeMember.piiKeyVersion(),
+                MemberStatus.WITHDRAWN,
+                activeMember.joinDate(),
+                activeMember.consentSms(),
+                activeMember.consentMarketing(),
+                activeMember.memo(),
+                activeMember.withdrawnAt(),
+                activeMember.createdAt(),
+                activeMember.createdBy(),
+                activeMember.updatedAt(),
+                activeMember.updatedBy()
+        );
+        when(memberRepository.findById(1L)).thenReturn(Optional.of(withdrawnMember));
+
+        ApiException duplicate = assertThrows(ApiException.class, () -> service.withdraw(1L));
+        assertEquals(ErrorCode.VALIDATION_ERROR, duplicate.getErrorCode());
+        assertEquals("이미 탈퇴 처리된 회원입니다. memberId=1", duplicate.getMessage());
     }
 
     private Member sampleMember() {

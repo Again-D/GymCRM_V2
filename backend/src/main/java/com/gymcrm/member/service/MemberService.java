@@ -1,6 +1,5 @@
 package com.gymcrm.member.service;
 
-import com.gymcrm.audit.AuditLogService;
 import com.gymcrm.common.auth.entity.AuthUser;
 import com.gymcrm.common.auth.repository.AuthUserRepository;
 import com.gymcrm.common.error.ApiException;
@@ -9,6 +8,7 @@ import com.gymcrm.common.security.CurrentUserProvider;
 import com.gymcrm.common.security.PiiEncryptionService;
 import com.gymcrm.member.dto.request.MemberCreateRequest;
 import com.gymcrm.member.dto.request.MemberUpdateRequest;
+import com.gymcrm.member.dto.response.MemberWithdrawResponse;
 import com.gymcrm.member.entity.Member;
 import com.gymcrm.member.enums.Gender;
 import com.gymcrm.member.enums.MemberStatus;
@@ -31,7 +31,7 @@ public class MemberService {
     private final CurrentUserProvider currentUserProvider;
     private final PiiEncryptionService piiEncryptionService;
     private final MemberPiiRotationService memberPiiRotationService;
-    private final AuditLogService auditLogService;
+    private final MemberWithdrawalService memberWithdrawalService;
 
     public MemberService(
             MemberRepository memberRepository,
@@ -39,14 +39,14 @@ public class MemberService {
             CurrentUserProvider currentUserProvider,
             PiiEncryptionService piiEncryptionService,
             MemberPiiRotationService memberPiiRotationService,
-            AuditLogService auditLogService
+            MemberWithdrawalService memberWithdrawalService
     ) {
         this.memberRepository = memberRepository;
         this.authUserRepository = authUserRepository;
         this.currentUserProvider = currentUserProvider;
         this.piiEncryptionService = piiEncryptionService;
         this.memberPiiRotationService = memberPiiRotationService;
-        this.auditLogService = auditLogService;
+        this.memberWithdrawalService = memberWithdrawalService;
     }
 
     @Transactional
@@ -200,7 +200,7 @@ public class MemberService {
     }
 
     @Transactional
-    public void withdraw(Long memberId) {
+    public MemberWithdrawResponse withdraw(Long memberId) {
         AuthUser actor = currentActorOrNull();
         if (actor == null) {
             throw new ApiException(ErrorCode.AUTHENTICATION_FAILED, "활성 사용자 정보를 찾을 수 없습니다.");
@@ -218,14 +218,7 @@ public class MemberService {
             throw new ApiException(ErrorCode.VALIDATION_ERROR, "이미 탈퇴 처리된 회원입니다. memberId=" + memberId);
         }
 
-        memberRepository.withdraw(memberId, actor.userId());
-
-        auditLogService.recordEvent(
-                "MEMBER_WITHDRAWN",
-                "MEMBER",
-                String.valueOf(memberId),
-                "{\"actorUserId\":%d}".formatted(actor.userId())
-        );
+        return memberWithdrawalService.withdraw(current, actor);
     }
 
     private Member resolvePii(Member member) {

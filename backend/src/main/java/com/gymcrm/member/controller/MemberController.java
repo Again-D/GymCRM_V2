@@ -7,6 +7,7 @@ import com.gymcrm.member.dto.request.MemberCreateRequest;
 import com.gymcrm.member.dto.request.MemberUpdateRequest;
 import com.gymcrm.member.dto.response.MemberDetailResponse;
 import com.gymcrm.member.dto.response.MemberSummaryResponse;
+import com.gymcrm.member.dto.response.MemberWithdrawResponse;
 import com.gymcrm.member.entity.Member;
 import com.gymcrm.member.service.MemberService;
 import jakarta.validation.Valid;
@@ -109,8 +110,8 @@ public class MemberController {
 
     @PostMapping("/{memberId}/withdraw")
     @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
-    public ApiResponse<Void> withdraw(@PathVariable Long memberId) {
-        memberService.withdraw(memberId);
-        return ApiResponse.success(null, "회원 탈퇴 처리가 완료되었습니다.");
+    public ApiResponse<MemberWithdrawResponse> withdraw(@PathVariable Long memberId) {
+        MemberWithdrawResponse response = memberService.withdraw(memberId);
+        return ApiResponse.success(response, "회원 탈퇴 처리가 완료되었습니다.");
     }
 }
