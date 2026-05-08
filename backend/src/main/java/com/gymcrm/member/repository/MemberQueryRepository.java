@@ -52,6 +52,7 @@ public class MemberQueryRepository {
                         memberEntity.consentSms,
                         memberEntity.consentMarketing,
                         memberEntity.memo,
+                        memberEntity.withdrawnAt,
                         memberEntity.createdAt,
                         memberEntity.createdBy,
                         memberEntity.updatedAt,
@@ -86,6 +87,7 @@ public class MemberQueryRepository {
                         row.consentSms(),
                         row.consentMarketing(),
                         row.memo(),
+                        row.withdrawnAt(),
                         row.createdAt(),
                         row.createdBy(),
                         row.updatedAt(),
@@ -331,6 +333,25 @@ public class MemberQueryRepository {
         return count != null && count.longValue() > 0;
     }
 
+    public List<MemberRepository.WithdrawnMemberProjection> findWithdrawnBefore(OffsetDateTime cutoff, int limit) {
+        return queryFactory
+                .select(Projections.constructor(
+                        MemberRepository.WithdrawnMemberProjection.class,
+                        memberEntity.memberId,
+                        memberEntity.withdrawnAt
+                ))
+                .from(memberEntity)
+                .where(
+                        memberEntity.isDeleted.isFalse(),
+                        memberEntity.memberStatus.eq("WITHDRAWN"),
+                        memberEntity.withdrawnAt.isNotNull(),
+                        memberEntity.withdrawnAt.loe(cutoff)
+                )
+                .orderBy(memberEntity.withdrawnAt.asc(), memberEntity.memberId.asc())
+                .limit(limit)
+                .fetch();
+    }
+
     public List<MemberPiiRotationCandidate> findStalePiiRotationCandidates(
             int activeKeyVersion,
             OffsetDateTime updatedBefore,
@@ -427,6 +448,7 @@ public class MemberQueryRepository {
             boolean consentSms,
             boolean consentMarketing,
             String memo,
+            OffsetDateTime withdrawnAt,
             java.time.OffsetDateTime createdAt,
             Long createdBy,
             java.time.OffsetDateTime updatedAt,

@@ -121,6 +121,18 @@ app:
     allowed-origins: ${APP_PROTOTYPE_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
     default-admin-user-id: ${APP_PROTOTYPE_DEFAULT_ADMIN_USER_ID:1}
     default-admin-username: ${APP_PROTOTYPE_DEFAULT_ADMIN_USERNAME:prototype-admin}
+  audit:
+    retention:
+      enabled: ${APP_AUDIT_RETENTION_ENABLED:false}
+      days: ${APP_AUDIT_RETENTION_DAYS:365}
+      cron: ${APP_AUDIT_RETENTION_CRON:0 0 3 * * *}
+      chunk-size: ${APP_AUDIT_RETENTION_CHUNK_SIZE:1000}
+  member:
+    pii-destruction:
+      enabled: ${APP_MEMBER_PII_DESTRUCTION_ENABLED:false}
+      retention-years: ${APP_MEMBER_PII_DESTRUCTION_RETENTION_YEARS:5}
+      cron: ${APP_MEMBER_PII_DESTRUCTION_CRON:0 30 3 * * *}
+      batch-size: ${APP_MEMBER_PII_DESTRUCTION_BATCH_SIZE:100}
 
 ---
 spring:

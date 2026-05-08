@@ -74,6 +74,9 @@ public class MemberEntity {
     @Column(name = "deleted_by")
     private Long deletedBy;
 
+    @Column(name = "withdrawn_at")
+    private OffsetDateTime withdrawnAt;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 
@@ -231,6 +234,14 @@ public class MemberEntity {
 
     public void setDeletedBy(Long deletedBy) {
         this.deletedBy = deletedBy;
+    }
+
+    public OffsetDateTime getWithdrawnAt() {
+        return withdrawnAt;
+    }
+
+    public void setWithdrawnAt(OffsetDateTime withdrawnAt) {
+        this.withdrawnAt = withdrawnAt;
     }
 
     public OffsetDateTime getCreatedAt() {

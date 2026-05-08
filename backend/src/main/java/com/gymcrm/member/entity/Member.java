@@ -23,6 +23,7 @@ public record Member(
         boolean consentSms,
         boolean consentMarketing,
         String memo,
+        OffsetDateTime withdrawnAt,
         OffsetDateTime createdAt,
         Long createdBy,
         OffsetDateTime updatedAt,

@@ -1,5 +1,6 @@
 package com.gymcrm.member.service;
 
+import com.gymcrm.audit.AuditLogService;
 import com.gymcrm.common.auth.entity.AuthUser;
 import com.gymcrm.common.auth.repository.AuthUserRepository;
 import com.gymcrm.common.error.ApiException;
@@ -30,19 +31,22 @@ public class MemberService {
     private final CurrentUserProvider currentUserProvider;
     private final PiiEncryptionService piiEncryptionService;
     private final MemberPiiRotationService memberPiiRotationService;
+    private final AuditLogService auditLogService;
 
     public MemberService(
             MemberRepository memberRepository,
             AuthUserRepository authUserRepository,
             CurrentUserProvider currentUserProvider,
             PiiEncryptionService piiEncryptionService,
-            MemberPiiRotationService memberPiiRotationService
+            MemberPiiRotationService memberPiiRotationService,
+            AuditLogService auditLogService
     ) {
         this.memberRepository = memberRepository;
         this.authUserRepository = authUserRepository;
         this.currentUserProvider = currentUserProvider;
         this.piiEncryptionService = piiEncryptionService;
         this.memberPiiRotationService = memberPiiRotationService;
+        this.auditLogService = auditLogService;
     }
 
     @Transactional
@@ -193,6 +197,35 @@ public class MemberService {
         }
 
         memberRepository.delete(memberId, actor.userId());
+    }
+
+    @Transactional
+    public void withdraw(Long memberId) {
+        AuthUser actor = currentActorOrNull();
+        if (actor == null) {
+            throw new ApiException(ErrorCode.AUTHENTICATION_FAILED, "활성 사용자 정보를 찾을 수 없습니다.");
+        }
+
+        Member current = memberRepository.findById(memberId)
+                .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "회원을 찾을 수 없습니다. memberId=" + memberId));
+
+        if (!"ROLE_SUPER_ADMIN".equals(actor.roleCode())
+                && !current.centerId().equals(currentUserProvider.currentCenterId())) {
+            throw new ApiException(ErrorCode.ACCESS_DENIED, "현재 센터의 회원만 탈퇴 처리할 수 있습니다.");
+        }
+
+        if (MemberStatus.WITHDRAWN == current.memberStatus()) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "이미 탈퇴 처리된 회원입니다. memberId=" + memberId);
+        }
+
+        memberRepository.withdraw(memberId, actor.userId());
+
+        auditLogService.recordEvent(
+                "MEMBER_WITHDRAWN",
+                "MEMBER",
+                String.valueOf(memberId),
+                "{\"actorUserId\":%d}".formatted(actor.userId())
+        );
     }
 
     private Member resolvePii(Member member) {

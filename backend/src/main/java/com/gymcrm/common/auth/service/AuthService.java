@@ -180,8 +180,11 @@ public class AuthService {
             String loginId,
             String userName,
             String roleCode,
-            boolean passwordChangeRequired
+            boolean passwordChangeRequired,
+            boolean passwordRotationRecommended
     ) {
+        private static final int PASSWORD_ROTATION_REMINDER_DAYS = 90;
+
         static UserSession from(AuthUser user) {
             return new UserSession(
                     user.userId(),
@@ -189,7 +192,8 @@ public class AuthService {
                     user.loginId(),
                     user.userName(),
                     user.roleCode(),
-                    user.passwordChangeRequired()
+                    user.passwordChangeRequired(),
+                    !user.passwordChangeRequired() && user.isPasswordChangeRecommended(PASSWORD_ROTATION_REMINDER_DAYS)
             );
         }
     }

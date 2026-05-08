@@ -1,5 +1,6 @@
 package com.gymcrm.member;
 
+import com.gymcrm.audit.AuditLogService;
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.common.security.CurrentUserProvider;
@@ -41,7 +42,8 @@ class MemberServiceTest {
             authUserRepository,
             currentUserProvider,
             piiEncryptionService,
-            memberPiiRotationService
+            memberPiiRotationService,
+            mock(AuditLogService.class)
     );
 
     @Test
@@ -193,6 +195,7 @@ class MemberServiceTest {
                 LocalDate.of(2026, 2, 23),
                 false,
                 false,
+                null,
                 null,
                 now,
                 99L,

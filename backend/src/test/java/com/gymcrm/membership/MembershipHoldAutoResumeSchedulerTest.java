@@ -63,7 +63,7 @@ class MembershipHoldAutoResumeSchedulerTest {
         );
         Member member = new Member(
                 100L, 1L, "M-100", "홍길동", "010-1234-5678", null, null, null, null, null,
-                null, null, LocalDate.now().minusDays(100), true, false, null, OffsetDateTime.now(), 1L, OffsetDateTime.now(), 1L
+                null, null, LocalDate.now().minusDays(100), true, false, null, null, OffsetDateTime.now(), 1L, OffsetDateTime.now(), 1L
         );
         MembershipHold resumedHold = new MembershipHold(
                 77L,
@@ -129,7 +129,7 @@ class MembershipHoldAutoResumeSchedulerTest {
         );
         Member member = new Member(
                 101L, 1L, "M-101", "김회원", "010-9999-0000", null, null, null, null, null,
-                null, null, LocalDate.now().minusDays(120), true, false, null, OffsetDateTime.now(), 1L, OffsetDateTime.now(), 1L
+                null, null, LocalDate.now().minusDays(120), true, false, null, null, OffsetDateTime.now(), 1L, OffsetDateTime.now(), 1L
         );
         MembershipHold resumedHold = new MembershipHold(
                 78L,

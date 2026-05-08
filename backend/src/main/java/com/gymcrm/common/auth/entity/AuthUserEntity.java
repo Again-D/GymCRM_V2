@@ -53,6 +53,9 @@ public class AuthUserEntity {
     @Column(name = "password_change_required", nullable = false)
     private boolean passwordChangeRequired;
 
+    @Column(name = "password_changed_at")
+    private OffsetDateTime passwordChangedAt;
+
     @Column(name = "is_deleted", nullable = false)
     private boolean isDeleted;
 
@@ -103,6 +106,8 @@ public class AuthUserEntity {
     public void setAccessRevokedAfter(OffsetDateTime accessRevokedAfter) { this.accessRevokedAfter = accessRevokedAfter; }
     public boolean isPasswordChangeRequired() { return passwordChangeRequired; }
     public void setPasswordChangeRequired(boolean passwordChangeRequired) { this.passwordChangeRequired = passwordChangeRequired; }
+    public OffsetDateTime getPasswordChangedAt() { return passwordChangedAt; }
+    public void setPasswordChangedAt(OffsetDateTime passwordChangedAt) { this.passwordChangedAt = passwordChangedAt; }
     public boolean isDeleted() { return isDeleted; }
     public void setDeleted(boolean deleted) { isDeleted = deleted; }
     public OffsetDateTime getDeletedAt() { return deletedAt; }

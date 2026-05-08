@@ -116,6 +116,7 @@ public class MemberPiiRotationService {
                 source.consentSms(),
                 source.consentMarketing(),
                 source.memo(),
+                source.withdrawnAt(),
                 source.createdAt(),
                 source.createdBy(),
                 source.updatedAt(),

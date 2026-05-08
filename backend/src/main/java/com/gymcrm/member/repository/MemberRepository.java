@@ -157,6 +157,41 @@ public class MemberRepository {
     }
 
     @Transactional
+    public void withdraw(Long memberId, Long actorUserId) {
+        MemberEntity entity = memberJpaRepository.findByMemberIdAndIsDeletedFalse(memberId)
+                .orElseThrow();
+        OffsetDateTime now = OffsetDateTime.now();
+        entity.setMemberStatus(MemberStatus.WITHDRAWN.name());
+        entity.setWithdrawnAt(now);
+        entity.setUpdatedAt(now);
+        entity.setUpdatedBy(actorUserId);
+        memberJpaRepository.saveAndFlush(entity);
+    }
+
+    public List<WithdrawnMemberProjection> findWithdrawnBefore(OffsetDateTime cutoff, int limit) {
+        return memberQueryRepository.findWithdrawnBefore(cutoff, limit);
+    }
+
+    @Transactional
+    public void destroyPii(Long memberId, Long actorUserId) {
+        OffsetDateTime now = OffsetDateTime.now();
+        queryFactory.update(com.gymcrm.member.entity.QMemberEntity.memberEntity)
+                .set(com.gymcrm.member.entity.QMemberEntity.memberEntity.phone, "[DESTROYED]")
+                .setNull(com.gymcrm.member.entity.QMemberEntity.memberEntity.phoneEncrypted)
+                .setNull(com.gymcrm.member.entity.QMemberEntity.memberEntity.email)
+                .setNull(com.gymcrm.member.entity.QMemberEntity.memberEntity.birthDate)
+                .setNull(com.gymcrm.member.entity.QMemberEntity.memberEntity.birthDateEncrypted)
+                .setNull(com.gymcrm.member.entity.QMemberEntity.memberEntity.piiKeyVersion)
+                .set(com.gymcrm.member.entity.QMemberEntity.memberEntity.updatedAt, now)
+                .set(com.gymcrm.member.entity.QMemberEntity.memberEntity.updatedBy, actorUserId)
+                .where(
+                        com.gymcrm.member.entity.QMemberEntity.memberEntity.memberId.eq(memberId),
+                        com.gymcrm.member.entity.QMemberEntity.memberEntity.isDeleted.isFalse()
+                )
+                .execute();
+    }
+
+    @Transactional
     public void delete(Long memberId, Long actorUserId) {
         MemberEntity entity = memberJpaRepository.findByMemberIdAndIsDeletedFalse(memberId)
                 .orElseThrow();
@@ -187,6 +222,7 @@ public class MemberRepository {
                 entity.isConsentSms(),
                 entity.isConsentMarketing(),
                 entity.getMemo(),
+                entity.getWithdrawnAt(),
                 entity.getCreatedAt(),
                 entity.getCreatedBy(),
                 entity.getUpdatedAt(),
@@ -261,5 +297,10 @@ public class MemberRepository {
     public record MemberPiiRotationCandidate(
             Long memberId,
             Integer piiKeyVersion
+    ) {}
+
+    public record WithdrawnMemberProjection(
+            Long memberId,
+            OffsetDateTime withdrawnAt
     ) {}
 }
