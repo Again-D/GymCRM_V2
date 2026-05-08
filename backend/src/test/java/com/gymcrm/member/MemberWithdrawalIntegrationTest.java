@@ -1,6 +1,7 @@
 package com.gymcrm.member;
 
 import com.gymcrm.common.error.ApiException;
+import com.gymcrm.common.error.ErrorCode;
 import com.gymcrm.member.dto.response.MemberWithdrawResponse;
 import com.gymcrm.member.service.MemberService;
 import com.gymcrm.membership.repository.MemberMembershipRepository;
@@ -107,6 +108,47 @@ class MemberWithdrawalIntegrationTest {
                 .query(String.class)
                 .single();
         assertEquals("RESUMED", holdStatus);
+
+        long refundCount = jdbcClient.sql("SELECT COUNT(*) FROM membership_refunds WHERE membership_id = :membershipId")
+                .param("membershipId", membershipId)
+                .query(Long.class)
+                .single();
+        assertEquals(1L, refundCount);
+
+        long auditCount = jdbcClient.sql("SELECT COUNT(*) FROM audit_logs WHERE event_type = 'MEMBER_WITHDRAWN' AND resource_id = :resourceId")
+                .param("resourceId", String.valueOf(memberId))
+                .query(Long.class)
+                .single();
+        assertEquals(1L, auditCount);
+    }
+
+    @Test
+    void repeatedWithdrawRequestIsRejectedEarlyAndDoesNotDuplicateRefundOrAudit() {
+        LocalDate businessDate = LocalDate.now();
+        long memberId = insertMemberFixture("출금중복요청-" + shortId());
+        long productId = insertProductFixture("출금중복요청상품-" + shortId(), "MEMBERSHIP", "DURATION");
+        long membershipId = insertMembershipFixture(
+                CENTER_ID,
+                memberId,
+                productId,
+                "ACTIVE",
+                "MEMBERSHIP",
+                "DURATION",
+                businessDate.plusDays(10),
+                null,
+                null,
+                false
+        );
+        insertPurchasePaymentFixture(memberId, membershipId, BigDecimal.valueOf(100000));
+
+        MemberWithdrawResponse first = memberService.withdraw(memberId);
+
+        assertTrue(first.withdrawn());
+        assertEquals(1, first.refundedMembershipCount());
+
+        ApiException duplicate = assertThrows(ApiException.class, () -> memberService.withdraw(memberId));
+        assertEquals(ErrorCode.VALIDATION_ERROR, duplicate.getErrorCode());
+        assertEquals("이미 탈퇴 처리된 회원입니다. memberId=" + memberId, duplicate.getMessage());
 
         long refundCount = jdbcClient.sql("SELECT COUNT(*) FROM membership_refunds WHERE membership_id = :membershipId")
                 .param("membershipId", membershipId)

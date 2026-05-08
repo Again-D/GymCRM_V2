@@ -32,6 +32,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.clearInvocations;
 
 class MemberServiceTest {
 
@@ -241,10 +242,12 @@ class MemberServiceTest {
                 activeMember.updatedBy()
         );
         when(memberRepository.findById(1L)).thenReturn(Optional.of(withdrawnMember));
+        clearInvocations(memberWithdrawalService);
 
         ApiException duplicate = assertThrows(ApiException.class, () -> service.withdraw(1L));
         assertEquals(ErrorCode.VALIDATION_ERROR, duplicate.getErrorCode());
         assertEquals("이미 탈퇴 처리된 회원입니다. memberId=1", duplicate.getMessage());
+        verify(memberWithdrawalService, never()).withdraw(any(), any());
     }
 
     private Member sampleMember() {
