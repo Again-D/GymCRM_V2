@@ -43,7 +43,10 @@ describe("SelectedMemberSummaryCard", () => {
         joinDate: "2026-03-01",
         consentSms: true,
         consentMarketing: false,
-        memo: null
+        memo: null,
+        emergencyContactName: "김보호자",
+        emergencyContactPhone: "010-1111-2222",
+        emergencyContactRelationship: "부모"
       },
       selectedMemberError: null,
       selectedMemberLoading: false,
@@ -53,6 +56,7 @@ describe("SelectedMemberSummaryCard", () => {
     render(<SelectedMemberSummaryCard />);
 
     expect(screen.getByText("회원 상태")).toBeTruthy();
+    expect(screen.getByText("비상연락처")).toBeTruthy();
     expect(screen.getAllByText("활성").length).toBeGreaterThan(0);
     expect(screen.queryByText("회원권 상태")).toBeNull();
   });
@@ -71,7 +75,10 @@ describe("SelectedMemberSummaryCard", () => {
         joinDate: "2026-03-01",
         consentSms: true,
         consentMarketing: false,
-        memo: null
+        memo: null,
+        emergencyContactName: "김보호자",
+        emergencyContactPhone: "010-1111-2222",
+        emergencyContactRelationship: "부모"
       },
       selectedMemberError: null,
       selectedMemberLoading: false,
@@ -82,5 +89,6 @@ describe("SelectedMemberSummaryCard", () => {
 
     expect(screen.queryByText("선택된 회원 정보")).toBeNull();
     expect(screen.getByText("회원 상태")).toBeTruthy();
+    expect(screen.getByText("비상연락처")).toBeTruthy();
   });
 });

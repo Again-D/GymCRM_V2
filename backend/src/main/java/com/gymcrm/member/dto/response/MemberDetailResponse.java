@@ -17,7 +17,10 @@ public record MemberDetailResponse(
         LocalDate joinDate,
         boolean consentSms,
         boolean consentMarketing,
-        String memo
+        String memo,
+        String emergencyContactName,
+        String emergencyContactPhone,
+        String emergencyContactRelationship
 ) {
     public static MemberDetailResponse from(Member member) {
         return new MemberDetailResponse(
@@ -33,7 +36,10 @@ public record MemberDetailResponse(
                 member.joinDate(),
                 member.consentSms(),
                 member.consentMarketing(),
-                member.memo()
+                member.memo(),
+                member.emergencyContactName(),
+                member.emergencyContactPhone(),
+                member.emergencyContactRelationship()
         );
     }
 }

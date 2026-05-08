@@ -366,6 +366,9 @@ const initialMemberDetails = new Map<number, MemberDetail>([
       consentSms: true,
       consentMarketing: false,
       memo: "홀딩중 회원 example",
+      emergencyContactName: "김보호자",
+      emergencyContactPhone: "010-1111-2222",
+      emergencyContactRelationship: "부모",
     },
   ],
   [
@@ -383,6 +386,9 @@ const initialMemberDetails = new Map<number, MemberDetail>([
       consentSms: true,
       consentMarketing: true,
       memo: "정상 회원 example",
+      emergencyContactName: "박보호자",
+      emergencyContactPhone: "010-2222-3333",
+      emergencyContactRelationship: "배우자",
     },
   ],
   [
@@ -400,6 +406,9 @@ const initialMemberDetails = new Map<number, MemberDetail>([
       consentSms: false,
       consentMarketing: false,
       memo: null,
+      emergencyContactName: null,
+      emergencyContactPhone: null,
+      emergencyContactRelationship: null,
     },
   ],
 ]);
@@ -2201,6 +2210,9 @@ export function createMockMember(input: {
   consentSms?: boolean | null;
   consentMarketing?: boolean | null;
   memo?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  emergencyContactRelationship?: string | null;
 }) {
   memberIdSeed += 1;
   const nextDetail: MemberDetail = {
@@ -2216,6 +2228,9 @@ export function createMockMember(input: {
     consentSms: input.consentSms ?? false,
     consentMarketing: input.consentMarketing ?? false,
     memo: input.memo ?? null,
+    emergencyContactName: input.emergencyContactName ?? null,
+    emergencyContactPhone: input.emergencyContactPhone ?? null,
+    emergencyContactRelationship: input.emergencyContactRelationship ?? null,
   };
 
   mockMemberDetails.set(nextDetail.memberId, { ...nextDetail });

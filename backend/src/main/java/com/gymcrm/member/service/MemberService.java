@@ -76,6 +76,9 @@ public class MemberService {
                     request.consentSms() != null && request.consentSms(),
                     request.consentMarketing() != null && request.consentMarketing(),
                     trimToNull(request.memo()),
+                    trimToNull(request.emergencyContactName()),
+                    trimToNull(request.emergencyContactPhone()),
+                    trimToNull(request.emergencyContactRelationship()),
                     currentUserProvider.currentUserId()
             )));
         } catch (DataAccessException ex) {
@@ -174,6 +177,9 @@ public class MemberService {
                     request.consentSms() == null ? current.consentSms() : request.consentSms(),
                     request.consentMarketing() == null ? current.consentMarketing() : request.consentMarketing(),
                     request.memo() == null ? current.memo() : trimToNull(request.memo()),
+                    request.emergencyContactName() == null ? current.emergencyContactName() : trimToNull(request.emergencyContactName()),
+                    request.emergencyContactPhone() == null ? current.emergencyContactPhone() : trimToNull(request.emergencyContactPhone()),
+                    request.emergencyContactRelationship() == null ? current.emergencyContactRelationship() : trimToNull(request.emergencyContactRelationship()),
                     currentUserProvider.currentUserId()
             )));
         } catch (DataAccessException ex) {

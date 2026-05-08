@@ -905,65 +905,62 @@ Set-Cookie: refreshToken=eyJhbGciOiJIUzI1NiIs...; Path=/api/v1/auth; HttpOnly; S
 
 ```json
 {
-  "name": "홍길동",
+  "memberName": "홍길동",
   "phone": "010-1234-5678",
-  "birthDate": "1990-05-15",
-  "gender": "MALE",
   "email": "hong@example.com",
-  "address": "서울시 강남구 테헤란로 123",
-  "emergencyContact": {
-    "name": "홍부모",
-    "phone": "010-9999-8888",
-    "relationship": "부모"
-  },
+  "gender": "MALE",
+  "birthDate": "1990-05-15",
+  "memberStatus": "ACTIVE",
+  "joinDate": "2026-02-20",
   "memo": "무릎 부상 이력 있음. 하체 운동 시 주의 필요.",
-  "marketingConsent": true,
-  "photoUrl": null
+  "consentSms": true,
+  "consentMarketing": false,
+  "emergencyContactName": "홍부모",
+  "emergencyContactPhone": "010-9999-8888",
+  "emergencyContactRelationship": "부모"
 }
 ```
 
 | 필드 | 타입 | 필수 | 설명 |
 |------|------|------|------|
-| `name` | String | O | 회원명 (2~30자) |
+| `memberName` | String | O | 회원명 (2~30자) |
 | `phone` | String | O | 전화번호 (010-XXXX-XXXX 형식) |
 | `birthDate` | String | X | 생년월일 (yyyy-MM-dd) |
 | `gender` | Enum | X | 성별 (`MALE`, `FEMALE`, `OTHER`) |
 | `email` | String | X | 이메일 |
-| `address` | String | X | 주소 |
-| `emergencyContact` | Object | X | 비상 연락처 |
-| `emergencyContact.name` | String | X | 비상 연락처 이름 |
-| `emergencyContact.phone` | String | X | 비상 연락처 전화번호 |
-| `emergencyContact.relationship` | String | X | 관계 |
+| `memberStatus` | String | O | 회원 상태 (`ACTIVE`, `INACTIVE`) |
+| `joinDate` | String | X | 가입일 (yyyy-MM-dd) |
 | `memo` | String | X | 메모 (최대 500자) |
-| `marketingConsent` | Boolean | O | 마케팅 수신 동의 여부 |
-| `photoUrl` | String | X | 프로필 사진 URL |
+| `consentSms` | Boolean | O | SMS 수신 동의 여부 |
+| `consentMarketing` | Boolean | O | 마케팅 수신 동의 여부 |
+| `emergencyContactName` | String | O | 비상 연락처 이름 |
+| `emergencyContactPhone` | String | O | 비상 연락처 전화번호 |
+| `emergencyContactRelationship` | String | O | 관계 |
 
-**Response Body (성공 - 201):**
+**Response Body (성공 - 200):**
 
 ```json
 {
   "success": true,
   "data": {
-    "memberId": "MBR-20260220-0001",
-    "name": "홍길동",
+    "memberId": 1,
+    "centerId": 1,
+    "memberCode": "MBR-20260220-0001",
+    "memberName": "홍길동",
     "phone": "010-1234-5678",
+    "email": "hong@example.com",
     "birthDate": "1990-05-15",
     "gender": "MALE",
-    "email": "hong@example.com",
-    "address": "서울시 강남구 테헤란로 123",
-    "emergencyContact": {
-      "name": "홍부모",
-      "phone": "010-9999-8888",
-      "relationship": "부모"
-    },
+    "memberStatus": "ACTIVE",
+    "joinDate": "2026-02-20",
     "memo": "무릎 부상 이력 있음. 하체 운동 시 주의 필요.",
-    "marketingConsent": true,
-    "photoUrl": null,
-    "status": "ACTIVE",
-    "createdAt": "2026-02-20T10:00:00+09:00",
-    "updatedAt": "2026-02-20T10:00:00+09:00"
+    "consentSms": true,
+    "consentMarketing": false,
+    "emergencyContactName": "홍부모",
+    "emergencyContactPhone": "010-9999-8888",
+    "emergencyContactRelationship": "부모"
   },
-  "message": "회원이 성공적으로 등록되었습니다.",
+  "message": "회원이 등록되었습니다.",
   "timestamp": "2026-02-20T10:00:00+09:00"
 }
 ```
@@ -3000,6 +2997,7 @@ X-Cache: HIT
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| v1.19.2 | 2026-05-08 | `POST /api/v1/members` 신규 등록 계약에 `emergencyContactName`, `emergencyContactPhone`, `emergencyContactRelationship` 필드를 추가하고 응답 payload를 현재 구현에 맞게 동기화 | Sisyphus |
 | v1.19.1 | 2026-05-08 | `POST /api/v1/members/{memberId}/withdraw` 응답에 `memberStatus` 필드를 추가하고, 요약 payload(`memberId`, `memberStatus`, `withdrawn`, `refundedMembershipCount`, `resumedHoldingCount`, `refundAmount`) 기준으로 동기화 | Sisyphus |
 | v1.19.0 | 2026-05-08 | `POST /api/v1/members/{memberId}/withdraw`를 잔여 회원권 조회·홀딩 해제·환불·최종 탈퇴를 포함한 워크플로우 계약으로 승격하고, 응답을 요약 payload(`memberId`, `withdrawn`, `refundedMembershipCount`, `resumedHoldingCount`, `refundAmount`) 기준으로 동기화 | Sisyphus |
 | v1.18.0 | 2026-04-22 | 라커 등록 요청을 구역 + 번호 기반 자동 생성으로 전환하고, `POST /api/v1/lockers/batch` 다건 등록 API를 추가해 현재 구현과 계약을 동기화 | Codex |

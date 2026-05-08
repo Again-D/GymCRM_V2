@@ -20,6 +20,26 @@ public record MemberCreateRequest(
         LocalDate joinDate,
         Boolean consentSms,
         Boolean consentMarketing,
-        String memo
+        String memo,
+        @NotBlank(message = "emergencyContactName is required")
+        String emergencyContactName,
+        @NotBlank(message = "emergencyContactPhone is required")
+        String emergencyContactPhone,
+        @NotBlank(message = "emergencyContactRelationship is required")
+        String emergencyContactRelationship
 ) {
+    public MemberCreateRequest(
+            String memberName,
+            String phone,
+            String email,
+            String gender,
+            LocalDate birthDate,
+            String memberStatus,
+            LocalDate joinDate,
+            Boolean consentSms,
+            Boolean consentMarketing,
+            String memo
+    ) {
+        this(memberName, phone, email, gender, birthDate, memberStatus, joinDate, consentSms, consentMarketing, memo, null, null, null);
+    }
 }

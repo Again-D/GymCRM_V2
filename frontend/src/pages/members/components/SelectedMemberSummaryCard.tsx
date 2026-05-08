@@ -74,6 +74,18 @@ export function SelectedMemberSummaryCard({ surface = "panel", action }: Selecte
                 key: "joinDate",
                 label: "가입일",
                 children: selectedMember.joinDate ?? "-"
+              },
+              {
+                key: "emergencyContactName",
+                label: "비상연락처",
+                children: selectedMember.emergencyContactName
+                  ? `${selectedMember.emergencyContactName} / ${selectedMember.emergencyContactPhone ?? "-"}`
+                  : "-"
+              },
+              {
+                key: "emergencyContactRelationship",
+                label: "관계",
+                children: selectedMember.emergencyContactRelationship ?? "-"
               }
             ]}
           />

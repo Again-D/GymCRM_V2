@@ -57,6 +57,9 @@ describe("useMemberManagementState", () => {
         memberName: "신규회원",
         phone: "010-5555-6666",
         consentSms: true,
+        emergencyContactName: "비상연락처",
+        emergencyContactPhone: "010-1111-2222",
+        emergencyContactRelationship: "부모",
       });
     });
 
@@ -114,6 +117,9 @@ describe("useMemberManagementState", () => {
         consentSms: originalDetail.consentSms,
         consentMarketing: originalDetail.consentMarketing,
         memo: "수정 테스트",
+        emergencyContactName: "수정보호자",
+        emergencyContactPhone: "010-3333-4444",
+        emergencyContactRelationship: "배우자",
       });
     });
 
