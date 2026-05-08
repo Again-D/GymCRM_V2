@@ -3,7 +3,7 @@
 | 항목 | 내용 |
 |------|------|
 | 프로젝트명 | 중소형 헬스장 웹 기반 회원관리 시스템 (GymCRM) |
-| 문서 버전 | v1.18.0 |
+| 문서 버전 | v1.19.0 |
 | 작성일 | 2026-04-22 |
 | 기술 스택 | Java Spring Boot 3.0, PostgreSQL, React.js + TypeScript |
 | 인프라 | AWS EC2, RDS |
@@ -388,7 +388,7 @@ X-RateLimit-Reset: 1740001860
 | 3 | `GET` | `/api/v1/members/{memberId}` | 회원 상세 조회 | O | ALL |
 | 4 | `PUT` | `/api/v1/members/{memberId}` | 회원 정보 전체 수정 | O | ADMIN, MANAGER, DESK |
 | 5 | `PATCH` | `/api/v1/members/{memberId}` | 회원 정보 부분 수정 | O | ADMIN, MANAGER, DESK |
-| 6 | `DELETE` | `/api/v1/members/{memberId}` | 회원 탈퇴 처리 (소프트 삭제) | O | ADMIN |
+| 6 | `POST` | `/api/v1/members/{memberId}/withdraw` | 회원 탈퇴 처리 (잔여 회원권 환불 포함 워크플로우) | O | ADMIN, MANAGER, DESK |
 | 7 | `POST` | `/api/v1/members/{memberId}/memberships` | 회원권 구매 (신규 등록) | O | ADMIN, MANAGER, DESK |
 | 8 | `GET` | `/api/v1/members/{memberId}/memberships` | 회원의 회원권 목록 조회 | O | ALL |
 | 9 | `GET` | `/api/v1/members/{memberId}/memberships/{membershipId}` | 회원권 상세 조회 | O | ALL |
@@ -3000,6 +3000,7 @@ X-Cache: HIT
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| v1.19.0 | 2026-05-08 | `POST /api/v1/members/{memberId}/withdraw`를 잔여 회원권 조회·홀딩 해제·환불·최종 탈퇴를 포함한 워크플로우 계약으로 승격하고, 응답을 요약 payload(`memberId`, `withdrawn`, `refundedMembershipCount`, `resumedHoldingCount`, `refundAmount`) 기준으로 동기화 | Sisyphus |
 | v1.18.0 | 2026-04-22 | 라커 등록 요청을 구역 + 번호 기반 자동 생성으로 전환하고, `POST /api/v1/lockers/batch` 다건 등록 API를 추가해 현재 구현과 계약을 동기화 | Codex |
 | v1.17.0 | 2026-04-20 | auth password lifecycle: `/api/v1/auth/refresh` 표기를 현재 구현과 맞추고, `passwordChangeRequired`를 login/refresh/me/users 응답에 반영했으며, `/api/v1/auth/users` 생성/비밀번호 초기화 API와 `/api/v1/auth/password` 강제 변경 규칙을 현재 구현 기준으로 동기화 | Codex |
 | v1.16.0 | 2026-04-17 | RBAC contract cleanup: JWT payload/인증 응답 사용자 role 모델을 `roleCode + primaryRole + roles[]`로 정렬하고, 권한 표기 규칙 및 관리자/슈퍼관리자 역할 변경 정책을 현재 구현 기준으로 동기화 | Codex |
