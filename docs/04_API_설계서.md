@@ -3000,6 +3000,7 @@ X-Cache: HIT
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| v1.19.1 | 2026-05-08 | `POST /api/v1/members/{memberId}/withdraw` 응답에 `memberStatus` 필드를 추가하고, 요약 payload(`memberId`, `memberStatus`, `withdrawn`, `refundedMembershipCount`, `resumedHoldingCount`, `refundAmount`) 기준으로 동기화 | Sisyphus |
 | v1.19.0 | 2026-05-08 | `POST /api/v1/members/{memberId}/withdraw`를 잔여 회원권 조회·홀딩 해제·환불·최종 탈퇴를 포함한 워크플로우 계약으로 승격하고, 응답을 요약 payload(`memberId`, `withdrawn`, `refundedMembershipCount`, `resumedHoldingCount`, `refundAmount`) 기준으로 동기화 | Sisyphus |
 | v1.18.0 | 2026-04-22 | 라커 등록 요청을 구역 + 번호 기반 자동 생성으로 전환하고, `POST /api/v1/lockers/batch` 다건 등록 API를 추가해 현재 구현과 계약을 동기화 | Codex |
 | v1.17.0 | 2026-04-20 | auth password lifecycle: `/api/v1/auth/refresh` 표기를 현재 구현과 맞추고, `passwordChangeRequired`를 login/refresh/me/users 응답에 반영했으며, `/api/v1/auth/users` 생성/비밀번호 초기화 API와 `/api/v1/auth/password` 강제 변경 규칙을 현재 구현 기준으로 동기화 | Codex |

@@ -97,6 +97,7 @@ public class MemberWithdrawalService {
 
         return new MemberWithdrawResponse(
                 member.memberId(),
+                MemberStatus.WITHDRAWN,
                 true,
                 refundedMembershipCount,
                 resumedHoldingCount,
