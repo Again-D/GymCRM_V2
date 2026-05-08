@@ -30,7 +30,7 @@ The current implementation already has strong skeletons for member management, Q
 
 What is still missing is the end-to-end behavior that the requirements document expects:
 - member registration still lacks the required emergency-contact capture in the core user flow
-- the QR feature exists as an operator-oriented capability, but the member-facing mobile display path is not complete
+- the QR feature exposes a member-facing mobile display path, but the registration response and refresh lifecycle still need to stay aligned with the requirements document
 - access monitoring exposes presence/events, but abnormal access needs to be surfaced as an operator-readable workflow, not just a backend count
 - reservation behavior is present, but the policy layer around GX waitlist promotion, cancellation cutoff, deduction timing, and reminder dispatch is not yet closed
 
@@ -94,7 +94,7 @@ This sprint aligns those flows with the requirements document and the existing c
 - Reuse the existing CRM queue and message history model for reminders and waitlist notifications rather than creating a second dispatch system.
 - Treat PT reservation deduction timing as an explicit policy choice, with the default behavior preserving current completion-time deduction unless the policy says otherwise.
 - Add the member QR surface as a narrow mobile-friendly route instead of broadening the existing admin shell into a full member portal.
-- Use a narrow member-scoped bootstrap for the QR route, such as a signed access link or one-time token, rather than introducing full member login/session management in this sprint.
+- Emit a narrow member-scoped bootstrap path from member registration/detail responses, then use it to issue or refresh QR data without introducing full member login/session management in this sprint.
 - Prefer server-side policy values and status flags over hard-coded UI logic for cancellation windows, waitlist promotion, and reminder timing.
 - Reservation policy values must come from backend-resolved center-scoped configuration or documented backend defaults; the browser should render resolved values only.
 
@@ -189,7 +189,7 @@ flowchart LR
 - The member registration workflow can capture the required inputs without breaking the existing member list and detail navigation.
 - Duplicate-phone behavior stays intact while the new fields are accepted end to end.
 
-- [ ] U2. **Member QR Display Flow**
+- [x] U2. **Member QR Display Flow**
 
 **Goal:** Add the narrow member-facing QR display surface and dynamic refresh behavior required by UC-07, without turning the whole app into a full member portal.
 
@@ -208,7 +208,7 @@ flowchart LR
 - Test: `backend/src/test/java/com/gymcrm/access/QrCodeServiceTest.java`
 
 **Approach:**
-- Reuse the existing QR token service and TTL ceiling, but present the data through a dedicated mobile-friendly route.
+- Reuse the existing QR token service and TTL ceiling, but present the data through a dedicated mobile-friendly route that opens from the auto-generated `memberQrPath` returned by member registration/detail/update.
 - Keep the surface focused on token issuance, expiration countdown, and refresh behavior.
 - Use a narrow member-scoped bootstrap contract, such as a signed access link or one-time token, so the route can issue/refresh QR data without requiring a broader member session model.
 

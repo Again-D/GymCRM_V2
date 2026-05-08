@@ -86,6 +86,15 @@ export function SelectedMemberSummaryCard({ surface = "panel", action }: Selecte
                 key: "emergencyContactRelationship",
                 label: "관계",
                 children: selectedMember.emergencyContactRelationship ?? "-"
+              },
+              {
+                key: "memberQrPath",
+                label: "QR 링크",
+                children: selectedMember.memberQrPath ? (
+                  <a href={selectedMember.memberQrPath}>회원 QR 열기</a>
+                ) : (
+                  "-"
+                )
               }
             ]}
           />

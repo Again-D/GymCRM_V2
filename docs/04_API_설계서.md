@@ -3,7 +3,7 @@
 | 항목 | 내용 |
 |------|------|
 | 프로젝트명 | 중소형 헬스장 웹 기반 회원관리 시스템 (GymCRM) |
-| 문서 버전 | v1.19.0 |
+| 문서 버전 | v1.20.0 |
 | 작성일 | 2026-04-22 |
 | 기술 스택 | Java Spring Boot 3.0, PostgreSQL, React.js + TypeScript |
 | 인프라 | AWS EC2, RDS |
@@ -488,11 +488,13 @@ X-RateLimit-Reset: 1740001860
 | # | Method | URL | 설명 | 인증 | 권한 |
 |---|--------|-----|------|------|------|
 | 1 | `POST` | `/api/v1/access/qr-code` | QR 코드 생성 (회원별) | O | ADMIN, MANAGER, DESK |
-| 2 | `POST` | `/api/v1/access/check-in` | QR 검증 및 체크인 | O | DESK, SYSTEM |
-| 3 | `POST` | `/api/v1/access/check-out` | 체크아웃 처리 | O | DESK, SYSTEM |
-| 4 | `GET` | `/api/v1/access/logs` | 출입 기록 조회 (기간/회원 필터) | O | ADMIN, MANAGER, DESK |
-| 5 | `GET` | `/api/v1/access/today` | 금일 출입 현황 조회 | O | ALL |
-| 6 | `POST` | `/api/v1/access/manual-check-in` | 수동 체크인 (QR 불가 시) | O | DESK |
+| 2 | `POST` | `/api/v1/access/qr/member-link` | 회원 QR 링크 생성/재발급 | O | ADMIN, MANAGER, DESK |
+| 3 | `POST` | `/api/v1/access/qr/member-session` | 회원 QR 세션 갱신 | X | ALL |
+| 4 | `POST` | `/api/v1/access/check-in` | QR 검증 및 체크인 | O | DESK, SYSTEM |
+| 5 | `POST` | `/api/v1/access/check-out` | 체크아웃 처리 | O | DESK, SYSTEM |
+| 6 | `GET` | `/api/v1/access/logs` | 출입 기록 조회 (기간/회원 필터) | O | ADMIN, MANAGER, DESK |
+| 7 | `GET` | `/api/v1/access/today` | 금일 출입 현황 조회 | O | ALL |
+| 8 | `POST` | `/api/v1/access/manual-check-in` | 수동 체크인 (QR 불가 시) | O | DESK |
 
 ### 3.6 라커 관리 API (`/api/v1/lockers`)
 
@@ -1571,7 +1573,77 @@ Authorization: Bearer {accessToken}
 
 ---
 
-### 4.8 QR 코드 체크인 API
+### 4.8 회원 QR 링크/세션 API
+
+| 항목 | 내용 |
+|------|------|
+| **URL** | `POST /api/v1/access/qr/member-link`, `POST /api/v1/access/qr/member-session` |
+| **설명** | 회원 등록/조회/수정 응답은 `memberQrPath`를 통해 QR 접속 링크를 내려주고, 운영자는 필요 시 링크를 재발급할 수 있다. 회원은 공개 세션 갱신 API로 현재 QR을 다시 받아온다. |
+| **인증** | 링크 발급: 필요 / 세션 갱신: 불필요 |
+| **권한** | 링크 발급: ADMIN, MANAGER, DESK / 세션 갱신: ALL |
+
+**회원 QR 링크 생성/재발급 Request Body:**
+
+```json
+{
+  "memberId": 1024
+}
+```
+
+**회원 QR 링크 생성/재발급 Response Body (성공 - 200):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "bootstrapToken": "eyJhbGciOiJIUzI1NiJ9...",
+    "memberId": 1024,
+    "memberName": "홍길동",
+    "bootstrapExpiresAt": "2026-05-08T23:59:59Z",
+    "memberQrPath": "/member-qr?token=eyJhbGciOiJIUzI1NiJ9..."
+  },
+  "message": "회원 QR 링크가 발급되었습니다.",
+  "timestamp": "2026-05-08T10:00:00Z"
+}
+```
+
+**회원 QR 세션 갱신 Request Body:**
+
+```json
+{
+  "bootstrapToken": "eyJhbGciOiJIUzI1NiJ9..."
+}
+```
+
+**회원 QR 세션 갱신 Response Body (성공 - 200):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "memberId": 1024,
+    "memberName": "홍길동",
+    "qrToken": "GYMCRM-MBR1024-1746688800-a1b2c3d4e5f6",
+    "issuedAt": "2026-05-08T10:00:00Z",
+    "expiresAt": "2026-05-08T10:00:30Z",
+    "ttlSeconds": 30,
+    "bootstrapExpiresAt": "2026-05-08T23:59:59Z"
+  },
+  "message": "회원 QR 세션이 갱신되었습니다.",
+  "timestamp": "2026-05-08T10:00:00Z"
+}
+```
+
+**비즈니스 규칙:**
+- 회원 등록/조회/수정 응답은 `memberQrPath`를 포함해 모바일 QR 페이지를 즉시 열 수 있게 한다.
+- `member-link` API는 운영자 재발급용 보조 경로이며, 회원 QR 접근 링크의 기본 진입점은 회원 등록/조회/수정 응답이다.
+- 회원은 `memberQrPath`를 북마크, 메신저 대화, 홈 화면 바로가기 등으로 저장해 다음날에도 다시 열 수 있다.
+- `bootstrapToken`은 회원 ID와 센터 ID를 담은 서명 토큰이며, 만료 전까지 여러 번 세션 갱신에 재사용할 수 있다.
+- 세션 갱신은 기존 QR TTL 상한을 그대로 사용하고, 매 호출마다 새 QR 토큰을 발급한다.
+- 세션 갱신 응답에는 회원 이름과 QR 만료 시각을 포함해 모바일 화면이 남은 시간을 표시할 수 있게 한다.
+- 잘못되었거나 만료된 bootstrapToken은 401/422 수준의 오류로 처리하며, 프론트는 재시도 상태를 표시한다.
+
+### 4.9 QR 코드 체크인 API
 
 | 항목 | 내용 |
 |------|------|
@@ -1677,7 +1749,7 @@ Authorization: Bearer {accessToken}
 
 ---
 
-### 4.9 매출 리포트 API
+### 4.10 매출 리포트 API
 
 | 항목 | 내용 |
 |------|------|
@@ -2763,11 +2835,16 @@ sequenceDiagram
     participant A as API 서버
     participant DB as 데이터베이스
 
-    Note over M: 모바일 앱에서 QR 생성 요청
-    M->>A: POST /api/v1/access/qr-code
-    A->>A: QR 데이터 생성 (회원ID + 타임스탬프 + HMAC 서명)
-    A-->>M: 200 OK (QR 코드 이미지 데이터)
-    Note over M: QR 코드 유효시간: 5분
+    Note over A: 회원 QR 링크는 등록/조회/수정 응답에 포함되며 필요 시 운영자가 재발급
+    A->>A: POST /api/v1/access/qr/member-link
+    A-->>M: QR 링크 전송 (bootstrapToken 포함)
+    Note over M: 회원은 memberQrPath를 즐겨찾기, 홈 화면 바로가기 등으로 저장해 재사용
+    M->>M: 다음날 저장해 둔 memberQrPath를 다시 연다
+    Note over M: 회원은 모바일 화면에서 세션 갱신
+    M->>A: POST /api/v1/access/qr/member-session
+    A->>A: bootstrapToken 검증 후 QR 데이터 생성
+    A-->>M: 200 OK (QR 토큰 + 만료 시각)
+    Note over M: QR 코드 유효시간: 30초
 
     M->>K: QR 코드를 키오스크 스캐너에 인식
     K->>A: POST /api/v1/access/check-in
@@ -2997,6 +3074,7 @@ X-Cache: HIT
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| v1.20.0 | 2026-05-08 | 회원 QR 링크/세션 API를 추가해 운영자용 bootstrap link 발급과 public member-qr 세션 갱신 흐름을 현재 구현 기준으로 동기화 | Codex |
 | v1.19.2 | 2026-05-08 | `POST /api/v1/members` 신규 등록 계약에 `emergencyContactName`, `emergencyContactPhone`, `emergencyContactRelationship` 필드를 추가하고 응답 payload를 현재 구현에 맞게 동기화 | Sisyphus |
 | v1.19.1 | 2026-05-08 | `POST /api/v1/members/{memberId}/withdraw` 응답에 `memberStatus` 필드를 추가하고, 요약 payload(`memberId`, `memberStatus`, `withdrawn`, `refundedMembershipCount`, `resumedHoldingCount`, `refundAmount`) 기준으로 동기화 | Sisyphus |
 | v1.19.0 | 2026-05-08 | `POST /api/v1/members/{memberId}/withdraw`를 잔여 회원권 조회·홀딩 해제·환불·최종 탈퇴를 포함한 워크플로우 계약으로 승격하고, 응답을 요약 payload(`memberId`, `withdrawn`, `refundedMembershipCount`, `resumedHoldingCount`, `refundAmount`) 기준으로 동기화 | Sisyphus |

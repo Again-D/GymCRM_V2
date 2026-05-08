@@ -7,6 +7,7 @@ import { useAuthState } from "./app/auth";
 import { RouteProfiler } from "./app/reactProfiler";
 import {
   canAccessShellRoute,
+  getPublicRouteByPath,
   getShellRouteByPath,
   getSidebarRoutes,
 } from "./app/routes";
@@ -31,6 +32,7 @@ const TrainersPage = lazy(() => import("./pages/trainers/TrainersPage"));
 const UserAccountsPage = lazy(() => import("./pages/user-accounts/UserAccountsPage"));
 const MyAccountPage = lazy(() => import("./pages/my-account/MyAccountPage"));
 const MemberList = lazy(() => import("./pages/members/MemberList"));
+const MemberQrPage = lazy(() => import("./pages/member-qr/MemberQrPage"));
 
 if (import.meta.env.MODE === "test") {
   void loadDashboardLayout();
@@ -51,6 +53,14 @@ export default function App() {
 
   if (location.pathname === "/") {
     return <Navigate to="/dashboard" replace />;
+  }
+
+  if (getPublicRouteByPath(location.pathname)?.path === "/member-qr") {
+    return (
+      <Suspense fallback={<RouteLoadingScreen />}>
+        <MemberQrPage />
+      </Suspense>
+    );
   }
 
   if (requiresPasswordChange && location.pathname !== "/my-account") {

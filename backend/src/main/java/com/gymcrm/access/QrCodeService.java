@@ -22,6 +22,7 @@ public class QrCodeService {
     private final MemberRepository memberRepository;
     private final AccessService accessService;
     private final CurrentUserProvider currentUserProvider;
+    private final MemberQrBootstrapTokenService memberQrBootstrapTokenService;
     private final int qrTtlSeconds;
 
     public QrCodeService(
@@ -29,12 +30,14 @@ public class QrCodeService {
             MemberRepository memberRepository,
             AccessService accessService,
             CurrentUserProvider currentUserProvider,
+            MemberQrBootstrapTokenService memberQrBootstrapTokenService,
             @Value("${app.access.qr.ttl-seconds:30}") int qrTtlSeconds
     ) {
         this.qrTokenStore = qrTokenStore;
         this.memberRepository = memberRepository;
         this.accessService = accessService;
         this.currentUserProvider = currentUserProvider;
+        this.memberQrBootstrapTokenService = memberQrBootstrapTokenService;
         this.qrTtlSeconds = normalizeTtl(qrTtlSeconds);
     }
 
@@ -44,15 +47,40 @@ public class QrCodeService {
             throw new ApiException(ErrorCode.VALIDATION_ERROR, "memberId is required");
         }
         Long centerId = currentUserProvider.currentCenterId();
-        validateMember(centerId, memberId);
-        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-        QrTokenStore.IssuedToken issuedToken = qrTokenStore.issue(centerId, memberId, now, qrTtlSeconds);
-        return new IssueResult(
+        Member member = validateMember(centerId, memberId);
+        return issueForMember(centerId, member);
+    }
+
+    @Transactional
+    public MemberQrLinkResult issueMemberQrLink(Long memberId) {
+        if (memberId == null) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "memberId is required");
+        }
+        Long centerId = currentUserProvider.currentCenterId();
+        Member member = validateMember(centerId, memberId);
+        MemberQrBootstrapTokenService.IssuedBootstrapToken issuedToken = memberQrBootstrapTokenService.issue(centerId, member.memberId());
+        return new MemberQrLinkResult(
                 issuedToken.token(),
-                issuedToken.memberId(),
-                issuedToken.issuedAt(),
+                member.memberId(),
+                member.memberName(),
                 issuedToken.expiresAt(),
-                qrTtlSeconds
+                "/member-qr?token=" + issuedToken.token()
+        );
+    }
+
+    @Transactional
+    public MemberQrSessionResult resolveMemberQrSession(String bootstrapToken) {
+        MemberQrBootstrapTokenService.BootstrapClaims claims = memberQrBootstrapTokenService.parse(bootstrapToken);
+        Member member = validateMember(claims.centerId(), claims.memberId());
+        IssueResult issueResult = issueForMember(claims.centerId(), member);
+        return new MemberQrSessionResult(
+                member.memberId(),
+                member.memberName(),
+                issueResult.qrToken(),
+                issueResult.issuedAt(),
+                issueResult.expiresAt(),
+                issueResult.ttlSeconds(),
+                claims.expiresAt()
         );
     }
 
@@ -135,6 +163,18 @@ public class QrCodeService {
         return member;
     }
 
+    private IssueResult issueForMember(Long centerId, Member member) {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        QrTokenStore.IssuedToken issuedToken = qrTokenStore.issue(centerId, member.memberId(), now, qrTtlSeconds);
+        return new IssueResult(
+                issuedToken.token(),
+                issuedToken.memberId(),
+                issuedToken.issuedAt(),
+                issuedToken.expiresAt(),
+                qrTtlSeconds
+        );
+    }
+
     private int normalizeTtl(int ttlSeconds) {
         if (ttlSeconds < MIN_QR_TTL_SECONDS || ttlSeconds > MAX_QR_TTL_SECONDS) {
             throw new ApiException(
@@ -159,6 +199,26 @@ public class QrCodeService {
             OffsetDateTime issuedAt,
             OffsetDateTime expiresAt,
             int ttlSeconds
+    ) {
+    }
+
+    public record MemberQrLinkResult(
+            String bootstrapToken,
+            Long memberId,
+            String memberName,
+            OffsetDateTime bootstrapExpiresAt,
+            String memberQrPath
+    ) {
+    }
+
+    public record MemberQrSessionResult(
+            Long memberId,
+            String memberName,
+            String qrToken,
+            OffsetDateTime issuedAt,
+            OffsetDateTime expiresAt,
+            int ttlSeconds,
+            OffsetDateTime bootstrapExpiresAt
     ) {
     }
 

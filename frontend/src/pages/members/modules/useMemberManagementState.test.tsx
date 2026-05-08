@@ -60,6 +60,7 @@ describe("useMemberManagementState", () => {
         emergencyContactName: "비상연락처",
         emergencyContactPhone: "010-1111-2222",
         emergencyContactRelationship: "부모",
+        memberQrPath: "/member-qr?token=mock-member-token-104",
       });
     });
 
@@ -120,6 +121,7 @@ describe("useMemberManagementState", () => {
         emergencyContactName: "수정보호자",
         emergencyContactPhone: "010-3333-4444",
         emergencyContactRelationship: "배우자",
+        memberQrPath: "/member-qr?token=mock-member-token-101",
       });
     });
 
@@ -153,6 +155,7 @@ describe("useMemberManagementState", () => {
           consentSms: true,
           consentMarketing: false,
           memo: null,
+          memberQrPath: "/member-qr?token=mock-member-token-101",
         },
         message: "회원 상태가 변경되었습니다.",
         timestamp: "2026-03-20T00:00:00Z",

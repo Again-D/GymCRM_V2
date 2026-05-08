@@ -211,6 +211,7 @@ describe("MemberListSection", () => {
 				emergencyContactName: "김보호자",
 				emergencyContactPhone: "010-1111-2222",
 				emergencyContactRelationship: "부모",
+				memberQrPath: "/member-qr?token=mock-member-token-101",
 			};
 			currentSelectedMember = selectedMember;
 			return true;
@@ -246,6 +247,7 @@ describe("MemberListSection", () => {
 				emergencyContactName: "김보호자",
 				emergencyContactPhone: "010-1111-2222",
 				emergencyContactRelationship: "부모",
+				memberQrPath: "/member-qr?token=mock-member-token-101",
 			};
 			currentSelectedMember = selectedMember;
 			return true;
@@ -306,6 +308,7 @@ describe("MemberListSection", () => {
 				emergencyContactName: "김보호자",
 				emergencyContactPhone: "010-1111-2222",
 				emergencyContactRelationship: "부모",
+				memberQrPath: "/member-qr?token=mock-member-token-101",
 			};
 			currentSelectedMember = selectedMember;
 			return true;

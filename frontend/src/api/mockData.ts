@@ -369,6 +369,7 @@ const initialMemberDetails = new Map<number, MemberDetail>([
       emergencyContactName: "김보호자",
       emergencyContactPhone: "010-1111-2222",
       emergencyContactRelationship: "부모",
+      memberQrPath: "/member-qr?token=mock-member-token-101",
     },
   ],
   [
@@ -389,6 +390,7 @@ const initialMemberDetails = new Map<number, MemberDetail>([
       emergencyContactName: "박보호자",
       emergencyContactPhone: "010-2222-3333",
       emergencyContactRelationship: "배우자",
+      memberQrPath: "/member-qr?token=mock-member-token-102",
     },
   ],
   [
@@ -409,6 +411,7 @@ const initialMemberDetails = new Map<number, MemberDetail>([
       emergencyContactName: null,
       emergencyContactPhone: null,
       emergencyContactRelationship: null,
+      memberQrPath: "/member-qr?token=mock-member-token-103",
     },
   ],
 ]);
@@ -2231,6 +2234,7 @@ export function createMockMember(input: {
     emergencyContactName: input.emergencyContactName ?? null,
     emergencyContactPhone: input.emergencyContactPhone ?? null,
     emergencyContactRelationship: input.emergencyContactRelationship ?? null,
+    memberQrPath: `/member-qr?token=mock-member-token-${memberIdSeed}`,
   };
 
   mockMemberDetails.set(nextDetail.memberId, { ...nextDetail });

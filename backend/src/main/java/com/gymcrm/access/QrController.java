@@ -32,6 +32,19 @@ public class QrController {
         return ApiResponse.success(IssueQrResponse.from(issued), "동적 QR 코드가 발급되었습니다.");
     }
 
+    @PostMapping("/member-link")
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
+    public ApiResponse<MemberQrLinkResponse> issueMemberLink(@Valid @RequestBody MemberQrLinkRequest request) {
+        QrCodeService.MemberQrLinkResult issued = qrCodeService.issueMemberQrLink(request.memberId());
+        return ApiResponse.success(MemberQrLinkResponse.from(issued), "회원 QR 링크가 발급되었습니다.");
+    }
+
+    @PostMapping("/member-session")
+    public ApiResponse<MemberQrSessionResponse> resolveMemberSession(@Valid @RequestBody MemberQrSessionRequest request) {
+        QrCodeService.MemberQrSessionResult session = qrCodeService.resolveMemberQrSession(request.bootstrapToken());
+        return ApiResponse.success(MemberQrSessionResponse.from(session), "회원 QR 세션이 갱신되었습니다.");
+    }
+
     @PostMapping("/verify")
     @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<VerifyQrResponse> verify(@Valid @RequestBody VerifyQrRequest request) {
@@ -47,6 +60,14 @@ public class QrController {
     }
 
     public record IssueQrRequest(@NotNull(message = "memberId is required") Long memberId) {
+    }
+
+    public record MemberQrLinkRequest(@NotNull(message = "memberId is required") Long memberId) {
+    }
+
+    public record MemberQrSessionRequest(
+            @NotBlank(message = "bootstrapToken is required") String bootstrapToken
+    ) {
     }
 
     public record VerifyQrRequest(
@@ -71,6 +92,46 @@ public class QrController {
                     result.issuedAt(),
                     result.expiresAt(),
                     result.ttlSeconds()
+            );
+        }
+    }
+
+    public record MemberQrLinkResponse(
+            String bootstrapToken,
+            Long memberId,
+            String memberName,
+            OffsetDateTime bootstrapExpiresAt,
+            String memberQrPath
+    ) {
+        static MemberQrLinkResponse from(QrCodeService.MemberQrLinkResult result) {
+            return new MemberQrLinkResponse(
+                    result.bootstrapToken(),
+                    result.memberId(),
+                    result.memberName(),
+                    result.bootstrapExpiresAt(),
+                    result.memberQrPath()
+            );
+        }
+    }
+
+    public record MemberQrSessionResponse(
+            Long memberId,
+            String memberName,
+            String qrToken,
+            OffsetDateTime issuedAt,
+            OffsetDateTime expiresAt,
+            int ttlSeconds,
+            OffsetDateTime bootstrapExpiresAt
+    ) {
+        static MemberQrSessionResponse from(QrCodeService.MemberQrSessionResult result) {
+            return new MemberQrSessionResponse(
+                    result.memberId(),
+                    result.memberName(),
+                    result.qrToken(),
+                    result.issuedAt(),
+                    result.expiresAt(),
+                    result.ttlSeconds(),
+                    result.bootstrapExpiresAt()
             );
         }
     }

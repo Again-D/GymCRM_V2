@@ -177,6 +177,82 @@ class AccessQrApiIntegrationTest {
                 .andExpect(jsonPath("$.data[0].denyReason").value("GATE_TIMEOUT"));
     }
 
+    @Test
+    void memberQrSessionRefreshesThroughSignedBootstrapTokenBeforeExpiry() throws Exception {
+        ensureDeskUser();
+        String deskToken = loginAndGetAccessToken(DESK_LOGIN_ID, DESK_PASSWORD);
+        long memberId = createActiveMemberWithMembership();
+        String bootstrapToken = issueMemberQrBootstrapToken(deskToken, memberId);
+
+        MvcResult firstSession = mockMvc.perform(post("/api/v1/access/qr/member-session")
+                        .contentType("application/json")
+                        .content("""
+                                {"bootstrapToken":"%s"}
+                                """.formatted(bootstrapToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.memberId").value(memberId))
+                .andExpect(jsonPath("$.data.memberName").isString())
+                .andExpect(jsonPath("$.data.qrToken").isString())
+                .andExpect(jsonPath("$.data.ttlSeconds").value(1))
+                .andReturn();
+
+        String firstQrToken = objectMapper.readTree(firstSession.getResponse().getContentAsString())
+                .path("data")
+                .path("qrToken")
+                .asText();
+        String firstExpiresAt = objectMapper.readTree(firstSession.getResponse().getContentAsString())
+                .path("data")
+                .path("expiresAt")
+                .asText();
+
+        Thread.sleep(1200L);
+
+        MvcResult secondSession = mockMvc.perform(post("/api/v1/access/qr/member-session")
+                        .contentType("application/json")
+                        .content("""
+                                {"bootstrapToken":"%s"}
+                                """.formatted(bootstrapToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.memberId").value(memberId))
+                .andExpect(jsonPath("$.data.qrToken").isString())
+                .andExpect(jsonPath("$.data.ttlSeconds").value(1))
+                .andReturn();
+
+        String secondQrToken = objectMapper.readTree(secondSession.getResponse().getContentAsString())
+                .path("data")
+                .path("qrToken")
+                .asText();
+        String secondExpiresAt = objectMapper.readTree(secondSession.getResponse().getContentAsString())
+                .path("data")
+                .path("expiresAt")
+                .asText();
+
+        org.assertj.core.api.Assertions.assertThat(secondQrToken).isNotEqualTo(firstQrToken);
+        org.assertj.core.api.Assertions.assertThat(secondExpiresAt).isNotEqualTo(firstExpiresAt);
+
+        mockMvc.perform(post("/api/v1/access/qr/verify")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + deskToken)
+                        .contentType("application/json")
+                        .content("""
+                                {"qrToken":"%s","deviceId":"gate-05","gateMode":"ONLINE"}
+                                """.formatted(firstQrToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.allowed").value(false))
+                .andExpect(jsonPath("$.data.code").value("A003"));
+
+        mockMvc.perform(post("/api/v1/access/qr/verify")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + deskToken)
+                        .contentType("application/json")
+                        .content("""
+                                {"qrToken":"%s","deviceId":"gate-05","gateMode":"ONLINE"}
+                                """.formatted(secondQrToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.allowed").value(true))
+                .andExpect(jsonPath("$.data.code").value("OK"));
+
+        exitMember(deskToken, memberId);
+    }
+
     private String issueQrToken(String accessToken, long memberId) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/v1/access/qr/issue")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
@@ -190,6 +266,22 @@ class AccessQrApiIntegrationTest {
         return objectMapper.readTree(result.getResponse().getContentAsString())
                 .path("data")
                 .path("qrToken")
+                .asText();
+    }
+
+    private String issueMemberQrBootstrapToken(String accessToken, long memberId) throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/v1/access/qr/member-link")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType("application/json")
+                        .content("""
+                                {"memberId": %d}
+                                """.formatted(memberId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.bootstrapToken").isString())
+                .andReturn();
+        return objectMapper.readTree(result.getResponse().getContentAsString())
+                .path("data")
+                .path("bootstrapToken")
                 .asText();
     }
 

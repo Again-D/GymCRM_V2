@@ -46,7 +46,8 @@ describe("SelectedMemberSummaryCard", () => {
         memo: null,
         emergencyContactName: "김보호자",
         emergencyContactPhone: "010-1111-2222",
-        emergencyContactRelationship: "부모"
+        emergencyContactRelationship: "부모",
+        memberQrPath: "/member-qr?token=mock-member-token-17"
       },
       selectedMemberError: null,
       selectedMemberLoading: false,
@@ -57,6 +58,7 @@ describe("SelectedMemberSummaryCard", () => {
 
     expect(screen.getByText("회원 상태")).toBeTruthy();
     expect(screen.getByText("비상연락처")).toBeTruthy();
+    expect(screen.getByText("QR 링크")).toBeTruthy();
     expect(screen.getAllByText("활성").length).toBeGreaterThan(0);
     expect(screen.queryByText("회원권 상태")).toBeNull();
   });
@@ -78,7 +80,8 @@ describe("SelectedMemberSummaryCard", () => {
         memo: null,
         emergencyContactName: "김보호자",
         emergencyContactPhone: "010-1111-2222",
-        emergencyContactRelationship: "부모"
+        emergencyContactRelationship: "부모",
+        memberQrPath: "/member-qr?token=mock-member-token-17"
       },
       selectedMemberError: null,
       selectedMemberLoading: false,
@@ -90,5 +93,6 @@ describe("SelectedMemberSummaryCard", () => {
     expect(screen.queryByText("선택된 회원 정보")).toBeNull();
     expect(screen.getByText("회원 상태")).toBeTruthy();
     expect(screen.getByText("비상연락처")).toBeTruthy();
+    expect(screen.getByText("QR 링크")).toBeTruthy();
   });
 });

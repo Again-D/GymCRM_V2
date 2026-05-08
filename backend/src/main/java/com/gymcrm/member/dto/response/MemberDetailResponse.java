@@ -20,9 +20,10 @@ public record MemberDetailResponse(
         String memo,
         String emergencyContactName,
         String emergencyContactPhone,
-        String emergencyContactRelationship
+        String emergencyContactRelationship,
+        String memberQrPath
 ) {
-    public static MemberDetailResponse from(Member member) {
+    public static MemberDetailResponse from(Member member, String memberQrPath) {
         return new MemberDetailResponse(
                 member.memberId(),
                 member.centerId(),
@@ -39,7 +40,8 @@ public record MemberDetailResponse(
                 member.memo(),
                 member.emergencyContactName(),
                 member.emergencyContactPhone(),
-                member.emergencyContactRelationship()
+                member.emergencyContactRelationship(),
+                memberQrPath
         );
     }
 }
