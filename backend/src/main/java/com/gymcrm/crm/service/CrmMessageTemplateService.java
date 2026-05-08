@@ -83,6 +83,19 @@ public class CrmMessageTemplateService {
         return new ListResult(rows);
     }
 
+    @Transactional(readOnly = true)
+    public CrmMessageTemplate requireSendableTemplate(Long templateId) {
+        if (templateId == null) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "templateId is required");
+        }
+        CrmMessageTemplate template = repository.findById(currentUserProvider.currentCenterId(), templateId)
+                .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "템플릿을 찾을 수 없습니다. templateId=" + templateId));
+        if (!template.isSendable()) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "템플릿은 발송 가능한 상태가 아닙니다. templateId=" + templateId);
+        }
+        return template;
+    }
+
     private String normalizeRequiredText(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new ApiException(ErrorCode.VALIDATION_ERROR, fieldName + " is required");

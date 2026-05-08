@@ -40,6 +40,9 @@ class CrmMessageTemplateServiceIntegrationTest {
         assertEquals("BIRTHDAY_OFFER", created.templateCode());
         assertEquals("SMS", created.channelType());
         assertTrue(created.isActive());
+        assertEquals("APPROVED", created.reviewStatus());
+        assertEquals("SENDABLE", created.operationalStatus());
+        assertTrue(created.isSendable());
 
         CrmMessageTemplate updated = service.update(new CrmMessageTemplateService.UpdateRequest(
                 created.templateId(),
@@ -56,11 +59,15 @@ class CrmMessageTemplateServiceIntegrationTest {
         assertEquals("생일 축하 템플릿(수정)", updated.templateName());
         assertEquals("생일 쿠폰이 발급되었습니다.", updated.templateBody());
         assertTrue(!updated.isActive());
+        assertEquals("REJECTED", updated.reviewStatus());
+        assertEquals("GOVERNANCE_ONLY", updated.operationalStatus());
+        assertTrue(!updated.isSendable());
 
         CrmMessageTemplateService.ListResult all = service.list(
                 new CrmMessageTemplateService.ListRequest(null, false, 100)
         );
         assertTrue(all.rows().stream().anyMatch(row -> row.templateId().equals(created.templateId())));
+        assertTrue(all.rows().stream().anyMatch(row -> "APPROVED".equals(row.reviewStatus())));
 
         CrmMessageTemplateService.ListResult kakaoOnly = service.list(
                 new CrmMessageTemplateService.ListRequest("KAKAO", false, 100)
@@ -71,6 +78,10 @@ class CrmMessageTemplateServiceIntegrationTest {
                 new CrmMessageTemplateService.ListRequest(null, true, 100)
         );
         assertTrue(activeOnly.rows().stream().noneMatch(row -> row.templateId().equals(created.templateId())));
+
+        CrmMessageTemplate sendableTemplate = service.requireSendableTemplate(created.templateId());
+        assertEquals(created.templateId(), sendableTemplate.templateId());
+        assertThrows(ApiException.class, () -> service.requireSendableTemplate(updated.templateId()));
     }
 
     @Test

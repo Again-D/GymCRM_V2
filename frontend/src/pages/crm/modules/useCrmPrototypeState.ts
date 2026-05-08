@@ -3,7 +3,10 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { apiPost, isMockApiMode } from "../../../api/client";
 import { queryKeys } from "../../../app/queryHelpers";
-import { createDefaultCrmFilters } from "./types";
+import {
+  createDefaultCrmFilters,
+  createDefaultCrmTemplateFilters,
+} from "./types";
 
 export function useCrmPrototypeState() {
   const queryClient = useQueryClient();
@@ -13,6 +16,8 @@ export function useCrmPrototypeState() {
   const [crmProcessSubmitting, setCrmProcessSubmitting] = useState(false);
   const [crmPanelMessage, setCrmPanelMessage] = useState<string | null>(null);
   const [crmPanelError, setCrmPanelError] = useState<string | null>(null);
+  const [crmTemplateFilters, setCrmTemplateFilters] = useState(createDefaultCrmTemplateFilters());
+  const [crmSelectedTemplateId, setCrmSelectedTemplateId] = useState<number | null>(null);
   const useMockMutations = isMockApiMode();
 
   const clearCrmFeedback = useCallback(() => {
@@ -74,6 +79,8 @@ export function useCrmPrototypeState() {
 
   function resetCrmWorkspace() {
     setCrmFilters(createDefaultCrmFilters());
+    setCrmTemplateFilters(createDefaultCrmTemplateFilters());
+    setCrmSelectedTemplateId(null);
     setCrmTriggerDaysAhead("3");
     setCrmTriggerSubmitting(false);
     setCrmProcessSubmitting(false);
@@ -89,6 +96,10 @@ export function useCrmPrototypeState() {
     crmProcessSubmitting,
     crmPanelMessage,
     crmPanelError,
+    crmTemplateFilters,
+    setCrmTemplateFilters,
+    crmSelectedTemplateId,
+    setCrmSelectedTemplateId,
     clearCrmFeedback,
     triggerCrmExpiryReminder,
     processCrmQueue,

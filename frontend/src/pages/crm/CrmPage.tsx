@@ -28,7 +28,9 @@ import { hasAnyRole } from "../../app/roles";
 import { usePagination } from "../../shared/hooks/usePagination";
 import { createDefaultCrmFilters } from "./modules/types";
 import { useCrmHistoryQuery } from "./modules/useCrmHistoryQuery";
+import { useCrmTemplatesQuery } from "./modules/useCrmTemplatesQuery";
 import { useCrmPrototypeState } from "./modules/useCrmPrototypeState";
+import type { CrmTemplateRow } from "./modules/types";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -48,6 +50,16 @@ const statusMap: Record<string, { label: string; color: string }> = {
 	PENDING: { label: "대기 중", color: "processing" },
 	RETRY_WAIT: { label: "재시도 예정", color: "warning" },
 	DEAD: { label: "실패", color: "error" },
+};
+
+const templateReviewStatusMap: Record<string, { label: string; color: string }> = {
+	APPROVED: { label: "심사 승인", color: "success" },
+	REJECTED: { label: "심사 반려", color: "error" },
+};
+
+const templateOperationalStatusMap: Record<string, { label: string; color: string }> = {
+	SENDABLE: { label: "발송 가능", color: "processing" },
+	GOVERNANCE_ONLY: { label: "거버넌스 전용", color: "default" },
 };
 
 type CrmHistoryRow = {
@@ -71,6 +83,10 @@ export default function CrmPage() {
 		crmProcessSubmitting,
 		crmPanelMessage,
 		crmPanelError,
+		crmTemplateFilters,
+		setCrmTemplateFilters,
+		crmSelectedTemplateId,
+		setCrmSelectedTemplateId,
 		clearCrmFeedback,
 		triggerCrmExpiryReminder,
 		processCrmQueue,
@@ -78,6 +94,12 @@ export default function CrmPage() {
 
 	const { crmHistoryRows, crmHistoryLoading, refetchCrmHistory } =
 		useCrmHistoryQuery(crmFilters);
+	const {
+		crmTemplateRows,
+		crmTemplateLoading,
+		crmTemplateError,
+		refetchCrmTemplates,
+	} = useCrmTemplatesQuery(crmTemplateFilters);
 
 	const isLiveCrmRoleSupported =
 		isMockMode ||
@@ -97,6 +119,9 @@ export default function CrmPage() {
 	const sentCount = crmHistoryRows.filter(
 		(row) => row.sendStatus === "SENT",
 	).length;
+	const selectedTemplate = crmTemplateRows.find(
+		(row) => row.templateId === crmSelectedTemplateId,
+	) ?? crmTemplateRows[0] ?? null;
 
 	useEffect(() => {
 		if (!isLiveCrmRoleSupported) {
@@ -104,6 +129,15 @@ export default function CrmPage() {
 			return;
 		}
 	}, [clearCrmFeedback, isLiveCrmRoleSupported]);
+
+	useEffect(() => {
+		if (crmSelectedTemplateId && crmTemplateRows.some((row) => row.templateId === crmSelectedTemplateId)) {
+			return;
+		}
+		if (crmTemplateRows.length > 0) {
+			setCrmSelectedTemplateId(crmTemplateRows[0].templateId);
+		}
+	}, [crmSelectedTemplateId, crmTemplateRows, setCrmSelectedTemplateId]);
 
 	async function runTrigger() {
 		await triggerCrmExpiryReminder();
@@ -217,6 +251,7 @@ export default function CrmPage() {
 							const nextFilters = createDefaultCrmFilters();
 							setCrmFilters(nextFilters);
 							void refetchCrmHistory();
+							void refetchCrmTemplates();
 						}}
 					>
 						로그 새로고침
@@ -280,6 +315,213 @@ export default function CrmPage() {
 					</Col>
 				))}
 			</Row>
+
+			<Card
+				title={
+					<Space direction="vertical" size={2}>
+						<Title level={5} style={{ margin: 0 }}>
+							템플릿 거버넌스
+						</Title>
+						<Text type="secondary" style={{ fontSize: "0.84rem" }}>
+							심사 상태와 발송 가능 여부를 한 화면에서 확인합니다.
+						</Text>
+					</Space>
+				}
+				extra={
+					<Space wrap>
+						<Select
+							aria-label="템플릿 채널 필터"
+							style={{ width: 140 }}
+							value={crmTemplateFilters.channelType}
+							disabled={!isLiveCrmRoleSupported}
+							onChange={(value) =>
+								setCrmTemplateFilters((prev) => ({
+									...prev,
+									channelType: value as typeof prev.channelType,
+								}))
+							}
+							options={[
+								{ label: "전체 채널", value: "" },
+								{ label: "SMS", value: "SMS" },
+								{ label: "알림톡", value: "KAKAO" },
+								{ label: "이메일", value: "EMAIL" },
+							]}
+						/>
+						<Button
+							disabled={!isLiveCrmRoleSupported}
+							type={crmTemplateFilters.activeOnly ? "primary" : "default"}
+							onClick={() =>
+								setCrmTemplateFilters((prev) => ({
+									...prev,
+									activeOnly: !prev.activeOnly,
+								}))
+							}
+						>
+							{crmTemplateFilters.activeOnly ? "활성만 보기" : "전체 보기"}
+						</Button>
+					</Space>
+				}
+			>
+				<Space direction="vertical" size={16} style={{ width: "100%" }}>
+					{crmTemplateError && (
+						<Alert message={crmTemplateError} type="error" showIcon />
+					)}
+					<Row gutter={[16, 16]}>
+						<Col xs={24} lg={15}>
+							<Table<CrmTemplateRow>
+								rowKey="templateId"
+								loading={crmTemplateLoading}
+								dataSource={crmTemplateRows}
+								pagination={false}
+								rowClassName={(record) =>
+									record.templateId === selectedTemplate?.templateId
+										? "is-selected-row"
+										: ""
+								}
+								onRow={(record) => ({
+									onClick: () => setCrmSelectedTemplateId(record.templateId),
+								})}
+								columns={[
+									{
+										title: "템플릿",
+										key: "template",
+										render: (_, record) => (
+											<Space direction="vertical" size={2}>
+												<Text strong>{record.templateName}</Text>
+												<Text type="secondary" style={{ fontSize: "0.75rem" }}>
+													{record.templateCode}
+												</Text>
+											</Space>
+										),
+									},
+									{
+										title: "채널 / 유형",
+										key: "channelType",
+										render: (_, record) => (
+											<Space direction="vertical" size={4}>
+												<Tag>{record.channelType}</Tag>
+												<Text type="secondary" style={{ fontSize: "0.75rem" }}>
+													{record.templateType}
+												</Text>
+											</Space>
+										),
+									},
+									{
+										title: "심사 상태",
+										key: "reviewStatus",
+										render: (_, record) => {
+											const reviewConfig =
+												templateReviewStatusMap[record.reviewStatus] ?? {
+													label: record.reviewStatus,
+													color: "default",
+												};
+											const operationalConfig =
+												templateOperationalStatusMap[record.operationalStatus] ?? {
+													label: record.operationalStatus,
+													color: "default",
+												};
+
+											return (
+												<Space direction="vertical" size={4}>
+													<Tag color={reviewConfig.color}>{reviewConfig.label}</Tag>
+													<Tag color={operationalConfig.color}>
+														{operationalConfig.label}
+													</Tag>
+												</Space>
+											);
+										},
+									},
+									{
+										title: "활성",
+										key: "isActive",
+										render: (_, record) => (
+											<Tag color={record.isActive ? "success" : "default"}>
+												{record.isActive ? "활성" : "비활성"}
+											</Tag>
+										),
+									},
+									{
+										title: "수정 시각",
+										dataIndex: "updatedAt",
+										key: "updatedAt",
+										render: (updatedAt) => (
+											<Text type="secondary" style={{ fontSize: "0.8rem" }}>
+												{formatDateTime(updatedAt)}
+											</Text>
+										),
+									},
+								]}
+							/>
+						</Col>
+						<Col xs={24} lg={9}>
+							<Card size="small" title="선택 템플릿 상세">
+								{selectedTemplate ? (
+									<Space direction="vertical" size={12} style={{ width: "100%" }}>
+										<Space wrap>
+											<Tag color="blue">{selectedTemplate.templateCode}</Tag>
+											<Tag color={selectedTemplate.sendable ? "green" : "default"}>
+												{selectedTemplate.sendable ? "발송 가능" : "발송 제한"}
+											</Tag>
+										</Space>
+										<div>
+											<Text type="secondary" style={{ fontSize: "0.75rem" }}>
+												템플릿명
+											</Text>
+											<div>
+												<Text strong>{selectedTemplate.templateName}</Text>
+											</div>
+										</div>
+										<div>
+											<Text type="secondary" style={{ fontSize: "0.75rem" }}>
+												상태
+											</Text>
+											<div>
+												<Text>
+													{templateReviewStatusMap[selectedTemplate.reviewStatus]?.label ??
+														selectedTemplate.reviewStatus}
+													{" / "}
+													{templateOperationalStatusMap[selectedTemplate.operationalStatus]?.label ??
+														selectedTemplate.operationalStatus}
+												</Text>
+											</div>
+										</div>
+										<div>
+											<Text type="secondary" style={{ fontSize: "0.75rem" }}>
+												본문
+											</Text>
+											<Paragraph
+												style={{
+													marginTop: 4,
+													marginBottom: 0,
+													whiteSpace: "pre-wrap",
+												}}
+											>
+												{selectedTemplate.templateBody}
+											</Paragraph>
+										</div>
+										<Space direction="vertical" size={4}>
+											<Text type="secondary" style={{ fontSize: "0.75rem" }}>
+												채널: {selectedTemplate.channelType}
+											</Text>
+											<Text type="secondary" style={{ fontSize: "0.75rem" }}>
+												활성: {selectedTemplate.isActive ? "예" : "아니오"}
+											</Text>
+											<Text type="secondary" style={{ fontSize: "0.75rem" }}>
+												수정: {formatDateTime(selectedTemplate.updatedAt)}
+											</Text>
+										</Space>
+									</Space>
+								) : (
+									<Empty
+										description="템플릿을 선택하면 상세 상태를 볼 수 있습니다."
+										image={Empty.PRESENTED_IMAGE_SIMPLE}
+									/>
+								)}
+							</Card>
+						</Col>
+					</Row>
+				</Space>
+			</Card>
 
 			<Row gutter={[24, 24]}>
 				<Col xs={24} lg={8}>

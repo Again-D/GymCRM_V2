@@ -19,7 +19,11 @@ import type {
   LockerSlot,
 } from "../pages/lockers/modules/types";
 import type { ProductRecord } from "../pages/products/modules/types";
-import type { CrmHistoryRow, CrmSendStatus } from "../pages/crm/modules/types";
+import type {
+  CrmHistoryRow,
+  CrmSendStatus,
+  CrmTemplateRow,
+} from "../pages/crm/modules/types";
 import {
   DEFAULT_TRAINER_PAYROLL_SESSION_UNIT_PRICE,
 } from "../pages/settlements/modules/types";
@@ -765,6 +769,37 @@ const initialCrmHistoryRows: CrmHistoryRow[] = [
   },
 ];
 
+const initialCrmTemplateRows: CrmTemplateRow[] = [
+  {
+    templateId: 501,
+    templateCode: "BIRTHDAY_OFFER",
+    templateName: "생일 혜택",
+    channelType: "SMS",
+    templateType: "MARKETING",
+    templateBody: "생일 축하 메시지",
+    reviewStatus: "APPROVED",
+    operationalStatus: "SENDABLE",
+    sendable: true,
+    isActive: true,
+    createdAt: "2026-03-13T00:00:00Z",
+    updatedAt: "2026-03-13T00:00:00Z",
+  },
+  {
+    templateId: 502,
+    templateCode: "INACTIVE_GUIDE",
+    templateName: "보관 템플릿",
+    channelType: "KAKAO",
+    templateType: "TRANSACTIONAL",
+    templateBody: "보관용 메시지",
+    reviewStatus: "REJECTED",
+    operationalStatus: "GOVERNANCE_ONLY",
+    sendable: false,
+    isActive: false,
+    createdAt: "2026-03-12T00:00:00Z",
+    updatedAt: "2026-03-12T00:00:00Z",
+  },
+];
+
 type SettlementTransaction = {
   transactionId: number;
   transactionDate: string;
@@ -903,6 +938,7 @@ let mockLockerSlots = cloneLockerSlots(initialLockerSlots);
 let mockLockerAssignments = cloneLockerAssignments(initialLockerAssignments);
 let mockProducts = cloneProducts(initialProducts);
 let mockCrmHistoryRows = cloneCrmHistoryRows(initialCrmHistoryRows);
+let mockCrmTemplateRows = cloneCrmTemplateRows(initialCrmTemplateRows);
 let mockTrainerAvailabilityByUserId = cloneTrainerAvailabilityMap(
   initialTrainerAvailabilityByUserId,
 );
@@ -1047,6 +1083,10 @@ function cloneMockGxExceptions(source: MockGxScheduleExceptionRecord[]) {
 }
 
 function cloneCrmHistoryRows(source: CrmHistoryRow[]) {
+  return source.map((row) => ({ ...row }));
+}
+
+function cloneCrmTemplateRows(source: CrmTemplateRow[]) {
   return source.map((row) => ({ ...row }));
 }
 
@@ -1309,6 +1349,19 @@ function filterCrmHistory(url: URL) {
 
   return mockCrmHistoryRows
     .filter((row) => !sendStatus || row.sendStatus === sendStatus)
+    .slice(0, limit)
+    .map((row) => ({ ...row }));
+}
+
+function filterCrmTemplates(url: URL) {
+  const channelType = url.searchParams.get("channelType")?.trim() ?? "";
+  const activeOnly = url.searchParams.get("activeOnly")?.trim() === "true";
+  const parsedLimit = Number.parseInt(url.searchParams.get("limit") ?? "50", 10);
+  const limit = Number.isFinite(parsedLimit) ? parsedLimit : 50;
+
+  return mockCrmTemplateRows
+    .filter((row) => !channelType || row.channelType === channelType)
+    .filter((row) => !activeOnly || row.isActive)
     .slice(0, limit)
     .map((row) => ({ ...row }));
 }
@@ -2160,6 +2213,7 @@ export function resetMockData() {
   mockLockerAssignments = cloneLockerAssignments(initialLockerAssignments);
   mockProducts = cloneProducts(initialProducts);
   mockCrmHistoryRows = cloneCrmHistoryRows(initialCrmHistoryRows);
+  mockCrmTemplateRows = cloneCrmTemplateRows(initialCrmTemplateRows);
   mockTrainers = cloneMockTrainers(initialMockTrainers);
   mockTrainerAvailabilityByUserId = cloneTrainerAvailabilityMap(
     initialTrainerAvailabilityByUserId,
@@ -3915,6 +3969,12 @@ export function getMockResponse(
 
   if (url.pathname === "/api/v1/products") {
     return envelope(filterProducts(url).map((product) => ({ ...product })));
+  }
+
+  if (url.pathname === "/api/v1/crm/templates") {
+    return envelope({
+      rows: filterCrmTemplates(url),
+    });
   }
 
   if (url.pathname === "/api/v1/crm/messages") {

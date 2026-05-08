@@ -32,7 +32,7 @@ source: docs/01_요구사항_분석서.md
 | FR-LKR-001 | 라커 | 미구현 | 라커 시각적 맵/UI가 없다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/locker/LockerService.java` |
 | FR-LKR-004 | 라커 | 미구현 | 만료 자동 안내 및 자동 반납 처리가 없다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/locker/LockerService.java` |
 | FR-LKR-005 | 라커 | 미구현 | 키 분실 처리 플로우가 없다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/locker/LockerService.java` |
-| FR-CRM-004 | CRM | 부분 구현 | 템플릿 관리가 있으나 심사 상태 표시/운영 상태 관리가 부족하다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/crm/controller/CrmMessageTemplateController.java` |
+| FR-CRM-004 | CRM | 완료 | CRM 템플릿 목록/상세에 심사 상태, 운영 상태, 발송 가능 여부가 노출된다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/crm/controller/CrmMessageTemplateController.java`, `backend/src/main/java/com/gymcrm/crm/service/CrmMessageTemplateService.java`, `frontend/src/pages/crm/CrmPage.tsx` |
 | FR-CRM-006 | CRM | 부분 구현 | 알림 실패 시 SMS 폴백 경로를 요구사항 수준으로 고정해야 한다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/crm/service/CrmMessageService.java` |
 | NFR-012 | 보안 | 인프라 확인 필요 | `docs/ops/tls-enforcement.md` 정책 문서 완료. 실제 배포 계층(Nginx/ALB) 설정은 인프라 확인 필요. | `docs/ops/tls-enforcement.md` |
 | NFR-013 | 보안 | 완료 | `passwordChangedAt` 필드 추가(V44), 90일 변경 권고 soft 정책 구현, `docs/ops/password-policy.md` 작성. | `docs/ops/password-policy.md`, `backend/src/main/java/com/gymcrm/common/auth/service/AuthService.java` |
@@ -103,12 +103,18 @@ source: docs/01_요구사항_분석서.md
 
 **실행 플랜**
 - [2026-05-08-002-feat-sprint2-core-ops-flow-plan.md](/Users/abc/projects/GymCRM_V2/docs/plans/2026-05-08-002-feat-sprint2-core-ops-flow-plan.md)
+- [2026-05-08-005-feat-sprint2-core-ops-flow-execution-plan.md](/Users/abc/projects/GymCRM_V2/docs/plans/2026-05-08-005-feat-sprint2-core-ops-flow-execution-plan.md)
 
 **포함 항목**
 - `FR-ACC-001` 회원 모바일 QR 표시 + Dynamic QR 갱신
 - `FR-ACC-005` 비정상 출입 알림 운영 정리
 - `FR-RSV-004/005/006/009` GX 대기열, 자동 전환, 취소 정책, 차감 시점, 알림 정책
 - `FR-MBR-001` 회원 등록 입력 항목 보강
+
+**범위 메모**
+- Sprint 2는 `FR-MBR-001` 회원 등록 완성도만 다루며, `FR-MBR-009` 회원 사진 업로드/관리 전체 플로우는 Sprint 3 소유로 둔다.
+- 회원 QR은 전체 회원 포털이 아니라 `signed link / one-time token` 계열의 좁은 bootstrap 계약을 전제로 한다.
+- 예약 정책값은 프론트 상수가 아니라 backend-owned center 설정 또는 backend default 값으로 해석한다.
 
 **완료 기준**
 - 출입/예약/회원등록의 핵심 정책이 문서와 구현에서 일치한다.
@@ -124,6 +130,10 @@ source: docs/01_요구사항_분석서.md
 **목표**
 - 있어도 좋은 부가 기능과 운영 고도화를 후순위로 정리한다.
 
+**실행 플랜**
+- [2026-05-08-003-feat-sprint3-ops-growth-plan.md](/Users/abc/projects/GymCRM_V2/docs/plans/2026-05-08-003-feat-sprint3-ops-growth-plan.md)
+- [2026-05-08-004-feat-sprint3-ops-growth-execution-plan.md](/Users/abc/projects/GymCRM_V2/docs/plans/2026-05-08-004-feat-sprint3-ops-growth-execution-plan.md)
+
 **포함 항목**
 - `FR-CRM-004` 템플릿 심사 상태/운영 상태
 - `FR-CRM-006` SMS 폴백
@@ -134,6 +144,11 @@ source: docs/01_요구사항_분석서.md
 - `FR-LKR-006` 라커 구역/등급 요금
 - `FR-SAL-007` 미수금 관리
 - `FR-MBR-009` 회원 사진
+
+**범위 메모**
+- CRM 발송은 `sendable` 상태 템플릿만 사용 가능하며, rejected/inactive 템플릿은 거버넌스/이력용으로만 남긴다.
+- `FR-SAL-007`의 reminder hook은 별도 정산 알림 엔진이 아니라 기존 CRM 큐를 재사용하는 operator action 또는 eligibility marker로 제한한다.
+- `FR-MBR-009` 구현 시 업로드 가드레일(MIME, 파일 크기, 교체 정책, 접근 권한)을 함께 정의한다.
 
 **완료 기준**
 - CRM/상품/라커/정산의 부가 운영 기능이 정책 단위로 정리된다.

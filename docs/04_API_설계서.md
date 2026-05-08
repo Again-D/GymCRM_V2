@@ -548,6 +548,24 @@ X-RateLimit-Reset: 1740001860
 | 11 | `GET` | `/api/v1/messages/logs` | 메시지 발송 이력 조회 | O | ADMIN, MANAGER |
 | 12 | `GET` | `/api/v1/messages/logs/{logId}` | 발송 이력 상세 | O | ADMIN, MANAGER |
 
+### 3.8.1 CRM 템플릿 API (`/api/v1/crm/templates`)
+
+| # | Method | URL | 설명 | 인증 | 권한 |
+|---|--------|-----|------|------|------|
+| 1 | `GET` | `/api/v1/crm/templates` | CRM 템플릿 목록 | O | ADMIN, MANAGER, DESK |
+| 2 | `POST` | `/api/v1/crm/templates` | CRM 템플릿 생성 | O | ADMIN, MANAGER, DESK |
+| 3 | `PATCH` | `/api/v1/crm/templates/{templateId}` | CRM 템플릿 수정 | O | ADMIN, MANAGER, DESK |
+
+**응답 필드:**
+- `reviewStatus`: `APPROVED` 또는 `REJECTED`
+- `operationalStatus`: `SENDABLE` 또는 `GOVERNANCE_ONLY`
+- `sendable`: 발송 가능 여부를 나타내는 불리언 값
+- `isActive`: 기존 활성 여부 플래그
+
+**비즈니스 규칙:**
+- 템플릿의 발송 가능 여부는 운영 상태와 활성 여부를 함께 반영한다.
+- 비활성 템플릿은 거버넌스/이력 조회에는 노출되지만 발송 가능 상태로 간주하지 않는다.
+
 ### 3.9 대시보드 API (`/api/v1/dashboard`)
 
 | # | Method | URL | 설명 | 인증 | 권한 |
