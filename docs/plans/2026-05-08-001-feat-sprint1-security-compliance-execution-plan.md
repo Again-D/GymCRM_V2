@@ -132,3 +132,34 @@ Goal:
 - No open question remains for TLS enforcement, password policy, audit retention, member withdrawal, or legal destruction.
 - The gap tracker can be updated from `부분 구현` to `완료` or `인프라 확인 필요` as appropriate.
 
+## Deferred Items
+
+The following item was scoped out of Sprint 1 due to an unresolved business policy decision and is tracked here for continuity.
+
+### FR-MBR-003: Active Membership Handling on Withdrawal
+
+**What was implemented**
+- Member status transition to `WITHDRAWN`
+- `withdrawnAt` timestamp recorded
+- `POST /api/v1/members/{memberId}/withdraw` endpoint
+
+**What was not implemented**
+- Checking for active memberships before or during withdrawal
+- Automatic cancellation or refund of remaining active memberships
+
+**Why deferred**
+The handling policy for active memberships at withdrawal time was not confirmed:
+- Option A: Block withdrawal if active memberships exist (guard rejection)
+- Option B: Auto-cancel active memberships on withdrawal (no refund)
+- Option C: Auto-cancel and trigger refund flow via `MembershipRefundService`
+- Option D: Allow withdrawal, leave membership handling to operator manually
+
+No business decision was made during Sprint 1, so this was deferred to avoid assuming the wrong behavior.
+
+**Re-entry conditions**
+- Business confirms which option (A/B/C/D) applies
+- Confirm whether refund should be automatic or operator-initiated
+
+**Implementation note**
+`MemberMembershipRepository.existsNonTerminalPtMembership()` and `MembershipRefundService` already exist. Once the policy is confirmed, integration cost is low.
+

@@ -219,7 +219,7 @@ public class MemberService {
                 "MEMBER_WITHDRAWN",
                 "MEMBER",
                 String.valueOf(memberId),
-                "{\"actorUserId\":" + actor.userId() + "}"
+                "{\"actorUserId\":%d}".formatted(actor.userId())
         );
     }
 

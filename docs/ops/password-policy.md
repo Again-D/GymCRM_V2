@@ -64,5 +64,15 @@ is null.
 - [x] `password_changed_at` column added (V44 migration)
 - [x] `AuthUser.isPasswordChangeRecommended()` method available
 - [x] Policy decision documented (soft recommendation)
-- [ ] Frontend notice implemented
-- [ ] Login/me API response includes `passwordRotationRecommended` field
+- [x] `passwordRotationRecommended` computed in `AuthService.UserSession`
+- [ ] `AuthMeResponse` does not yet include `passwordRotationRecommended` — field is computed in `AuthService.UserSession` but omitted from the controller response DTO (`AuthController.AuthMeResponse`). Needs a deliberate decision: expose as-is, or keep server-side only.
+- [ ] Frontend notice not implemented (blocked by above)
+
+## Open Decision
+
+`passwordRotationRecommended` is intentionally excluded from the current `AuthMeResponse`.
+Before exposing it to the frontend, confirm:
+1. Should the field appear in `GET /api/v1/auth/me` response only, or also in the login response?
+2. Is the frontend expected to show a dismissable banner, a modal, or a passive indicator?
+
+Until this is confirmed, the field remains internal to `AuthService.UserSession` and is not surfaced via API.
