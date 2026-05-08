@@ -103,6 +103,7 @@ class MemberPiiRotationSchedulerTest {
                 true,
                 false,
                 null,
+                null,
                 now,
                 99L,
                 now,
