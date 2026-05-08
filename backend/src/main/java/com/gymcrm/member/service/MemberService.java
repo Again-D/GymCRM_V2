@@ -209,6 +209,11 @@ public class MemberService {
         Member current = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "회원을 찾을 수 없습니다. memberId=" + memberId));
 
+        if (!"ROLE_SUPER_ADMIN".equals(actor.roleCode())
+                && !current.centerId().equals(currentUserProvider.currentCenterId())) {
+            throw new ApiException(ErrorCode.ACCESS_DENIED, "현재 센터의 회원만 탈퇴 처리할 수 있습니다.");
+        }
+
         if (MemberStatus.WITHDRAWN == current.memberStatus()) {
             throw new ApiException(ErrorCode.VALIDATION_ERROR, "이미 탈퇴 처리된 회원입니다. memberId=" + memberId);
         }

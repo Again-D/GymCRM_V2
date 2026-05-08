@@ -126,6 +126,7 @@ app:
       enabled: ${APP_AUDIT_RETENTION_ENABLED:false}
       days: ${APP_AUDIT_RETENTION_DAYS:365}
       cron: ${APP_AUDIT_RETENTION_CRON:0 0 3 * * *}
+      chunk-size: ${APP_AUDIT_RETENTION_CHUNK_SIZE:1000}
   member:
     pii-destruction:
       enabled: ${APP_MEMBER_PII_DESTRUCTION_ENABLED:false}
