@@ -33,6 +33,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.clearInvocations;
+import org.mockito.ArgumentCaptor;
 
 class MemberServiceTest {
 
@@ -102,6 +103,37 @@ class MemberServiceTest {
         ));
 
         assertEquals("테스트회원", result.memberName());
+    }
+
+    @Test
+    void createPersistsEmergencyContactDetailsWhenProvided() {
+        when(currentUserProvider.currentUserId()).thenReturn(99L);
+        when(piiEncryptionService.encryptWithActiveVersion(any()))
+                .thenReturn(new PiiEncryptionService.EncryptedPii("enc", 1));
+        when(memberRepository.insert(any())).thenReturn(sampleMember());
+        when(memberPiiRotationService.resolveForRead(any(), anyLong())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.create(new MemberCreateRequest(
+                "테스트회원",
+                "010-9999-0000",
+                null,
+                null,
+                null,
+                "ACTIVE",
+                LocalDate.of(2026, 2, 23),
+                null,
+                null,
+                null,
+                "보호자",
+                "010-1111-2222",
+                "부모"
+        ));
+
+        ArgumentCaptor<MemberRepository.MemberCreateCommand> captor = ArgumentCaptor.forClass(MemberRepository.MemberCreateCommand.class);
+        verify(memberRepository).insert(captor.capture());
+        assertEquals("보호자", captor.getValue().emergencyContactName());
+        assertEquals("010-1111-2222", captor.getValue().emergencyContactPhone());
+        assertEquals("부모", captor.getValue().emergencyContactRelationship());
     }
 
     @Test

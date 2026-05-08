@@ -73,11 +73,15 @@ class MemberSummaryApiIntegrationTest {
                                   "memberStatus": "ACTIVE",
                                   "joinDate": "%s",
                                   "consentSms": true,
-                                  "consentMarketing": false
+                                  "consentMarketing": false,
+                                  "emergencyContactName": "비상연락처",
+                                  "emergencyContactPhone": "010-1111-2222",
+                                  "emergencyContactRelationship": "부모"
                                 }
                                 """.formatted(memberName, phone, LocalDate.now())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.memberCode").exists())
+                .andExpect(jsonPath("$.data.emergencyContactName").value("비상연락처"))
                 .andReturn();
 
         String memberCode = objectMapper.readTree(createResult.getResponse().getContentAsString())
@@ -111,7 +115,10 @@ class MemberSummaryApiIntegrationTest {
                                   "memberStatus": " active ",
                                   "joinDate": "%s",
                                   "consentSms": true,
-                                  "consentMarketing": false
+                                  "consentMarketing": false,
+                                  "emergencyContactName": "비상연락처",
+                                  "emergencyContactPhone": "010-1111-2222",
+                                  "emergencyContactRelationship": "부모"
                                 }
                                 """.formatted(memberName, phone, LocalDate.now())))
                 .andExpect(status().isOk())
@@ -132,7 +139,10 @@ class MemberSummaryApiIntegrationTest {
                                   "memberName": "잘못된상태회원",
                                   "phone": "010%s",
                                   "memberStatus": "BROKEN",
-                                  "joinDate": "%s"
+                                  "joinDate": "%s",
+                                  "emergencyContactName": "비상연락처",
+                                  "emergencyContactPhone": "010-1111-2222",
+                                  "emergencyContactRelationship": "부모"
                                 }
                                 """.formatted(randomDigits(8), LocalDate.now())))
                 .andExpect(status().isBadRequest())

@@ -572,6 +572,39 @@ export function MemberListSection() {
               </Form.Item>
             </Col>
           </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="비상연락처 이름" required>
+                <Input
+                  value={memberForm.emergencyContactName}
+                  onChange={(e) => setMemberForm(prev => ({ ...prev, emergencyContactName: e.target.value }))}
+                  placeholder="비상연락처 이름"
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="비상연락처" required>
+                <Input
+                  value={memberForm.emergencyContactPhone}
+                  onChange={(e) => setMemberForm(prev => ({ ...prev, emergencyContactPhone: e.target.value }))}
+                  placeholder="010-9876-5432"
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="관계" required>
+                <Input
+                  value={memberForm.emergencyContactRelationship}
+                  onChange={(e) => setMemberForm(prev => ({ ...prev, emergencyContactRelationship: e.target.value }))}
+                  placeholder="부모, 배우자 등"
+                />
+              </Form.Item>
+            </Col>
+          </Row>
           
           <Row gutter={16}>
             <Col span={12}>

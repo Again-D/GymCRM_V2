@@ -23,6 +23,9 @@ export type MemberDetail = {
   consentSms: boolean;
   consentMarketing: boolean;
   memo: string | null;
+  emergencyContactName: string | null;
+  emergencyContactPhone: string | null;
+  emergencyContactRelationship: string | null;
 };
 
 export type MembersModalState =
@@ -44,6 +47,9 @@ export type MemberFormState = {
   consentSms: boolean;
   consentMarketing: boolean;
   memo: string;
+  emergencyContactName: string;
+  emergencyContactPhone: string;
+  emergencyContactRelationship: string;
 };
 
 export type PurchasedMembership = {
@@ -139,6 +145,9 @@ export function createEmptyMemberForm(): MemberFormState {
     consentSms: false,
     consentMarketing: false,
     memo: "",
+    emergencyContactName: "",
+    emergencyContactPhone: "",
+    emergencyContactRelationship: "",
   };
 }
 
@@ -156,5 +165,8 @@ export function createMemberFormFromDetail(
     consentSms: detail.consentSms,
     consentMarketing: detail.consentMarketing,
     memo: detail.memo ?? "",
+    emergencyContactName: detail.emergencyContactName ?? "",
+    emergencyContactPhone: detail.emergencyContactPhone ?? "",
+    emergencyContactRelationship: detail.emergencyContactRelationship ?? "",
   };
 }

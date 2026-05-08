@@ -28,6 +28,21 @@ function buildCreateMemberInput(memberForm: MemberFormState) {
 		return { error: "연락처를 입력해야 합니다." } as const;
 	}
 
+	const emergencyContactName = memberForm.emergencyContactName.trim();
+	if (!emergencyContactName) {
+		return { error: "비상연락처 이름을 입력해야 합니다." } as const;
+	}
+
+	const emergencyContactPhone = memberForm.emergencyContactPhone.trim();
+	if (!emergencyContactPhone) {
+		return { error: "비상연락처 연락처를 입력해야 합니다." } as const;
+	}
+
+	const emergencyContactRelationship = memberForm.emergencyContactRelationship.trim();
+	if (!emergencyContactRelationship) {
+		return { error: "비상연락처 관계를 입력해야 합니다." } as const;
+	}
+
 	return {
 		value: {
 			memberName,
@@ -40,6 +55,9 @@ function buildCreateMemberInput(memberForm: MemberFormState) {
 			consentSms: memberForm.consentSms,
 			consentMarketing: memberForm.consentMarketing,
 			memo: asNullableText(memberForm.memo),
+			emergencyContactName,
+			emergencyContactPhone,
+			emergencyContactRelationship,
 		},
 	} as const;
 }
@@ -67,6 +85,9 @@ function buildUpdateMemberInput(memberForm: MemberFormState) {
 			consentSms: memberForm.consentSms,
 			consentMarketing: memberForm.consentMarketing,
 			memo: asNullableText(memberForm.memo),
+			emergencyContactName: asNullableText(memberForm.emergencyContactName),
+			emergencyContactPhone: asNullableText(memberForm.emergencyContactPhone),
+			emergencyContactRelationship: asNullableText(memberForm.emergencyContactRelationship),
 		},
 	} as const;
 }

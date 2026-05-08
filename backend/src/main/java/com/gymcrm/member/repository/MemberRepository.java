@@ -50,6 +50,9 @@ public class MemberRepository {
         entity.setConsentSms(Boolean.TRUE.equals(command.consentSms()));
         entity.setConsentMarketing(Boolean.TRUE.equals(command.consentMarketing()));
         entity.setMemo(command.memo());
+        entity.setEmergencyContactName(command.emergencyContactName());
+        entity.setEmergencyContactPhone(command.emergencyContactPhone());
+        entity.setEmergencyContactRelationship(command.emergencyContactRelationship());
         entity.setDeleted(false);
         entity.setCreatedAt(now);
         entity.setCreatedBy(command.actorUserId());
@@ -129,6 +132,9 @@ public class MemberRepository {
         entity.setConsentSms(Boolean.TRUE.equals(command.consentSms()));
         entity.setConsentMarketing(Boolean.TRUE.equals(command.consentMarketing()));
         entity.setMemo(command.memo());
+        entity.setEmergencyContactName(command.emergencyContactName());
+        entity.setEmergencyContactPhone(command.emergencyContactPhone());
+        entity.setEmergencyContactRelationship(command.emergencyContactRelationship());
         entity.setUpdatedAt(OffsetDateTime.now());
         entity.setUpdatedBy(command.actorUserId());
         MemberEntity saved = memberJpaRepository.saveAndFlush(entity);
@@ -222,6 +228,9 @@ public class MemberRepository {
                 entity.isConsentSms(),
                 entity.isConsentMarketing(),
                 entity.getMemo(),
+                entity.getEmergencyContactName(),
+                entity.getEmergencyContactPhone(),
+                entity.getEmergencyContactRelationship(),
                 entity.getWithdrawnAt(),
                 entity.getCreatedAt(),
                 entity.getCreatedBy(),
@@ -249,6 +258,9 @@ public class MemberRepository {
             Boolean consentSms,
             Boolean consentMarketing,
             String memo,
+            String emergencyContactName,
+            String emergencyContactPhone,
+            String emergencyContactRelationship,
             Long actorUserId
     ) {}
 
@@ -267,6 +279,9 @@ public class MemberRepository {
             Boolean consentSms,
             Boolean consentMarketing,
             String memo,
+            String emergencyContactName,
+            String emergencyContactPhone,
+            String emergencyContactRelationship,
             Long actorUserId
     ) {}
 

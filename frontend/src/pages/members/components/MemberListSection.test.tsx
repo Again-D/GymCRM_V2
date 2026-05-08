@@ -27,6 +27,9 @@ let currentSelectedMember: {
 	consentSms: boolean;
 	consentMarketing: boolean;
 	memo: null;
+	emergencyContactName: string;
+	emergencyContactPhone: string;
+	emergencyContactRelationship: string;
 } | null = null;
 let selectMemberMock = vi.fn();
 const clearSelectedMemberMock = vi.fn(() => {
@@ -205,6 +208,9 @@ describe("MemberListSection", () => {
 				consentSms: true,
 				consentMarketing: false,
 				memo: null,
+				emergencyContactName: "김보호자",
+				emergencyContactPhone: "010-1111-2222",
+				emergencyContactRelationship: "부모",
 			};
 			currentSelectedMember = selectedMember;
 			return true;
@@ -237,6 +243,9 @@ describe("MemberListSection", () => {
 				consentSms: true,
 				consentMarketing: false,
 				memo: null,
+				emergencyContactName: "김보호자",
+				emergencyContactPhone: "010-1111-2222",
+				emergencyContactRelationship: "부모",
 			};
 			currentSelectedMember = selectedMember;
 			return true;
@@ -294,6 +303,9 @@ describe("MemberListSection", () => {
 				consentSms: true,
 				consentMarketing: false,
 				memo: null,
+				emergencyContactName: "김보호자",
+				emergencyContactPhone: "010-1111-2222",
+				emergencyContactRelationship: "부모",
 			};
 			currentSelectedMember = selectedMember;
 			return true;
