@@ -30,6 +30,7 @@ let currentSelectedMember: {
 	emergencyContactName: string;
 	emergencyContactPhone: string;
 	emergencyContactRelationship: string;
+	memberQrPath?: string | null;
 } | null = null;
 let selectMemberMock = vi.fn();
 const clearSelectedMemberMock = vi.fn(() => {
@@ -106,7 +107,12 @@ vi.mock("../../memberships/modules/useTrainerOptionsQuery", () => ({
 vi.mock("../../products/modules/useProductsQuery", () => ({
 	useProductsQuery: () => ({
 		products: [
-			{ productId: 1, productName: "3개월 회원권", category: "MEMBERSHIP", status: "ACTIVE" },
+			{
+				productId: 1,
+				productName: "3개월 회원권",
+				category: "MEMBERSHIP",
+				status: "ACTIVE",
+			},
 		],
 		productsLoading: false,
 		productsQueryError: null,

@@ -1,173 +1,173 @@
 export type MemberSummary = {
-  memberId: number;
-  centerId: number;
-  memberName: string;
-  phone: string;
-  memberStatus: "ACTIVE" | "INACTIVE";
-  joinDate: string | null;
-  membershipOperationalStatus: "정상" | "홀딩중" | "만료임박" | "만료" | "없음";
-  membershipExpiryDate: string | null;
-  remainingPtCount: number | null;
+	memberId: number;
+	centerId: number;
+	memberName: string;
+	phone: string;
+	memberStatus: "ACTIVE" | "INACTIVE";
+	joinDate: string | null;
+	membershipOperationalStatus: "정상" | "홀딩중" | "만료임박" | "만료" | "없음";
+	membershipExpiryDate: string | null;
+	remainingPtCount: number | null;
 };
 
 export type MemberDetail = {
-  memberId: number;
-  centerId: number;
-  memberName: string;
-  phone: string;
-  email: string | null;
-  gender: "MALE" | "FEMALE" | "OTHER" | null;
-  birthDate: string | null;
-  memberStatus: "ACTIVE" | "INACTIVE";
-  joinDate: string | null;
-  consentSms: boolean;
-  consentMarketing: boolean;
-  memo: string | null;
-  emergencyContactName: string | null;
-  emergencyContactPhone: string | null;
-  emergencyContactRelationship: string | null;
-  memberQrPath?: string | null;
+	memberId: number;
+	centerId: number;
+	memberName: string;
+	phone: string;
+	email: string | null;
+	gender: "MALE" | "FEMALE" | "OTHER" | null;
+	birthDate: string | null;
+	memberStatus: "ACTIVE" | "INACTIVE";
+	joinDate: string | null;
+	consentSms: boolean;
+	consentMarketing: boolean;
+	memo: string | null;
+	emergencyContactName: string | null;
+	emergencyContactPhone: string | null;
+	emergencyContactRelationship: string | null;
+	memberQrPath?: string | null;
 };
 
 export type MembersModalState =
-  | { kind: "none" }
-  | { kind: "detail"; memberId: number }
-  | { kind: "create" }
-  | { kind: "edit"; memberId: number }
-  | { kind: "deactivate"; memberId: number }
-  | { kind: "delete"; memberId: number };
+	| { kind: "none" }
+	| { kind: "detail"; memberId: number }
+	| { kind: "create" }
+	| { kind: "edit"; memberId: number }
+	| { kind: "deactivate"; memberId: number }
+	| { kind: "delete"; memberId: number };
 
 export type MemberFormState = {
-  memberName: string;
-  phone: string;
-  email: string;
-  gender: "MALE" | "FEMALE" | "OTHER" | "";
-  birthDate: string;
-  memberStatus: "ACTIVE" | "INACTIVE";
-  joinDate: string;
-  consentSms: boolean;
-  consentMarketing: boolean;
-  memo: string;
-  emergencyContactName: string;
-  emergencyContactPhone: string;
-  emergencyContactRelationship: string;
+	memberName: string;
+	phone: string;
+	email: string;
+	gender: "MALE" | "FEMALE" | "OTHER" | "";
+	birthDate: string;
+	memberStatus: "ACTIVE" | "INACTIVE";
+	joinDate: string;
+	consentSms: boolean;
+	consentMarketing: boolean;
+	memo: string;
+	emergencyContactName: string;
+	emergencyContactPhone: string;
+	emergencyContactRelationship: string;
 };
 
 export type PurchasedMembership = {
-  membershipId: number;
-  memberId: number;
-  productId: number;
-  productNameSnapshot: string;
-  productCategorySnapshot?: string | null;
-  productTypeSnapshot: "DURATION" | "COUNT";
-  membershipStatus: "ACTIVE" | "HOLDING" | "REFUNDED" | "EXPIRED";
-  startDate: string;
-  endDate: string | null;
-  remainingCount: number | null;
-  assignedTrainerId?: number | null;
-  activeHoldStatus?: "ACTIVE" | null;
-  holdDaysUsed?: number;
-  holdCountUsed?: number;
-  holdDaysLimit?: number;
-  holdCountLimit?: number;
-  overrideLimits?: boolean;
+	membershipId: number;
+	memberId: number;
+	productId: number;
+	productNameSnapshot: string;
+	productCategorySnapshot?: string | null;
+	productTypeSnapshot: "DURATION" | "COUNT";
+	membershipStatus: "ACTIVE" | "HOLDING" | "REFUNDED" | "EXPIRED";
+	startDate: string;
+	endDate: string | null;
+	remainingCount: number | null;
+	assignedTrainerId?: number | null;
+	activeHoldStatus?: "ACTIVE" | null;
+	holdDaysUsed?: number;
+	holdCountUsed?: number;
+	holdDaysLimit?: number;
+	holdCountLimit?: number;
+	overrideLimits?: boolean;
 };
 
 export type MembershipPaymentRecord = {
-  paymentId: number;
-  membershipId: number;
-  paymentType: "PURCHASE" | "REFUND";
-  paymentStatus: "PAID" | "REFUNDED" | "COMPLETED" | "CANCELED" | "FAILED";
-  paymentMethod: "CASH" | "CARD" | "TRANSFER" | "ETC";
-  amount: number;
-  paidAt: string;
-  memo: string | null;
+	paymentId: number;
+	membershipId: number;
+	paymentType: "PURCHASE" | "REFUND";
+	paymentStatus: "PAID" | "REFUNDED" | "COMPLETED" | "CANCELED" | "FAILED";
+	paymentMethod: "CASH" | "CARD" | "TRANSFER" | "ETC";
+	amount: number;
+	paidAt: string;
+	memo: string | null;
 };
 
 export type ReservationScheduleSummary = {
-  scheduleId: number;
-  scheduleType: "PT" | "GX";
-  trainerUserId?: number | null;
-  trainerName: string;
-  slotTitle: string;
-  startAt: string;
-  endAt: string;
-  capacity: number;
-  currentCount: number;
+	scheduleId: number;
+	scheduleType: "PT" | "GX";
+	trainerUserId?: number | null;
+	trainerName: string;
+	slotTitle: string;
+	startAt: string;
+	endAt: string;
+	capacity: number;
+	currentCount: number;
 };
 
 export type PtReservationCandidate = {
-  startAt: string;
-  endAt: string;
-  source: string;
+	startAt: string;
+	endAt: string;
+	source: string;
 };
 
 export type PtReservationCandidatesPayload = {
-  date: string;
-  trainerUserId: number;
-  membershipId: number;
-  slotDurationMinutes: number;
-  slotStepMinutes: number;
-  items: PtReservationCandidate[];
+	date: string;
+	trainerUserId: number;
+	membershipId: number;
+	slotDurationMinutes: number;
+	slotStepMinutes: number;
+	items: PtReservationCandidate[];
 };
 
 export type ReservationRow = {
-  reservationId: number;
-  membershipId: number;
-  scheduleId: number;
-  reservationStatus: "CONFIRMED" | "CANCELLED" | "COMPLETED" | "NO_SHOW";
-  reservedAt: string;
-  cancelledAt: string | null;
-  completedAt: string | null;
-  noShowAt: string | null;
-  checkedInAt: string | null;
+	reservationId: number;
+	membershipId: number;
+	scheduleId: number;
+	reservationStatus: "CONFIRMED" | "CANCELLED" | "COMPLETED" | "NO_SHOW";
+	reservedAt: string;
+	cancelledAt: string | null;
+	completedAt: string | null;
+	noShowAt: string | null;
+	checkedInAt: string | null;
 };
 
 export type MemberQueryFilters = {
-  name: string;
-  phone: string;
-  memberStatus: string;
-  membershipOperationalStatus: string;
-  dateFrom: string;
-  dateTo: string;
-  trainerId?: number;
-  productId?: number;
+	name: string;
+	phone: string;
+	memberStatus: string;
+	membershipOperationalStatus: string;
+	dateFrom: string;
+	dateTo: string;
+	trainerId?: number;
+	productId?: number;
 };
 
 export function createEmptyMemberForm(): MemberFormState {
-  return {
-    memberName: "",
-    phone: "",
-    email: "",
-    gender: "",
-    birthDate: "",
-    memberStatus: "ACTIVE",
-    joinDate: "",
-    consentSms: false,
-    consentMarketing: false,
-    memo: "",
-    emergencyContactName: "",
-    emergencyContactPhone: "",
-    emergencyContactRelationship: "",
-  };
+	return {
+		memberName: "",
+		phone: "",
+		email: "",
+		gender: "",
+		birthDate: "",
+		memberStatus: "ACTIVE",
+		joinDate: "",
+		consentSms: false,
+		consentMarketing: false,
+		memo: "",
+		emergencyContactName: "",
+		emergencyContactPhone: "",
+		emergencyContactRelationship: "",
+	};
 }
 
 export function createMemberFormFromDetail(
-  detail: MemberDetail,
+	detail: MemberDetail,
 ): MemberFormState {
-  return {
-    memberName: detail.memberName,
-    phone: detail.phone,
-    email: detail.email ?? "",
-    gender: detail.gender ?? "",
-    birthDate: detail.birthDate ?? "",
-    memberStatus: detail.memberStatus,
-    joinDate: detail.joinDate ?? "",
-    consentSms: detail.consentSms,
-    consentMarketing: detail.consentMarketing,
-    memo: detail.memo ?? "",
-    emergencyContactName: detail.emergencyContactName ?? "",
-    emergencyContactPhone: detail.emergencyContactPhone ?? "",
-    emergencyContactRelationship: detail.emergencyContactRelationship ?? "",
-  };
+	return {
+		memberName: detail.memberName,
+		phone: detail.phone,
+		email: detail.email ?? "",
+		gender: detail.gender ?? "",
+		birthDate: detail.birthDate ?? "",
+		memberStatus: detail.memberStatus,
+		joinDate: detail.joinDate ?? "",
+		consentSms: detail.consentSms,
+		consentMarketing: detail.consentMarketing,
+		memo: detail.memo ?? "",
+		emergencyContactName: detail.emergencyContactName ?? "",
+		emergencyContactPhone: detail.emergencyContactPhone ?? "",
+		emergencyContactRelationship: detail.emergencyContactRelationship ?? "",
+	};
 }
