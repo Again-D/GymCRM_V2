@@ -61,9 +61,13 @@ This sprint aligns those flows with the requirements document and the existing c
 ### Deferred to Follow-Up Work
 
 - Full member-auth/session model for a broader mobile portal
+- FR-ACC-005 outbound delivery channels beyond the access-page alert summary
+- Automatic polling or push-driven refresh for access presence/alert data
 - Full member photo upload/manage flow (`FR-MBR-009`), including storage, retrieval, and replacement UX, which is owned by Sprint 3
 - CRM template/admin redesign beyond the reminder and waitlist dispatch needs in this sprint
 - Future policy tuning for notification channels if operations later wants more than the current CRM queue supports
+
+See also: `docs/notes/2026-05-08-sprint2-u3-follow-up-backlog.md`
 
 ---
 

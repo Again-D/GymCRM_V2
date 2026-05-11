@@ -112,6 +112,7 @@ export default function MemberQrPage() {
         }
       } catch (error) {
         if (!cancelled) {
+          setSession(null);
           setErrorMessage(resolveErrorMessage(error));
           setIsRefreshing(false);
         }
@@ -131,7 +132,9 @@ export default function MemberQrPage() {
       : remainingSeconds > 0
         ? "QR 활성"
         : "QR 만료"
-    : "연결 대기";
+    : errorMessage
+      ? "재시도 필요"
+      : "연결 대기";
 
   const memberTitle = session ? `${session.memberName}님의 출입 QR` : "회원 QR";
   const expiryText = session ? formatRemainingTime(remainingSeconds) : "--:--";
@@ -177,6 +180,11 @@ export default function MemberQrPage() {
                 bordered={false}
                 status={isRefreshing ? "loading" : remainingSeconds > 0 ? "active" : "expired"}
               />
+            ) : errorMessage ? (
+              <div className={styles.retryState}>
+                <strong className={styles.retryTitle}>QR을 다시 불러와야 합니다</strong>
+                <p className={styles.retryDescription}>오류를 확인한 뒤 새로고침을 눌러주세요.</p>
+              </div>
             ) : null}
           </div>
 
@@ -208,6 +216,7 @@ export default function MemberQrPage() {
                     setErrorMessage(null);
                     setNow(Date.now());
                   } catch (error) {
+                    setSession(null);
                     setErrorMessage(resolveErrorMessage(error));
                   } finally {
                     setIsRefreshing(false);

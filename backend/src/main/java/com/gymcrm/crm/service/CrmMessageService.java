@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
 
@@ -188,6 +189,57 @@ public class CrmMessageService {
     }
 
     @Transactional
+    public TriggerResult triggerInactiveMemberCampaign(InactiveMemberTriggerRequest request) {
+        LocalDate baseDate = request.baseDate() == null ? LocalDate.now(ZoneOffset.UTC) : request.baseDate();
+        int inactiveDays = request.inactiveDays() == null ? 30 : request.inactiveDays();
+        if (inactiveDays < 0 || inactiveDays > 365) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "inactiveDays must be between 0 and 365");
+        }
+
+        LocalDate cutoffDate = baseDate.minusDays(inactiveDays);
+        OffsetDateTime cutoffAt = cutoffDate.plusDays(1).atStartOfDay(ZoneId.of("Asia/Seoul")).toOffsetDateTime();
+
+        Long centerId = currentUserProvider.currentCenterId();
+        Long actorUserId = currentUserProvider.currentUserId();
+        String traceId = TraceIdFilter.currentTraceIdOrGenerate();
+
+        List<CrmTargetRepository.InactiveMemberTarget> targets = targetRepository.findInactiveMemberTargets(centerId, cutoffDate, cutoffAt);
+        int createdCount = 0;
+        int duplicatedCount = 0;
+
+        for (CrmTargetRepository.InactiveMemberTarget target : targets) {
+            String dedupeKey = "INACTIVE_MEMBER_CAMPAIGN:" + centerId + ":" + target.memberId() + ":" + cutoffDate;
+            String payloadJson = "{" +
+                    "\"memberName\":\"" + escapeJson(target.memberName()) + "\"," +
+                    "\"phone\":\"" + escapeJson(target.phone()) + "\"," +
+                    "\"inactiveDays\":" + inactiveDays + "," +
+                    "\"lastAccessAt\":" + jsonString(target.lastAccessAt()) + "," +
+                    "\"forceFail\":" + request.forceFail() +
+                    "}";
+            boolean inserted = eventRepository.insertIfAbsent(new CrmMessageEventRepository.InsertCommand(
+                    centerId,
+                    target.memberId(),
+                    null,
+                    "INACTIVE_MEMBER_CAMPAIGN",
+                    "SMS",
+                    dedupeKey,
+                    payloadJson,
+                    "PENDING",
+                    resolveScheduledAt(request.scheduledAt()),
+                    traceId,
+                    actorUserId
+            )).isPresent();
+            if (inserted) {
+                createdCount += 1;
+            } else {
+                duplicatedCount += 1;
+            }
+        }
+
+        return new TriggerResult(baseDate, cutoffDate, targets.size(), createdCount, duplicatedCount);
+    }
+
+    @Transactional
     public boolean enqueueMembershipHoldResumed(MembershipHoldResumedRequest request) {
         String dedupeKey = "MEMBERSHIP_HOLD_RESUMED:" + request.centerId() + ":" + request.membershipHoldId();
         String payloadJson = "{" +
@@ -208,6 +260,74 @@ public class CrmMessageService {
                 payloadJson,
                 "PENDING",
                 null,
+                TraceIdFilter.currentTraceIdOrGenerate(),
+                request.actorUserId()
+        )).isPresent();
+    }
+
+    @Transactional
+    public boolean enqueueReservationWaitlistPromoted(ReservationWaitlistPromotedRequest request) {
+        String dedupeKey = "RESERVATION_WAITLIST_PROMOTED:" + request.centerId() + ":" + request.waitlistId();
+        String payloadJson = "{" +
+                "\"memberId\":" + request.memberId() + "," +
+                "\"membershipId\":" + request.membershipId() + "," +
+                "\"scheduleId\":" + request.scheduleId() + "," +
+                "\"reservationId\":" + request.reservationId() + "," +
+                "\"waitlistId\":" + request.waitlistId() + "," +
+                "\"queueOrder\":" + request.queueOrder() + "," +
+                "\"promotedAt\":\"" + request.promotedAt() + "\"" +
+                "}";
+
+        return eventRepository.insertIfAbsent(new CrmMessageEventRepository.InsertCommand(
+                request.centerId(),
+                request.memberId(),
+                request.membershipId(),
+                "RESERVATION_WAITLIST_PROMOTED",
+                "SMS",
+                dedupeKey,
+                payloadJson,
+                "PENDING",
+                request.promotedAt(),
+                TraceIdFilter.currentTraceIdOrGenerate(),
+                currentUserProvider.currentUserId()
+        )).isPresent();
+    }
+
+    @Transactional
+    public boolean enqueueReservationConfirmed(ReservationNotificationRequest request) {
+        return enqueueReservationNotification(request, "RESERVATION_CONFIRMED", null);
+    }
+
+    @Transactional
+    public boolean enqueueReservationReminder(ReservationNotificationRequest request) {
+        return enqueueReservationNotification(request, "RESERVATION_REMINDER", request.reminderAt());
+    }
+
+    private boolean enqueueReservationNotification(
+            ReservationNotificationRequest request,
+            String eventType,
+            OffsetDateTime nextAttemptAt
+    ) {
+        String dedupeKey = eventType + ":" + request.centerId() + ":" + request.reservationId();
+        String payloadJson = "{" +
+                "\"memberId\":" + request.memberId() + "," +
+                "\"membershipId\":" + request.membershipId() + "," +
+                "\"reservationId\":" + request.reservationId() + "," +
+                "\"scheduleId\":" + request.scheduleId() + "," +
+                "\"scheduleStartAt\":\"" + request.scheduleStartAt() + "\"," +
+                "\"reminderAt\":\"" + request.reminderAt() + "\"" +
+                "}";
+
+        return eventRepository.insertIfAbsent(new CrmMessageEventRepository.InsertCommand(
+                request.centerId(),
+                request.memberId(),
+                request.membershipId(),
+                eventType,
+                "SMS",
+                dedupeKey,
+                payloadJson,
+                "PENDING",
+                nextAttemptAt,
                 TraceIdFilter.currentTraceIdOrGenerate(),
                 request.actorUserId()
         )).isPresent();
@@ -353,6 +473,10 @@ public class CrmMessageService {
         return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
+    private String jsonString(OffsetDateTime value) {
+        return value == null ? "null" : "\"" + value + "\"";
+    }
+
     private OffsetDateTime resolveScheduledAt(OffsetDateTime scheduledAt) {
         if (scheduledAt == null) {
             return OffsetDateTime.now(ZoneOffset.UTC);
@@ -417,6 +541,14 @@ public class CrmMessageService {
     ) {
     }
 
+    public record InactiveMemberTriggerRequest(
+            LocalDate baseDate,
+            Integer inactiveDays,
+            boolean forceFail,
+            OffsetDateTime scheduledAt
+    ) {
+    }
+
     public record MessageHistoryResult(
             List<CrmMessageEvent> rows
     ) {
@@ -431,6 +563,30 @@ public class CrmMessageService {
             String phone,
             String productName,
             LocalDate resumedOn,
+            Long actorUserId
+    ) {
+    }
+
+    public record ReservationWaitlistPromotedRequest(
+            Long centerId,
+            Long memberId,
+            Long membershipId,
+            Long scheduleId,
+            Long reservationId,
+            Long waitlistId,
+            Integer queueOrder,
+            OffsetDateTime promotedAt
+    ) {
+    }
+
+    public record ReservationNotificationRequest(
+            Long centerId,
+            Long memberId,
+            Long membershipId,
+            Long reservationId,
+            Long scheduleId,
+            OffsetDateTime scheduleStartAt,
+            OffsetDateTime reminderAt,
             Long actorUserId
     ) {
     }

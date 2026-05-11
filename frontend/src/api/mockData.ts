@@ -11,6 +11,7 @@ import type {
 } from "../pages/members/modules/types";
 import type {
   AccessEventRow,
+  AccessAlertSummary,
   AccessPresenceRow,
   AccessPresenceSummary,
 } from "../pages/access/modules/types";
@@ -1266,6 +1267,61 @@ function deriveAccessPresenceSummary(): AccessPresenceSummary {
   };
 }
 
+function deriveAccessAlertSummary(): AccessAlertSummary {
+  const deniedEvents = mockAccessEvents.filter((event) => event.eventType === "ENTRY_DENIED");
+  const byReason = new Map<string, number>();
+  const byMember = new Map<number, AccessAlertSummary["repeatedDeniedMembers"][number]>();
+
+  for (const event of deniedEvents) {
+    const reasonKey = event.denyReason ?? "UNKNOWN";
+    byReason.set(reasonKey, (byReason.get(reasonKey) ?? 0) + 1);
+
+    const existing = byMember.get(event.memberId);
+    const next = {
+      memberId: event.memberId,
+      memberName: event.memberName,
+      deniedCount: (existing?.deniedCount ?? 0) + 1,
+      lastDeniedAt: event.processedAt,
+    };
+    byMember.set(event.memberId, next);
+  }
+
+  const repeatedDeniedMembers = Array.from(byMember.values())
+    .filter((item) => item.deniedCount >= 3)
+    .sort((left, right) =>
+      right.deniedCount - left.deniedCount ||
+      Date.parse(right.lastDeniedAt) - Date.parse(left.lastDeniedAt)
+    );
+
+  const deniedReasonCounts = Array.from(byReason.entries())
+    .map(([denyReason, deniedCount]) => ({ denyReason, deniedCount }))
+    .sort((left, right) => right.deniedCount - left.deniedCount || left.denyReason.localeCompare(right.denyReason));
+
+  const recentDeniedEvents = [...deniedEvents]
+    .sort((left, right) => Date.parse(right.processedAt) - Date.parse(left.processedAt))
+    .slice(0, 20)
+    .map((event) => ({
+      accessEventId: event.accessEventId,
+      memberId: event.memberId,
+      memberName: event.memberName,
+      denyReason: event.denyReason ?? "UNKNOWN",
+      processedAt: event.processedAt,
+    }));
+
+  const windowTo = new Date().toISOString();
+  const windowFrom = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+
+  return {
+    windowFrom,
+    windowTo,
+    totalDeniedCount: deniedEvents.length,
+    requiresImmediateAttention: repeatedDeniedMembers.length > 0,
+    deniedReasonCounts,
+    repeatedDeniedMembers,
+    recentDeniedEvents,
+  };
+}
+
 function filterLockerSlots(url: URL) {
   const lockerStatus = url.searchParams.get("lockerStatus")?.trim().toUpperCase() ?? "";
   const lockerZone = url.searchParams.get("lockerZone")?.trim().toUpperCase() ?? "";
@@ -2387,6 +2443,17 @@ export function createMockReservation(input: {
   return { ...reservation };
 }
 
+function getMockReservationPolicy() {
+  return {
+    centerId: 1,
+    source: "BACKEND_DEFAULT",
+    ptDeductionTiming: "COMPLETION",
+    gxWaitlistMode: "AUTO_PROMOTION",
+    cancellationCutoffMinutes: 120,
+    reminderLeadMinutes: 120,
+  };
+}
+
 function formatMockIso(dateText: string, timeText: string) {
   return `${dateText}T${timeText}+09:00`;
 }
@@ -2874,6 +2941,36 @@ export function triggerMockCrmExpiryReminder(daysAhead: number) {
   return {
     ok: true as const,
     message: `${daysAhead}일 기준 만료임박 메시지 ${1}건을 큐에 적재했습니다.`,
+    createdCount: 1,
+  };
+}
+
+export function triggerMockCrmInactiveMemberCampaign(inactiveDays: number) {
+  crmMessageEventIdSeed += 1;
+  const now = new Date().toISOString();
+  const nextRow: CrmHistoryRow = {
+    crmMessageEventId: crmMessageEventIdSeed,
+    memberId: 102,
+    membershipId: null,
+    eventType: "INACTIVE_MEMBER_CAMPAIGN",
+    channelType: "SMS",
+    sendStatus: "PENDING",
+    attemptCount: 0,
+    lastAttemptedAt: null,
+    nextAttemptAt: now,
+    sentAt: null,
+    failedAt: null,
+    lastErrorMessage: null,
+    traceId: `crm-trace-${crmMessageEventIdSeed}`,
+    createdAt: now,
+  };
+
+  mockCrmHistoryRows = [nextRow, ...mockCrmHistoryRows];
+  bumpMockDataVersion();
+
+  return {
+    ok: true as const,
+    message: `${inactiveDays}일 기준 장기 미방문 메시지 1건을 큐에 적재했습니다.`,
     createdCount: 1,
   };
 }
@@ -3826,8 +3923,12 @@ export function getMockResponse(
             target.memberName.includes(keyword) ||
             target.phone.includes(keyword) ||
             target.memberCode.includes(keyword),
-        );
+    );
     return envelope(targets);
+  }
+
+  if (url.pathname === "/api/v1/reservations/policy") {
+    return envelope(getMockReservationPolicy());
   }
 
   if (url.pathname === "/api/v1/reservations") {
@@ -3878,6 +3979,10 @@ export function getMockResponse(
     return envelope(deriveAccessPresenceSummary());
   }
 
+  if (url.pathname === "/api/v1/access/alerts") {
+    return envelope(deriveAccessAlertSummary());
+  }
+
   if (url.pathname === "/api/v1/access/events") {
     const memberId = url.searchParams.get("memberId");
     const limit = Number(url.searchParams.get("limit") ?? "100");
@@ -3925,6 +4030,11 @@ export function getMockResponse(
     return envelope({
       rows: filterCrmHistory(url),
     });
+  }
+
+  if (url.pathname === "/api/v1/crm/messages/triggers/inactive-member-campaign") {
+    const inactiveDays = Number((body as { inactiveDays?: number })?.inactiveDays ?? 30);
+    return mutationEnvelope(triggerMockCrmInactiveMemberCampaign(Number.isFinite(inactiveDays) ? inactiveDays : 30));
   }
 
   if (url.pathname === "/api/v1/settlements/sales-report") {

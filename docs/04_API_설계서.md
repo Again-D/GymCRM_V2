@@ -468,20 +468,27 @@ X-RateLimit-Reset: 1740001860
 | # | Method | URL | 설명 | 인증 | 권한 |
 |---|--------|-----|------|------|------|
 | 1 | `POST` | `/api/v1/reservations` | 예약 생성 | O | ALL |
-| 2 | `GET` | `/api/v1/reservations` | 예약 목록 조회 (날짜/트레이너/회원 필터) | O | ALL |
-| 3 | `GET` | `/api/v1/reservations/{reservationId}` | 예약 상세 조회 | O | ALL |
-| 4 | `PATCH` | `/api/v1/reservations/{reservationId}` | 예약 변경 (시간/날짜) | O | ADMIN, MANAGER, TRAINER |
-| 5 | `POST` | `/api/v1/reservations/{reservationId}/cancel` | 예약 취소 | O | ALL |
-| 6 | `POST` | `/api/v1/reservations/{reservationId}/complete` | 수업 완료 처리 | O | ADMIN, MANAGER, TRAINER |
-| 7 | `POST` | `/api/v1/reservations/{reservationId}/no-show` | 노쇼 처리 | O | ADMIN, MANAGER, TRAINER |
-| 8 | `POST` | `/api/v1/reservations/waitlist` | 대기 신청 | O | ALL |
-| 9 | `DELETE` | `/api/v1/reservations/waitlist/{waitlistId}` | 대기 신청 취소 | O | ALL |
-| 10 | `GET` | `/api/v1/reservations/waitlist` | 대기 목록 조회 | O | ALL |
-| 11 | `GET` | `/api/v1/schedules` | 트레이너 스케줄 조회 | O | ALL |
-| 12 | `POST` | `/api/v1/schedules` | 트레이너 스케줄 등록 | O | ADMIN, MANAGER, TRAINER |
-| 13 | `PUT` | `/api/v1/schedules/{scheduleId}` | 트레이너 스케줄 수정 | O | ADMIN, MANAGER, TRAINER |
-| 14 | `DELETE` | `/api/v1/schedules/{scheduleId}` | 트레이너 스케줄 삭제 | O | ADMIN, MANAGER, TRAINER |
-| 15 | `GET` | `/api/v1/schedules/available-slots` | 예약 가능 슬롯 조회 | O | ALL |
+| 2 | `GET` | `/api/v1/reservations/policy` | 예약 정책 조회 (센터별 backend-resolved defaults) | O | ALL |
+| 3 | `GET` | `/api/v1/reservations` | 예약 목록 조회 (날짜/트레이너/회원 필터) | O | ALL |
+| 4 | `GET` | `/api/v1/reservations/{reservationId}` | 예약 상세 조회 | O | ALL |
+| 5 | `PATCH` | `/api/v1/reservations/{reservationId}` | 예약 변경 (시간/날짜) | O | ADMIN, MANAGER, TRAINER |
+| 6 | `POST` | `/api/v1/reservations/{reservationId}/cancel` | 예약 취소 | O | ALL |
+| 7 | `POST` | `/api/v1/reservations/{reservationId}/complete` | 수업 완료 처리 | O | ADMIN, MANAGER, TRAINER |
+| 8 | `POST` | `/api/v1/reservations/{reservationId}/no-show` | 노쇼 처리 | O | ADMIN, MANAGER, TRAINER |
+| 9 | `POST` | `/api/v1/reservations/waitlist` | 대기 신청 | O | ALL |
+| 10 | `DELETE` | `/api/v1/reservations/waitlist/{waitlistId}` | 대기 신청 취소 | O | ALL |
+| 11 | `GET` | `/api/v1/reservations/waitlist` | 대기 목록 조회 | O | ALL |
+| 12 | `GET` | `/api/v1/schedules` | 트레이너 스케줄 조회 | O | ALL |
+| 13 | `POST` | `/api/v1/schedules` | 트레이너 스케줄 등록 | O | ADMIN, MANAGER, TRAINER |
+| 14 | `PUT` | `/api/v1/schedules/{scheduleId}` | 트레이너 스케줄 수정 | O | ADMIN, MANAGER, TRAINER |
+| 15 | `DELETE` | `/api/v1/schedules/{scheduleId}` | 트레이너 스케줄 삭제 | O | ADMIN, MANAGER, TRAINER |
+| 16 | `GET` | `/api/v1/schedules/available-slots` | 예약 가능 슬롯 조회 | O | ALL |
+
+- `GET /api/v1/reservations/policy`는 센터별 backend-resolved reservation policy를 반환한다.
+- 현재 기본값은 `source=BACKEND_DEFAULT`, `ptDeductionTiming=COMPLETION`, `gxWaitlistMode=AUTO_PROMOTION`, `cancellationCutoffMinutes=120`, `reminderLeadMinutes=120`이다.
+- `POST /api/v1/reservations/waitlist`는 GX 만석 수업에 대한 대기 신청을 생성하고, `DELETE /api/v1/reservations/waitlist/{waitlistId}`는 대기 신청을 취소한다.
+- `GET /api/v1/reservations/waitlist`는 현재 센터의 대기 목록을 `WAITING` 기본 필터로 조회한다.
+- 예약 취소는 수업 시작 120분 전까지만 허용되며, GX 취소 후에는 다음 대기 회원이 자동 승격된다.
 
 ### 3.5 출입 통제 API (`/api/v1/access`)
 
@@ -533,22 +540,23 @@ X-RateLimit-Reset: 1740001860
 | 12 | `POST` | `/api/v1/settlements/{settlementId}/confirm` | 생성된 월 기반 정산 배치를 확정 | O | ADMIN, MANAGER |
 | 13 | `GET` | `/api/v1/settlements/{settlementId}/trainers/{trainerId}/document` | canonical 정산 배치의 개별 트레이너 PDF 정산서 다운로드 | O | ADMIN, MANAGER, DESK |
 
-### 3.8 CRM 메시지 API (`/api/v1/messages`)
+### 3.8 CRM 메시지 API (`/api/v1/crm/messages`)
 
 | # | Method | URL | 설명 | 인증 | 권한 |
 |---|--------|-----|------|------|------|
-| 1 | `GET` | `/api/v1/messages/templates` | 메시지 템플릿 목록 | O | ADMIN, MANAGER |
-| 2 | `POST` | `/api/v1/messages/templates` | 메시지 템플릿 생성 | O | ADMIN |
-| 3 | `PUT` | `/api/v1/messages/templates/{templateId}` | 메시지 템플릿 수정 | O | ADMIN |
-| 4 | `DELETE` | `/api/v1/messages/templates/{templateId}` | 메시지 템플릿 삭제 | O | ADMIN |
-| 5 | `POST` | `/api/v1/messages/send` | 수동 메시지 발송 | O | ADMIN, MANAGER |
-| 6 | `POST` | `/api/v1/messages/send/bulk` | 대량 메시지 발송 | O | ADMIN |
-| 7 | `GET` | `/api/v1/messages/auto-rules` | 자동 발송 규칙 목록 | O | ADMIN, MANAGER |
-| 8 | `POST` | `/api/v1/messages/auto-rules` | 자동 발송 규칙 생성 | O | ADMIN |
-| 9 | `PUT` | `/api/v1/messages/auto-rules/{ruleId}` | 자동 발송 규칙 수정 | O | ADMIN |
-| 10 | `PATCH` | `/api/v1/messages/auto-rules/{ruleId}/status` | 자동 발송 규칙 활성/비활성 | O | ADMIN |
-| 11 | `GET` | `/api/v1/messages/logs` | 메시지 발송 이력 조회 | O | ADMIN, MANAGER |
-| 12 | `GET` | `/api/v1/messages/logs/{logId}` | 발송 이력 상세 | O | ADMIN, MANAGER |
+| 1 | `GET` | `/api/v1/crm/messages/templates` | 메시지 템플릿 목록 | O | ADMIN, MANAGER |
+| 2 | `POST` | `/api/v1/crm/messages/templates` | 메시지 템플릿 생성 | O | ADMIN |
+| 3 | `PUT` | `/api/v1/crm/messages/templates/{templateId}` | 메시지 템플릿 수정 | O | ADMIN |
+| 4 | `DELETE` | `/api/v1/crm/messages/templates/{templateId}` | 메시지 템플릿 삭제 | O | ADMIN |
+| 5 | `POST` | `/api/v1/crm/messages/send` | 수동 메시지 발송 | O | ADMIN, MANAGER |
+| 6 | `POST` | `/api/v1/crm/messages/send/bulk` | 대량 메시지 발송 | O | ADMIN |
+| 7 | `GET` | `/api/v1/crm/messages/auto-rules` | 자동 발송 규칙 목록 | O | ADMIN, MANAGER |
+| 8 | `POST` | `/api/v1/crm/messages/auto-rules` | 자동 발송 규칙 생성 | O | ADMIN |
+| 9 | `PUT` | `/api/v1/crm/messages/auto-rules/{ruleId}` | 자동 발송 규칙 수정 | O | ADMIN |
+| 10 | `PATCH` | `/api/v1/crm/messages/auto-rules/{ruleId}/status` | 자동 발송 규칙 활성/비활성 | O | ADMIN |
+| 11 | `GET` | `/api/v1/crm/messages/logs` | 메시지 발송 이력 조회 | O | ADMIN, MANAGER |
+| 12 | `GET` | `/api/v1/crm/messages/logs/{logId}` | 발송 이력 상세 | O | ADMIN, MANAGER |
+| 13 | `POST` | `/api/v1/crm/messages/triggers/inactive-member-campaign` | 장기 미방문 회원 대상 발송 적재 | O | ADMIN, MANAGER, DESK |
 
 ### 3.9 대시보드 API (`/api/v1/dashboard`)
 
@@ -2461,7 +2469,7 @@ Binary file download with:
 
 | 항목 | 내용 |
 |------|------|
-| **URL** | `POST /api/v1/messages/auto-rules` |
+| **URL** | `POST /api/v1/crm/messages/auto-rules` |
 | **설명** | CRM 메시지 자동 발송 규칙을 생성한다. |
 | **인증** | 필요 |
 | **권한** | ADMIN |
@@ -2536,7 +2544,56 @@ Binary file download with:
 - 템플릿은 `ACTIVE` 상태인 것만 사용 가능하다.
 - 자동 발송은 매일 지정 시간에 배치로 실행되며, 조건에 해당하는 회원을 자동 추출하여 발송한다.
 - `marketingConsent=false`인 회원에게는 마케팅 성격의 메시지가 발송되지 않는다 (만료 안내 등 서비스 메시지는 발송).
-- 발송 이력은 `messages/logs`에 자동 기록된다.
+- 발송 이력은 `crm/messages/logs`에 자동 기록된다.
+
+### 4.11.1 장기 미방문 회원 대상 발송 적재 API
+
+| 항목 | 내용 |
+|------|------|
+| **URL** | `POST /api/v1/crm/messages/triggers/inactive-member-campaign` |
+| **설명** | 마지막 출입일 기준으로 설정한 일수 이상 미방문한 회원을 대상으로 메시지 발송 이벤트를 적재한다. |
+| **인증** | 필요 |
+| **권한** | ADMIN, MANAGER, DESK |
+
+**Request Body:**
+
+```json
+{
+  "baseDate": "2026-05-11",
+  "inactiveDays": 30,
+  "forceFail": false,
+  "scheduledAt": "2026-05-11T10:00:00+09:00"
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `baseDate` | LocalDate | X | 기준 일자. 미입력 시 서버 기준 당일을 사용한다. |
+| `inactiveDays` | Integer | X | 미방문 기준 일수. 미입력 시 30일을 사용한다. 0~365 범위만 허용한다. |
+| `forceFail` | Boolean | X | 테스트용 강제 실패 플래그 |
+| `scheduledAt` | OffsetDateTime | X | 이벤트 적재 시각 |
+
+**Response Body (성공 - 200):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "baseDate": "2026-05-11",
+    "targetDate": "2026-04-11",
+    "totalTargets": 1,
+    "createdCount": 1,
+    "duplicatedCount": 0
+  },
+  "message": "CRM 장기 미방문 메시지 이벤트가 큐에 적재되었습니다."
+}
+```
+
+**비즈니스 규칙:**
+- 대상 회원은 마케팅 수신 동의가 켜져 있어야 한다.
+- 마지막 성공 출입 시각이 기준일시보다 이전이면 적재 대상이 된다.
+- 성공 출입 이력이 없으면 가입일 기준으로 미방문 여부를 판단한다.
+- 동일 센터, 동일 회원, 동일 기준일의 이벤트는 중복 적재하지 않는다.
 
 ---
 
@@ -3074,6 +3131,9 @@ X-Cache: HIT
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| v1.23.0 | 2026-05-11 | `POST /api/v1/crm/messages/triggers/inactive-member-campaign`를 추가하고 CRM 메시지 API 네임스페이스를 현재 구현 기준(`/api/v1/crm/messages`)으로 동기화 | Codex |
+| v1.22.0 | 2026-05-08 | 예약 대기 API(`/api/v1/reservations/waitlist`)와 예약 취소 컷오프/자동 승격 정책을 현재 구현 기준으로 동기화 | Codex |
+| v1.21.0 | 2026-05-08 | `GET /api/v1/reservations/policy`를 추가해 센터별 backend-resolved reservation policy defaults를 현재 구현 기준으로 동기화 | Codex |
 | v1.20.0 | 2026-05-08 | 회원 QR 링크/세션 API를 추가해 운영자용 bootstrap link 발급과 public member-qr 세션 갱신 흐름을 현재 구현 기준으로 동기화 | Codex |
 | v1.19.2 | 2026-05-08 | `POST /api/v1/members` 신규 등록 계약에 `emergencyContactName`, `emergencyContactPhone`, `emergencyContactRelationship` 필드를 추가하고 응답 payload를 현재 구현에 맞게 동기화 | Sisyphus |
 | v1.19.1 | 2026-05-08 | `POST /api/v1/members/{memberId}/withdraw` 응답에 `memberStatus` 필드를 추가하고, 요약 payload(`memberId`, `memberStatus`, `withdrawn`, `refundedMembershipCount`, `resumedHoldingCount`, `refundAmount`) 기준으로 동기화 | Sisyphus |

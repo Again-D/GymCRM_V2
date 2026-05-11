@@ -74,6 +74,26 @@
   transform: translateZ(0);
 }
 
+.retryState {
+  display: grid;
+  gap: 8px;
+  max-width: 280px;
+  padding: 18px;
+  text-align: center;
+  color: #0f172a;
+}
+
+.retryTitle {
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+}
+
+.retryDescription {
+  margin: 0;
+  line-height: 1.5;
+  color: rgba(15, 23, 42, 0.76);
+}
+
 .metaGrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

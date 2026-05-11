@@ -3,6 +3,7 @@ package com.gymcrm.access;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
@@ -49,6 +50,9 @@ class AccessQrApiIntegrationTest {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Value("${app.security.jwt.secret}")
+    private String jwtSecret;
 
     @Test
     void verifyRejectsReusedQrTokenAndRecordsDeniedReason() throws Exception {
@@ -253,6 +257,44 @@ class AccessQrApiIntegrationTest {
         exitMember(deskToken, memberId);
     }
 
+    @Test
+    void memberQrSessionRejectsInvalidBootstrapToken() throws Exception {
+        mockMvc.perform(post("/api/v1/access/qr/member-session")
+                        .contentType("application/json")
+                        .content("""
+                                {"bootstrapToken":"definitely-not-a-jwt"}
+                                """))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("TOKEN_INVALID"));
+    }
+
+    @Test
+    void memberQrSessionRejectsExpiredBootstrapToken() throws Exception {
+        ensureDeskUser();
+        String deskToken = loginAndGetAccessToken(DESK_LOGIN_ID, DESK_PASSWORD);
+        long memberId = createActiveMemberWithMembership();
+
+        MemberQrBootstrapTokenService expiringBootstrapService = new MemberQrBootstrapTokenService(
+                jwtSecret,
+                "gymcrm",
+                0
+        );
+        String expiredBootstrapToken = expiringBootstrapService.issue(CENTER_ID, memberId).token();
+        Thread.sleep(1100L);
+
+        mockMvc.perform(post("/api/v1/access/qr/member-session")
+                        .contentType("application/json")
+                        .content("""
+                                {"bootstrapToken":"%s"}
+                                """.formatted(expiredBootstrapToken)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("TOKEN_EXPIRED"));
+
+        exitMember(deskToken, memberId);
+    }
+
     private String issueQrToken(String accessToken, long memberId) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/v1/access/qr/issue")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
@@ -278,6 +320,7 @@ class AccessQrApiIntegrationTest {
                                 """.formatted(memberId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.bootstrapToken").isString())
+                .andExpect(jsonPath("$.data.memberQrPath").value(org.hamcrest.Matchers.startsWith("/member-qr?token=")))
                 .andReturn();
         return objectMapper.readTree(result.getResponse().getContentAsString())
                 .path("data")

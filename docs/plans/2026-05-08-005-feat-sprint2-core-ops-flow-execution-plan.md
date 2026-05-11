@@ -60,6 +60,7 @@ Goal:
 **Validation**
 - Contract-level backend tests for bootstrap success, invalid bootstrap, and expired bootstrap cases.
 - API doc update if request/response shapes or endpoint rules change.
+- Implemented in backend with service-level token parsing tests and HTTP-level member-session failure coverage.
 
 ## Ticket 3: Implement the Member QR Page and Refresh Cycle
 
@@ -92,20 +93,23 @@ Goal:
 - Sprint 2 `U3`
 
 **Problem**
-- Access denial and abnormal-access signals exist, but they are not yet shaped as an operator-readable workflow.
+- Access denial and abnormal-access signals exist, but the operator workflow still needs a clear summary surface.
 
 **Work**
 - Add an alert summary surface to the existing access page using current presence/events/alerts data.
-- Highlight repeated-denial and attention-required states without introducing a second dashboard.
+- Limit the scope to operator-visible summary and repeated-denial cues.
+- Keep the page manually refreshable and avoid automatic polling or push updates in this sprint.
 - Fail softly so alert issues do not break the rest of the access page.
 
 **Done when**
 - Operators can identify abnormal access at a glance from the current access workspace.
 - Empty or temporarily unavailable alert data does not degrade the rest of the page.
+- The page remains usable with manual refresh only; no automatic refresh behavior is required in Sprint 2.
 
 **Validation**
 - Frontend tests for alert rendering, empty states, and fetch-failure behavior.
-- Manual verification that alert summary stays in sync with page refresh.
+- Manual verification that alert summary updates correctly after a user-triggered refresh.
+- Implemented in the access page with a soft-failing alerts query, repeated-denial cues, and manual refresh coverage.
 
 ## Ticket 5: Lock the Reservation Policy Source of Truth
 
@@ -132,6 +136,9 @@ Goal:
 - Backend tests for resolved policy values by center.
 - API contract review if resolved policy fields are exposed to the frontend.
 
+**Implementation note**
+- Implemented as backend-owned documented defaults via `GET /api/v1/reservations/policy` so the browser can consume resolved values without owning policy constants.
+
 ## Ticket 6: Implement Waitlist Promotion and Cancellation Policy
 
 **Related items**
@@ -155,6 +162,10 @@ Goal:
 **Validation**
 - Integration tests for full-class waitlisting, cancellation, promotion, and race-sensitive flows.
 - Error-path tests for promotion or enqueue failures.
+
+**Implementation note**
+- Implemented via `waiting_list` persistence, reservation cutoff validation, backend auto-promotion into the CRM queue when a GX reservation is cancelled, and backend-owned reservation confirmation/reminder queue registration.
+- Validated with backend integration tests covering waitlist creation, cancellation cutoff rejection, GX promotion on cancellation, reservation confirmation/reminder enqueue side effects, and completion-time PT deduction.
 
 ## Ticket 7: Implement Deduction Timing and Reminder Dispatch Policy
 
@@ -199,6 +210,9 @@ Goal:
 **Done when**
 - Desk staff can see the current reservation policy state from the existing reservation workspace.
 - PT/GX flows still work from member context after the new policy surfaces are added.
+
+**Implementation note**
+- Implemented via a reservation policy summary card, policy-aware modal guidance, and soft-fail refresh handling in the reservation workspace.
 
 **Validation**
 - Frontend tests for waitlist state, cutoff messaging, policy-related errors, and state refresh.

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AuthStateProvider } from "../../app/auth";
 import { ApiClientError, setMockApiModeForTests } from "../../api/client";
+import * as apiClient from "../../api/client";
 import { patchMockReservation, resetMockData } from "../../api/mockData";
 import { SelectedMemberProvider } from "../members/modules/SelectedMemberContext";
 import { getReservationPanelErrorMessage } from "./modules/getReservationPanelErrorMessage";
@@ -75,6 +76,7 @@ describe("ReservationsPage", () => {
 
   afterEach(() => {
     cleanup();
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
 
@@ -118,6 +120,8 @@ describe("ReservationsPage", () => {
     );
 
     expect(await screen.findByRole("heading", { name: "예약 관리" })).toBeTruthy();
+    expect(await screen.findByText("PT 차감: 완료 시 차감")).toBeTruthy();
+    expect(await screen.findByText("GX 대기: 자동 승격")).toBeTruthy();
 
     const memberRow = (await screen.findByText("김민수")).closest("tr");
     expect(memberRow).toBeTruthy();
@@ -137,6 +141,12 @@ describe("ReservationsPage", () => {
     await waitFor(() => {
       expect(screen.getByText("담당 트레이너 기본값: 정트레이너")).toBeTruthy();
     });
+    expect(
+      await within(getTopmostDialog()).findByText(
+        "PT는 트레이너 가능 시간에서 60분 블록으로 예약하며, 완료 시 차감 정책을 따릅니다.",
+        { selector: ".ant-alert-description" },
+      ),
+    ).toBeTruthy();
     await waitFor(() => {
       const nextModal = getTopmostDialog();
       expect(nextModal.querySelectorAll('input[role="combobox"]').length).toBeGreaterThanOrEqual(3);
@@ -192,10 +202,50 @@ describe("ReservationsPage", () => {
 
     await selectAntdOptionIn(getTopmostDialog(), 0, "PT · PT 10회권 (잔여 8회)");
 
-    expect(await screen.findByText("PT는 트레이너 가능 시간에서 60분 블록으로 예약합니다.")).toBeTruthy();
+    expect(
+      await within(getTopmostDialog()).findByText(
+        "PT는 트레이너 가능 시간에서 60분 블록으로 예약하며, 완료 시 차감 정책을 따릅니다.",
+        { selector: ".ant-alert-description" },
+      ),
+    ).toBeTruthy();
     expect(await screen.findByText("담당 트레이너 기본값: 정트레이너")).toBeTruthy();
     expect((submitButton as HTMLButtonElement).disabled).toBe(true);
   }, 30000);
+
+  it("shows a soft warning when reservation policy cannot be loaded", async () => {
+    const originalApiGet = apiClient.apiGet;
+    vi.spyOn(apiClient, "apiGet").mockImplementation(async (path: string) => {
+      if (path === "/api/v1/reservations/policy") {
+        throw new ApiClientError("예약 정책을 불러오지 못했습니다.", {
+          status: 500,
+          code: "SERVER_ERROR",
+          detail: "policy unavailable",
+        });
+      }
+      return originalApiGet(path);
+    });
+
+    vi.spyOn(dateUtils, "todayLocalDate").mockReturnValue("2026-03-16");
+    vi.spyOn(Date, "now").mockReturnValue(new Date("2026-03-16T09:00:00+09:00").getTime());
+
+    render(
+      <FoundationProviders>
+        <SelectedMemberProvider>
+          <ReservationsPage />
+        </SelectedMemberProvider>
+      </FoundationProviders>
+    );
+
+    const policyAlert = await screen.findByRole("alert");
+    expect(
+      within(policyAlert).getByText("서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.", { selector: ".ant-alert-message" }),
+    ).toBeTruthy();
+    expect(
+      within(policyAlert).getByText("예약 화면은 계속 사용할 수 있습니다. 정책 값만 다시 불러오면 됩니다.", {
+        selector: ".ant-alert-description",
+      }),
+    ).toBeTruthy();
+  }, 15000);
 
   it("recovers past reservation schedule details through schedule id enrichment", async () => {
     vi.spyOn(dateUtils, "todayLocalDate").mockReturnValue("2026-03-16");

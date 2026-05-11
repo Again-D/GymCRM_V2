@@ -101,4 +101,43 @@ describe("useCrmPrototypeState", () => {
     );
     expect(result.current.crmPanelMessage).toBe("CRM 만료임박 메시지 이벤트가 큐에 적재되었습니다.");
   });
+
+  it("calls live inactive-member trigger endpoint in live mode", async () => {
+    setMockApiModeForTests(false);
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: {
+          baseDate: "2026-03-13",
+          targetDate: "2026-02-11",
+          totalTargets: 1,
+          createdCount: 1,
+          duplicatedCount: 0
+        },
+        message: "CRM 장기 미방문 메시지 이벤트가 큐에 적재되었습니다.",
+        timestamp: "2026-03-13T00:00:00Z",
+        traceId: "trace-crm-inactive"
+      })
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const queryClient = createTestQueryClient();
+    const { result } = renderHook(() => useCrmPrototypeState(), {
+      wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper>,
+    });
+
+    await act(async () => {
+      await result.current.triggerCrmInactiveMemberCampaign();
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/crm/messages/triggers/inactive-member-campaign",
+      expect.objectContaining({
+        method: "POST",
+        credentials: "include"
+      })
+    );
+    expect(result.current.crmPanelMessage).toBe("CRM 장기 미방문 메시지 이벤트가 큐에 적재되었습니다.");
+  });
 });

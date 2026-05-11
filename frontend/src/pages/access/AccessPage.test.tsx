@@ -1,7 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { AuthStateProvider } from "../../app/auth";
 import { setMockApiModeForTests } from "../../api/client";
 import { resetMockData } from "../../api/mockData";
 import { SelectedMemberProvider } from "../members/modules/SelectedMemberContext";
@@ -48,6 +47,213 @@ describe("AccessPage", () => {
     expect(screen.getByText("출입 이력")).toBeTruthy();
     expect(screen.getByText("회원 디렉터리")).toBeTruthy();
   }, 10000);
+
+  it("renders the access alert summary with repeated-denial cues", async () => {
+    setMockApiModeForTests(false);
+
+    const fetchMock = vi.fn(async (input: string) => {
+      if (input.startsWith("/api/v1/members")) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: [],
+            message: "ok",
+            timestamp: "2026-03-13T00:00:00Z",
+            traceId: "trace-members",
+          }),
+        };
+      }
+
+      if (input === "/api/v1/access/presence") {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: {
+              openSessionCount: 2,
+              todayEntryGrantedCount: 4,
+              todayExitCount: 1,
+              todayEntryDeniedCount: 3,
+              openSessions: [],
+            },
+            message: "ok",
+            timestamp: "2026-03-13T00:00:00Z",
+            traceId: "trace-presence",
+          }),
+        };
+      }
+
+      if (input.startsWith("/api/v1/access/events")) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: [],
+            message: "ok",
+            timestamp: "2026-03-13T00:00:00Z",
+            traceId: "trace-events",
+          }),
+        };
+      }
+
+      if (input === "/api/v1/access/alerts") {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: {
+              windowFrom: "2026-03-13T08:00:00Z",
+              windowTo: "2026-03-13T09:00:00Z",
+              totalDeniedCount: 5,
+              requiresImmediateAttention: true,
+              deniedReasonCounts: [
+                { denyReason: "MEMBER_INACTIVE", deniedCount: 3 },
+                { denyReason: "QR_REUSED", deniedCount: 2 },
+              ],
+              repeatedDeniedMembers: [
+                {
+                  memberId: 102,
+                  memberName: "박서연",
+                  deniedCount: 4,
+                  lastDeniedAt: "2026-03-13T08:55:00Z",
+                },
+              ],
+              recentDeniedEvents: [
+                {
+                  accessEventId: 9101,
+                  memberId: 102,
+                  memberName: "박서연",
+                  denyReason: "MEMBER_INACTIVE",
+                  processedAt: "2026-03-13T08:55:00Z",
+                },
+              ],
+            },
+            message: "ok",
+            timestamp: "2026-03-13T00:00:00Z",
+            traceId: "trace-alerts",
+          }),
+        };
+      }
+
+      throw new Error(`Unexpected request: ${input}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <FoundationProviders
+        authValue={{
+          securityMode: "jwt",
+          authUser: {
+            userId: 11,
+            username: "jwt-admin",
+            primaryRole: "ROLE_MANAGER",
+            roles: ["ROLE_MANAGER"],
+          },
+        }}
+      >
+        <SelectedMemberProvider>
+          <AccessPage />
+        </SelectedMemberProvider>
+      </FoundationProviders>,
+    );
+
+    expect(await screen.findByText("비정상 출입 요약")).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getAllByText("박서연")).toHaveLength(2);
+    });
+    expect(screen.getByText("MEMBER_INACTIVE · 3")).toBeTruthy();
+    expect(screen.getByText("최근 거부 이벤트")).toBeTruthy();
+  });
+
+  it("shows a warning when the alert summary request fails without breaking the page", async () => {
+    setMockApiModeForTests(false);
+
+    const fetchMock = vi.fn(async (input: string) => {
+      if (input.startsWith("/api/v1/members")) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: [],
+            message: "ok",
+            timestamp: "2026-03-13T00:00:00Z",
+            traceId: "trace-members",
+          }),
+        };
+      }
+
+      if (input === "/api/v1/access/presence") {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: {
+              openSessionCount: 1,
+              todayEntryGrantedCount: 1,
+              todayExitCount: 0,
+              todayEntryDeniedCount: 0,
+              openSessions: [],
+            },
+          }),
+        };
+      }
+
+      if (input.startsWith("/api/v1/access/events")) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: [],
+          }),
+        };
+      }
+
+      if (input === "/api/v1/access/alerts") {
+        return {
+          ok: false,
+          status: 500,
+          json: async () => ({
+            success: false,
+            message: "출입 비정상 알림 조회 실패",
+            timestamp: "2026-03-13T00:00:00Z",
+            traceId: "trace-alerts",
+            error: {
+              code: "INTERNAL_ERROR",
+              status: 500,
+              detail: "alert summary down",
+            },
+          }),
+        };
+      }
+
+      throw new Error(`Unexpected request: ${input}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <FoundationProviders
+        authValue={{
+          securityMode: "jwt",
+          authUser: {
+            userId: 11,
+            username: "jwt-admin",
+            primaryRole: "ROLE_MANAGER",
+            roles: ["ROLE_MANAGER"],
+          },
+        }}
+      >
+        <SelectedMemberProvider>
+          <AccessPage />
+        </SelectedMemberProvider>
+      </FoundationProviders>,
+    );
+
+    expect(await screen.findByRole("heading", { name: "출입 모니터링" })).toBeTruthy();
+    expect(screen.getByText("회원 디렉터리")).toBeTruthy();
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("비정상 출입 요약을 불러오지 못했습니다");
+  });
 
   it("shows trainer unsupported note in live mode", async () => {
     setMockApiModeForTests(false);
