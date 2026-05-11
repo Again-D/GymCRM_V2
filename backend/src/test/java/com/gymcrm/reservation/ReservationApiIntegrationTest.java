@@ -140,6 +140,54 @@ class ReservationApiIntegrationTest {
     }
 
     @Test
+    void deskRoleCanCreateAndListReservationWaitlist() throws Exception {
+        ensureDeskUser();
+        String deskToken = loginAndGetAccessToken(DESK_LOGIN_ID, DESK_PASSWORD);
+
+        long firstMemberId = insertMemberFixture("WAITAPI회원1");
+        long secondMemberId = insertMemberFixture("WAITAPI회원2");
+        long firstProductId = insertProductFixture("GX", "DURATION");
+        long secondProductId = insertProductFixture("GX", "DURATION");
+        long firstMembershipId = insertMembershipFixture(firstMemberId, firstProductId, "GX", "DURATION", null, null, 0);
+        long secondMembershipId = insertMembershipFixture(secondMemberId, secondProductId, "GX", "DURATION", null, null, 0);
+        TrainerSchedule schedule = createFutureSchedule("GX", 1);
+
+        mockMvc.perform(post("/api/v1/reservations")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + deskToken)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "memberId": %d,
+                                  "membershipId": %d,
+                                  "scheduleId": %d
+                                }
+                                """.formatted(firstMemberId, firstMembershipId, schedule.scheduleId())))
+                .andExpect(status().isOk());
+
+        MvcResult waitlistResult = mockMvc.perform(post("/api/v1/reservations/waitlist")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + deskToken)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "memberId": %d,
+                                  "membershipId": %d,
+                                  "scheduleId": %d
+                                }
+                                """.formatted(secondMemberId, secondMembershipId, schedule.scheduleId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("WAITING"))
+                .andReturn();
+        long waitlistId = jsonLong(waitlistResult, "/data/waitingId");
+
+        mockMvc.perform(get("/api/v1/reservations/waitlist")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + deskToken)
+                        .param("scheduleId", String.valueOf(schedule.scheduleId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].waitingId").value(waitlistId))
+                .andExpect(jsonPath("$.data[0].status").value("WAITING"));
+    }
+
+    @Test
     void deskRoleCanCheckInAndNoShowWithPhase8Policies() throws Exception {
         ensureDeskUser();
         String deskToken = loginAndGetAccessToken(DESK_LOGIN_ID, DESK_PASSWORD);
@@ -251,6 +299,22 @@ class ReservationApiIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[*].scheduleId", hasItem(futureSchedule.scheduleId().intValue())))
                 .andExpect(jsonPath("$.data[*].scheduleId", hasItem(pastSchedule.scheduleId().intValue())));
+    }
+
+    @Test
+    void reservationPolicyEndpointReturnsBackendDefaultsForTheCurrentCenter() throws Exception {
+        String adminToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
+
+        mockMvc.perform(get("/api/v1/reservations/policy")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.centerId").value((int) CENTER_ID))
+                .andExpect(jsonPath("$.data.source").value("BACKEND_DEFAULT"))
+                .andExpect(jsonPath("$.data.ptDeductionTiming").value("COMPLETION"))
+                .andExpect(jsonPath("$.data.gxWaitlistMode").value("AUTO_PROMOTION"))
+                .andExpect(jsonPath("$.data.cancellationCutoffMinutes").value(120))
+                .andExpect(jsonPath("$.data.reminderLeadMinutes").value(120));
     }
 
     @Test

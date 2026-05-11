@@ -1,7 +1,7 @@
 ---
 title: feat: Sprint 2 Core Ops Flow Alignment
 type: feat
-status: active
+status: completed
 date: 2026-05-08
 origin: docs/notes/2026-05-08-requirements-gap-tracker.md
 ---
@@ -15,7 +15,7 @@ Sprint 2 closes the day-to-day operating loop that sits on top of the security a
 Execution companion:
 - `docs/plans/2026-05-08-005-feat-sprint2-core-ops-flow-execution-plan.md`
 
-The remaining work is centered on three user flows:
+The completed work centered on three user flows:
 - member registration completeness
 - member-facing QR display and QR-related access handling
 - reservation policy alignment for PT/GX, including waitlist, cancellation, deduction timing, and reminders
@@ -28,9 +28,9 @@ The plan keeps the work inside the existing admin portal and Spring Boot / React
 
 The current implementation already has strong skeletons for member management, QR issuance/verification, access monitoring, and reservation operations.
 
-What is still missing is the end-to-end behavior that the requirements document expects:
+What was missing was the end-to-end behavior that the requirements document expected:
 - member registration still lacks the required emergency-contact capture in the core user flow
-- the QR feature exists as an operator-oriented capability, but the member-facing mobile display path is not complete
+- the QR feature exposes a member-facing mobile display path, but the registration response and refresh lifecycle still need to stay aligned with the requirements document
 - access monitoring exposes presence/events, but abnormal access needs to be surfaced as an operator-readable workflow, not just a backend count
 - reservation behavior is present, but the policy layer around GX waitlist promotion, cancellation cutoff, deduction timing, and reminder dispatch is not yet closed
 
@@ -61,9 +61,13 @@ This sprint aligns those flows with the requirements document and the existing c
 ### Deferred to Follow-Up Work
 
 - Full member-auth/session model for a broader mobile portal
+- FR-ACC-005 outbound delivery channels beyond the access-page alert summary
+- Automatic polling or push-driven refresh for access presence/alert data
 - Full member photo upload/manage flow (`FR-MBR-009`), including storage, retrieval, and replacement UX, which is owned by Sprint 3
 - CRM template/admin redesign beyond the reminder and waitlist dispatch needs in this sprint
 - Future policy tuning for notification channels if operations later wants more than the current CRM queue supports
+
+See also: `docs/notes/2026-05-08-sprint2-u3-follow-up-backlog.md`
 
 ---
 
@@ -94,7 +98,7 @@ This sprint aligns those flows with the requirements document and the existing c
 - Reuse the existing CRM queue and message history model for reminders and waitlist notifications rather than creating a second dispatch system.
 - Treat PT reservation deduction timing as an explicit policy choice, with the default behavior preserving current completion-time deduction unless the policy says otherwise.
 - Add the member QR surface as a narrow mobile-friendly route instead of broadening the existing admin shell into a full member portal.
-- Use a narrow member-scoped bootstrap for the QR route, such as a signed access link or one-time token, rather than introducing full member login/session management in this sprint.
+- Emit a narrow member-scoped bootstrap path from member registration/detail responses, then use it to issue or refresh QR data without introducing full member login/session management in this sprint.
 - Prefer server-side policy values and status flags over hard-coded UI logic for cancellation windows, waitlist promotion, and reminder timing.
 - Reservation policy values must come from backend-resolved center-scoped configuration or documented backend defaults; the browser should render resolved values only.
 
@@ -189,7 +193,7 @@ flowchart LR
 - The member registration workflow can capture the required inputs without breaking the existing member list and detail navigation.
 - Duplicate-phone behavior stays intact while the new fields are accepted end to end.
 
-- [ ] U2. **Member QR Display Flow**
+- [x] U2. **Member QR Display Flow**
 
 **Goal:** Add the narrow member-facing QR display surface and dynamic refresh behavior required by UC-07, without turning the whole app into a full member portal.
 
@@ -208,7 +212,7 @@ flowchart LR
 - Test: `backend/src/test/java/com/gymcrm/access/QrCodeServiceTest.java`
 
 **Approach:**
-- Reuse the existing QR token service and TTL ceiling, but present the data through a dedicated mobile-friendly route.
+- Reuse the existing QR token service and TTL ceiling, but present the data through a dedicated mobile-friendly route that opens from a short-lived `memberQrPath` returned by member registration/update or an explicit reissue action.
 - Keep the surface focused on token issuance, expiration countdown, and refresh behavior.
 - Use a narrow member-scoped bootstrap contract, such as a signed access link or one-time token, so the route can issue/refresh QR data without requiring a broader member session model.
 
@@ -230,7 +234,7 @@ flowchart LR
 - A member can open the QR view on a mobile-sized screen, see a valid QR, and refresh it before expiry.
 - Expired tokens are never presented as valid after the refresh cycle.
 
-- [ ] U3. **Access Monitoring and Alerts**
+- [x] U3. **Access Monitoring and Alerts**
 
 **Goal:** Surface the existing access presence and denial signals as a readable operator workflow so abnormal access is actionable, not just logged.
 
@@ -266,7 +270,7 @@ flowchart LR
 - Operators can see at a glance when abnormal access needs attention and which members are repeatedly denied.
 - The access screen still works when alert data is empty or temporarily unavailable.
 
-- [ ] U4. **Reservation Policy Engine**
+- [x] U4. **Reservation Policy Engine**
 
 **Goal:** Close the reservation policy gaps for PT/GX by making waitlist promotion, cancellation cutoff, deduction timing, and reminder dispatch explicit server-side behavior.
 
@@ -315,7 +319,7 @@ flowchart LR
 - PT deduction timing matches the selected policy for the center.
 - GX waitlist promotion, cancellation handling, and reminder dispatch behave consistently across API, service, and UI expectations.
 
-- [ ] U5. **Reservation Workspace UX Alignment**
+- [x] U5. **Reservation Workspace UX Alignment**
 
 **Goal:** Make the reservation workspace reflect the new policy behavior so operators can see deduction timing, waitlist state, cancellation cutoff, and reminder outcomes in the UI.
 

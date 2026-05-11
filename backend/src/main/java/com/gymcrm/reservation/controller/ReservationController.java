@@ -7,13 +7,18 @@ import com.gymcrm.reservation.dto.request.CreateReservationRequest;
 import com.gymcrm.reservation.dto.request.CreatePtReservationRequest;
 import com.gymcrm.reservation.dto.response.CompleteReservationResponse;
 import com.gymcrm.reservation.dto.response.PtReservationCandidatesResponse;
+import com.gymcrm.reservation.dto.response.ReservationPolicyResponse;
 import com.gymcrm.reservation.dto.response.ReservationResponse;
 import com.gymcrm.reservation.dto.response.ReservationScheduleResponse;
 import com.gymcrm.reservation.dto.response.ReservationTargetResponse;
+import com.gymcrm.reservation.dto.response.ReservationWaitlistResponse;
 import com.gymcrm.reservation.entity.Reservation;
+import com.gymcrm.reservation.entity.ReservationWaitlist;
 import com.gymcrm.reservation.entity.TrainerSchedule;
 import com.gymcrm.reservation.service.ReservationService;
 import com.gymcrm.reservation.service.PtReservationService;
+import com.gymcrm.reservation.service.ReservationPolicyService;
+import com.gymcrm.reservation.service.ReservationWaitlistService;
 import com.gymcrm.reservation.service.ReservationService.CancelRequest;
 import com.gymcrm.reservation.service.ReservationService.CheckInRequest;
 import com.gymcrm.reservation.service.ReservationService.CompleteRequest;
@@ -28,6 +33,7 @@ import jakarta.validation.constraints.Pattern;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -42,10 +48,19 @@ import java.util.List;
 public class ReservationController {
     private final ReservationService reservationService;
     private final PtReservationService ptReservationService;
+    private final ReservationPolicyService reservationPolicyService;
+    private final ReservationWaitlistService reservationWaitlistService;
 
-    public ReservationController(ReservationService reservationService, PtReservationService ptReservationService) {
+    public ReservationController(
+            ReservationService reservationService,
+            PtReservationService ptReservationService,
+            ReservationPolicyService reservationPolicyService,
+            ReservationWaitlistService reservationWaitlistService
+    ) {
         this.reservationService = reservationService;
         this.ptReservationService = ptReservationService;
+        this.reservationPolicyService = reservationPolicyService;
+        this.reservationWaitlistService = reservationWaitlistService;
     }
 
     @PostMapping
@@ -117,6 +132,45 @@ public class ReservationController {
                 .map(ReservationTargetResponse::from)
                 .toList();
         return ApiResponse.success(items, "예약 대상 회원 목록 조회 성공");
+    }
+
+    @GetMapping("/policy")
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK_OR_TRAINER)
+    public ApiResponse<ReservationPolicyResponse> getPolicy() {
+        return ApiResponse.success(
+                ReservationPolicyResponse.from(reservationPolicyService.getResolvedPolicy()),
+                "예약 정책 조회 성공"
+        );
+    }
+
+    @PostMapping("/waitlist")
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK_OR_TRAINER)
+    public ApiResponse<ReservationWaitlistResponse> createWaitlist(@Valid @RequestBody CreateReservationRequest request) {
+        ReservationWaitlist waitlist = reservationWaitlistService.create(new ReservationWaitlistService.CreateRequest(
+                request.memberId(),
+                request.membershipId(),
+                request.scheduleId()
+        ));
+        return ApiResponse.success(ReservationWaitlistResponse.from(waitlist), "대기 신청이 등록되었습니다.");
+    }
+
+    @GetMapping("/waitlist")
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK_OR_TRAINER)
+    public ApiResponse<List<ReservationWaitlistResponse>> listWaitlist(
+            @RequestParam(required = false) Long scheduleId,
+            @RequestParam(required = false) String status
+    ) {
+        List<ReservationWaitlistResponse> items = reservationWaitlistService.list(scheduleId, status).stream()
+                .map(ReservationWaitlistResponse::from)
+                .toList();
+        return ApiResponse.success(items, "대기 목록 조회 성공");
+    }
+
+    @DeleteMapping("/waitlist/{waitlistId}")
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK_OR_TRAINER)
+    public ApiResponse<ReservationWaitlistResponse> cancelWaitlist(@PathVariable Long waitlistId) {
+        ReservationWaitlist waitlist = reservationWaitlistService.cancel(new ReservationWaitlistService.CancelRequest(waitlistId));
+        return ApiResponse.success(ReservationWaitlistResponse.from(waitlist), "대기 신청이 취소되었습니다.");
     }
 
     @GetMapping("/{reservationId}")

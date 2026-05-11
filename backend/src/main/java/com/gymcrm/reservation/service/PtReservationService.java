@@ -57,6 +57,7 @@ public class PtReservationService {
     private final TrainerScheduleRepository trainerScheduleRepository;
     private final ReservationQueryRepository reservationQueryRepository;
     private final ReservationRepository reservationRepository;
+    private final ReservationLifecyclePolicyService reservationLifecyclePolicyService;
     private final JdbcClient jdbcClient;
 
     public PtReservationService(
@@ -69,6 +70,7 @@ public class PtReservationService {
             TrainerScheduleRepository trainerScheduleRepository,
             ReservationQueryRepository reservationQueryRepository,
             ReservationRepository reservationRepository,
+            ReservationLifecyclePolicyService reservationLifecyclePolicyService,
             JdbcClient jdbcClient
     ) {
         this.authUserRepository = authUserRepository;
@@ -80,6 +82,7 @@ public class PtReservationService {
         this.trainerScheduleRepository = trainerScheduleRepository;
         this.reservationQueryRepository = reservationQueryRepository;
         this.reservationRepository = reservationRepository;
+        this.reservationLifecyclePolicyService = reservationLifecyclePolicyService;
         this.jdbcClient = jdbcClient;
     }
 
@@ -180,7 +183,7 @@ public class PtReservationService {
                 null,
                 null
         ));
-        return reservationRepository.insert(new ReservationRepository.ReservationCreateCommand(
+        Reservation reservation = reservationRepository.insert(new ReservationRepository.ReservationCreateCommand(
                 actor.centerId(),
                 member.memberId(),
                 lockedMembership.membershipId(),
@@ -190,6 +193,16 @@ public class PtReservationService {
                 memo,
                 actor.userId()
         ));
+        reservationLifecyclePolicyService.deductCountIfNeeded(
+                lockedMembership,
+                reservation,
+                now,
+                actor.userId(),
+                "PT 예약 확정에 따른 횟수 차감",
+                true
+        );
+        reservationLifecyclePolicyService.enqueueReservationNotifications(reservation, schedule, actor.userId());
+        return reservation;
     }
 
     private void ensureNoOverlap(Long centerId, Long trainerUserId, Long memberId, OffsetDateTime startAt, OffsetDateTime endAt) {

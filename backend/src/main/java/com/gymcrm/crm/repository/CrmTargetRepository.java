@@ -4,6 +4,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 @Repository
@@ -68,7 +69,7 @@ public class CrmTargetRepository {
 
     public List<EventCampaignTarget> findEventCampaignTargets(Long centerId, String productCategory) {
         StringBuilder sql = new StringBuilder("""
-                SELECT DISTINCT
+                SELECT DISTINCT ON (m.member_id)
                     m.member_id,
                     m.member_name,
                     m.phone,
@@ -87,7 +88,7 @@ public class CrmTargetRepository {
         if (productCategory != null) {
             sql.append(" AND mm.product_category_snapshot = :productCategory");
         }
-        sql.append(" ORDER BY m.member_id ASC");
+        sql.append(" ORDER BY m.member_id ASC, mm.membership_id DESC");
 
         JdbcClient.StatementSpec statement = jdbcClient.sql(sql.toString())
                 .param("centerId", centerId);
@@ -95,6 +96,44 @@ public class CrmTargetRepository {
             statement = statement.param("productCategory", productCategory);
         }
         return statement.query(EventCampaignTarget.class).list();
+    }
+
+    public List<InactiveMemberTarget> findInactiveMemberTargets(Long centerId, LocalDate cutoffDate, OffsetDateTime cutoffAt) {
+        String sql = """
+                WITH last_access AS (
+                    SELECT
+                        ae.member_id,
+                        MAX(ae.processed_at) AS last_access_at
+                    FROM access_events ae
+                    WHERE ae.center_id = :centerId
+                      AND ae.event_type = 'ENTRY_GRANTED'
+                    GROUP BY ae.member_id
+                )
+                SELECT
+                    m.member_id,
+                    m.member_name,
+                    m.phone,
+                    m.join_date,
+                    la.last_access_at
+                FROM members m
+                LEFT JOIN last_access la ON la.member_id = m.member_id
+                WHERE m.center_id = :centerId
+                  AND m.is_deleted = FALSE
+                  AND m.member_status = 'ACTIVE'
+                  AND m.consent_marketing = TRUE
+                  AND (
+                        (la.last_access_at IS NULL AND m.join_date <= :cutoffDate)
+                        OR (la.last_access_at IS NOT NULL AND la.last_access_at < :cutoffAt)
+                  )
+                ORDER BY COALESCE(la.last_access_at, m.join_date::timestamp) ASC, m.member_id ASC
+                """;
+
+        return jdbcClient.sql(sql)
+                .param("centerId", centerId)
+                .param("cutoffDate", cutoffDate)
+                .param("cutoffAt", cutoffAt)
+                .query(InactiveMemberTarget.class)
+                .list();
     }
 
     public record ExpiringMembershipTarget(
@@ -121,6 +160,15 @@ public class CrmTargetRepository {
             String phone,
             Long membershipId,
             String productCategorySnapshot
+    ) {
+    }
+
+    public record InactiveMemberTarget(
+            Long memberId,
+            String memberName,
+            String phone,
+            LocalDate joinDate,
+            OffsetDateTime lastAccessAt
     ) {
     }
 }

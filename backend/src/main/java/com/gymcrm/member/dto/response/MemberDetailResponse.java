@@ -1,5 +1,6 @@
 package com.gymcrm.member.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.gymcrm.member.entity.Member;
 
 import java.time.LocalDate;
@@ -20,9 +21,10 @@ public record MemberDetailResponse(
         String memo,
         String emergencyContactName,
         String emergencyContactPhone,
-        String emergencyContactRelationship
+        String emergencyContactRelationship,
+        @JsonInclude(JsonInclude.Include.NON_NULL) String memberQrPath
 ) {
-    public static MemberDetailResponse from(Member member) {
+    public static MemberDetailResponse from(Member member, String memberQrPath) {
         return new MemberDetailResponse(
                 member.memberId(),
                 member.centerId(),
@@ -39,7 +41,8 @@ public record MemberDetailResponse(
                 member.memo(),
                 member.emergencyContactName(),
                 member.emergencyContactPhone(),
-                member.emergencyContactRelationship()
+                member.emergencyContactRelationship(),
+                memberQrPath
         );
     }
 }
