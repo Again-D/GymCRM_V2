@@ -101,7 +101,6 @@ export default function CrmPage() {
 		setCrmInactiveDays,
 		crmInactiveScheduledAt,
 		setCrmInactiveScheduledAt,
-		crmInactiveSubmitting,
 		clearCrmFeedback,
 		triggerCrmExpiryReminder,
 		triggerCrmInactiveMemberCampaign,
@@ -710,63 +709,9 @@ export default function CrmPage() {
 										>
 											메시지 큐 실행
 										</Button>
-									</Flex>
-								</Form.Item>
-								<Form.Item
-									label={
-										<Text strong style={{ fontSize: "0.84rem" }}>
-											장기 미방문 기준 (D-Day)
-										</Text>
-									}
-								>
-									<Flex vertical gap={8}>
-										<InputNumber
-											min={0}
-											max={365}
-											style={{ width: "100%" }}
-											value={Number(crmInactiveDays)}
-											disabled={!isLiveCrmRoleSupported}
-											onChange={(val) =>
-												setCrmInactiveDays(String(val || 0))
-											}
-											placeholder="일수 입력"
-										/>
-										<Text type="secondary" style={{ fontSize: "0.75rem" }}>
-											마지막 출입일 기준으로 입력한 일수 이상 미방문 회원을 추출합니다.
-										</Text>
-									</Flex>
-								</Form.Item>
-								<Flex vertical gap={8}>
-									<Button
-										type="primary"
-										block
-										icon={<NotificationOutlined />}
-										onClick={() => void runTrigger()}
-										loading={crmTriggerSubmitting}
-										disabled={crmTriggerSubmitting || !isLiveCrmRoleSupported}
-										>
-											안내 대상 적재
-										</Button>
-									<Button
-										block
-										icon={<NotificationOutlined />}
-										onClick={() => void runInactiveTrigger()}
-										loading={crmInactiveSubmitting}
-										disabled={crmInactiveSubmitting || !isLiveCrmRoleSupported}
-									>
-										장기 미방문 적재
-									</Button>
-									<Button
-										block
-										icon={<PlayCircleOutlined />}
-										onClick={() => void runProcess()}
-										loading={crmProcessSubmitting}
-										disabled={crmProcessSubmitting || !isLiveCrmRoleSupported}
-									>
-										메시지 큐 실행
-									</Button>
 								</Flex>
 							</Form>
+
 
 								<div style={{ marginTop: 8 }}>
 									<Text

@@ -283,6 +283,7 @@ public class CrmMessageService {
                     null,
                     "INACTIVE_MEMBER_CAMPAIGN",
                     "SMS",
+                    "PRIMARY",
                     dedupeKey,
                     payloadJson,
                     "PENDING",
@@ -346,6 +347,7 @@ public class CrmMessageService {
                 request.membershipId(),
                 "RESERVATION_WAITLIST_PROMOTED",
                 "SMS",
+                "PRIMARY",
                 dedupeKey,
                 payloadJson,
                 "PENDING",
@@ -386,6 +388,7 @@ public class CrmMessageService {
                 request.membershipId(),
                 eventType,
                 "SMS",
+                "PRIMARY",
                 dedupeKey,
                 payloadJson,
                 "PENDING",
@@ -678,6 +681,14 @@ public class CrmMessageService {
             LocalDate baseDate,
             Integer inactiveDays,
             boolean forceFail,
+            OffsetDateTime scheduledAt
+    ) {
+    }
+
+    public record LongTermInactiveCampaignTriggerRequest(
+            Long templateId,
+            LocalDate baseDate,
+            Integer inactiveDays,
             OffsetDateTime scheduledAt
     ) {
     }
