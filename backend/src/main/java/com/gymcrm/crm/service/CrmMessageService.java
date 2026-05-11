@@ -7,6 +7,7 @@ import com.gymcrm.common.security.CurrentUserProvider;
 import com.gymcrm.crm.CrmMessageSender;
 import com.gymcrm.crm.CrmMessageSender.SendResult;
 import com.gymcrm.crm.entity.CrmMessageEvent;
+import com.gymcrm.crm.entity.CrmMessageTemplate;
 import com.gymcrm.crm.repository.CrmMessageEventRepository;
 import com.gymcrm.crm.repository.CrmTargetRepository;
 import com.gymcrm.crm.repository.CrmMessageEventRepository.InsertCommand;
@@ -16,6 +17,7 @@ import com.gymcrm.crm.repository.CrmMessageEventRepository.UpdateSentCommand;
 import com.gymcrm.crm.repository.CrmTargetRepository.BirthdayTarget;
 import com.gymcrm.crm.repository.CrmTargetRepository.EventCampaignTarget;
 import com.gymcrm.crm.repository.CrmTargetRepository.ExpiringMembershipTarget;
+import com.gymcrm.crm.repository.CrmTargetRepository.LongTermInactiveTarget;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +36,7 @@ public class CrmMessageService {
     private final CrmMessageSender messageSender;
     private final CrmDispatchClaimService crmDispatchClaimService;
     private final CrmRetryWheelService crmRetryWheelService;
+    private final CrmMessageTemplateService crmMessageTemplateService;
     private final CurrentUserProvider currentUserProvider;
 
     public CrmMessageService(
@@ -42,6 +45,7 @@ public class CrmMessageService {
             CrmMessageSender messageSender,
             CrmDispatchClaimService crmDispatchClaimService,
             CrmRetryWheelService crmRetryWheelService,
+            CrmMessageTemplateService crmMessageTemplateService,
             CurrentUserProvider currentUserProvider
     ) {
         this.eventRepository = eventRepository;
@@ -49,6 +53,7 @@ public class CrmMessageService {
         this.messageSender = messageSender;
         this.crmDispatchClaimService = crmDispatchClaimService;
         this.crmRetryWheelService = crmRetryWheelService;
+        this.crmMessageTemplateService = crmMessageTemplateService;
         this.currentUserProvider = currentUserProvider;
     }
 
@@ -78,6 +83,7 @@ public class CrmMessageService {
                     target.membershipId(),
                     "MEMBERSHIP_EXPIRY_REMINDER",
                     "SMS",
+                    "PRIMARY",
                     dedupeKey,
                     payloadJson,
                     "PENDING",
@@ -121,6 +127,7 @@ public class CrmMessageService {
                     null,
                     "BIRTHDAY_CAMPAIGN",
                     "SMS",
+                    "PRIMARY",
                     dedupeKey,
                     payloadJson,
                     "PENDING",
@@ -170,6 +177,60 @@ public class CrmMessageService {
                     target.membershipId(),
                     "EVENT_CAMPAIGN",
                     "SMS",
+                    "PRIMARY",
+                    dedupeKey,
+                    payloadJson,
+                    "PENDING",
+                    resolveScheduledAt(request.scheduledAt()),
+                    traceId,
+                    actorUserId
+            )).isPresent();
+            if (inserted) {
+                createdCount += 1;
+            } else {
+                duplicatedCount += 1;
+            }
+        }
+
+        return new TriggerResult(baseDate, baseDate, targets.size(), createdCount, duplicatedCount);
+    }
+
+    @Transactional
+    public TriggerResult triggerLongTermInactiveCampaign(LongTermInactiveCampaignTriggerRequest request) {
+        LocalDate baseDate = request.baseDate() == null ? LocalDate.now(ZoneOffset.UTC) : request.baseDate();
+        int inactiveDays = request.inactiveDays() == null ? 30 : request.inactiveDays();
+        if (inactiveDays < 1 || inactiveDays > 3650) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "inactiveDays must be between 1 and 3650");
+        }
+
+        CrmMessageTemplate template = crmMessageTemplateService.requireSendableTemplate(request.templateId());
+        Long centerId = currentUserProvider.currentCenterId();
+        Long actorUserId = currentUserProvider.currentUserId();
+        String traceId = TraceIdFilter.currentTraceIdOrGenerate();
+        OffsetDateTime cutoffAt = baseDate.minusDays(inactiveDays).atStartOfDay(ZoneOffset.UTC).toOffsetDateTime();
+
+        List<LongTermInactiveTarget> targets = targetRepository.findLongTermInactiveTargets(centerId, cutoffAt);
+        int createdCount = 0;
+        int duplicatedCount = 0;
+
+        for (LongTermInactiveTarget target : targets) {
+            String dedupeKey = "LONG_TERM_INACTIVE_CAMPAIGN:" + centerId + ":" + target.memberId() + ":" + baseDate + ":" + inactiveDays + ":" + template.templateCode();
+            String payloadJson = "{" +
+                    "\"memberName\":\"" + escapeJson(target.memberName()) + "\"," +
+                    "\"phone\":\"" + escapeJson(target.phone()) + "\"," +
+                    "\"templateCode\":\"" + escapeJson(template.templateCode()) + "\"," +
+                    "\"templateName\":\"" + escapeJson(template.templateName()) + "\"," +
+                    "\"templateBody\":\"" + escapeJson(template.templateBody()) + "\"," +
+                    "\"inactiveDays\":" + inactiveDays + "," +
+                    "\"lastAccessAt\":\"" + (target.lastAccessAt() == null ? "" : target.lastAccessAt()) + "\"" +
+                    "}";
+            boolean inserted = eventRepository.insertIfAbsent(new CrmMessageEventRepository.InsertCommand(
+                    centerId,
+                    target.memberId(),
+                    null,
+                    "LONG_TERM_INACTIVE_CAMPAIGN",
+                    template.channelType(),
+                    "PRIMARY",
                     dedupeKey,
                     payloadJson,
                     "PENDING",
@@ -204,6 +265,7 @@ public class CrmMessageService {
                 request.membershipId(),
                 "MEMBERSHIP_HOLD_RESUMED",
                 "SMS",
+                "PRIMARY",
                 dedupeKey,
                 payloadJson,
                 "PENDING",
@@ -237,12 +299,13 @@ public class CrmMessageService {
             }
 
             pickedCount += 1;
-            CrmMessageSender.SendResult sendResult = messageSender.send(event);
-            if (sendResult.success()) {
+            SendAttempt sendAttempt = sendWithFallback(event);
+            if (sendAttempt.sendResult().success()) {
                 eventRepository.markSent(new CrmMessageEventRepository.UpdateSentCommand(
                         event.crmMessageEventId(),
                         centerId,
                         now,
+                        sendAttempt.deliveryMode(),
                         traceId,
                         actorUserId
                 ));
@@ -257,7 +320,8 @@ public class CrmMessageService {
                         event.crmMessageEventId(),
                         centerId,
                         now,
-                        sendResult.errorMessage(),
+                        sendAttempt.errorMessage(),
+                        sendAttempt.deliveryMode(),
                         traceId,
                         actorUserId
                 ));
@@ -270,7 +334,8 @@ public class CrmMessageService {
                         centerId,
                         now,
                         nextAttemptAt,
-                        sendResult.errorMessage(),
+                        sendAttempt.errorMessage(),
+                        sendAttempt.deliveryMode(),
                         traceId,
                         actorUserId
                 ));
@@ -364,6 +429,64 @@ public class CrmMessageService {
         return scheduledAt.withOffsetSameInstant(ZoneOffset.UTC);
     }
 
+    private SendAttempt sendWithFallback(CrmMessageEvent event) {
+        CrmMessageSender.SendResult primaryResult = messageSender.send(event);
+        if (primaryResult.success() || !shouldTrySmsFallback(event)) {
+            return new SendAttempt(primaryResult, "PRIMARY");
+        }
+
+        CrmMessageEvent smsFallbackEvent = new CrmMessageEvent(
+                event.crmMessageEventId(),
+                event.centerId(),
+                event.memberId(),
+                event.membershipId(),
+                event.eventType(),
+                "SMS",
+                event.deliveryMode(),
+                event.dedupeKey(),
+                event.payloadJson(),
+                event.sendStatus(),
+                event.attemptCount(),
+                event.lastAttemptedAt(),
+                event.nextAttemptAt(),
+                event.sentAt(),
+                event.failedAt(),
+                event.lastErrorMessage(),
+                event.traceId(),
+                event.createdAt(),
+                event.updatedAt()
+        );
+        CrmMessageSender.SendResult fallbackResult = messageSender.send(smsFallbackEvent);
+        if (fallbackResult.success()) {
+            return new SendAttempt(fallbackResult, "SMS_FALLBACK");
+        }
+        return new SendAttempt(
+                fallbackResult,
+                "SMS_FALLBACK",
+                combineErrorMessages(primaryResult.errorMessage(), fallbackResult.errorMessage())
+        );
+    }
+
+    private boolean shouldTrySmsFallback(CrmMessageEvent event) {
+        return !"SMS".equalsIgnoreCase(event.channelType());
+    }
+
+    private String combineErrorMessages(String primaryError, String fallbackError) {
+        if (primaryError == null || primaryError.isBlank()) {
+            return fallbackError;
+        }
+        if (fallbackError == null || fallbackError.isBlank()) {
+            return primaryError;
+        }
+        return "primary: " + primaryError + "; fallback: " + fallbackError;
+    }
+
+    private record SendAttempt(CrmMessageSender.SendResult sendResult, String deliveryMode, String errorMessage) {
+        private SendAttempt(CrmMessageSender.SendResult sendResult, String deliveryMode) {
+            this(sendResult, deliveryMode, sendResult.errorMessage());
+        }
+    }
+
     public record TriggerRequest(
             LocalDate baseDate,
             Integer daysAhead,
@@ -413,6 +536,14 @@ public class CrmMessageService {
             String eventCode,
             String productCategory,
             boolean forceFail,
+            OffsetDateTime scheduledAt
+    ) {
+    }
+
+    public record LongTermInactiveCampaignTriggerRequest(
+            Long templateId,
+            LocalDate baseDate,
+            Integer inactiveDays,
             OffsetDateTime scheduledAt
     ) {
     }

@@ -159,4 +159,124 @@ describe("CrmPage", () => {
       expect(screen.queryByText("보관 템플릿")).toBeNull();
     });
   });
+
+  it("shows fallback delivery mode and failure hints in history", async () => {
+    setMockApiModeForTests(false);
+    installMockFetch(
+      [],
+      [
+        {
+          crmMessageEventId: 12011,
+          memberId: 101,
+          membershipId: 9001,
+          eventType: "MEMBERSHIP_EXPIRY_REMINDER",
+          channelType: "KAKAO",
+          deliveryMode: "SMS_FALLBACK",
+          sendStatus: "SENT",
+          attemptCount: 1,
+          lastAttemptedAt: "2026-03-13T09:10:00+09:00",
+          nextAttemptAt: null,
+          sentAt: "2026-03-13T09:10:03+09:00",
+          failedAt: null,
+          lastErrorMessage: null,
+          traceId: "trace-crm-12011",
+          createdAt: "2026-03-13T09:05:00+09:00",
+        },
+        {
+          crmMessageEventId: 12012,
+          memberId: 102,
+          membershipId: 9011,
+          eventType: "EVENT_CAMPAIGN",
+          channelType: "EMAIL",
+          deliveryMode: "SMS_FALLBACK",
+          sendStatus: "DEAD",
+          attemptCount: 3,
+          lastAttemptedAt: "2026-03-13T10:10:00+09:00",
+          nextAttemptAt: null,
+          sentAt: null,
+          failedAt: "2026-03-13T10:10:00+09:00",
+          lastErrorMessage: "fallback delivery failed",
+          traceId: "trace-crm-12012",
+          createdAt: "2026-03-13T10:00:00+09:00",
+        },
+      ],
+    );
+
+    render(
+      <FoundationProviders
+        authValue={{
+          securityMode: "jwt",
+          authUser: {
+            userId: 1,
+            username: "admin",
+            primaryRole: "ROLE_ADMIN",
+            roles: ["ROLE_ADMIN"],
+          },
+        }}
+      >
+        <CrmPage />
+      </FoundationProviders>
+    );
+
+    expect((await screen.findAllByText("SMS 폴백")).length).toBeGreaterThan(0);
+    expect(screen.getByText("실패 사유는 운영 로그 확인")).toBeTruthy();
+  });
+
+  it("triggers long-term inactive campaign using the selected sendable template", async () => {
+    setMockApiModeForTests(false);
+    installMockFetch(
+      [
+        {
+          templateId: 501,
+          templateCode: "INACTIVE_WINBACK",
+          templateName: "장기 미방문 리마인드",
+          channelType: "KAKAO",
+          templateType: "MARKETING",
+          templateBody: "오랜만에 다시 방문해 주세요",
+          reviewStatus: "APPROVED",
+          operationalStatus: "SENDABLE",
+          sendable: true,
+          isActive: true,
+          createdAt: "2026-03-13T00:00:00Z",
+          updatedAt: "2026-03-13T00:00:00Z",
+        },
+      ],
+      [],
+    );
+
+    render(
+      <FoundationProviders
+        authValue={{
+          securityMode: "jwt",
+          authUser: {
+            userId: 1,
+            username: "admin",
+            primaryRole: "ROLE_ADMIN",
+            roles: ["ROLE_ADMIN"],
+          },
+        }}
+      >
+        <CrmPage />
+      </FoundationProviders>
+    );
+
+    expect(await screen.findByText("장기 미방문 캠페인")).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("장기 미방문 일수"), {
+      target: { value: "45" },
+    });
+    fireEvent.change(screen.getByLabelText("예약 발송 시각"), {
+      target: { value: "2026-05-12T10:00:00+09:00" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "장기 미방문 적재" }));
+
+    await waitFor(() => {
+      expect(vi.mocked(globalThis.fetch)).toHaveBeenCalledWith(
+        "/api/v1/crm/messages/triggers/long-term-inactive",
+        expect.objectContaining({
+          method: "POST",
+        }),
+      );
+    });
+  });
 });

@@ -1,6 +1,7 @@
 package com.gymcrm.crm;
 
 import com.gymcrm.crm.service.CrmMessageService;
+import com.gymcrm.crm.service.CrmMessageTemplateService;
 import com.gymcrm.member.dto.request.MemberCreateRequest;
 import com.gymcrm.member.entity.Member;
 import com.gymcrm.member.service.MemberService;
@@ -35,6 +36,9 @@ class CrmMessageServiceIntegrationTest {
 
     @Autowired
     private CrmMessageService crmMessageService;
+
+    @Autowired
+    private CrmMessageTemplateService crmMessageTemplateService;
 
     @Autowired
     private MemberService memberService;
@@ -94,7 +98,7 @@ class CrmMessageServiceIntegrationTest {
         CrmMessageService.MessageHistoryResult history = crmMessageService.getRecentHistory(
                 new CrmMessageService.HistoryRequest("DEAD", 20)
         );
-        assertTrue(history.rows().stream().anyMatch(row -> "DEAD".equals(row.sendStatus())));
+        assertTrue(history.rows().stream().anyMatch(row -> "DEAD".equals(row.sendStatus()) && "PRIMARY".equals(row.deliveryMode())));
     }
 
     @Test
@@ -197,6 +201,45 @@ class CrmMessageServiceIntegrationTest {
         assertEquals("SENT", latestSendStatus("EVENT_CAMPAIGN", member.memberId()));
     }
 
+    @Test
+    @Transactional
+    void longTermInactiveCampaignRequiresSendableTemplateAndHonorsScheduledTime() {
+        Member qualifiedMember = createMemberWithProfile(LocalDate.of(2099, 1, 1), true);
+        Member optedOutMember = createMemberWithProfile(LocalDate.of(2099, 1, 1), false);
+        insertOldEntryEvent(qualifiedMember.memberId(), OffsetDateTime.now(ZoneOffset.UTC).minusDays(90));
+        insertOldEntryEvent(optedOutMember.memberId(), OffsetDateTime.now(ZoneOffset.UTC).minusDays(90));
+
+        var sendableTemplate = crmMessageTemplateService.create(new CrmMessageTemplateService.CreateRequest(
+                "inactive_winback",
+                "장기 미방문 리마인드",
+                "KAKAO",
+                "MARKETING",
+                "오랜만에 다시 방문해 주세요",
+                true
+        ));
+
+        CrmMessageService.TriggerResult result = crmMessageService.triggerLongTermInactiveCampaign(
+                new CrmMessageService.LongTermInactiveCampaignTriggerRequest(
+                        sendableTemplate.templateId(),
+                        LocalDate.now(ZoneOffset.UTC),
+                        30,
+                        OffsetDateTime.now(ZoneOffset.UTC).plusHours(3)
+                )
+        );
+
+        assertEquals(1, result.createdCount());
+        assertTrue(countEvent("LONG_TERM_INACTIVE_CAMPAIGN", qualifiedMember.memberId()) >= 1);
+        assertEquals(0, countEvent("LONG_TERM_INACTIVE_CAMPAIGN", optedOutMember.memberId()));
+        assertEquals("PENDING", latestSendStatus("LONG_TERM_INACTIVE_CAMPAIGN", qualifiedMember.memberId()));
+
+        crmMessageService.processPending(new CrmMessageService.ProcessRequest(50));
+        assertEquals("PENDING", latestSendStatus("LONG_TERM_INACTIVE_CAMPAIGN", qualifiedMember.memberId()));
+
+        forceEventNextAttemptAt("LONG_TERM_INACTIVE_CAMPAIGN", qualifiedMember.memberId(), OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(1));
+        crmMessageService.processPending(new CrmMessageService.ProcessRequest(50));
+        assertEquals("SENT", latestSendStatus("LONG_TERM_INACTIVE_CAMPAIGN", qualifiedMember.memberId()));
+    }
+
     private void createExpiringMembership(LocalDate targetDate) {
         Member member = createMember();
         Product product = createDurationProduct();
@@ -258,6 +301,8 @@ class CrmMessageServiceIntegrationTest {
                 1,
                 false,
                 false,
+                null,
+                null,
                 "ACTIVE",
                 null
         ));
@@ -277,6 +322,8 @@ class CrmMessageServiceIntegrationTest {
                 1,
                 false,
                 false,
+                41L,
+                null,
                 "ACTIVE",
                 null
         ));
@@ -379,6 +426,22 @@ class CrmMessageServiceIntegrationTest {
                 .param("nextAttemptAt", nextAttemptAt)
                 .param("eventType", eventType)
                 .param("memberId", memberId)
+                .update();
+    }
+
+    private void insertOldEntryEvent(Long memberId, OffsetDateTime processedAt) {
+        jdbcClient.sql("""
+                INSERT INTO access_events (
+                    center_id, member_id, membership_id, reservation_id, processed_by,
+                    event_type, deny_reason, processed_at, created_at
+                ) VALUES (
+                    :centerId, :memberId, NULL, NULL, 1,
+                    'ENTRY_GRANTED', NULL, :processedAt, :processedAt
+                )
+                """)
+                .param("centerId", CENTER_ID)
+                .param("memberId", memberId)
+                .param("processedAt", processedAt)
                 .update();
     }
 

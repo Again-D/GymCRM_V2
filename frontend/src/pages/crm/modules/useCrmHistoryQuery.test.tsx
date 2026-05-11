@@ -40,6 +40,7 @@ describe("useCrmHistoryQuery", () => {
               membershipId: 9001,
               eventType: "MEMBERSHIP_EXPIRY_REMINDER",
               channelType: "SMS",
+              deliveryMode: "PRIMARY",
               sendStatus: "PENDING",
               attemptCount: 0,
               lastAttemptedAt: null,
@@ -92,6 +93,8 @@ describe("useCrmHistoryQuery", () => {
                 crmMessageEventId: 12000 + callCount,
                 memberId: 101,
                 membershipId: 9001,
+                channelType: "SMS",
+                deliveryMode: "PRIMARY",
                 sendStatus: callCount > 1 ? "SENT" : "PENDING",
                 createdAt: "2026-03-13T09:00:00+09:00"
               }

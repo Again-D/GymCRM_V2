@@ -21,19 +21,19 @@ public class CrmMessageEventRepository {
         String sql = """
                 INSERT INTO crm_message_events (
                     center_id, member_id, membership_id, event_type, channel_type,
-                    dedupe_key, payload_json, send_status, attempt_count,
+                    delivery_mode, dedupe_key, payload_json, send_status, attempt_count,
                     next_attempt_at, trace_id,
                     created_by, updated_by
                 ) VALUES (
                     :centerId, :memberId, :membershipId, :eventType, :channelType,
-                    :dedupeKey, :payloadJson, :sendStatus, 0,
+                    :deliveryMode, :dedupeKey, :payloadJson, :sendStatus, 0,
                     :nextAttemptAt, :traceId,
                     :actorUserId, :actorUserId
                 )
                 ON CONFLICT (dedupe_key) WHERE is_deleted = FALSE DO NOTHING
                 RETURNING
                     crm_message_event_id, center_id, member_id, membership_id,
-                    event_type, channel_type, dedupe_key, payload_json,
+                    event_type, channel_type, delivery_mode, dedupe_key, payload_json,
                     send_status, attempt_count, last_attempted_at,
                     next_attempt_at, sent_at, failed_at, last_error_message,
                     trace_id, created_at, updated_at
@@ -44,6 +44,7 @@ public class CrmMessageEventRepository {
                 .param("membershipId", command.membershipId())
                 .param("eventType", command.eventType())
                 .param("channelType", command.channelType())
+                .param("deliveryMode", command.deliveryMode())
                 .param("dedupeKey", command.dedupeKey())
                 .param("payloadJson", command.payloadJson())
                 .param("sendStatus", command.sendStatus())
@@ -58,7 +59,7 @@ public class CrmMessageEventRepository {
         String sql = """
                 SELECT
                     crm_message_event_id, center_id, member_id, membership_id,
-                    event_type, channel_type, dedupe_key, payload_json,
+                    event_type, channel_type, delivery_mode, dedupe_key, payload_json,
                     send_status, attempt_count, last_attempted_at,
                     next_attempt_at, sent_at, failed_at, last_error_message,
                     trace_id, created_at, updated_at
@@ -83,7 +84,7 @@ public class CrmMessageEventRepository {
         String sql = """
                 SELECT
                     crm_message_event_id, center_id, member_id, membership_id,
-                    event_type, channel_type, dedupe_key, payload_json,
+                    event_type, channel_type, delivery_mode, dedupe_key, payload_json,
                     send_status, attempt_count, last_attempted_at,
                     next_attempt_at, sent_at, failed_at, last_error_message,
                     trace_id, created_at, updated_at
@@ -112,7 +113,7 @@ public class CrmMessageEventRepository {
         String sql = """
                 SELECT
                     crm_message_event_id, center_id, member_id, membership_id,
-                    event_type, channel_type, dedupe_key, payload_json,
+                    event_type, channel_type, delivery_mode, dedupe_key, payload_json,
                     send_status, attempt_count, last_attempted_at,
                     next_attempt_at, sent_at, failed_at, last_error_message,
                     trace_id, created_at, updated_at
@@ -138,7 +139,7 @@ public class CrmMessageEventRepository {
         StringBuilder sql = new StringBuilder("""
                 SELECT
                     crm_message_event_id, center_id, member_id, membership_id,
-                    event_type, channel_type, dedupe_key, payload_json,
+                    event_type, channel_type, delivery_mode, dedupe_key, payload_json,
                     send_status, attempt_count, last_attempted_at,
                     next_attempt_at, sent_at, failed_at, last_error_message,
                     trace_id, created_at, updated_at
@@ -166,6 +167,7 @@ public class CrmMessageEventRepository {
         String sql = """
                 UPDATE crm_message_events
                 SET send_status = 'SENT',
+                    delivery_mode = :deliveryMode,
                     attempt_count = attempt_count + 1,
                     last_attempted_at = :attemptedAt,
                     sent_at = :attemptedAt,
@@ -180,7 +182,7 @@ public class CrmMessageEventRepository {
                   AND is_deleted = FALSE
                 RETURNING
                     crm_message_event_id, center_id, member_id, membership_id,
-                    event_type, channel_type, dedupe_key, payload_json,
+                    event_type, channel_type, delivery_mode, dedupe_key, payload_json,
                     send_status, attempt_count, last_attempted_at,
                     next_attempt_at, sent_at, failed_at, last_error_message,
                     trace_id, created_at, updated_at
@@ -190,6 +192,7 @@ public class CrmMessageEventRepository {
                 .param("crmMessageEventId", command.crmMessageEventId())
                 .param("centerId", command.centerId())
                 .param("attemptedAt", command.attemptedAt())
+                .param("deliveryMode", command.deliveryMode())
                 .param("traceId", command.traceId())
                 .param("actorUserId", command.actorUserId())
                 .query(CrmMessageEvent.class)
@@ -200,6 +203,7 @@ public class CrmMessageEventRepository {
         String sql = """
                 UPDATE crm_message_events
                 SET send_status = 'RETRY_WAIT',
+                    delivery_mode = :deliveryMode,
                     attempt_count = attempt_count + 1,
                     last_attempted_at = :attemptedAt,
                     next_attempt_at = :nextAttemptAt,
@@ -213,7 +217,7 @@ public class CrmMessageEventRepository {
                   AND is_deleted = FALSE
                 RETURNING
                     crm_message_event_id, center_id, member_id, membership_id,
-                    event_type, channel_type, dedupe_key, payload_json,
+                    event_type, channel_type, delivery_mode, dedupe_key, payload_json,
                     send_status, attempt_count, last_attempted_at,
                     next_attempt_at, sent_at, failed_at, last_error_message,
                     trace_id, created_at, updated_at
@@ -225,6 +229,7 @@ public class CrmMessageEventRepository {
                 .param("attemptedAt", command.attemptedAt())
                 .param("nextAttemptAt", command.nextAttemptAt())
                 .param("lastErrorMessage", command.lastErrorMessage())
+                .param("deliveryMode", command.deliveryMode())
                 .param("traceId", command.traceId())
                 .param("actorUserId", command.actorUserId())
                 .query(CrmMessageEvent.class)
@@ -235,6 +240,7 @@ public class CrmMessageEventRepository {
         String sql = """
                 UPDATE crm_message_events
                 SET send_status = 'DEAD',
+                    delivery_mode = :deliveryMode,
                     attempt_count = attempt_count + 1,
                     last_attempted_at = :attemptedAt,
                     next_attempt_at = NULL,
@@ -248,7 +254,7 @@ public class CrmMessageEventRepository {
                   AND is_deleted = FALSE
                 RETURNING
                     crm_message_event_id, center_id, member_id, membership_id,
-                    event_type, channel_type, dedupe_key, payload_json,
+                    event_type, channel_type, delivery_mode, dedupe_key, payload_json,
                     send_status, attempt_count, last_attempted_at,
                     next_attempt_at, sent_at, failed_at, last_error_message,
                     trace_id, created_at, updated_at
@@ -259,6 +265,7 @@ public class CrmMessageEventRepository {
                 .param("centerId", command.centerId())
                 .param("attemptedAt", command.attemptedAt())
                 .param("lastErrorMessage", command.lastErrorMessage())
+                .param("deliveryMode", command.deliveryMode())
                 .param("traceId", command.traceId())
                 .param("actorUserId", command.actorUserId())
                 .query(CrmMessageEvent.class)
@@ -271,6 +278,7 @@ public class CrmMessageEventRepository {
             Long membershipId,
             String eventType,
             String channelType,
+            String deliveryMode,
             String dedupeKey,
             String payloadJson,
             String sendStatus,
@@ -284,6 +292,7 @@ public class CrmMessageEventRepository {
             Long crmMessageEventId,
             Long centerId,
             OffsetDateTime attemptedAt,
+            String deliveryMode,
             String traceId,
             Long actorUserId
     ) {
@@ -295,6 +304,7 @@ public class CrmMessageEventRepository {
             OffsetDateTime attemptedAt,
             OffsetDateTime nextAttemptAt,
             String lastErrorMessage,
+            String deliveryMode,
             String traceId,
             Long actorUserId
     ) {
@@ -305,6 +315,7 @@ public class CrmMessageEventRepository {
             Long centerId,
             OffsetDateTime attemptedAt,
             String lastErrorMessage,
+            String deliveryMode,
             String traceId,
             Long actorUserId
     ) {

@@ -4,6 +4,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 @Repository
@@ -97,6 +98,35 @@ public class CrmTargetRepository {
         return statement.query(EventCampaignTarget.class).list();
     }
 
+    public List<LongTermInactiveTarget> findLongTermInactiveTargets(Long centerId, OffsetDateTime cutoffAt) {
+        String sql = """
+                SELECT
+                    m.member_id,
+                    m.member_name,
+                    m.phone,
+                    MAX(a.processed_at) AS last_access_at
+                FROM members m
+                LEFT JOIN access_events a
+                    ON a.center_id = m.center_id
+                   AND a.member_id = m.member_id
+                   AND a.is_deleted = FALSE
+                   AND a.event_type = 'ENTRY_GRANTED'
+                WHERE m.center_id = :centerId
+                  AND m.is_deleted = FALSE
+                  AND m.member_status = 'ACTIVE'
+                  AND m.consent_marketing = TRUE
+                GROUP BY m.member_id, m.member_name, m.phone
+                HAVING MAX(a.processed_at) IS NULL OR MAX(a.processed_at) < :cutoffAt
+                ORDER BY m.member_id ASC
+                """;
+
+        return jdbcClient.sql(sql)
+                .param("centerId", centerId)
+                .param("cutoffAt", cutoffAt)
+                .query(LongTermInactiveTarget.class)
+                .list();
+    }
+
     public record ExpiringMembershipTarget(
             Long membershipId,
             Long memberId,
@@ -121,6 +151,14 @@ public class CrmTargetRepository {
             String phone,
             Long membershipId,
             String productCategorySnapshot
+    ) {
+    }
+
+    public record LongTermInactiveTarget(
+            Long memberId,
+            String memberName,
+            String phone,
+            OffsetDateTime lastAccessAt
     ) {
     }
 }
