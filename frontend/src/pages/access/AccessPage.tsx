@@ -9,6 +9,7 @@ import {
 	Input,
 	Pagination,
 	Row,
+	Skeleton,
 	Space,
 	Statistic,
 	Table,
@@ -76,10 +77,16 @@ export default function AccessPage() {
 
 	const {
 		accessEvents,
+		accessAlerts,
 		accessPresence,
+		accessEventsLoading,
 		accessPresenceLoading,
+		accessAlertsLoading,
+		accessAlertsError,
+		accessQueryError,
 		refetchAccessPresence,
 		refetchAccessEvents,
+		refetchAccessAlerts,
 	} = useAccessQueries(selectedMemberId);
 
 	const {
@@ -117,6 +124,33 @@ export default function AccessPage() {
 		initialPageSize: 10,
 		resetDeps: [selectedMemberId, accessEvents.length],
 	});
+
+	const accessAlertsRefreshLoading =
+		accessPresenceLoading || accessEventsLoading || accessAlertsLoading;
+	const accessAlertStatus = useMemo(() => {
+		if (!accessAlerts) {
+			return null;
+		}
+
+		if (accessAlerts.requiresImmediateAttention) {
+			return {
+				color: "error",
+				label: "주의 필요",
+			} as const;
+		}
+
+		if (accessAlerts.totalDeniedCount > 0) {
+			return {
+				color: "warning",
+				label: "관찰 필요",
+			} as const;
+		}
+
+		return {
+			color: "success",
+			label: "이상 없음",
+		} as const;
+	}, [accessAlerts]);
 
 	const kpiData = useMemo(() => KPI_CONFIG.map((kpi) => {
 		switch (kpi.label) {
@@ -227,10 +261,11 @@ export default function AccessPage() {
 						onClick={() => {
 							void refetchAccessPresence();
 							void refetchAccessEvents();
+							void refetchAccessAlerts();
 						}}
-						loading={accessPresenceLoading}
+						loading={accessAlertsRefreshLoading}
 					>
-						{accessPresenceLoading ? "동기화 중..." : "수동 동기화"}
+						{accessAlertsRefreshLoading ? "동기화 중..." : "수동 동기화"}
 					</Button>
 				</Flex>
 
@@ -266,6 +301,183 @@ export default function AccessPage() {
 						</Col>
 					))}
 				</Row>
+			</Card>
+
+			{accessQueryError ? (
+				<Alert
+					type="warning"
+					showIcon
+					message="출입 현황 일부를 불러오지 못했습니다"
+					description={accessQueryError}
+				/>
+			) : null}
+
+			<Card>
+				<Flex justify="space-between" align="start" wrap="wrap" gap={16}>
+					<Space direction="vertical" size={4}>
+						<Text
+							type="secondary"
+							style={{
+								fontSize: "0.72rem",
+								fontWeight: 800,
+								textTransform: "uppercase",
+								letterSpacing: "0.08em",
+								color: "#b42318",
+							}}
+						>
+							비정상 출입 요약
+						</Text>
+						<Title level={4} style={{ margin: 0 }}>
+							반복 거부와 최근 이상 징후
+						</Title>
+						<Paragraph type="secondary" style={{ margin: 0, maxWidth: 640 }}>
+							거부 사유, 반복 거부 회원, 최근 거부 이벤트를 한곳에서 확인합니다.
+						</Paragraph>
+					</Space>
+					{accessAlertStatus ? (
+						<Tag color={accessAlertStatus.color}>{accessAlertStatus.label}</Tag>
+					) : null}
+				</Flex>
+
+				<Divider />
+
+				{accessAlertsError ? (
+					<Alert
+						type="warning"
+						showIcon
+						message="비정상 출입 요약을 불러오지 못했습니다"
+						description={accessAlertsError}
+					/>
+				) : null}
+
+				{accessAlertsLoading && !accessAlerts ? (
+					<Skeleton active paragraph={{ rows: 3 }} />
+				) : accessAlerts ? (
+					<Space direction="vertical" size={20} style={{ width: "100%" }}>
+						{accessAlerts.totalDeniedCount === 0 ? (
+							<Alert
+								type="success"
+								showIcon
+								message="현재 즉시 조치가 필요한 이상 출입이 없습니다"
+								description="조회된 시간대에는 거부된 출입이 없어 운영자가 별도 대응할 항목이 없습니다."
+							/>
+						) : null}
+
+						<Row gutter={[16, 16]}>
+							<Col xs={24} sm={8}>
+								<Statistic
+									title={
+										<Text type="secondary" style={{ fontSize: "0.73rem", fontWeight: 700 }}>
+											총 거부
+										</Text>
+									}
+									value={accessAlerts.totalDeniedCount}
+									suffix="건"
+									valueStyle={{
+										fontWeight: 800,
+										color: accessAlerts.totalDeniedCount > 0 ? "#cf1322" : undefined,
+									}}
+								/>
+							</Col>
+							<Col xs={24} sm={8}>
+								<Statistic
+									title={
+										<Text type="secondary" style={{ fontSize: "0.73rem", fontWeight: 700 }}>
+											반복 거부 회원
+										</Text>
+									}
+									value={accessAlerts.repeatedDeniedMembers.length}
+									suffix="명"
+									valueStyle={{
+										fontWeight: 800,
+										color: accessAlerts.repeatedDeniedMembers.length > 0 ? "#fa8c16" : undefined,
+									}}
+								/>
+							</Col>
+							<Col xs={24} sm={8}>
+								<Statistic
+									title={
+										<Text type="secondary" style={{ fontSize: "0.73rem", fontWeight: 700 }}>
+											조회 구간
+										</Text>
+									}
+									value={formatDateTime(accessAlerts.windowFrom)}
+									suffix={
+										<Text type="secondary" style={{ fontSize: "0.75rem", display: "block" }}>
+											~ {formatDateTime(accessAlerts.windowTo)}
+										</Text>
+									}
+								/>
+							</Col>
+						</Row>
+
+						<Row gutter={[16, 16]}>
+							<Col xs={24} lg={10}>
+								<Space direction="vertical" size={8} style={{ width: "100%" }}>
+									<Text strong>거부 사유</Text>
+									<Space wrap>
+										{accessAlerts.deniedReasonCounts.length > 0 ? (
+											accessAlerts.deniedReasonCounts.map((item) => (
+												<Tag key={item.denyReason}>
+													{item.denyReason} · {item.deniedCount}
+												</Tag>
+											))
+										) : (
+											<Text type="secondary">거부 사유가 없습니다.</Text>
+										)}
+									</Space>
+								</Space>
+							</Col>
+							<Col xs={24} lg={7}>
+								<Space direction="vertical" size={8} style={{ width: "100%" }}>
+									<Text strong>반복 거부 회원</Text>
+									{accessAlerts.repeatedDeniedMembers.length > 0 ? (
+										<Space direction="vertical" size={8} style={{ width: "100%" }}>
+											{accessAlerts.repeatedDeniedMembers.map((member) => (
+												<Flex key={member.memberId} justify="space-between" align="start" gap={12}>
+													<Space direction="vertical" size={0}>
+														<Text strong>{member.memberName}</Text>
+														<Text type="secondary" style={{ fontSize: "0.75rem" }}>
+															{member.deniedCount}회 · 마지막 {formatDateTime(member.lastDeniedAt)}
+														</Text>
+													</Space>
+													<Tag color="orange">반복</Tag>
+												</Flex>
+											))}
+										</Space>
+									) : (
+										<Text type="secondary">반복 거부 회원이 없습니다.</Text>
+									)}
+								</Space>
+							</Col>
+							<Col xs={24} lg={7}>
+								<Space direction="vertical" size={8} style={{ width: "100%" }}>
+									<Text strong>최근 거부 이벤트</Text>
+									{accessAlerts.recentDeniedEvents.length > 0 ? (
+										<Space direction="vertical" size={8} style={{ width: "100%" }}>
+											{accessAlerts.recentDeniedEvents.slice(0, 4).map((event) => (
+												<Flex key={event.accessEventId} justify="space-between" align="start" gap={12}>
+													<Space direction="vertical" size={0}>
+														<Text strong>{event.memberName}</Text>
+														<Text type="secondary" style={{ fontSize: "0.75rem" }}>
+															{event.denyReason}
+														</Text>
+														<Text type="secondary" style={{ fontSize: "0.72rem" }}>
+															{formatDateTime(event.processedAt)}
+														</Text>
+													</Space>
+													<Tag color="red">거부</Tag>
+												</Flex>
+											))}
+										</Space>
+									) : (
+										<Text type="secondary">최근 거부 이벤트가 없습니다.</Text>
+									)}
+								</Space>
+							</Col>
+						</Row>
+					</Space>
+				) : null}
 			</Card>
 
 			<Row gutter={[24, 24]}>

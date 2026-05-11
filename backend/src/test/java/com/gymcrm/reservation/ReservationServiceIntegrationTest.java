@@ -8,13 +8,18 @@ import com.gymcrm.membership.entity.MemberMembership;
 import com.gymcrm.membership.repository.MemberMembershipRepository;
 import com.gymcrm.membership.repository.MembershipUsageEventRepository;
 import com.gymcrm.membership.service.MembershipPurchaseService;
+import com.gymcrm.crm.repository.CrmMessageEventRepository;
 import com.gymcrm.product.entity.Product;
 import com.gymcrm.product.service.ProductService;
 import com.gymcrm.reservation.entity.Reservation;
+import com.gymcrm.reservation.entity.ReservationWaitlist;
 import com.gymcrm.reservation.entity.TrainerSchedule;
 import com.gymcrm.reservation.repository.ReservationRepository;
+import com.gymcrm.reservation.repository.ReservationWaitlistRepository;
 import com.gymcrm.reservation.repository.TrainerScheduleRepository;
 import com.gymcrm.reservation.service.ReservationService;
+import com.gymcrm.reservation.service.ReservationWaitlistService;
+import com.gymcrm.common.error.ErrorCode;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -46,7 +51,13 @@ class ReservationServiceIntegrationTest {
     private ReservationService reservationService;
 
     @Autowired
+    private ReservationWaitlistService reservationWaitlistService;
+
+    @Autowired
     private ReservationRepository reservationRepository;
+
+    @Autowired
+    private ReservationWaitlistRepository reservationWaitlistRepository;
 
     @Autowired
     private TrainerScheduleRepository trainerScheduleRepository;
@@ -59,6 +70,9 @@ class ReservationServiceIntegrationTest {
 
     @Autowired
     private MembershipUsageEventRepository membershipUsageEventRepository;
+
+    @Autowired
+    private CrmMessageEventRepository crmMessageEventRepository;
 
     @Autowired
     private MemberService memberService;
@@ -87,6 +101,37 @@ class ReservationServiceIntegrationTest {
         assertEquals("CONFIRMED", reservation.reservationStatus());
         TrainerSchedule reloadedSchedule = trainerScheduleRepository.findById(schedule.scheduleId()).orElseThrow();
         assertEquals(currentCountBefore + 1, reloadedSchedule.currentCount());
+    }
+
+    @Test
+    @Transactional
+    void createReservationEnqueuesConfirmationAndReminderNotifications() {
+        Member member = createActiveMember();
+        MemberMembership membership = purchaseCountMembership(member);
+        TrainerSchedule schedule = createFutureSchedule("GX", 5);
+
+        Reservation reservation = reservationService.create(new ReservationService.CreateRequest(
+                member.memberId(),
+                membership.membershipId(),
+                schedule.scheduleId(),
+                "예약 메모"
+        ));
+
+        assertTrue(crmMessageEventRepository.findRecent(CENTER_ID, null, 10).stream()
+                .anyMatch(event -> "RESERVATION_CONFIRMED".equals(event.eventType())
+                        && event.memberId() != null
+                        && event.memberId().equals(member.memberId())
+                        && event.dedupeKey() != null
+                        && event.dedupeKey().contains(String.valueOf(reservation.reservationId()))));
+        assertTrue(crmMessageEventRepository.findRecent(CENTER_ID, null, 10).stream()
+                .anyMatch(event -> "RESERVATION_REMINDER".equals(event.eventType())
+                        && event.memberId() != null
+                        && event.memberId().equals(member.memberId())
+                        && event.nextAttemptAt() != null
+                        && event.nextAttemptAt().equals(schedule.startAt().minusMinutes(120))));
+
+        MemberMembership reloadedMembership = memberMembershipRepository.findById(membership.membershipId()).orElseThrow();
+        assertEquals(membership.remainingCount(), reloadedMembership.remainingCount());
     }
 
     @Test
@@ -152,6 +197,9 @@ class ReservationServiceIntegrationTest {
                 schedule.scheduleId(),
                 null
         ));
+
+        MemberMembership beforeComplete = memberMembershipRepository.findById(membership.membershipId()).orElseThrow();
+        assertEquals(remainingBefore, beforeComplete.remainingCount());
 
         ReservationService.CompleteResult completeResult = reservationService.complete(
                 new ReservationService.CompleteRequest(created.reservationId())
@@ -347,6 +395,70 @@ class ReservationServiceIntegrationTest {
         assertEquals(0, reloadedSchedule.currentCount());
     }
 
+    @Test
+    @Transactional
+    void gxWaitlistPromotesNextMemberAndEnqueuesNotificationOnCancellation() {
+        Member firstMember = createActiveMember();
+        Member secondMember = createActiveMember();
+        MemberMembership firstMembership = purchaseDurationMembership(firstMember);
+        MemberMembership secondMembership = purchaseDurationMembership(secondMember);
+        TrainerSchedule schedule = createFutureSchedule("GX", 1);
+
+        Reservation created = reservationService.create(new ReservationService.CreateRequest(
+                firstMember.memberId(),
+                firstMembership.membershipId(),
+                schedule.scheduleId(),
+                null
+        ));
+
+        ReservationWaitlist waitlist = reservationWaitlistService.create(new ReservationWaitlistService.CreateRequest(
+                secondMember.memberId(),
+                secondMembership.membershipId(),
+                schedule.scheduleId()
+        ));
+        assertEquals("WAITING", waitlist.status());
+
+        Reservation cancelled = reservationService.cancel(new ReservationService.CancelRequest(
+                created.reservationId(),
+                "테스트 취소"
+        ));
+        assertEquals("CANCELLED", cancelled.reservationStatus());
+
+        TrainerSchedule reloadedSchedule = trainerScheduleRepository.findById(schedule.scheduleId()).orElseThrow();
+        assertEquals(1, reloadedSchedule.currentCount());
+
+        ReservationWaitlist promotedWaitlist = reservationWaitlistRepository.findById(waitlist.waitingId(), CENTER_ID).orElseThrow();
+        assertEquals("PROMOTED", promotedWaitlist.status());
+        assertTrue(promotedWaitlist.promotedAt() != null);
+        assertTrue(promotedWaitlist.reservationId() != null);
+
+        assertEquals(1, reservationRepository.findAll(CENTER_ID, secondMember.memberId(), schedule.scheduleId(), "CONFIRMED", null).size());
+        assertTrue(crmMessageEventRepository.findRecent(CENTER_ID, null, 10).stream()
+                .anyMatch(event -> "RESERVATION_WAITLIST_PROMOTED".equals(event.eventType())
+                        && event.dedupeKey() != null
+                        && event.dedupeKey().contains(String.valueOf(waitlist.waitingId()))));
+    }
+
+    @Test
+    @Transactional
+    void gxCancellationIsRejectedAfterCutoffWindow() {
+        Member member = createActiveMember();
+        MemberMembership membership = purchaseDurationMembership(member);
+        TrainerSchedule schedule = createFutureSchedule("GX", 1);
+        forceScheduleStartAt(schedule.scheduleId(), OffsetDateTime.now().plusMinutes(60), OffsetDateTime.now().plusMinutes(120));
+        Reservation created = reservationService.create(new ReservationService.CreateRequest(
+                member.memberId(),
+                membership.membershipId(),
+                schedule.scheduleId(),
+                null
+        ));
+
+        ApiException exception = assertThrows(ApiException.class, () -> reservationService.cancel(
+                new ReservationService.CancelRequest(created.reservationId(), "늦은 취소")
+        ));
+        assertEquals(ErrorCode.RESERVATION_CANCEL_TOO_LATE, exception.getErrorCode());
+    }
+
     private TrainerSchedule createFutureSchedule(String type, int capacity) {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
         OffsetDateTime startAt = OffsetDateTime.now().plusDays(1).withNano(0);
@@ -381,6 +493,21 @@ class ReservationServiceIntegrationTest {
                 .param("scheduleId", scheduleId)
                 .param("startAt", now.minusHours(2))
                 .param("endAt", now.minusMinutes(10))
+                .update();
+    }
+
+    private void forceScheduleStartAt(Long scheduleId, OffsetDateTime startAt, OffsetDateTime endAt) {
+        jdbcClient.sql("""
+                UPDATE trainer_schedules
+                SET start_at = :startAt,
+                    end_at = :endAt,
+                    updated_at = CURRENT_TIMESTAMP,
+                    updated_by = 1
+                WHERE schedule_id = :scheduleId
+                """)
+                .param("scheduleId", scheduleId)
+                .param("startAt", startAt)
+                .param("endAt", endAt)
                 .update();
     }
 

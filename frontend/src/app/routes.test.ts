@@ -4,6 +4,7 @@ import {
   canAccessShellRoute,
   canSeeShellRoute,
   getDashboardRoutes,
+  getPublicRouteByPath,
   getSidebarRoutes,
   shellRoutes,
 } from "./routes";
@@ -88,5 +89,12 @@ describe("shell routes", () => {
     expect(canAccessShellRoute(settlementsRoute!, trainerUser, false)).toBe(true);
     expect(canSeeShellRoute(settlementsRoute!, deskUser, false)).toBe(false);
     expect(canAccessShellRoute(settlementsRoute!, deskUser, false)).toBe(false);
+  });
+
+  it("exposes the member QR route as a public standalone route", () => {
+    const memberQrRoute = getPublicRouteByPath("/member-qr");
+
+    expect(memberQrRoute).toBeTruthy();
+    expect(memberQrRoute?.label).toBe("회원 QR");
   });
 });

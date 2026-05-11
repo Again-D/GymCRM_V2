@@ -45,9 +45,11 @@ import type { PurchasedMembership } from "../members/modules/types";
 import { getReservationPanelErrorMessage } from "./modules/getReservationPanelErrorMessage";
 import { isMembershipReservableOn } from "./modules/reservableMemberships";
 import { usePtReservationCandidatesQuery } from "./modules/usePtReservationCandidatesQuery";
+import { useReservationPolicyQuery } from "./modules/useReservationPolicyQuery";
 import { useReservationSchedulesQuery } from "./modules/useReservationSchedulesQuery";
 import { useReservationTargetsQuery } from "./modules/useReservationTargetsQuery";
 import { useSelectedMemberReservationsState } from "./modules/useSelectedMemberReservationsState";
+import type { ReservationPolicySummary } from "./modules/types";
 
 import styles from "./ReservationsPage.module.css";
 
@@ -134,6 +136,18 @@ function describeMembershipOption(membership: PurchasedMembership) {
   return `${reservationKind} · ${membership.productNameSnapshot} (${remainingText})`;
 }
 
+function formatReservationPolicyValue(policy: ReservationPolicySummary | null) {
+  if (!policy) {
+    return null;
+  }
+  return {
+    deductionTiming: policy.ptDeductionTiming === "COMPLETION" ? "완료 시 차감" : "예약 시 차감",
+    waitlistMode: policy.gxWaitlistMode === "AUTO_PROMOTION" ? "자동 승격" : "수동 관리",
+    cancellationCutoff: `${policy.cancellationCutoffMinutes}분 전까지`,
+    reminderLead: `${policy.reminderLeadMinutes}분 전 리마인드`,
+  };
+}
+
 export default function ReservationsPage() {
   const { token } = theme.useToken();
   const { authUser } = useAuthState();
@@ -181,6 +195,13 @@ export default function ReservationsPage() {
     loadPtReservationCandidates,
     resetPtReservationCandidatesQuery,
   } = usePtReservationCandidatesQuery();
+
+  const {
+    reservationPolicy,
+    reservationPolicyLoading,
+    reservationPolicyError,
+    refetchReservationPolicy,
+  } = useReservationPolicyQuery();
   
   const {
     selectedMemberReservations,
@@ -233,6 +254,10 @@ export default function ReservationsPage() {
   );
   
   const selectedCreateMode = getMembershipReservationKind(selectedCreateMembership);
+  const reservationPolicyView = useMemo(
+    () => formatReservationPolicyValue(reservationPolicy),
+    [reservationPolicy],
+  );
   
   const gxReservationSchedules = useMemo(
     () => reservationSchedules.filter((schedule) => schedule.scheduleType === "GX"),
@@ -680,6 +705,42 @@ export default function ReservationsPage() {
         </Flex>
       </Card>
 
+      <Card
+        size="small"
+        loading={reservationPolicyLoading}
+        title={
+          <Space>
+            <Text strong>예약 정책</Text>
+            <Tag color="geekblue">{reservationPolicy?.source ?? "BACKEND_DEFAULT"}</Tag>
+          </Space>
+        }
+        extra={<Button size="small" onClick={() => void refetchReservationPolicy()}>정책 새로고침</Button>}
+      >
+        {reservationPolicyError ? (
+          <Alert
+            type="warning"
+            showIcon
+            message={reservationPolicyError}
+            description="예약 화면은 계속 사용할 수 있습니다. 정책 값만 다시 불러오면 됩니다."
+          />
+        ) : (
+          <Space wrap size={[8, 8]}>
+            <Tag color="blue">
+              PT 차감: {reservationPolicyView?.deductionTiming ?? "불러오는 중"}
+            </Tag>
+            <Tag color="cyan">
+              GX 대기: {reservationPolicyView?.waitlistMode ?? "불러오는 중"}
+            </Tag>
+            <Tag color="gold">
+              취소: {reservationPolicyView?.cancellationCutoff ?? "불러오는 중"}
+            </Tag>
+            <Tag color="purple">
+              리마인드: {reservationPolicyView?.reminderLead ?? "불러오는 중"}
+            </Tag>
+          </Space>
+        )}
+      </Card>
+
       <Row gutter={[16, 16]}>
         {[
           { label: "예약 대상 회원", value: reservationTargets.length, hint: "디렉터리 검색 결과", icon: <UserOutlined /> },
@@ -829,13 +890,18 @@ export default function ReservationsPage() {
             type="info" 
             showIcon 
             message={selectedMember ? `${selectedMember.memberName} 회원을 위한 예약 설정` : "회원을 먼저 선택하세요"}
-            description={selectedCreateMode === "PT" ? "PT는 트레이너 가능 시간에서 60분 블록으로 예약합니다." : "GX는 운영 중인 고정 수업 슬롯에 예약합니다."}
+            description={
+              selectedCreateMode === "PT"
+                ? `PT는 트레이너 가능 시간에서 60분 블록으로 예약하며, ${reservationPolicyView?.deductionTiming ?? "완료 시 차감"} 정책을 따릅니다.`
+                : `GX는 운영 중인 고정 수업 슬롯에 예약하며, ${reservationPolicyView?.waitlistMode ?? "자동 승격"} 정책을 따릅니다.`
+            }
           />
 
           {selectedMemberMembershipsError && <Alert type="error" showIcon message={selectedMemberMembershipsError} />}
           {reservationSchedulesError && selectedCreateMode !== "PT" && <Alert type="error" showIcon message={reservationSchedulesError} />}
           {trainersQueryError && selectedCreateMode === "PT" && <Alert type="error" showIcon message={trainersQueryError} />}
           {ptReservationCandidatesError && selectedCreateMode === "PT" && <Alert type="error" showIcon message={ptReservationCandidatesError} />}
+          {reservationPolicyError && <Alert type="warning" showIcon message={reservationPolicyError} />}
           
           <Form layout="vertical">
             <Form.Item label="예약 회원권" required>

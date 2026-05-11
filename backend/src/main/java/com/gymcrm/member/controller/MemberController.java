@@ -3,6 +3,7 @@ package com.gymcrm.member.controller;
 import com.gymcrm.audit.AuditLogService;
 import com.gymcrm.common.api.ApiResponse;
 import com.gymcrm.common.security.AccessPolicies;
+import com.gymcrm.access.MemberQrBootstrapTokenService;
 import com.gymcrm.member.dto.request.MemberCreateRequest;
 import com.gymcrm.member.dto.request.MemberUpdateRequest;
 import com.gymcrm.member.dto.response.MemberDetailResponse;
@@ -36,17 +37,23 @@ import java.util.List;
 public class MemberController {
     private final MemberService memberService;
     private final AuditLogService auditLogService;
+    private final MemberQrBootstrapTokenService memberQrBootstrapTokenService;
 
-    public MemberController(MemberService memberService, AuditLogService auditLogService) {
+    public MemberController(
+            MemberService memberService,
+            AuditLogService auditLogService,
+            MemberQrBootstrapTokenService memberQrBootstrapTokenService
+    ) {
         this.memberService = memberService;
         this.auditLogService = auditLogService;
+        this.memberQrBootstrapTokenService = memberQrBootstrapTokenService;
     }
 
     @PostMapping
     @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
     public ApiResponse<MemberDetailResponse> create(@Valid @RequestBody MemberCreateRequest request) {
         Member member = memberService.create(request);
-        return ApiResponse.success(MemberDetailResponse.from(member), "회원이 등록되었습니다.");
+        return ApiResponse.success(MemberDetailResponse.from(member, buildMemberQrPath(member)), "회원이 등록되었습니다.");
     }
 
     @GetMapping
@@ -90,7 +97,7 @@ public class MemberController {
                 String.valueOf(memberId),
                 "{\"fields\":[\"phone\",\"birthDate\"]}"
         );
-        return ApiResponse.success(MemberDetailResponse.from(member), "회원 상세 조회 성공");
+        return ApiResponse.success(MemberDetailResponse.from(member, null), "회원 상세 조회 성공");
     }
 
     @PatchMapping("/{memberId}")
@@ -100,7 +107,7 @@ public class MemberController {
             @Valid @RequestBody MemberUpdateRequest request
     ) {
         Member member = memberService.update(memberId, request);
-        return ApiResponse.success(MemberDetailResponse.from(member), "회원 정보가 수정되었습니다.");
+        return ApiResponse.success(MemberDetailResponse.from(member, buildMemberQrPath(member)), "회원 정보가 수정되었습니다.");
     }
 
     @PostMapping(path = "/{memberId}/photo", consumes = "multipart/form-data")
@@ -125,5 +132,10 @@ public class MemberController {
     public ApiResponse<MemberWithdrawResponse> withdraw(@PathVariable Long memberId) {
         MemberWithdrawResponse response = memberService.withdraw(memberId);
         return ApiResponse.success(response, "회원 탈퇴 처리가 완료되었습니다.");
+    }
+
+    private String buildMemberQrPath(Member member) {
+        MemberQrBootstrapTokenService.IssuedBootstrapToken issued = memberQrBootstrapTokenService.issue(member.centerId(), member.memberId());
+        return "/member-qr?token=" + issued.token();
     }
 }

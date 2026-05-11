@@ -10,7 +10,6 @@ import com.gymcrm.member.entity.Member;
 import com.gymcrm.member.enums.MemberStatus;
 import com.gymcrm.membership.entity.MemberMembership;
 import com.gymcrm.membership.repository.MemberMembershipRepository;
-import com.gymcrm.membership.repository.MembershipUsageEventRepository;
 import com.gymcrm.reservation.entity.Reservation;
 import com.gymcrm.reservation.entity.TrainerSchedule;
 import com.gymcrm.reservation.enums.ReservationStatus;
@@ -42,8 +41,10 @@ public class ReservationService {
     private final ReservationQueryRepository reservationQueryRepository;
     private final ReservationLockService reservationLockService;
     private final ReservationStatusTransitionService reservationStatusTransitionService;
+    private final ReservationPolicyService reservationPolicyService;
+    private final ReservationLifecyclePolicyService reservationLifecyclePolicyService;
+    private final ReservationWaitlistService reservationWaitlistService;
     private final CurrentUserProvider currentUserProvider;
-    private final MembershipUsageEventRepository membershipUsageEventRepository;
 
     public ReservationService(
             MemberService memberService,
@@ -54,8 +55,10 @@ public class ReservationService {
             ReservationQueryRepository reservationQueryRepository,
             ReservationLockService reservationLockService,
             ReservationStatusTransitionService reservationStatusTransitionService,
-            CurrentUserProvider currentUserProvider,
-            MembershipUsageEventRepository membershipUsageEventRepository
+            ReservationPolicyService reservationPolicyService,
+            ReservationLifecyclePolicyService reservationLifecyclePolicyService,
+            ReservationWaitlistService reservationWaitlistService,
+            CurrentUserProvider currentUserProvider
     ) {
         this.memberService = memberService;
         this.authUserRepository = authUserRepository;
@@ -65,8 +68,10 @@ public class ReservationService {
         this.reservationQueryRepository = reservationQueryRepository;
         this.reservationLockService = reservationLockService;
         this.reservationStatusTransitionService = reservationStatusTransitionService;
+        this.reservationPolicyService = reservationPolicyService;
+        this.reservationLifecyclePolicyService = reservationLifecyclePolicyService;
+        this.reservationWaitlistService = reservationWaitlistService;
         this.currentUserProvider = currentUserProvider;
-        this.membershipUsageEventRepository = membershipUsageEventRepository;
     }
 
     @Transactional
@@ -97,7 +102,7 @@ public class ReservationService {
                     throw new ApiException(ErrorCode.CONFLICT, "예약 가능한 정원이 없습니다.");
                 }
 
-                return reservationRepository.insert(new ReservationRepository.ReservationCreateCommand(
+                Reservation reservation = reservationRepository.insert(new ReservationRepository.ReservationCreateCommand(
                         actorCenterId,
                         member.memberId(),
                         membership.membershipId(),
@@ -107,6 +112,16 @@ public class ReservationService {
                         trimToNull(request.memo()),
                         actorUserId
                 ));
+                reservationLifecyclePolicyService.deductCountIfNeeded(
+                        membership,
+                        reservation,
+                        now,
+                        actorUserId,
+                        "예약 확정에 따른 횟수 차감",
+                        true
+                );
+                reservationLifecyclePolicyService.enqueueReservationNotifications(reservation, schedule, actorUserId);
+                return reservation;
             } catch (DataAccessException ex) {
                 throw mapCreateDataAccessException(ex);
             }
@@ -193,6 +208,8 @@ public class ReservationService {
 
         return reservationLockService.execute(reservation.centerId(), reservation.scheduleId(), () -> {
             Reservation lockedReservation = getReservation(request.reservationId());
+            TrainerSchedule schedule = getSchedule(lockedReservation.scheduleId());
+            validateCancellationWindow(schedule);
             reservationStatusTransitionService.assertTransitionAllowed(
                     ReservationStatus.valueOf(lockedReservation.reservationStatus()),
                     ReservationStatus.CANCELLED
@@ -210,6 +227,8 @@ public class ReservationService {
 
             trainerScheduleRepository.decrementCurrentCountIfPositive(lockedReservation.scheduleId(), actorUserId)
                     .orElseThrow(() -> new ApiException(ErrorCode.CONFLICT, "스케줄 정원 카운트 상태가 일치하지 않습니다."));
+
+            reservationWaitlistService.promoteNextIfEligible(schedule, actorUserId);
 
             return updated;
         });
@@ -246,23 +265,17 @@ public class ReservationService {
             trainerScheduleRepository.decrementCurrentCountIfPositive(lockedReservation.scheduleId(), actorUserId)
                     .orElseThrow(() -> new ApiException(ErrorCode.CONFLICT, "스케줄 정원 카운트 상태가 일치하지 않습니다."));
 
-            MemberMembership updatedMembership = membership;
-            boolean countDeducted = false;
-            if ("COUNT".equals(membership.productTypeSnapshot())) {
-                updatedMembership = memberMembershipRepository.consumeOneCountIfEligible(membership.membershipId(), actorUserId)
-                        .orElseThrow(() -> new ApiException(ErrorCode.CONFLICT, "차감 가능한 횟수제 회원권이 없습니다."));
-                membershipUsageEventRepository.insert(new MembershipUsageEventRepository.InsertCommand(
-                        lockedReservation.centerId(),
-                        membership.membershipId(),
-                        lockedReservation.reservationId(),
-                        "RESERVATION_COMPLETE",
-                        -1,
-                        now,
-                        actorUserId,
-                        "예약 완료에 따른 횟수 차감"
-                ));
-                countDeducted = true;
-            }
+            boolean countDeducted = reservationLifecyclePolicyService.deductCountIfNeeded(
+                    membership,
+                    lockedReservation,
+                    now,
+                    actorUserId,
+                    "예약 완료에 따른 횟수 차감",
+                    false
+            );
+            MemberMembership updatedMembership = countDeducted
+                    ? memberMembershipRepository.findById(membership.membershipId()).orElseThrow()
+                    : membership;
 
             return new CompleteResult(updatedReservation, updatedMembership, countDeducted);
         });
@@ -384,6 +397,15 @@ public class ReservationService {
         }
         if (!"ACTIVE".equals(membership.membershipStatus())) {
             throw new ApiException(ErrorCode.BUSINESS_RULE, "ACTIVE 상태 회원권만 예약 완료 처리할 수 있습니다.");
+        }
+    }
+
+    private void validateCancellationWindow(TrainerSchedule schedule) {
+        int cutoffMinutes = reservationPolicyService.getResolvedPolicy().cancellationCutoffMinutes();
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        OffsetDateTime cutoffAt = schedule.startAt().minusMinutes(cutoffMinutes);
+        if (!now.isBefore(cutoffAt)) {
+            throw new ApiException(ErrorCode.RESERVATION_CANCEL_TOO_LATE, "취소 가능 시간이 지났습니다.");
         }
     }
 

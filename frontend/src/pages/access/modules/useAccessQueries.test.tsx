@@ -53,6 +53,29 @@ describe("useAccessQueries", () => {
         };
       }
 
+      if (input === "/api/v1/access/alerts") {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: {
+              windowFrom: "2026-03-12T09:00:00Z",
+              windowTo: "2026-03-12T10:00:00Z",
+              totalDeniedCount: 1,
+              requiresImmediateAttention: false,
+              deniedReasonCounts: [
+                {
+                  denyReason: "MEMBER_INACTIVE",
+                  deniedCount: 1,
+                },
+              ],
+              repeatedDeniedMembers: [],
+              recentDeniedEvents: [],
+            },
+          }),
+        };
+      }
+
       return {
         ok: true,
         json: async () => ({
@@ -83,6 +106,7 @@ describe("useAccessQueries", () => {
       expect(result.current.accessEvents).toHaveLength(1);
     });
     expect(result.current.accessEvents[0]?.accessEventId).toBe(8101);
+    expect(result.current.accessAlerts?.totalDeniedCount).toBe(1);
   });
 
   it("reloads from a new cache key after invalidation", async () => {
@@ -105,6 +129,24 @@ describe("useAccessQueries", () => {
         };
       }
 
+      if (input === "/api/v1/access/alerts") {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: {
+              windowFrom: "2026-03-12T09:00:00Z",
+              windowTo: "2026-03-12T10:00:00Z",
+              totalDeniedCount: 0,
+              requiresImmediateAttention: false,
+              deniedReasonCounts: [],
+              repeatedDeniedMembers: [],
+              recentDeniedEvents: [],
+            },
+          }),
+        };
+      }
+
       return {
         ok: true,
         json: async () => ({
@@ -124,7 +166,7 @@ describe("useAccessQueries", () => {
       expect(result.current.accessPresence?.openSessionCount).toBe(1);
     });
 
-    expect(fetchMock).toHaveBeenCalledTimes(2); // presence + events
+    expect(fetchMock).toHaveBeenCalledTimes(3); // presence + events + alerts
 
     await act(async () => {
       await queryClient.invalidateQueries();
@@ -134,7 +176,7 @@ describe("useAccessQueries", () => {
       expect(result.current.accessPresence?.openSessionCount).toBe(2);
     });
 
-    expect(fetchMock).toHaveBeenCalledTimes(4); // another 2 calls after invalidation
+    expect(fetchMock).toHaveBeenCalledTimes(6); // another 3 calls after invalidation
   });
 
   it("keeps access query actions stable across rerenders", () => {
@@ -145,10 +187,12 @@ describe("useAccessQueries", () => {
 
     const firstRefetchPresence = result.current.refetchAccessPresence;
     const firstRefetchEvents = result.current.refetchAccessEvents;
+    const firstRefetchAlerts = result.current.refetchAccessAlerts;
 
     rerender();
 
     expect(result.current.refetchAccessPresence).toBe(firstRefetchPresence);
     expect(result.current.refetchAccessEvents).toBe(firstRefetchEvents);
+    expect(result.current.refetchAccessAlerts).toBe(firstRefetchAlerts);
   });
 });

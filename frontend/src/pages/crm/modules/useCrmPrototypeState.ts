@@ -15,6 +15,7 @@ export function useCrmPrototypeState() {
 	const [crmTriggerDaysAhead, setCrmTriggerDaysAhead] = useState("3");
 	const [crmTriggerScheduledAt, setCrmTriggerScheduledAt] = useState("");
 	const [crmTriggerSubmitting, setCrmTriggerSubmitting] = useState(false);
+	const [crmInactiveSubmitting, setCrmInactiveSubmitting] = useState(false);
 	const [crmProcessSubmitting, setCrmProcessSubmitting] = useState(false);
 	const [crmPanelMessage, setCrmPanelMessage] = useState<string | null>(null);
 	const [crmPanelError, setCrmPanelError] = useState<string | null>(null);
@@ -26,7 +27,6 @@ export function useCrmPrototypeState() {
 	>(null);
 	const [crmInactiveDays, setCrmInactiveDays] = useState("30");
 	const [crmInactiveScheduledAt, setCrmInactiveScheduledAt] = useState("");
-	const [crmInactiveSubmitting, setCrmInactiveSubmitting] = useState(false);
 	const useMockMutations = isMockApiMode();
 
 	const clearCrmFeedback = useCallback(() => {
@@ -91,6 +91,38 @@ export function useCrmPrototypeState() {
 			return false;
 		} finally {
 			setCrmProcessSubmitting(false);
+		}
+	}
+
+	async function triggerCrmInactiveMemberCampaign() {
+		clearCrmFeedback();
+		const inactiveDays = Number.parseInt(crmInactiveDays, 10);
+		if (!Number.isFinite(inactiveDays) || inactiveDays < 0) {
+			setCrmPanelError("inactiveDays는 0 이상의 숫자여야 합니다.");
+			return false;
+		}
+
+		setCrmInactiveSubmitting(true);
+		try {
+			const result = useMockMutations
+				? await import("../../../api/mockData").then(
+						({ triggerMockCrmInactiveMemberCampaign }) =>
+							triggerMockCrmInactiveMemberCampaign(inactiveDays),
+					)
+				: await apiPost(
+						"/api/v1/crm/messages/triggers/inactive-member-campaign",
+						{
+							inactiveDays,
+						},
+					);
+			await invalidateCrm();
+			setCrmPanelMessage(result.message);
+			return true;
+		} catch (e: any) {
+			setCrmPanelError(e?.message || "작업 중 오류가 발생했습니다.");
+			return false;
+		} finally {
+			setCrmInactiveSubmitting(false);
 		}
 	}
 
@@ -168,6 +200,7 @@ export function useCrmPrototypeState() {
 		crmTriggerScheduledAt,
 		setCrmTriggerScheduledAt,
 		crmTriggerSubmitting,
+		crmInactiveSubmitting,
 		crmProcessSubmitting,
 		crmPanelMessage,
 		crmPanelError,
@@ -179,11 +212,11 @@ export function useCrmPrototypeState() {
 		setCrmInactiveDays,
 		crmInactiveScheduledAt,
 		setCrmInactiveScheduledAt,
-		crmInactiveSubmitting,
 		clearCrmFeedback,
 		triggerCrmExpiryReminder,
-		processCrmQueue,
+		triggerCrmInactiveMemberCampaign,
 		triggerCrmLongTermInactiveCampaign,
+		processCrmQueue,
 		resetCrmWorkspace,
 	} as const;
 }

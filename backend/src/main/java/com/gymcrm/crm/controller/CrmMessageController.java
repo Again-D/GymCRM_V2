@@ -4,7 +4,7 @@ import com.gymcrm.common.api.ApiResponse;
 import com.gymcrm.common.security.AccessPolicies;
 import com.gymcrm.crm.dto.request.BirthdayTriggerRequest;
 import com.gymcrm.crm.dto.request.EventCampaignTriggerRequest;
-import com.gymcrm.crm.dto.request.LongTermInactiveCampaignRequest;
+import com.gymcrm.crm.dto.request.InactiveMemberTriggerRequest;
 import com.gymcrm.crm.dto.request.ProcessRequest;
 import com.gymcrm.crm.dto.request.TriggerRequest;
 import com.gymcrm.crm.dto.response.HistoryResponse;
@@ -78,14 +78,14 @@ public class CrmMessageController {
         return ApiResponse.success(TriggerResponse.from(result), "CRM 이벤트 캠페인 메시지 이벤트가 큐에 적재되었습니다.");
     }
 
-    @PostMapping("/triggers/long-term-inactive")
+    @PostMapping("/triggers/inactive-member-campaign")
     @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
-    public ApiResponse<TriggerResponse> triggerLongTermInactiveCampaign(@Valid @RequestBody LongTermInactiveCampaignRequest request) {
-        CrmMessageService.TriggerResult result = crmMessageService.triggerLongTermInactiveCampaign(
-                new CrmMessageService.LongTermInactiveCampaignTriggerRequest(
-                        request.templateId(),
+    public ApiResponse<TriggerResponse> triggerInactiveMemberCampaign(@Valid @RequestBody InactiveMemberTriggerRequest request) {
+        CrmMessageService.TriggerResult result = crmMessageService.triggerInactiveMemberCampaign(
+                new CrmMessageService.InactiveMemberTriggerRequest(
                         request.baseDate(),
                         request.inactiveDays(),
+                        Boolean.TRUE.equals(request.forceFail()),
                         request.scheduledAt()
                 )
         );

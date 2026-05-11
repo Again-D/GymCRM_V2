@@ -18,6 +18,8 @@ export type NavSectionKey =
   | "audit"
   | "products";
 
+export type PublicRouteKey = "memberQr";
+
 export type ShellRoute = {
   key: NavSectionKey;
   path: string;
@@ -27,6 +29,12 @@ export type ShellRoute = {
   showInDashboard: boolean;
   visibleRoles?: string[];
   allowedRoles?: string[];
+};
+
+export type PublicRoute = {
+  key: PublicRouteKey;
+  path: string;
+  label: string;
 };
 
 export const shellRoutes: ShellRoute[] = [
@@ -246,12 +254,28 @@ export const shellRoutes: ShellRoute[] = [
   },
 ];
 
+export const publicRoutes: PublicRoute[] = [
+  {
+    key: "memberQr",
+    path: "/member-qr",
+    label: "회원 QR",
+  },
+];
+
 const shellRouteByPath = new Map(
   shellRoutes.map((route) => [route.path, route]),
 );
 
+const publicRouteByPath = new Map(
+  publicRoutes.map((route) => [route.path, route]),
+);
+
 export function getShellRouteByPath(pathname: string) {
   return shellRouteByPath.get(pathname) ?? null;
+}
+
+export function getPublicRouteByPath(pathname: string) {
+  return publicRouteByPath.get(pathname) ?? null;
 }
 
 export function canAccessShellRoute(

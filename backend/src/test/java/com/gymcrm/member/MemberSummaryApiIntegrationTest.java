@@ -574,6 +574,7 @@ class MemberSummaryApiIntegrationTest {
         assertFalse(detail.has("phoneEncrypted"));
         assertFalse(detail.has("birthDateEncrypted"));
         assertFalse(detail.has("piiKeyVersion"));
+        assertFalse(detail.has("memberQrPath"));
 
         Integer auditCount = jdbcClient.sql("""
                 SELECT COUNT(*)

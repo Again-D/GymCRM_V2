@@ -3,7 +3,7 @@
 | 항목 | 내용 |
 |------|------|
 | 프로젝트명 | 중소형 헬스장 웹 기반 회원관리 시스템 (GymCRM) |
-| 문서 버전 | v1.19.0 |
+| 문서 버전 | v1.20.0 |
 | 작성일 | 2026-04-22 |
 | 기술 스택 | Java Spring Boot 3.0, PostgreSQL, React.js + TypeScript |
 | 인프라 | AWS EC2, RDS |
@@ -487,31 +487,40 @@ X-RateLimit-Reset: 1740001860
 | # | Method | URL | 설명 | 인증 | 권한 |
 |---|--------|-----|------|------|------|
 | 1 | `POST` | `/api/v1/reservations` | 예약 생성 | O | ALL |
-| 2 | `GET` | `/api/v1/reservations` | 예약 목록 조회 (날짜/트레이너/회원 필터) | O | ALL |
-| 3 | `GET` | `/api/v1/reservations/{reservationId}` | 예약 상세 조회 | O | ALL |
-| 4 | `PATCH` | `/api/v1/reservations/{reservationId}` | 예약 변경 (시간/날짜) | O | ADMIN, MANAGER, TRAINER |
-| 5 | `POST` | `/api/v1/reservations/{reservationId}/cancel` | 예약 취소 | O | ALL |
-| 6 | `POST` | `/api/v1/reservations/{reservationId}/complete` | 수업 완료 처리 | O | ADMIN, MANAGER, TRAINER |
-| 7 | `POST` | `/api/v1/reservations/{reservationId}/no-show` | 노쇼 처리 | O | ADMIN, MANAGER, TRAINER |
-| 8 | `POST` | `/api/v1/reservations/waitlist` | 대기 신청 | O | ALL |
-| 9 | `DELETE` | `/api/v1/reservations/waitlist/{waitlistId}` | 대기 신청 취소 | O | ALL |
-| 10 | `GET` | `/api/v1/reservations/waitlist` | 대기 목록 조회 | O | ALL |
-| 11 | `GET` | `/api/v1/schedules` | 트레이너 스케줄 조회 | O | ALL |
-| 12 | `POST` | `/api/v1/schedules` | 트레이너 스케줄 등록 | O | ADMIN, MANAGER, TRAINER |
-| 13 | `PUT` | `/api/v1/schedules/{scheduleId}` | 트레이너 스케줄 수정 | O | ADMIN, MANAGER, TRAINER |
-| 14 | `DELETE` | `/api/v1/schedules/{scheduleId}` | 트레이너 스케줄 삭제 | O | ADMIN, MANAGER, TRAINER |
-| 15 | `GET` | `/api/v1/schedules/available-slots` | 예약 가능 슬롯 조회 | O | ALL |
+| 2 | `GET` | `/api/v1/reservations/policy` | 예약 정책 조회 (센터별 backend-resolved defaults) | O | ALL |
+| 3 | `GET` | `/api/v1/reservations` | 예약 목록 조회 (날짜/트레이너/회원 필터) | O | ALL |
+| 4 | `GET` | `/api/v1/reservations/{reservationId}` | 예약 상세 조회 | O | ALL |
+| 5 | `PATCH` | `/api/v1/reservations/{reservationId}` | 예약 변경 (시간/날짜) | O | ADMIN, MANAGER, TRAINER |
+| 6 | `POST` | `/api/v1/reservations/{reservationId}/cancel` | 예약 취소 | O | ALL |
+| 7 | `POST` | `/api/v1/reservations/{reservationId}/complete` | 수업 완료 처리 | O | ADMIN, MANAGER, TRAINER |
+| 8 | `POST` | `/api/v1/reservations/{reservationId}/no-show` | 노쇼 처리 | O | ADMIN, MANAGER, TRAINER |
+| 9 | `POST` | `/api/v1/reservations/waitlist` | 대기 신청 | O | ALL |
+| 10 | `DELETE` | `/api/v1/reservations/waitlist/{waitlistId}` | 대기 신청 취소 | O | ALL |
+| 11 | `GET` | `/api/v1/reservations/waitlist` | 대기 목록 조회 | O | ALL |
+| 12 | `GET` | `/api/v1/schedules` | 트레이너 스케줄 조회 | O | ALL |
+| 13 | `POST` | `/api/v1/schedules` | 트레이너 스케줄 등록 | O | ADMIN, MANAGER, TRAINER |
+| 14 | `PUT` | `/api/v1/schedules/{scheduleId}` | 트레이너 스케줄 수정 | O | ADMIN, MANAGER, TRAINER |
+| 15 | `DELETE` | `/api/v1/schedules/{scheduleId}` | 트레이너 스케줄 삭제 | O | ADMIN, MANAGER, TRAINER |
+| 16 | `GET` | `/api/v1/schedules/available-slots` | 예약 가능 슬롯 조회 | O | ALL |
+
+- `GET /api/v1/reservations/policy`는 센터별 backend-resolved reservation policy를 반환한다.
+- 현재 기본값은 `source=BACKEND_DEFAULT`, `ptDeductionTiming=COMPLETION`, `gxWaitlistMode=AUTO_PROMOTION`, `cancellationCutoffMinutes=120`, `reminderLeadMinutes=120`이다.
+- `POST /api/v1/reservations/waitlist`는 GX 만석 수업에 대한 대기 신청을 생성하고, `DELETE /api/v1/reservations/waitlist/{waitlistId}`는 대기 신청을 취소한다.
+- `GET /api/v1/reservations/waitlist`는 현재 센터의 대기 목록을 `WAITING` 기본 필터로 조회한다.
+- 예약 취소는 수업 시작 120분 전까지만 허용되며, GX 취소 후에는 다음 대기 회원이 자동 승격된다.
 
 ### 3.5 출입 통제 API (`/api/v1/access`)
 
 | # | Method | URL | 설명 | 인증 | 권한 |
 |---|--------|-----|------|------|------|
 | 1 | `POST` | `/api/v1/access/qr-code` | QR 코드 생성 (회원별) | O | ADMIN, MANAGER, DESK |
-| 2 | `POST` | `/api/v1/access/check-in` | QR 검증 및 체크인 | O | DESK, SYSTEM |
-| 3 | `POST` | `/api/v1/access/check-out` | 체크아웃 처리 | O | DESK, SYSTEM |
-| 4 | `GET` | `/api/v1/access/logs` | 출입 기록 조회 (기간/회원 필터) | O | ADMIN, MANAGER, DESK |
-| 5 | `GET` | `/api/v1/access/today` | 금일 출입 현황 조회 | O | ALL |
-| 6 | `POST` | `/api/v1/access/manual-check-in` | 수동 체크인 (QR 불가 시) | O | DESK |
+| 2 | `POST` | `/api/v1/access/qr/member-link` | 회원 QR 링크 생성/재발급 | O | ADMIN, MANAGER, DESK |
+| 3 | `POST` | `/api/v1/access/qr/member-session` | 회원 QR 세션 갱신 | X | ALL |
+| 4 | `POST` | `/api/v1/access/check-in` | QR 검증 및 체크인 | O | DESK, SYSTEM |
+| 5 | `POST` | `/api/v1/access/check-out` | 체크아웃 처리 | O | DESK, SYSTEM |
+| 6 | `GET` | `/api/v1/access/logs` | 출입 기록 조회 (기간/회원 필터) | O | ADMIN, MANAGER, DESK |
+| 7 | `GET` | `/api/v1/access/today` | 금일 출입 현황 조회 | O | ALL |
+| 8 | `POST` | `/api/v1/access/manual-check-in` | 수동 체크인 (QR 불가 시) | O | DESK |
 
 ### 3.6 라커 관리 API (`/api/v1/lockers`)
 
@@ -553,22 +562,23 @@ X-RateLimit-Reset: 1740001860
 | 13 | `GET` | `/api/v1/settlements/{settlementId}/trainers/{trainerId}/document` | canonical 정산 배치의 개별 트레이너 PDF 정산서 다운로드 | O | ADMIN, MANAGER, DESK |
 | 14 | `GET` | `/api/v1/settlements/receivables` | 미수금 / 후불 후보 조회 | O | ADMIN, MANAGER, DESK |
 
-### 3.8 CRM 메시지 API (`/api/v1/messages`)
+### 3.8 CRM 메시지 API (`/api/v1/crm/messages`)
 
 | # | Method | URL | 설명 | 인증 | 권한 |
 |---|--------|-----|------|------|------|
-| 1 | `GET` | `/api/v1/messages/templates` | 메시지 템플릿 목록 | O | ADMIN, MANAGER |
-| 2 | `POST` | `/api/v1/messages/templates` | 메시지 템플릿 생성 | O | ADMIN |
-| 3 | `PUT` | `/api/v1/messages/templates/{templateId}` | 메시지 템플릿 수정 | O | ADMIN |
-| 4 | `DELETE` | `/api/v1/messages/templates/{templateId}` | 메시지 템플릿 삭제 | O | ADMIN |
-| 5 | `POST` | `/api/v1/messages/send` | 수동 메시지 발송 | O | ADMIN, MANAGER |
-| 6 | `POST` | `/api/v1/messages/send/bulk` | 대량 메시지 발송 | O | ADMIN |
-| 7 | `GET` | `/api/v1/messages/auto-rules` | 자동 발송 규칙 목록 | O | ADMIN, MANAGER |
-| 8 | `POST` | `/api/v1/messages/auto-rules` | 자동 발송 규칙 생성 | O | ADMIN |
-| 9 | `PUT` | `/api/v1/messages/auto-rules/{ruleId}` | 자동 발송 규칙 수정 | O | ADMIN |
-| 10 | `PATCH` | `/api/v1/messages/auto-rules/{ruleId}/status` | 자동 발송 규칙 활성/비활성 | O | ADMIN |
-| 11 | `GET` | `/api/v1/messages/logs` | 메시지 발송 이력 조회 | O | ADMIN, MANAGER |
-| 12 | `GET` | `/api/v1/messages/logs/{logId}` | 발송 이력 상세 | O | ADMIN, MANAGER |
+| 1 | `GET` | `/api/v1/crm/messages/templates` | 메시지 템플릿 목록 | O | ADMIN, MANAGER |
+| 2 | `POST` | `/api/v1/crm/messages/templates` | 메시지 템플릿 생성 | O | ADMIN |
+| 3 | `PUT` | `/api/v1/crm/messages/templates/{templateId}` | 메시지 템플릿 수정 | O | ADMIN |
+| 4 | `DELETE` | `/api/v1/crm/messages/templates/{templateId}` | 메시지 템플릿 삭제 | O | ADMIN |
+| 5 | `POST` | `/api/v1/crm/messages/send` | 수동 메시지 발송 | O | ADMIN, MANAGER |
+| 6 | `POST` | `/api/v1/crm/messages/send/bulk` | 대량 메시지 발송 | O | ADMIN |
+| 7 | `GET` | `/api/v1/crm/messages/auto-rules` | 자동 발송 규칙 목록 | O | ADMIN, MANAGER |
+| 8 | `POST` | `/api/v1/crm/messages/auto-rules` | 자동 발송 규칙 생성 | O | ADMIN |
+| 9 | `PUT` | `/api/v1/crm/messages/auto-rules/{ruleId}` | 자동 발송 규칙 수정 | O | ADMIN |
+| 10 | `PATCH` | `/api/v1/crm/messages/auto-rules/{ruleId}/status` | 자동 발송 규칙 활성/비활성 | O | ADMIN |
+| 11 | `GET` | `/api/v1/crm/messages/logs` | 메시지 발송 이력 조회 | O | ADMIN, MANAGER |
+| 12 | `GET` | `/api/v1/crm/messages/logs/{logId}` | 발송 이력 상세 | O | ADMIN, MANAGER |
+| 13 | `POST` | `/api/v1/crm/messages/triggers/inactive-member-campaign` | 장기 미방문 회원 대상 발송 적재 | O | ADMIN, MANAGER, DESK |
 
 ### 3.8.1 CRM 템플릿 API (`/api/v1/crm/templates`)
 
@@ -1628,7 +1638,77 @@ Authorization: Bearer {accessToken}
 
 ---
 
-### 4.8 QR 코드 체크인 API
+### 4.8 회원 QR 링크/세션 API
+
+| 항목 | 내용 |
+|------|------|
+| **URL** | `POST /api/v1/access/qr/member-link`, `POST /api/v1/access/qr/member-session` |
+| **설명** | 회원 등록/수정 응답 또는 운영자 재발급 API는 `memberQrPath`를 통해 QR 접속 링크를 내려주고, 회원 상세 조회는 QR 링크를 노출하지 않는다. 회원은 공개 세션 갱신 API로 현재 QR을 다시 받아온다. |
+| **인증** | 링크 발급: 필요 / 세션 갱신: 불필요 |
+| **권한** | 링크 발급: ADMIN, MANAGER, DESK / 세션 갱신: ALL |
+
+**회원 QR 링크 생성/재발급 Request Body:**
+
+```json
+{
+  "memberId": 1024
+}
+```
+
+**회원 QR 링크 생성/재발급 Response Body (성공 - 200):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "bootstrapToken": "eyJhbGciOiJIUzI1NiJ9...",
+    "memberId": 1024,
+    "memberName": "홍길동",
+    "bootstrapExpiresAt": "2026-05-08T23:59:59Z",
+    "memberQrPath": "/member-qr?token=eyJhbGciOiJIUzI1NiJ9..."
+  },
+  "message": "회원 QR 링크가 발급되었습니다.",
+  "timestamp": "2026-05-08T10:00:00Z"
+}
+```
+
+**회원 QR 세션 갱신 Request Body:**
+
+```json
+{
+  "bootstrapToken": "eyJhbGciOiJIUzI1NiJ9..."
+}
+```
+
+**회원 QR 세션 갱신 Response Body (성공 - 200):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "memberId": 1024,
+    "memberName": "홍길동",
+    "qrToken": "GYMCRM-MBR1024-1746688800-a1b2c3d4e5f6",
+    "issuedAt": "2026-05-08T10:00:00Z",
+    "expiresAt": "2026-05-08T10:00:30Z",
+    "ttlSeconds": 30,
+    "bootstrapExpiresAt": "2026-05-08T23:59:59Z"
+  },
+  "message": "회원 QR 세션이 갱신되었습니다.",
+  "timestamp": "2026-05-08T10:00:00Z"
+}
+```
+
+**비즈니스 규칙:**
+- 회원 등록/수정 응답은 `memberQrPath`를 포함해 모바일 QR 페이지를 즉시 열 수 있게 하고, 회원 상세 조회는 QR 링크를 노출하지 않는다.
+- `member-link` API는 운영자 재발급용 보조 경로이며, 회원 QR 접근 링크는 명시적으로 발급된 경우에만 노출한다.
+- 회원은 `memberQrPath`를 북마크, 메신저 대화, 홈 화면 바로가기 등으로 저장해 다음날에도 다시 열 수 있다. 단, 상세 조회에서 자동으로 링크를 받는 흐름은 사용하지 않는다.
+- `bootstrapToken`은 회원 ID와 센터 ID를 담은 서명 토큰이며, 만료 전까지 여러 번 세션 갱신에 재사용할 수 있다.
+- 세션 갱신은 기존 QR TTL 상한을 그대로 사용하고, 매 호출마다 새 QR 토큰을 발급한다.
+- 세션 갱신 응답에는 회원 이름과 QR 만료 시각을 포함해 모바일 화면이 남은 시간을 표시할 수 있게 한다.
+- 잘못되었거나 만료된 bootstrapToken은 401/422 수준의 오류로 처리하며, 프론트는 재시도 상태를 표시한다.
+
+### 4.9 QR 코드 체크인 API
 
 | 항목 | 내용 |
 |------|------|
@@ -1734,7 +1814,7 @@ Authorization: Bearer {accessToken}
 
 ---
 
-### 4.9 매출 리포트 API
+### 4.10 매출 리포트 API
 
 | 항목 | 내용 |
 |------|------|
@@ -2508,7 +2588,7 @@ Binary file download with:
 
 | 항목 | 내용 |
 |------|------|
-| **URL** | `POST /api/v1/messages/auto-rules` |
+| **URL** | `POST /api/v1/crm/messages/auto-rules` |
 | **설명** | CRM 메시지 자동 발송 규칙을 생성한다. |
 | **인증** | 필요 |
 | **권한** | ADMIN |
@@ -2583,7 +2663,56 @@ Binary file download with:
 - 템플릿은 `ACTIVE` 상태인 것만 사용 가능하다.
 - 자동 발송은 매일 지정 시간에 배치로 실행되며, 조건에 해당하는 회원을 자동 추출하여 발송한다.
 - `marketingConsent=false`인 회원에게는 마케팅 성격의 메시지가 발송되지 않는다 (만료 안내 등 서비스 메시지는 발송).
-- 발송 이력은 `messages/logs`에 자동 기록된다.
+- 발송 이력은 `crm/messages/logs`에 자동 기록된다.
+
+### 4.11.1 장기 미방문 회원 대상 발송 적재 API
+
+| 항목 | 내용 |
+|------|------|
+| **URL** | `POST /api/v1/crm/messages/triggers/inactive-member-campaign` |
+| **설명** | 마지막 출입일 기준으로 설정한 일수 이상 미방문한 회원을 대상으로 메시지 발송 이벤트를 적재한다. |
+| **인증** | 필요 |
+| **권한** | ADMIN, MANAGER, DESK |
+
+**Request Body:**
+
+```json
+{
+  "baseDate": "2026-05-11",
+  "inactiveDays": 30,
+  "forceFail": false,
+  "scheduledAt": "2026-05-11T10:00:00+09:00"
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `baseDate` | LocalDate | X | 기준 일자. 미입력 시 서버 기준 당일을 사용한다. |
+| `inactiveDays` | Integer | X | 미방문 기준 일수. 미입력 시 30일을 사용한다. 0~365 범위만 허용한다. |
+| `forceFail` | Boolean | X | 테스트용 강제 실패 플래그 |
+| `scheduledAt` | OffsetDateTime | X | 이벤트 적재 시각 |
+
+**Response Body (성공 - 200):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "baseDate": "2026-05-11",
+    "targetDate": "2026-04-11",
+    "totalTargets": 1,
+    "createdCount": 1,
+    "duplicatedCount": 0
+  },
+  "message": "CRM 장기 미방문 메시지 이벤트가 큐에 적재되었습니다."
+}
+```
+
+**비즈니스 규칙:**
+- 대상 회원은 마케팅 수신 동의가 켜져 있어야 한다.
+- 마지막 성공 출입 시각이 기준일시보다 이전이면 적재 대상이 된다.
+- 성공 출입 이력이 없으면 가입일 기준으로 미방문 여부를 판단한다.
+- 동일 센터, 동일 회원, 동일 기준일의 이벤트는 중복 적재하지 않는다.
 
 ---
 
@@ -2882,11 +3011,16 @@ sequenceDiagram
     participant A as API 서버
     participant DB as 데이터베이스
 
-    Note over M: 모바일 앱에서 QR 생성 요청
-    M->>A: POST /api/v1/access/qr-code
-    A->>A: QR 데이터 생성 (회원ID + 타임스탬프 + HMAC 서명)
-    A-->>M: 200 OK (QR 코드 이미지 데이터)
-    Note over M: QR 코드 유효시간: 5분
+    Note over A: 회원 QR 링크는 등록/조회/수정 응답에 포함되며 필요 시 운영자가 재발급
+    A->>A: POST /api/v1/access/qr/member-link
+    A-->>M: QR 링크 전송 (bootstrapToken 포함)
+    Note over M: 회원은 memberQrPath를 즐겨찾기, 홈 화면 바로가기 등으로 저장해 재사용
+    M->>M: 다음날 저장해 둔 memberQrPath를 다시 연다
+    Note over M: 회원은 모바일 화면에서 세션 갱신
+    M->>A: POST /api/v1/access/qr/member-session
+    A->>A: bootstrapToken 검증 후 QR 데이터 생성
+    A-->>M: 200 OK (QR 토큰 + 만료 시각)
+    Note over M: QR 코드 유효시간: 30초
 
     M->>K: QR 코드를 키오스크 스캐너에 인식
     K->>A: POST /api/v1/access/check-in
@@ -3116,7 +3250,8 @@ X-Cache: HIT
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
-| v1.23.0 | 2026-05-11 | `POST /api/v1/members/{memberId}/photo` (multipart/form-data) 회원 사진 업로드 엔드포인트를 추가하고, 3.2 회원 관리 API 목록에 반영 | Sisyphus |
+| v1.24.0 | 2026-05-11 | `POST /api/v1/members/{memberId}/photo` (multipart/form-data) 회원 사진 업로드 엔드포인트를 추가하고, 3.2 회원 관리 API 목록에 반영 | Sisyphus |
+| v1.23.0 | 2026-05-11 | `POST /api/v1/crm/messages/triggers/inactive-member-campaign`를 추가하고 CRM 메시지 API 네임스페이스를 현재 구현 기준(`/api/v1/crm/messages`)으로 동기화 | Codex |
 | v1.22.0 | 2026-05-11 | `GET /api/v1/settlements/receivables` 미수금 / 후불 후보 조회 API를 추가하고, 정산 워크스페이스에서 outstanding amount, reminder eligibility, reminder channel을 현재 구현 기준으로 동기화 | Codex |
 | v1.21.0 | 2026-05-11 | 라커 등록/일괄 등록 계약에 `monthlyFee`를 추가하고, 목록/상세 응답에 구역/등급/월 이용료를 포함하도록 locker 계약을 현재 구현 기준으로 동기화 | Codex |
 | v1.20.0 | 2026-05-11 | `POST /api/v1/products`와 `PATCH /api/v1/products/{productId}`에 nested `promotion` payload를 추가하고, `GET /api/v1/products`/`GET /api/v1/products/{productId}` 응답에 프로모션 메타데이터를 포함하도록 상품 계약을 현재 구현 기준으로 동기화 | Codex |

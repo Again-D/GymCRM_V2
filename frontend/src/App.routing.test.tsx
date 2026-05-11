@@ -5,6 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 import App from "./App";
 import { AuthStateProvider, type AuthState } from "./app/auth";
 import { ThemeProvider } from "./app/theme";
+import { setMockApiModeForTests } from "./api/client";
 
 function renderRoute(initialEntries: string[], authValue?: Partial<AuthState>) {
   render(
@@ -55,6 +56,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  setMockApiModeForTests(null);
   vi.unstubAllGlobals();
 });
 
@@ -137,4 +139,35 @@ describe("prototype shell routing", () => {
 
     expect(await screen.findByRole("heading", { name: "GymCRM" })).toBeTruthy();
   }, 30000);
+
+  it("allows the public member QR route without shell authentication", async () => {
+    setMockApiModeForTests(false);
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: {
+          memberId: 101,
+          memberName: "홍길동",
+          qrToken: "qr-token-1",
+          issuedAt: "2026-05-08T10:00:00Z",
+          expiresAt: "2026-05-08T10:00:01Z",
+          ttlSeconds: 1,
+          bootstrapExpiresAt: "2026-05-08T23:59:59Z"
+        },
+        message: "회원 QR 세션이 갱신되었습니다.",
+        timestamp: "2026-05-08T10:00:00Z",
+        traceId: "trace-member-qr"
+      })
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderRoute(["/member-qr?token=bootstrap-token"], {
+      securityMode: "jwt",
+      authUser: null
+    });
+
+    expect(await screen.findByRole("heading", { name: "홍길동님의 출입 QR" })).toBeTruthy();
+  }, 10000);
 });
