@@ -212,7 +212,7 @@ flowchart LR
 - Test: `backend/src/test/java/com/gymcrm/access/QrCodeServiceTest.java`
 
 **Approach:**
-- Reuse the existing QR token service and TTL ceiling, but present the data through a dedicated mobile-friendly route that opens from the auto-generated `memberQrPath` returned by member registration/detail/update.
+- Reuse the existing QR token service and TTL ceiling, but present the data through a dedicated mobile-friendly route that opens from a short-lived `memberQrPath` returned by member registration/update or an explicit reissue action.
 - Keep the surface focused on token issuance, expiration countdown, and refresh behavior.
 - Use a narrow member-scoped bootstrap contract, such as a signed access link or one-time token, so the route can issue/refresh QR data without requiring a broader member session model.
 

@@ -26,7 +26,7 @@ export type MemberDetail = {
   emergencyContactName: string | null;
   emergencyContactPhone: string | null;
   emergencyContactRelationship: string | null;
-  memberQrPath: string | null;
+  memberQrPath?: string | null;
 };
 
 export type MembersModalState =

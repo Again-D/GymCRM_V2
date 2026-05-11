@@ -95,7 +95,7 @@ public class MemberController {
                 String.valueOf(memberId),
                 "{\"fields\":[\"phone\",\"birthDate\"]}"
         );
-        return ApiResponse.success(MemberDetailResponse.from(member, buildMemberQrPath(member)), "회원 상세 조회 성공");
+        return ApiResponse.success(MemberDetailResponse.from(member, null), "회원 상세 조회 성공");
     }
 
     @PatchMapping("/{memberId}")

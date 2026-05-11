@@ -15,7 +15,7 @@ This backlog captures the scope that is intentionally deferred while implementin
 ### 1. Member account generation and login
 
 - Member-auth/session model for UC-07 remains out of scope for Sprint 2.
-- The current flow continues to use the auto-generated `memberQrPath` and bootstrap token path.
+- The current flow uses a short-lived bootstrap token path and explicit QR-link issuance when a link is needed.
 - Any future member login UI, member password setup, or member-session refresh contract should be tracked separately.
 
 ### 2. FR-ACC-005 delivery channel expansion

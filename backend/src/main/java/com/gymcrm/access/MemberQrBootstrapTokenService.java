@@ -30,7 +30,7 @@ public class MemberQrBootstrapTokenService {
     public MemberQrBootstrapTokenService(
             @Value("${app.security.jwt.secret}") String secret,
             @Value("${app.security.jwt.issuer:gymcrm}") String issuer,
-            @Value("${app.member.qr.bootstrap-token-days:365}") long bootstrapTokenDays
+            @Value("${app.member.qr.bootstrap-token-days:1}") long bootstrapTokenDays
     ) {
         if (secret == null || secret.isBlank()) {
             throw new IllegalStateException("app.security.jwt.secret must not be blank");

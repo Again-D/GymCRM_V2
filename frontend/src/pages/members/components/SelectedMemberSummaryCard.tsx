@@ -1,6 +1,7 @@
-import type { ReactNode } from "react";
-import { Alert, Card, Descriptions, Empty, Flex, Spin, Typography } from "antd";
+import { useState, type ReactNode } from "react";
+import { Alert, Button, Card, Descriptions, Empty, Flex, Spin, Space, Typography } from "antd";
 
+import { apiPost } from "../../../api/client";
 import { useSelectedMemberStore } from "../modules/SelectedMemberContext";
 
 import styles from "./SelectedMemberSummaryCard.module.css";
@@ -12,11 +13,28 @@ interface SelectedMemberSummaryCardProps {
 
 export function SelectedMemberSummaryCard({ surface = "panel", action }: SelectedMemberSummaryCardProps) {
   const { selectedMember, selectedMemberError, selectedMemberLoading } = useSelectedMemberStore();
+  const [qrLinkLoading, setQrLinkLoading] = useState(false);
+  const [qrLinkError, setQrLinkError] = useState<string | null>(null);
 
   const memberStatusLabel = selectedMember?.memberStatus === "ACTIVE" ? "활성" : "비활성";
   const selectedMemberErrorDescription = selectedMemberError
     ? "회원 정보를 다시 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
     : null;
+  async function openMemberQrLink(memberId: number) {
+    setQrLinkLoading(true);
+    setQrLinkError(null);
+    try {
+      const response = await apiPost<{ memberQrPath: string }>("/api/v1/access/qr/member-link", {
+        memberId,
+      });
+      window.open(response.data.memberQrPath, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      setQrLinkError(resolveErrorMessage(error));
+    } finally {
+      setQrLinkLoading(false);
+    }
+  }
+
   const summaryContent = (
     <Flex vertical gap={16}>
       {selectedMemberLoading ? (
@@ -93,7 +111,19 @@ export function SelectedMemberSummaryCard({ surface = "panel", action }: Selecte
                 children: selectedMember.memberQrPath ? (
                   <a href={selectedMember.memberQrPath}>회원 QR 열기</a>
                 ) : (
-                  "-"
+                  <Space direction="vertical" size={4}>
+                    <Typography.Text type="secondary">
+                      상세 조회에서는 링크를 노출하지 않습니다. 필요할 때만 QR 링크를 발급합니다.
+                    </Typography.Text>
+                    <Button
+                      size="small"
+                      onClick={() => void openMemberQrLink(selectedMember.memberId)}
+                      loading={qrLinkLoading}
+                    >
+                      회원 QR 열기
+                    </Button>
+                    {qrLinkError ? <Typography.Text type="danger">{qrLinkError}</Typography.Text> : null}
+                  </Space>
                 )
               }
             ]}
@@ -124,4 +154,11 @@ export function SelectedMemberSummaryCard({ surface = "panel", action }: Selecte
       {summaryContent}
     </Card>
   );
+}
+
+function resolveErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return "회원 QR 링크를 불러오지 못했습니다.";
 }
