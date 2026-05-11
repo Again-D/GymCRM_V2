@@ -17,6 +17,11 @@ export type SettlementReportFilters = {
   trendGranularity: SettlementTrendGranularity;
 };
 
+export type SettlementReceivablesFilters = {
+  baseDate: string;
+  limit: number;
+};
+
 export type SettlementReportRow = {
   productName: string;
   paymentMethod: Exclude<SettlementPaymentMethod, "">;
@@ -68,6 +73,33 @@ export type SettlementRecentAdjustment = {
   paidAt: string;
   memo: string | null;
   approvalRef: string | null;
+};
+
+export type SettlementReceivableRow = {
+  membershipId: number;
+  memberId: number;
+  memberName: string;
+  productName: string;
+  productCategory: string;
+  membershipStatus: string;
+  contractAmount: number;
+  paymentId: number;
+  paymentMethod: Exclude<SettlementPaymentMethod, "">;
+  paidAmount: number;
+  paidDate: string;
+  followUpDate: string;
+  outstandingAmount: number;
+  reminderEligible: boolean;
+  reminderChannel: "CRM" | "REVIEW";
+};
+
+export type SettlementReceivables = {
+  baseDate: string;
+  limit: number;
+  totalOutstandingAmount: number;
+  receivableCount: number;
+  reminderEligibleCount: number;
+  rows: SettlementReceivableRow[];
 };
 
 export type TrainerSettlementPreviewFilters = {
@@ -198,6 +230,13 @@ export function createDefaultSettlementFilters(): SettlementReportFilters {
     paymentMethod: "",
     productKeyword: "",
     trendGranularity: "DAILY"
+  };
+}
+
+export function createDefaultSettlementReceivablesFilters(baseDate = todayLocalDate()): SettlementReceivablesFilters {
+  return {
+    baseDate,
+    limit: 10
   };
 }
 

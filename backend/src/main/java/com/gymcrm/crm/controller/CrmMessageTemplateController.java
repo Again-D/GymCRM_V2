@@ -124,6 +124,9 @@ public class CrmMessageTemplateController {
             String channelType,
             String templateType,
             String templateBody,
+            String reviewStatus,
+            String operationalStatus,
+            boolean sendable,
             boolean isActive,
             OffsetDateTime createdAt,
             OffsetDateTime updatedAt
@@ -136,6 +139,9 @@ public class CrmMessageTemplateController {
                     template.channelType(),
                     template.templateType(),
                     template.templateBody(),
+                    template.reviewStatus(),
+                    template.operationalStatus(),
+                    template.isSendable(),
                     template.isActive(),
                     template.createdAt(),
                     template.updatedAt()

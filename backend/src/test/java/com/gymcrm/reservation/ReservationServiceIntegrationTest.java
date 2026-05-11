@@ -540,6 +540,8 @@ class ReservationServiceIntegrationTest {
                 null,
                 false,
                 false,
+                41L,
+                null,
                 "ACTIVE",
                 null
         ));
@@ -568,6 +570,8 @@ class ReservationServiceIntegrationTest {
                 null,
                 false,
                 false,
+                null,
+                null,
                 "ACTIVE",
                 null
         ));

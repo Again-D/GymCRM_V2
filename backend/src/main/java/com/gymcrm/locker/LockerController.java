@@ -3,6 +3,7 @@ package com.gymcrm.locker;
 import com.gymcrm.common.api.ApiResponse;
 import com.gymcrm.common.security.AccessPolicies;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -41,6 +42,7 @@ public class LockerController {
                 request.lockerZone(),
                 request.lockerNumber(),
                 request.lockerGrade(),
+                request.monthlyFee(),
                 request.lockerStatus(),
                 request.memo()
         ));
@@ -56,6 +58,7 @@ public class LockerController {
                                 item.lockerZone(),
                                 item.lockerNumber(),
                                 item.lockerGrade(),
+                                item.monthlyFee(),
                                 item.lockerStatus(),
                                 item.memo()
                         ))
@@ -126,6 +129,8 @@ public class LockerController {
             @Min(value = 1, message = "lockerNumber must be at least 1")
             Integer lockerNumber,
             String lockerGrade,
+            @DecimalMin(value = "0", inclusive = true, message = "monthlyFee must be >= 0")
+            BigDecimal monthlyFee,
             @Pattern(regexp = "^(?i)(AVAILABLE|ASSIGNED|MAINTENANCE)?$", message = "lockerStatus is invalid")
             String lockerStatus,
             String memo
@@ -165,6 +170,7 @@ public class LockerController {
             String lockerCode,
             String lockerZone,
             String lockerGrade,
+            BigDecimal monthlyFee,
             String lockerStatus,
             String memo,
             OffsetDateTime createdAt,
@@ -177,6 +183,7 @@ public class LockerController {
                     slot.lockerCode(),
                     slot.lockerZone(),
                     slot.lockerGrade(),
+                    slot.monthlyFee(),
                     slot.lockerStatus(),
                     slot.memo(),
                     slot.createdAt(),

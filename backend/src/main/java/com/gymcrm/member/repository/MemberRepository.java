@@ -50,6 +50,7 @@ public class MemberRepository {
         entity.setConsentSms(Boolean.TRUE.equals(command.consentSms()));
         entity.setConsentMarketing(Boolean.TRUE.equals(command.consentMarketing()));
         entity.setMemo(command.memo());
+        entity.setPhotoUrl(command.photoUrl());
         entity.setEmergencyContactName(command.emergencyContactName());
         entity.setEmergencyContactPhone(command.emergencyContactPhone());
         entity.setEmergencyContactRelationship(command.emergencyContactRelationship());
@@ -132,11 +133,23 @@ public class MemberRepository {
         entity.setConsentSms(Boolean.TRUE.equals(command.consentSms()));
         entity.setConsentMarketing(Boolean.TRUE.equals(command.consentMarketing()));
         entity.setMemo(command.memo());
+        entity.setPhotoUrl(command.photoUrl());
         entity.setEmergencyContactName(command.emergencyContactName());
         entity.setEmergencyContactPhone(command.emergencyContactPhone());
         entity.setEmergencyContactRelationship(command.emergencyContactRelationship());
         entity.setUpdatedAt(OffsetDateTime.now());
         entity.setUpdatedBy(command.actorUserId());
+        MemberEntity saved = memberJpaRepository.saveAndFlush(entity);
+        entityManager.refresh(saved);
+        return toDomain(saved);
+    }
+
+    public Member updatePhotoUrl(Long memberId, String photoUrl, Long actorUserId) {
+        MemberEntity entity = memberJpaRepository.findByMemberIdAndIsDeletedFalse(memberId)
+                .orElseThrow();
+        entity.setPhotoUrl(photoUrl);
+        entity.setUpdatedAt(OffsetDateTime.now());
+        entity.setUpdatedBy(actorUserId);
         MemberEntity saved = memberJpaRepository.saveAndFlush(entity);
         entityManager.refresh(saved);
         return toDomain(saved);
@@ -228,6 +241,7 @@ public class MemberRepository {
                 entity.isConsentSms(),
                 entity.isConsentMarketing(),
                 entity.getMemo(),
+                entity.getPhotoUrl(),
                 entity.getEmergencyContactName(),
                 entity.getEmergencyContactPhone(),
                 entity.getEmergencyContactRelationship(),
@@ -258,6 +272,7 @@ public class MemberRepository {
             Boolean consentSms,
             Boolean consentMarketing,
             String memo,
+            String photoUrl,
             String emergencyContactName,
             String emergencyContactPhone,
             String emergencyContactRelationship,
@@ -279,6 +294,7 @@ public class MemberRepository {
             Boolean consentSms,
             Boolean consentMarketing,
             String memo,
+            String photoUrl,
             String emergencyContactName,
             String emergencyContactPhone,
             String emergencyContactRelationship,

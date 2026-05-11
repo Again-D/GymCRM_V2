@@ -1,5 +1,6 @@
 package com.gymcrm.locker;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
 public record LockerSlot(
@@ -8,6 +9,7 @@ public record LockerSlot(
         String lockerCode,
         String lockerZone,
         String lockerGrade,
+        BigDecimal monthlyFee,
         String lockerStatus,
         String memo,
         OffsetDateTime createdAt,

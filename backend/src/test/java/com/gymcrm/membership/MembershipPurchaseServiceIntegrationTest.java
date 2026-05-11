@@ -288,6 +288,8 @@ class MembershipPurchaseServiceIntegrationTest {
                 1,
                 false,
                 false,
+                41L,
+                null,
                 "ACTIVE",
                 null
         ));
@@ -307,6 +309,8 @@ class MembershipPurchaseServiceIntegrationTest {
                 1,
                 false,
                 false,
+                41L,
+                null,
                 "ACTIVE",
                 null
         ));

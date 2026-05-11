@@ -17,6 +17,7 @@ public record MemberUpdateRequest(
         Boolean consentSms,
         Boolean consentMarketing,
         String memo,
+        String photoUrl,
         String emergencyContactName,
         String emergencyContactPhone,
         String emergencyContactRelationship
@@ -33,6 +34,6 @@ public record MemberUpdateRequest(
             Boolean consentMarketing,
             String memo
     ) {
-        this(memberName, phone, email, gender, birthDate, memberStatus, joinDate, consentSms, consentMarketing, memo, null, null, null);
+        this(memberName, phone, email, gender, birthDate, memberStatus, joinDate, consentSms, consentMarketing, memo, null, null, null, null);
     }
 }

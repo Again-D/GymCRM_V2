@@ -78,9 +78,12 @@ class SalesSettlementApiIntegrationTest {
         long productId = insertProduct(keyword);
         long memberId = insertMember(baseDate);
         long membershipId = insertMembership(memberId, productId, keyword + "-PT", baseDate, baseDate.plusDays(3));
+        long receivableMemberId = insertMember(baseDate.minusDays(2));
+        long receivableMembershipId = insertMembership(receivableMemberId, productId, keyword + "-PT-RECV", baseDate.minusDays(5), baseDate.plusDays(20));
 
         insertPayment(memberId, membershipId, "PURCHASE", new BigDecimal("100000"), baseDate.atTime(1, 0).atOffset(ZoneOffset.UTC));
         insertPayment(memberId, membershipId, "REFUND", new BigDecimal("20000"), baseDate.atTime(2, 0).atOffset(ZoneOffset.UTC));
+        insertPayment(receivableMemberId, receivableMembershipId, "PURCHASE", new BigDecimal("60000"), baseDate.minusDays(5).atTime(8, 0).atOffset(ZoneOffset.UTC));
 
         mockMvc.perform(get("/api/v1/settlements/sales-dashboard")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
@@ -120,6 +123,18 @@ class SalesSettlementApiIntegrationTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data[0].adjustmentType").value("REFUND"))
                 .andExpect(jsonPath("$.data[0].productName", containsString(keyword)));
+
+        mockMvc.perform(get("/api/v1/settlements/receivables")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .param("baseDate", baseDate.toString())
+                        .param("limit", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.receivableCount").value(1))
+                .andExpect(jsonPath("$.data.reminderEligibleCount").value(1))
+                .andExpect(jsonPath("$.data.totalOutstandingAmount").value(40000))
+                .andExpect(jsonPath("$.data.rows[0].memberId").value(receivableMemberId))
+                .andExpect(jsonPath("$.data.rows[0].reminderChannel").value("CRM"));
 
         MvcResult exportResult = mockMvc.perform(get("/api/v1/settlements/sales-report/export")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)

@@ -85,6 +85,7 @@ class QrCodeServiceTest {
                 null,
                 null,
                 null,
+                null,
                 issuedBootstrapToken.issuedAt(),
                 0L,
                 issuedBootstrapToken.issuedAt(),

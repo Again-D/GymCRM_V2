@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  Avatar,
   Button,
   Card,
   Col,
@@ -16,7 +17,8 @@ import {
   Table,
   Tag,
   Typography,
-  Checkbox
+  Checkbox,
+  Upload,
 } from "antd";
 import { PlusOutlined, SearchOutlined, RestOutlined, UserOutlined, ContactsOutlined, SolutionOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
@@ -75,7 +77,8 @@ export function MemberListSection() {
     openMemberDelete,
     submitMemberForm,
     deactivateMember,
-    deleteMember
+    deleteMember,
+    uploadMemberPhoto,
   } = useMemberManagementState({
     selectedMemberId,
     selectMember,
@@ -234,6 +237,14 @@ export function MemberListSection() {
       )
     }
   ], [handleGoToMemberships, handleGoToReservations]);
+
+  const beforeUploadMemberPhoto = useCallback((file: File) => {
+    if (!selectedMemberId) {
+      return Upload.LIST_IGNORE;
+    }
+    void uploadMemberPhoto(selectedMemberId, file);
+    return false;
+  }, [selectedMemberId, uploadMemberPhoto]);
 
   return (
     <Flex vertical gap={24}>
@@ -478,6 +489,28 @@ export function MemberListSection() {
           <Button key="reservation" type="primary" onClick={() => goToSelectedMemberContext("/reservations")}>예약</Button>
         ].filter(Boolean)}
       >
+        {selectedMember ? (
+          <Flex vertical gap={8} style={{ marginBottom: 16 }}>
+            <Space align="center" size={16}>
+              <Avatar
+                size={72}
+                src={selectedMember.photoUrl ?? undefined}
+                icon={<UserOutlined />}
+              />
+              {canManageMembers ? (
+                <Upload
+                  accept="image/*"
+                  showUploadList={false}
+                  beforeUpload={beforeUploadMemberPhoto}
+                >
+                  <Button loading={memberFormSubmitting}>사진 업로드</Button>
+                </Upload>
+              ) : null}
+            </Space>
+            {memberFormMessage ? <Alert message={memberFormMessage} type="success" showIcon /> : null}
+            {memberFormError ? <Alert message={memberFormError} type="error" showIcon /> : null}
+          </Flex>
+        ) : null}
         <SelectedMemberSummaryCard surface="plain" />
       </Modal>
 

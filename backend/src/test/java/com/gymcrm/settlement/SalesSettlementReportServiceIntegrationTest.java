@@ -331,6 +331,8 @@ class SalesSettlementReportServiceIntegrationTest {
                 1,
                 false,
                 false,
+                null,
+                null,
                 "ACTIVE",
                 null
         ));

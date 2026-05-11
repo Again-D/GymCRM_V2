@@ -2,6 +2,13 @@ export type ProductCategory = "MEMBERSHIP" | "PT" | "GX" | "ETC" | null;
 export type ProductType = "DURATION" | "COUNT";
 export type ProductStatus = "ACTIVE" | "INACTIVE";
 
+export type ProductPromotionRecord = {
+  promotionDiscountType: "PERCENT" | "AMOUNT";
+  promotionDiscountValue: number;
+  promotionStartDate: string;
+  promotionEndDate: string;
+};
+
 export type ProductRecord = {
   productId: number;
   centerId: number;
@@ -16,6 +23,8 @@ export type ProductRecord = {
   maxHoldCount: number | null;
   allowHoldBypass: boolean;
   allowTransfer: boolean;
+  assignedTrainerId: number | null;
+  promotion: ProductPromotionRecord | null;
   productStatus: ProductStatus;
   description: string | null;
 };
@@ -37,6 +46,11 @@ export type ProductFormState = {
   maxHoldCount: string;
   allowHoldBypass: boolean;
   allowTransfer: boolean;
+  assignedTrainerId: string;
+  promotionDiscountType: "" | ProductPromotionRecord["promotionDiscountType"];
+  promotionDiscountValue: string;
+  promotionStartDate: string;
+  promotionEndDate: string;
   productStatus: ProductStatus;
   description: string;
 };
@@ -61,6 +75,11 @@ export function createEmptyProductForm(): ProductFormState {
     maxHoldCount: "1",
     allowHoldBypass: false,
     allowTransfer: false,
+    assignedTrainerId: "",
+    promotionDiscountType: "",
+    promotionDiscountValue: "",
+    promotionStartDate: "",
+    promotionEndDate: "",
     productStatus: "ACTIVE",
     description: ""
   };
@@ -79,6 +98,11 @@ export function createProductFormFromRecord(product: ProductRecord): ProductForm
     maxHoldCount: product.maxHoldCount == null ? "" : String(product.maxHoldCount),
     allowHoldBypass: product.allowHoldBypass,
     allowTransfer: product.allowTransfer,
+    assignedTrainerId: product.assignedTrainerId == null ? "" : String(product.assignedTrainerId),
+    promotionDiscountType: product.promotion?.promotionDiscountType ?? "",
+    promotionDiscountValue: product.promotion == null ? "" : String(product.promotion.promotionDiscountValue),
+    promotionStartDate: product.promotion?.promotionStartDate ?? "",
+    promotionEndDate: product.promotion?.promotionEndDate ?? "",
     productStatus: product.productStatus,
     description: product.description ?? ""
   };

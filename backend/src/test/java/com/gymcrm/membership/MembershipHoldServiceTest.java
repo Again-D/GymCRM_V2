@@ -226,6 +226,8 @@ class MembershipHoldServiceTest {
                 maxHoldCount,
                 allowHoldBypass,
                 false,
+                null,
+                null,
                 "ACTIVE",
                 null,
                 now,

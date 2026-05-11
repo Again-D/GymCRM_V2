@@ -20,6 +20,14 @@ function parseOptionalNumber(value: string) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function parseOptionalDate(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  return /^\d{4}-\d{2}-\d{2}$/.test(trimmed) ? trimmed : null;
+}
+
 function buildProductInput(productForm: ProductFormState) {
   const productName = productForm.productName.trim();
   if (!productName) {
@@ -49,6 +57,47 @@ function buildProductInput(productForm: ProductFormState) {
     return { error: "횟수형 상품은 총횟수를 입력해야 합니다." } as const;
   }
 
+  const assignedTrainerId = parseOptionalNumber(productForm.assignedTrainerId);
+  if (productForm.productCategory === "PT") {
+    if (!assignedTrainerId || assignedTrainerId <= 0) {
+      return { error: "PT 상품은 담당 트레이너를 선택해야 합니다." } as const;
+    }
+  } else if (assignedTrainerId != null) {
+    return { error: "담당 트레이너는 PT 상품에만 지정할 수 있습니다." } as const;
+  }
+
+  const promotionDiscountType = productForm.promotionDiscountType || null;
+  const promotionDiscountValue = parseOptionalNumber(productForm.promotionDiscountValue);
+  const promotionStartDate = parseOptionalDate(productForm.promotionStartDate);
+  const promotionEndDate = parseOptionalDate(productForm.promotionEndDate);
+  const hasAnyPromotionField =
+    promotionDiscountType != null ||
+    promotionDiscountValue != null ||
+    promotionStartDate != null ||
+    promotionEndDate != null;
+  if (hasAnyPromotionField) {
+    if (
+      promotionDiscountType == null ||
+      promotionDiscountValue == null ||
+      promotionStartDate == null ||
+      promotionEndDate == null
+    ) {
+      return { error: "프로모션 항목은 모두 함께 입력해야 합니다." } as const;
+    }
+    if (!["PERCENT", "AMOUNT"].includes(promotionDiscountType)) {
+      return { error: "프로모션 할인 유형이 올바르지 않습니다." } as const;
+    }
+    if (promotionDiscountValue <= 0) {
+      return { error: "프로모션 할인값은 0보다 커야 합니다." } as const;
+    }
+    if (promotionDiscountType === "PERCENT" && promotionDiscountValue > 100) {
+      return { error: "퍼센트 할인은 100 이하만 가능합니다." } as const;
+    }
+    if (promotionEndDate < promotionStartDate) {
+      return { error: "프로모션 종료일은 시작일 이후여야 합니다." } as const;
+    }
+  }
+
   return {
     value: {
       productName,
@@ -66,6 +115,15 @@ function buildProductInput(productForm: ProductFormState) {
         : null,
       allowHoldBypass: productForm.allowHold && productForm.allowHoldBypass,
       allowTransfer: productForm.allowTransfer,
+      assignedTrainerId,
+      promotion: hasAnyPromotionField
+        ? {
+            promotionDiscountType: promotionDiscountType as "PERCENT" | "AMOUNT",
+            promotionDiscountValue: promotionDiscountValue as number,
+            promotionStartDate: promotionStartDate as string,
+            promotionEndDate: promotionEndDate as string,
+          }
+        : null,
       productStatus: productForm.productStatus,
       description: productForm.description.trim() || null,
     },

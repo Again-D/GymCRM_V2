@@ -10,8 +10,14 @@ public record CrmMessageTemplate(
         String channelType,
         String templateType,
         String templateBody,
+        String reviewStatus,
+        String operationalStatus,
+        boolean sendable,
         boolean isActive,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) {
+    public boolean isSendable() {
+        return sendable;
+    }
 }

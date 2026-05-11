@@ -8,6 +8,7 @@ export type LockerSlot = {
   lockerCode: string;
   lockerZone: string | null;
   lockerGrade: string | null;
+  monthlyFee: number;
   lockerStatus: LockerStatus;
   memo: string | null;
   createdAt: string;
@@ -52,6 +53,7 @@ export type LockerCreateRow = {
   lockerZone: string;
   lockerNumber: number | null;
   lockerGrade: string;
+  monthlyFee: number | null;
   lockerStatus: LockerStatus;
   memo: string;
 };
@@ -72,6 +74,7 @@ export function createEmptyLockerCreateRow(): LockerCreateRow {
     lockerZone: "",
     lockerNumber: null,
     lockerGrade: "STANDARD",
+    monthlyFee: 0,
     lockerStatus: "AVAILABLE",
     memo: "",
   };

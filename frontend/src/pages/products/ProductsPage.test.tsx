@@ -83,6 +83,65 @@ describe("ProductsPage", () => {
     expect(screen.queryByRole("button", { name: "신규 상품 등록" })).toBeNull();
   });
 
+  it("shows promotion metadata in the product table", async () => {
+    setMockApiModeForTests(false);
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: [
+          {
+            productId: 1,
+            centerId: 1,
+            productName: "헬스 90일권",
+            productCategory: "MEMBERSHIP",
+            productType: "DURATION",
+            priceAmount: 180000,
+            validityDays: 90,
+            totalCount: null,
+            allowHold: true,
+            maxHoldDays: 30,
+            maxHoldCount: 1,
+            allowHoldBypass: true,
+            allowTransfer: false,
+            assignedTrainerId: null,
+            promotion: {
+              promotionDiscountType: "PERCENT",
+              promotionDiscountValue: 15,
+              promotionStartDate: "2026-05-01",
+              promotionEndDate: "2026-05-31"
+            },
+            productStatus: "ACTIVE",
+            description: "기본 헬스 이용권"
+          }
+        ],
+        message: "ok",
+        timestamp: "2026-03-13T00:00:00Z",
+        traceId: "trace-products"
+      })
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <FoundationProviders
+        authValue={{
+          securityMode: "jwt",
+          authUser: {
+            userId: 21,
+            username: "desk-user",
+            primaryRole: "ROLE_DESK",
+            roles: ["ROLE_DESK"]
+          }
+        }}
+      >
+        <ProductsPage />
+      </FoundationProviders>
+    );
+
+    expect(await screen.findByText(/15%/)).toBeTruthy();
+    expect(screen.getByText(/2026-05-01/)).toBeTruthy();
+  });
+
   it("does not trigger live product requests from unsupported-role controls", async () => {
     setMockApiModeForTests(false);
     const fetchMock = vi.fn(async () => ({

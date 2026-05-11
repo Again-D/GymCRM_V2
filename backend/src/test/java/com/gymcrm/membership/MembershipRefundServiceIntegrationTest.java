@@ -270,6 +270,8 @@ class MembershipRefundServiceIntegrationTest {
                 2,
                 false,
                 false,
+                null,
+                null,
                 "ACTIVE",
                 null
         ));

@@ -76,6 +76,7 @@ describe("products to memberships parity", () => {
         priceAmount: "700000",
         validityDays: "",
         totalCount: "20",
+        assignedTrainerId: "41",
       }));
     });
 

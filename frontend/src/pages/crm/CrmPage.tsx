@@ -5,30 +5,38 @@ import {
 } from "@ant-design/icons";
 import {
 	Alert,
+	Badge,
 	Button,
 	Card,
 	Col,
+	DatePicker,
 	Empty,
 	Flex,
 	Form,
+	Input,
 	InputNumber,
+	message,
 	Row,
 	Select,
 	Space,
 	Statistic,
 	Table,
 	Tag,
+	Tooltip,
 	Typography,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
+import dayjs from "dayjs";
 import { useEffect } from "react";
 
 import { useAuthState } from "../../app/auth";
 import { hasAnyRole } from "../../app/roles";
 import { usePagination } from "../../shared/hooks/usePagination";
+import type { CrmHistoryRow, CrmTemplateRow } from "./modules/types";
 import { createDefaultCrmFilters } from "./modules/types";
 import { useCrmHistoryQuery } from "./modules/useCrmHistoryQuery";
 import { useCrmPrototypeState } from "./modules/useCrmPrototypeState";
+import { useCrmTemplatesQuery } from "./modules/useCrmTemplatesQuery";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -50,14 +58,25 @@ const statusMap: Record<string, { label: string; color: string }> = {
 	DEAD: { label: "실패", color: "error" },
 };
 
-type CrmHistoryRow = {
-	crmMessageEventId: number;
-	memberId: number;
-	eventType: string;
-	sendStatus: string;
-	attemptCount: number;
-	lastErrorMessage: string | null;
-	createdAt: string;
+const deliveryModeMap: Record<string, { label: string; color: string }> = {
+	PRIMARY: { label: "기본 경로", color: "default" },
+	SMS_FALLBACK: { label: "SMS 폴백", color: "warning" },
+};
+
+const templateReviewStatusMap: Record<
+	string,
+	{ label: string; color: string }
+> = {
+	APPROVED: { label: "심사 승인", color: "success" },
+	REJECTED: { label: "심사 반려", color: "error" },
+};
+
+const templateOperationalStatusMap: Record<
+	string,
+	{ label: string; color: string }
+> = {
+	SENDABLE: { label: "발송 가능", color: "processing" },
+	GOVERNANCE_ONLY: { label: "거버넌스 전용", color: "default" },
 };
 
 export default function CrmPage() {
@@ -67,25 +86,45 @@ export default function CrmPage() {
 		setCrmFilters,
 		crmTriggerDaysAhead,
 		setCrmTriggerDaysAhead,
-		crmInactiveDays,
-		setCrmInactiveDays,
+		crmTriggerScheduledAt,
+		setCrmTriggerScheduledAt,
 		crmTriggerSubmitting,
 		crmInactiveSubmitting,
 		crmProcessSubmitting,
 		crmPanelMessage,
 		crmPanelError,
+		crmTemplateFilters,
+		setCrmTemplateFilters,
+		crmSelectedTemplateId,
+		setCrmSelectedTemplateId,
+		crmInactiveDays,
+		setCrmInactiveDays,
+		crmInactiveScheduledAt,
+		setCrmInactiveScheduledAt,
 		clearCrmFeedback,
 		triggerCrmExpiryReminder,
 		triggerCrmInactiveMemberCampaign,
 		processCrmQueue,
+		triggerCrmLongTermInactiveCampaign,
 	} = useCrmPrototypeState();
 
 	const { crmHistoryRows, crmHistoryLoading, refetchCrmHistory } =
 		useCrmHistoryQuery(crmFilters);
+	const {
+		crmTemplateRows,
+		crmTemplateLoading,
+		crmTemplateError,
+		refetchCrmTemplates,
+	} = useCrmTemplatesQuery(crmTemplateFilters);
 
 	const isLiveCrmRoleSupported =
 		isMockMode ||
-		hasAnyRole(authUser, ["ROLE_SUPER_ADMIN", "ROLE_ADMIN", "ROLE_MANAGER", "ROLE_DESK"]);
+		hasAnyRole(authUser, [
+			"ROLE_SUPER_ADMIN",
+			"ROLE_ADMIN",
+			"ROLE_MANAGER",
+			"ROLE_DESK",
+		]);
 
 	const historyPagination = usePagination(crmHistoryRows, {
 		initialPageSize: 10,
@@ -101,6 +140,10 @@ export default function CrmPage() {
 	const sentCount = crmHistoryRows.filter(
 		(row) => row.sendStatus === "SENT",
 	).length;
+	const selectedTemplate =
+		crmTemplateRows.find((row) => row.templateId === crmSelectedTemplateId) ??
+		crmTemplateRows[0] ??
+		null;
 
 	useEffect(() => {
 		if (!isLiveCrmRoleSupported) {
@@ -109,8 +152,25 @@ export default function CrmPage() {
 		}
 	}, [clearCrmFeedback, isLiveCrmRoleSupported]);
 
+	useEffect(() => {
+		if (
+			crmSelectedTemplateId &&
+			crmTemplateRows.some((row) => row.templateId === crmSelectedTemplateId)
+		) {
+			return;
+		}
+		if (crmTemplateRows.length > 0) {
+			setCrmSelectedTemplateId(crmTemplateRows[0].templateId);
+		}
+	}, [crmSelectedTemplateId, crmTemplateRows, setCrmSelectedTemplateId]);
+
 	async function runTrigger() {
-		await triggerCrmExpiryReminder();
+		const success = await triggerCrmExpiryReminder();
+		if (success) {
+			message.success("안내 대상 적재를 완료했습니다.");
+		} else {
+			message.error("안내 대상 적재에 실패했습니다.");
+		}
 	}
 
 	async function runInactiveTrigger() {
@@ -118,7 +178,25 @@ export default function CrmPage() {
 	}
 
 	async function runProcess() {
-		await processCrmQueue();
+		const success = await processCrmQueue();
+		if (success) {
+			message.success("메시지 큐 실행을 완료했습니다.");
+		} else {
+			message.error("메시지 큐 실행에 실패했습니다.");
+		}
+	}
+
+	async function runLongTermInactive() {
+		const success = await triggerCrmLongTermInactiveCampaign({
+			templateId: selectedTemplate?.templateId ?? null,
+			inactiveDays: crmInactiveDays,
+			scheduledAt: crmInactiveScheduledAt,
+		});
+		if (success) {
+			message.success("장기 미방문 캠페인 대상을 적재했습니다.");
+		} else {
+			message.error("장기 미방문 캠페인 대상 적재에 실패했습니다.");
+		}
 	}
 
 	const columns: ColumnsType<CrmHistoryRow> = [
@@ -147,6 +225,17 @@ export default function CrmPage() {
 			),
 		},
 		{
+			title: "경로",
+			key: "deliveryMode",
+			render: (_, record) => {
+				const config = deliveryModeMap[record.deliveryMode] || {
+					label: record.deliveryMode,
+					color: "default",
+				};
+				return <Tag color={config.color}>{config.label}</Tag>;
+			},
+		},
+		{
 			title: "상태",
 			dataIndex: "sendStatus",
 			key: "sendStatus",
@@ -163,13 +252,22 @@ export default function CrmPage() {
 			key: "attempt",
 			render: (_, record) => (
 				<Space direction="vertical" size={2}>
-					<Text style={{ fontSize: "0.84rem" }}>
-						{record.attemptCount} / 3 시도
-					</Text>
+					<Space>
+						<Badge
+							count={record.attemptCount}
+							color={record.attemptCount > 1 ? "warning" : "blue"}
+						/>
+						<Text style={{ fontSize: "0.84rem" }}>/ 3 시도</Text>
+					</Space>
 					{record.lastErrorMessage && (
-						<Text type="danger" style={{ fontSize: "0.75rem" }}>
-							실패 사유는 운영 로그 확인
-						</Text>
+						<Tooltip title={record.lastErrorMessage}>
+							<Text
+								type="danger"
+								style={{ fontSize: "0.75rem", cursor: "pointer" }}
+							>
+								실패 사유 확인
+							</Text>
+						</Tooltip>
 					)}
 				</Space>
 			),
@@ -179,10 +277,17 @@ export default function CrmPage() {
 			dataIndex: "createdAt",
 			key: "createdAt",
 			align: "right",
-			render: (time) => (
-				<Text type="secondary" style={{ fontSize: "0.84rem" }}>
-					{formatDateTime(time)}
-				</Text>
+			render: (time, record) => (
+				<Space direction="vertical" size={2} align="end">
+					<Text type="secondary" style={{ fontSize: "0.84rem" }}>
+						생성: {formatDateTime(time)}
+					</Text>
+					{record.failedAt && (
+						<Text type="danger" style={{ fontSize: "0.75rem" }}>
+							실패: {formatDateTime(record.failedAt)}
+						</Text>
+					)}
+				</Space>
 			),
 		},
 	];
@@ -225,6 +330,7 @@ export default function CrmPage() {
 							const nextFilters = createDefaultCrmFilters();
 							setCrmFilters(nextFilters);
 							void refetchCrmHistory();
+							void refetchCrmTemplates();
 						}}
 					>
 						로그 새로고침
@@ -289,154 +395,475 @@ export default function CrmPage() {
 				))}
 			</Row>
 
+			<Card
+				title={
+					<Space direction="vertical" size={2}>
+						<Title level={5} style={{ margin: 0 }}>
+							템플릿 거버넌스
+						</Title>
+						<Text type="secondary" style={{ fontSize: "0.84rem" }}>
+							심사 상태와 발송 가능 여부를 한 화면에서 확인합니다.
+						</Text>
+					</Space>
+				}
+				extra={
+					<Space wrap>
+						<Select
+							aria-label="템플릿 채널 필터"
+							style={{ width: 140 }}
+							value={crmTemplateFilters.channelType}
+							disabled={!isLiveCrmRoleSupported}
+							onChange={(value) =>
+								setCrmTemplateFilters((prev) => ({
+									...prev,
+									channelType: value as typeof prev.channelType,
+								}))
+							}
+							options={[
+								{ label: "전체 채널", value: "" },
+								{ label: "SMS", value: "SMS" },
+								{ label: "알림톡", value: "KAKAO" },
+								{ label: "이메일", value: "EMAIL" },
+							]}
+						/>
+						<Button
+							disabled={!isLiveCrmRoleSupported}
+							type={crmTemplateFilters.activeOnly ? "primary" : "default"}
+							onClick={() =>
+								setCrmTemplateFilters((prev) => ({
+									...prev,
+									activeOnly: !prev.activeOnly,
+								}))
+							}
+						>
+							{crmTemplateFilters.activeOnly ? "활성만 보기" : "전체 보기"}
+						</Button>
+					</Space>
+				}
+			>
+				<Space direction="vertical" size={16} style={{ width: "100%" }}>
+					{crmTemplateError && (
+						<Alert message={crmTemplateError} type="error" showIcon />
+					)}
+					<Row gutter={[16, 16]}>
+						<Col xs={24} lg={15}>
+							<Table<CrmTemplateRow>
+								rowKey="templateId"
+								loading={crmTemplateLoading}
+								dataSource={crmTemplateRows}
+								pagination={false}
+								rowClassName={(record) =>
+									record.templateId === selectedTemplate?.templateId
+										? "is-selected-row"
+										: ""
+								}
+								onRow={(record) => ({
+									onClick: () => setCrmSelectedTemplateId(record.templateId),
+								})}
+								columns={[
+									{
+										title: "템플릿",
+										key: "template",
+										render: (_, record) => (
+											<Space direction="vertical" size={2}>
+												<Space align="center">
+													<Text
+														strong
+														style={{
+															color: record.sendable ? undefined : "#ccc",
+														}}
+													>
+														{record.templateName}
+													</Text>
+													{!record.sendable && (
+														<Tag color="warning">발송 제한</Tag>
+													)}
+												</Space>
+												<Text type="secondary" style={{ fontSize: "0.75rem" }}>
+													{record.templateCode}
+												</Text>
+											</Space>
+										),
+									},
+									{
+										title: "채널 / 유형",
+										key: "channelType",
+										render: (_, record) => (
+											<Space direction="vertical" size={4}>
+												<Tag>{record.channelType}</Tag>
+												<Text type="secondary" style={{ fontSize: "0.75rem" }}>
+													{record.templateType}
+												</Text>
+											</Space>
+										),
+									},
+									{
+										title: "심사 상태",
+										key: "reviewStatus",
+										render: (_, record) => {
+											const reviewConfig = templateReviewStatusMap[
+												record.reviewStatus
+											] ?? {
+												label: record.reviewStatus,
+												color: "default",
+											};
+											const operationalConfig = templateOperationalStatusMap[
+												record.operationalStatus
+											] ?? {
+												label: record.operationalStatus,
+												color: "default",
+											};
+
+											return (
+												<Space direction="vertical" size={4}>
+													<Tag color={reviewConfig.color}>
+														{reviewConfig.label}
+													</Tag>
+													<Tag color={operationalConfig.color}>
+														{operationalConfig.label}
+													</Tag>
+												</Space>
+											);
+										},
+									},
+									{
+										title: "활성",
+										key: "isActive",
+										render: (_, record) => (
+											<Tag color={record.isActive ? "success" : "default"}>
+												{record.isActive ? "활성" : "비활성"}
+											</Tag>
+										),
+									},
+									{
+										title: "수정 시각",
+										dataIndex: "updatedAt",
+										key: "updatedAt",
+										render: (updatedAt) => (
+											<Text type="secondary" style={{ fontSize: "0.8rem" }}>
+												{formatDateTime(updatedAt)}
+											</Text>
+										),
+									},
+								]}
+							/>
+						</Col>
+						<Col xs={24} lg={9}>
+							<Card size="small" title="선택 템플릿 상세">
+								{selectedTemplate ? (
+									<Space
+										direction="vertical"
+										size={12}
+										style={{ width: "100%" }}
+									>
+										<Space wrap>
+											<Tag color="blue">{selectedTemplate.templateCode}</Tag>
+											<Tag
+												color={selectedTemplate.sendable ? "green" : "default"}
+											>
+												{selectedTemplate.sendable ? "발송 가능" : "발송 제한"}
+											</Tag>
+										</Space>
+										<div>
+											<Text type="secondary" style={{ fontSize: "0.75rem" }}>
+												템플릿명
+											</Text>
+											<div>
+												<Text strong>{selectedTemplate.templateName}</Text>
+											</div>
+										</div>
+										<div>
+											<Text type="secondary" style={{ fontSize: "0.75rem" }}>
+												상태
+											</Text>
+											<div>
+												<Text>
+													{templateReviewStatusMap[
+														selectedTemplate.reviewStatus
+													]?.label ?? selectedTemplate.reviewStatus}
+													{" / "}
+													{templateOperationalStatusMap[
+														selectedTemplate.operationalStatus
+													]?.label ?? selectedTemplate.operationalStatus}
+												</Text>
+											</div>
+										</div>
+										<div>
+											<Text type="secondary" style={{ fontSize: "0.75rem" }}>
+												본문
+											</Text>
+											<Paragraph
+												style={{
+													marginTop: 4,
+													marginBottom: 0,
+													whiteSpace: "pre-wrap",
+												}}
+											>
+												{selectedTemplate.templateBody}
+											</Paragraph>
+										</div>
+										<Space direction="vertical" size={4}>
+											<Text type="secondary" style={{ fontSize: "0.75rem" }}>
+												채널: {selectedTemplate.channelType}
+											</Text>
+											<Text type="secondary" style={{ fontSize: "0.75rem" }}>
+												활성: {selectedTemplate.isActive ? "예" : "아니오"}
+											</Text>
+											<Text type="secondary" style={{ fontSize: "0.75rem" }}>
+												수정: {formatDateTime(selectedTemplate.updatedAt)}
+											</Text>
+										</Space>
+									</Space>
+								) : (
+									<Empty
+										description="템플릿을 선택하면 상세 상태를 볼 수 있습니다."
+										image={Empty.PRESENTED_IMAGE_SIMPLE}
+									/>
+								)}
+							</Card>
+						</Col>
+					</Row>
+				</Space>
+			</Card>
+
 			<Row gutter={[24, 24]}>
 				<Col xs={24} lg={8}>
-					<Card
-						title={
-							<Space direction="vertical" size={2}>
-								<Title level={5} style={{ margin: 0 }}>
-									큐 자동화 제어
-								</Title>
-								<Text type="secondary" style={{ fontSize: "0.84rem" }}>
-									만료 안내 기준 및 메시지 큐 실행
-								</Text>
-							</Space>
-						}
-					>
-						<Flex vertical gap={16}>
-							<Form layout="vertical">
-								<Form.Item
-									label={
-										<Text strong style={{ fontSize: "0.84rem" }}>
-											만료 안내 기준 (D-Day)
-										</Text>
-									}
-								>
-									<Flex vertical gap={8}>
-										<InputNumber
-											min={0}
-											max={30}
+					<Flex vertical gap={24}>
+						<Card
+							title={
+								<Space direction="vertical" size={2}>
+									<Title level={5} style={{ margin: 0 }}>
+										큐 자동화 제어
+									</Title>
+									<Text type="secondary" style={{ fontSize: "0.84rem" }}>
+										만료 안내 기준 및 메시지 큐 실행
+									</Text>
+								</Space>
+							}
+						>
+							<Flex vertical gap={16}>
+								<Form layout="vertical">
+									<Form.Item
+										label={
+											<Text strong style={{ fontSize: "0.84rem" }}>
+												만료 안내 기준 (D-Day)
+											</Text>
+										}
+									>
+										<Flex vertical gap={8}>
+											<InputNumber
+												min={0}
+												max={30}
+												style={{ width: "100%" }}
+												value={Number(crmTriggerDaysAhead)}
+												disabled={!isLiveCrmRoleSupported}
+												onChange={(val) =>
+													setCrmTriggerDaysAhead(String(val || 0))
+												}
+												placeholder="일수 입력"
+											/>
+											<Text type="secondary" style={{ fontSize: "0.75rem" }}>
+												입력한 일수만큼 만료가 남은 회원을 추출합니다.
+											</Text>
+										</Flex>
+									</Form.Item>
+									<Form.Item
+										label={
+											<Text strong style={{ fontSize: "0.84rem" }}>
+												예약 발송 시각
+											</Text>
+										}
+									>
+										<DatePicker
+											showTime
 											style={{ width: "100%" }}
-											value={Number(crmTriggerDaysAhead)}
 											disabled={!isLiveCrmRoleSupported}
-											onChange={(val) =>
-												setCrmTriggerDaysAhead(String(val || 0))
+											value={
+												crmTriggerScheduledAt
+													? dayjs(crmTriggerScheduledAt)
+													: null
 											}
-											placeholder="일수 입력"
+											onChange={(date) =>
+												setCrmTriggerScheduledAt(date ? date.toISOString() : "")
+											}
+											placeholder="예약 발송 시각 (선택)"
 										/>
-										<Text type="secondary" style={{ fontSize: "0.75rem" }}>
-											입력한 일수만큼 만료가 남은 회원을 추출합니다.
-										</Text>
-									</Flex>
-								</Form.Item>
-								<Form.Item
-									label={
-										<Text strong style={{ fontSize: "0.84rem" }}>
-											장기 미방문 기준 (D-Day)
-										</Text>
-									}
-								>
+									</Form.Item>
 									<Flex vertical gap={8}>
-										<InputNumber
-											min={0}
-											max={365}
-											style={{ width: "100%" }}
-											value={Number(crmInactiveDays)}
-											disabled={!isLiveCrmRoleSupported}
-											onChange={(val) =>
-												setCrmInactiveDays(String(val || 0))
-											}
-											placeholder="일수 입력"
-										/>
-										<Text type="secondary" style={{ fontSize: "0.75rem" }}>
-											마지막 출입일 기준으로 입력한 일수 이상 미방문 회원을 추출합니다.
-										</Text>
-									</Flex>
-								</Form.Item>
-								<Flex vertical gap={8}>
-									<Button
-										type="primary"
-										block
-										icon={<NotificationOutlined />}
-										onClick={() => void runTrigger()}
-										loading={crmTriggerSubmitting}
-										disabled={crmTriggerSubmitting || !isLiveCrmRoleSupported}
+										<Button
+											type="primary"
+											block
+											icon={<NotificationOutlined />}
+											onClick={() => void runTrigger()}
+											loading={crmTriggerSubmitting}
+											disabled={crmTriggerSubmitting || !isLiveCrmRoleSupported}
 										>
 											안내 대상 적재
 										</Button>
-									<Button
-										block
-										icon={<NotificationOutlined />}
-										onClick={() => void runInactiveTrigger()}
-										loading={crmInactiveSubmitting}
-										disabled={crmInactiveSubmitting || !isLiveCrmRoleSupported}
-									>
-										장기 미방문 적재
-									</Button>
-									<Button
-										block
-										icon={<PlayCircleOutlined />}
-										onClick={() => void runProcess()}
-										loading={crmProcessSubmitting}
-										disabled={crmProcessSubmitting || !isLiveCrmRoleSupported}
-									>
-										메시지 큐 실행
-									</Button>
+										<Button
+											block
+											icon={<PlayCircleOutlined />}
+											onClick={() => void runProcess()}
+											loading={crmProcessSubmitting}
+											disabled={crmProcessSubmitting || !isLiveCrmRoleSupported}
+										>
+											메시지 큐 실행
+										</Button>
 								</Flex>
 							</Form>
 
-							<div style={{ marginTop: 8 }}>
-								<Text
-									type="secondary"
-									style={{
-										fontSize: "0.84rem",
-										display: "block",
-										marginBottom: 12,
-									}}
-								>
-									운영 피드백 및 상태
-								</Text>
-								{!isLiveCrmRoleSupported && (
-									<Alert
-										message="운영 권한 제한"
-										description="현재 관리자 권한이 없어 CRM 발송 작업을 실행할 수 없습니다."
-										type="error"
-										showIcon
-									/>
-								)}
-								{crmPanelMessage && (
-									<Alert
-										message={crmPanelMessage}
-										type="success"
-										showIcon
-										style={{ marginBottom: 8 }}
-									/>
-								)}
-								{crmPanelError && (
-									<Alert
-										message={crmPanelError}
-										type="error"
-										showIcon
-										style={{ marginBottom: 8 }}
-									/>
-								)}
-								{!crmPanelMessage &&
-									!crmPanelError &&
-									isLiveCrmRoleSupported && (
-										<Empty
-											description={
-												<Text type="secondary">
-													실행 대기 중입니다.
-													<br />
-													작업을 선택해 주세요.
-												</Text>
-											}
-											image={Empty.PRESENTED_IMAGE_SIMPLE}
+
+								<div style={{ marginTop: 8 }}>
+									<Text
+										type="secondary"
+										style={{
+											fontSize: "0.84rem",
+											display: "block",
+											marginBottom: 12,
+										}}
+									>
+										운영 피드백 및 상태
+									</Text>
+									{!isLiveCrmRoleSupported && (
+										<Alert
+											message="운영 권한 제한"
+											description="현재 관리자 권한이 없어 CRM 발송 작업을 실행할 수 없습니다."
+											type="error"
+											showIcon
 										/>
 									)}
-							</div>
-						</Flex>
-					</Card>
+									{crmPanelMessage && (
+										<Alert
+											message={crmPanelMessage}
+											type="success"
+											showIcon
+											style={{ marginBottom: 8 }}
+										/>
+									)}
+									{crmPanelError && (
+										<Alert
+											message={crmPanelError}
+											type="error"
+											showIcon
+											style={{ marginBottom: 8 }}
+										/>
+									)}
+									{!crmPanelMessage &&
+										!crmPanelError &&
+										isLiveCrmRoleSupported && (
+											<Empty
+												description={
+													<Text type="secondary">
+														실행 대기 중입니다.
+														<br />
+														작업을 선택해 주세요.
+													</Text>
+												}
+												image={Empty.PRESENTED_IMAGE_SIMPLE}
+											/>
+										)}
+								</div>
+							</Flex>
+						</Card>
+
+						<Card
+							title={
+								<Space direction="vertical" size={2}>
+									<Title level={5} style={{ margin: 0 }}>
+										장기 미방문 캠페인
+									</Title>
+									<Text type="secondary" style={{ fontSize: "0.84rem" }}>
+										선택한 템플릿으로 장기 미방문 회원을 재방문 유도 대상으로
+										적재합니다.
+									</Text>
+								</Space>
+							}
+						>
+							<Flex vertical gap={12}>
+								<Form layout="vertical">
+									<Form.Item
+										label={
+											<Text strong style={{ fontSize: "0.84rem" }}>
+												캠페인 템플릿
+											</Text>
+										}
+									>
+										<Select
+											aria-label="템플릿 선택"
+											style={{ width: "100%" }}
+											value={crmSelectedTemplateId}
+											disabled={!isLiveCrmRoleSupported}
+											loading={crmTemplateLoading}
+											onChange={(val) => setCrmSelectedTemplateId(val)}
+											placeholder="템플릿 선택"
+											options={crmTemplateRows
+												.filter((t) => t.isActive)
+												.map((t) => ({
+													label: `[${t.templateCode}] ${t.templateName}`,
+													value: t.templateId,
+												}))}
+										/>
+									</Form.Item>
+									<Form.Item
+										label={
+											<Text strong style={{ fontSize: "0.84rem" }}>
+												미방문 기준 (일)
+											</Text>
+										}
+									>
+										<InputNumber
+											aria-label="장기 미방문 일수"
+											min={1}
+											max={3650}
+											style={{ width: "100%" }}
+											value={Number(crmInactiveDays)}
+											disabled={!isLiveCrmRoleSupported}
+											onChange={(val) => setCrmInactiveDays(String(val || 0))}
+											placeholder="일수 입력"
+										/>
+									</Form.Item>
+									<Form.Item
+										label={
+											<Text strong style={{ fontSize: "0.84rem" }}>
+												예약 발송 시각
+											</Text>
+										}
+									>
+										<DatePicker
+											showTime
+											aria-label="예약 발송 시각"
+											style={{ width: "100%" }}
+											disabled={!isLiveCrmRoleSupported}
+											value={
+												crmInactiveScheduledAt
+													? dayjs(crmInactiveScheduledAt)
+													: null
+											}
+											onChange={(date) =>
+												setCrmInactiveScheduledAt(
+													date ? date.toISOString() : "",
+												)
+											}
+											placeholder="예약 발송 시각 (선택)"
+										/>
+									</Form.Item>
+									<Button
+										block
+										type="primary"
+										onClick={() => void runLongTermInactive()}
+										loading={crmInactiveSubmitting}
+										disabled={
+											crmInactiveSubmitting ||
+											!isLiveCrmRoleSupported ||
+											!selectedTemplate
+										}
+									>
+										장기 미방문 적재
+									</Button>
+								</Form>
+							</Flex>
+						</Card>
+					</Flex>
 				</Col>
 
 				<Col xs={24} lg={16}>
@@ -494,7 +921,7 @@ export default function CrmPage() {
 									? "로그를 불러오는 중..."
 									: "발송 이력이 없습니다.",
 							}}
-							scroll={{ x: 600 }}
+							scroll={{ x: 720 }}
 						/>
 					</Card>
 				</Col>

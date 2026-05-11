@@ -36,6 +36,7 @@ import {
 } from "./modules/types";
 import { useProductPrototypeState } from "./modules/useProductPrototypeState";
 import { useProductsQuery } from "./modules/useProductsQuery";
+import { useTrainerOptionsQuery } from "../memberships/modules/useTrainerOptionsQuery";
 
 const { Paragraph, Text, Title } = Typography;
 const { TextArea } = Input;
@@ -61,6 +62,30 @@ function productCategoryLabel(category: ProductRecord["productCategory"]) {
 	if (category === "GX") return "그룹수업";
 	if (category === "ETC") return "기타";
 	return "미분류";
+}
+
+function formatTrainerLabel(
+	trainerId: number | null,
+	trainerNameById: Map<number, string>,
+) {
+	if (trainerId == null) {
+		return "미지정";
+	}
+	const trainerName = trainerNameById.get(trainerId);
+	return trainerName ? `${trainerName} (#${trainerId})` : `#${trainerId}`;
+}
+
+function formatPromotionLabel(
+	promotion: ProductRecord["promotion"],
+) {
+	if (!promotion) {
+		return "없음";
+	}
+	const discountValue =
+		promotion.promotionDiscountType === "PERCENT"
+			? `${promotion.promotionDiscountValue}%`
+			: `${new Intl.NumberFormat("ko-KR").format(promotion.promotionDiscountValue)}원`;
+	return `${discountValue} · ${promotion.promotionStartDate} ~ ${promotion.promotionEndDate}`;
 }
 
 const categoryOptions = [
@@ -102,6 +127,10 @@ export default function ProductsPage() {
 
 	const { products, productsLoading, productsQueryError, refetchProducts } =
 		useProductsQuery(productFilters);
+	const { trainerOptions } = useTrainerOptionsQuery();
+	const trainerNameById = new Map(
+		trainerOptions.map((trainer) => [trainer.userId, trainer.userName]),
+	);
 
 	const canReadLiveProducts =
 		isMockMode ||
@@ -163,6 +192,28 @@ export default function ProductsPage() {
 			render: (priceAmount) => (
 				<Text strong>{formatCurrency(priceAmount)}</Text>
 			),
+		},
+		{
+			title: "담당 트레이너",
+			dataIndex: "assignedTrainerId",
+			key: "assignedTrainerId",
+			render: (trainerId, product) =>
+				product.productCategory === "PT" ? (
+					<Tag color="purple">{formatTrainerLabel(trainerId, trainerNameById)}</Tag>
+				) : (
+					<Text type="secondary">해당 없음</Text>
+				),
+		},
+		{
+			title: "프로모션",
+			dataIndex: "promotion",
+			key: "promotion",
+			render: (promotion) =>
+				promotion ? (
+					<Tag color="magenta">{formatPromotionLabel(promotion)}</Tag>
+				) : (
+					<Text type="secondary">없음</Text>
+				),
 		},
 		{
 			title: "상태",
@@ -420,7 +471,7 @@ export default function ProductsPage() {
 							},
 						}}
 						locale={{ emptyText: "등록된 상품이 없습니다." }}
-						scroll={{ x: 800 }}
+						scroll={{ x: 960 }}
 					/>
 				</Flex>
 			</Card>
@@ -497,6 +548,7 @@ export default function ProductsPage() {
 												...prev,
 												productCategory:
 													val as ProductFormState["productCategory"],
+												assignedTrainerId: val === "PT" ? prev.assignedTrainerId : "",
 											}))
 										}
 										placeholder="분류 선택"
@@ -579,6 +631,108 @@ export default function ProductsPage() {
 								</Form.Item>
 							</Col>
 						</Row>
+
+						{productForm.productCategory === "PT" && (
+							<Form.Item
+								label="담당 트레이너"
+								required
+								style={{ marginBottom: 16 }}
+							>
+								<Select
+									placeholder="PT 전용 트레이너를 선택하세요"
+									value={productForm.assignedTrainerId || undefined}
+									options={trainerOptions.map((trainer) => ({
+										label: `${trainer.userName} (#${trainer.userId})`,
+										value: String(trainer.userId),
+									}))}
+									onChange={(val) =>
+										setProductForm((prev) => ({
+											...prev,
+											assignedTrainerId: String(val),
+										}))
+									}
+								/>
+							</Form.Item>
+						)}
+
+						<Card
+							size="small"
+							title={<Text strong>프로모션</Text>}
+							style={{ background: "#fcf5ff", marginBottom: 16 }}
+						>
+							<Flex vertical gap={16}>
+								<Row gutter={16}>
+									<Col span={8}>
+										<Form.Item label="할인 유형" style={{ marginBottom: 0 }}>
+											<Select
+												value={productForm.promotionDiscountType || undefined}
+												placeholder="선택"
+												onChange={(val) =>
+													setProductForm((prev) => ({
+														...prev,
+														promotionDiscountType:
+															val as ProductFormState["promotionDiscountType"],
+													}))
+												}
+												options={[
+													{ label: "정률", value: "PERCENT" },
+													{ label: "정액", value: "AMOUNT" },
+												]}
+											/>
+										</Form.Item>
+									</Col>
+									<Col span={8}>
+										<Form.Item label="할인값" style={{ marginBottom: 0 }}>
+											<Input
+												type="number"
+												suffix={
+													productForm.promotionDiscountType === "PERCENT"
+														? "%"
+														: "원"
+												}
+												value={productForm.promotionDiscountValue}
+												onChange={(e) =>
+													setProductForm((prev) => ({
+														...prev,
+														promotionDiscountValue: e.target.value,
+													}))
+												}
+											/>
+										</Form.Item>
+									</Col>
+									<Col span={8}>
+										<Form.Item label="시작일" style={{ marginBottom: 0 }}>
+											<Input
+												type="date"
+												value={productForm.promotionStartDate}
+												onChange={(e) =>
+													setProductForm((prev) => ({
+														...prev,
+														promotionStartDate: e.target.value,
+													}))
+												}
+											/>
+										</Form.Item>
+									</Col>
+								</Row>
+								<Row gutter={16}>
+									<Col span={8}>
+										<Form.Item label="종료일" style={{ marginBottom: 0 }}>
+											<Input
+												type="date"
+												value={productForm.promotionEndDate}
+												onChange={(e) =>
+													setProductForm((prev) => ({
+														...prev,
+														promotionEndDate: e.target.value,
+													}))
+												}
+											/>
+										</Form.Item>
+									</Col>
+								</Row>
+							</Flex>
+						</Card>
 
 						<Card
 							size="small"

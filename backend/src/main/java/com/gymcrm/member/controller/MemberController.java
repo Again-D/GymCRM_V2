@@ -22,9 +22,11 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -106,6 +108,16 @@ public class MemberController {
     ) {
         Member member = memberService.update(memberId, request);
         return ApiResponse.success(MemberDetailResponse.from(member, buildMemberQrPath(member)), "회원 정보가 수정되었습니다.");
+    }
+
+    @PostMapping(path = "/{memberId}/photo", consumes = "multipart/form-data")
+    @PreAuthorize(AccessPolicies.PROTOTYPE_OR_MANAGER_OR_DESK)
+    public ApiResponse<String> uploadPhoto(
+            @PathVariable Long memberId,
+            @RequestPart("photo") MultipartFile photo
+    ) {
+        String photoUrl = memberService.uploadPhoto(memberId, photo);
+        return ApiResponse.success(photoUrl, "회원 사진이 업로드되었습니다.");
     }
 
     @DeleteMapping("/{memberId}")

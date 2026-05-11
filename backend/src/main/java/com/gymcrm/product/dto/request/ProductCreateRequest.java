@@ -6,6 +6,8 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 
+import com.gymcrm.product.dto.request.ProductPromotionRequest;
+
 public record ProductCreateRequest(
             @NotBlank(message = "productName is required")
             String productName,
@@ -23,6 +25,8 @@ public record ProductCreateRequest(
             Integer maxHoldCount,
             Boolean allowHoldBypass,
             Boolean allowTransfer,
+            Long assignedTrainerId,
+            ProductPromotionRequest promotion,
             @Pattern(regexp = "^(?i)(ACTIVE|INACTIVE)?$", message = "productStatus must be ACTIVE or INACTIVE")
             String productStatus,
             String description

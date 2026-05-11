@@ -1,9 +1,8 @@
 package com.gymcrm.crm.repository;
 
+import com.gymcrm.crm.entity.CrmMessageTemplate;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
-
-import com.gymcrm.crm.entity.CrmMessageTemplate;
 
 import java.util.List;
 import java.util.Optional;
@@ -16,6 +15,18 @@ public class CrmMessageTemplateRepository {
         this.jdbcClient = jdbcClient;
     }
 
+    private String selectColumns() {
+        return """
+                template_id, center_id, template_code, template_name,
+                channel_type, template_type, template_body,
+                CASE WHEN is_active THEN 'APPROVED' ELSE 'REJECTED' END AS review_status,
+                CASE WHEN is_active THEN 'SENDABLE' ELSE 'GOVERNANCE_ONLY' END AS operational_status,
+                is_active AS sendable,
+                is_active,
+                created_at, updated_at
+                """;
+    }
+
     public Optional<CrmMessageTemplate> insert(InsertCommand command) {
         String sql = """
                 INSERT INTO crm_message_templates (
@@ -26,11 +37,8 @@ public class CrmMessageTemplateRepository {
                     :isActive, :actorUserId, :actorUserId
                 )
                 ON CONFLICT (center_id, template_code) WHERE is_deleted = FALSE DO NOTHING
-                RETURNING
-                    template_id, center_id, template_code, template_name,
-                    channel_type, template_type, template_body, is_active,
-                    created_at, updated_at
-                """;
+                RETURNING %s
+                """.formatted(selectColumns());
         return jdbcClient.sql(sql)
                 .param("centerId", command.centerId())
                 .param("templateCode", command.templateCode())
@@ -57,11 +65,8 @@ public class CrmMessageTemplateRepository {
                 WHERE template_id = :templateId
                   AND center_id = :centerId
                   AND is_deleted = FALSE
-                RETURNING
-                    template_id, center_id, template_code, template_name,
-                    channel_type, template_type, template_body, is_active,
-                    created_at, updated_at
-                """;
+                RETURNING %s
+                """.formatted(selectColumns());
         return jdbcClient.sql(sql)
                 .param("templateId", command.templateId())
                 .param("centerId", command.centerId())
@@ -77,15 +82,12 @@ public class CrmMessageTemplateRepository {
 
     public Optional<CrmMessageTemplate> findById(Long centerId, Long templateId) {
         String sql = """
-                SELECT
-                    template_id, center_id, template_code, template_name,
-                    channel_type, template_type, template_body, is_active,
-                    created_at, updated_at
+                SELECT %s
                 FROM crm_message_templates
                 WHERE center_id = :centerId
                   AND template_id = :templateId
                   AND is_deleted = FALSE
-                """;
+                """.formatted(selectColumns());
         return jdbcClient.sql(sql)
                 .param("centerId", centerId)
                 .param("templateId", templateId)
@@ -95,14 +97,11 @@ public class CrmMessageTemplateRepository {
 
     public List<CrmMessageTemplate> findAll(Long centerId, String channelType, Boolean activeOnly, int limit) {
         StringBuilder sql = new StringBuilder("""
-                SELECT
-                    template_id, center_id, template_code, template_name,
-                    channel_type, template_type, template_body, is_active,
-                    created_at, updated_at
+                SELECT %s
                 FROM crm_message_templates
                 WHERE center_id = :centerId
                   AND is_deleted = FALSE
-                """);
+                """.formatted(selectColumns()));
         if (channelType != null) {
             sql.append(" AND channel_type = :channelType");
         }

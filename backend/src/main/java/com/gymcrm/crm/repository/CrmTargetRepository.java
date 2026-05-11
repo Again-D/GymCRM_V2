@@ -136,6 +136,39 @@ public class CrmTargetRepository {
                 .list();
     }
 
+    public List<LongTermInactiveTarget> findLongTermInactiveTargets(Long centerId, OffsetDateTime cutoffAt) {
+        String sql = """
+                WITH last_access AS (
+                    SELECT
+                        ae.member_id,
+                        MAX(ae.processed_at) AS last_access_at
+                    FROM access_events ae
+                    WHERE ae.center_id = :centerId
+                      AND ae.event_type = 'ENTRY_GRANTED'
+                    GROUP BY ae.member_id
+                )
+                SELECT
+                    m.member_id,
+                    m.member_name,
+                    m.phone,
+                    la.last_access_at
+                FROM members m
+                LEFT JOIN last_access la ON la.member_id = m.member_id
+                WHERE m.center_id = :centerId
+                  AND m.is_deleted = FALSE
+                  AND m.member_status = 'ACTIVE'
+                  AND m.consent_marketing = TRUE
+                  AND (la.last_access_at IS NULL OR la.last_access_at < :cutoffAt)
+                ORDER BY COALESCE(la.last_access_at, m.join_date::timestamp) ASC, m.member_id ASC
+                """;
+
+        return jdbcClient.sql(sql)
+                .param("centerId", centerId)
+                .param("cutoffAt", cutoffAt)
+                .query(LongTermInactiveTarget.class)
+                .list();
+    }
+
     public record ExpiringMembershipTarget(
             Long membershipId,
             Long memberId,
@@ -168,6 +201,14 @@ public class CrmTargetRepository {
             String memberName,
             String phone,
             LocalDate joinDate,
+            OffsetDateTime lastAccessAt
+    ) {
+    }
+
+    public record LongTermInactiveTarget(
+            Long memberId,
+            String memberName,
+            String phone,
             OffsetDateTime lastAccessAt
     ) {
     }

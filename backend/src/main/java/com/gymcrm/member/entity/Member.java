@@ -23,6 +23,7 @@ public record Member(
         boolean consentSms,
         boolean consentMarketing,
         String memo,
+        String photoUrl,
         String emergencyContactName,
         String emergencyContactPhone,
         String emergencyContactRelationship,
@@ -49,12 +50,13 @@ public record Member(
             boolean consentSms,
             boolean consentMarketing,
             String memo,
+            String photoUrl,
             OffsetDateTime withdrawnAt,
             OffsetDateTime createdAt,
             Long createdBy,
             OffsetDateTime updatedAt,
             Long updatedBy
     ) {
-        this(memberId, centerId, memberCode, memberName, phone, phoneEncrypted, email, gender, birthDate, birthDateEncrypted, piiKeyVersion, memberStatus, joinDate, consentSms, consentMarketing, memo, null, null, null, withdrawnAt, createdAt, createdBy, updatedAt, updatedBy);
+        this(memberId, centerId, memberCode, memberName, phone, phoneEncrypted, email, gender, birthDate, birthDateEncrypted, piiKeyVersion, memberStatus, joinDate, consentSms, consentMarketing, memo, photoUrl, null, null, null, withdrawnAt, createdAt, createdBy, updatedAt, updatedBy);
     }
 }

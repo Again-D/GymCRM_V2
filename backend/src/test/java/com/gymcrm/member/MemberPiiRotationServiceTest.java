@@ -43,6 +43,7 @@ class MemberPiiRotationServiceTest {
                 true,
                 false,
                 "메모",
+                null,
                 "보호자",
                 "010-9999-8888",
                 "부모",

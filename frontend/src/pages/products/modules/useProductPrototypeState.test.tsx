@@ -48,7 +48,11 @@ describe("useProductPrototypeState", () => {
         productType: "COUNT",
         priceAmount: "240000",
         totalCount: "8",
-        validityDays: ""
+        validityDays: "",
+        promotionDiscountType: "AMOUNT",
+        promotionDiscountValue: "20000",
+        promotionStartDate: "2026-05-01",
+        promotionEndDate: "2026-05-31"
       }));
     });
 
@@ -57,7 +61,9 @@ describe("useProductPrototypeState", () => {
     });
 
     const products = getMockResponse("/api/v1/products")?.data as ProductRecord[];
-    expect(products.some((product) => product.productName === "필라테스 8회권")).toBe(true);
+    const createdProduct = products.find((product) => product.productName === "필라테스 8회권");
+    expect(createdProduct).toBeTruthy();
+    expect(createdProduct?.promotion?.promotionDiscountType).toBe("AMOUNT");
     expect(result.current.productPanelMessage).toContain("생성");
     expect(invalidateSpy).toHaveBeenCalled();
   });
@@ -104,6 +110,8 @@ describe("useProductPrototypeState", () => {
           maxHoldDays: 30,
           maxHoldCount: 1,
           allowTransfer: false,
+          assignedTrainerId: null,
+          promotion: null,
           productStatus: "ACTIVE",
           description: null
         },
@@ -128,7 +136,12 @@ describe("useProductPrototypeState", () => {
         productType: "COUNT",
         priceAmount: "330000",
         totalCount: "10",
-        validityDays: ""
+        validityDays: "",
+        assignedTrainerId: "41",
+        promotionDiscountType: "PERCENT",
+        promotionDiscountValue: "10",
+        promotionStartDate: "2026-05-01",
+        promotionEndDate: "2026-05-31"
       }));
     });
 

@@ -121,11 +121,16 @@ export function useLockerPrototypeState(selectedMemberId?: number | null) {
         if (!lockerCode) {
           throw new Error(`${index + 1}행: 라커 코드를 생성할 수 없습니다.`);
         }
+        const monthlyFee = row.monthlyFee ?? 0;
+        if (!Number.isFinite(monthlyFee) || monthlyFee < 0) {
+          throw new Error(`${index + 1}행: 월 이용료를 입력해야 합니다.`);
+        }
 
         return {
           lockerZone,
           lockerNumber: row.lockerNumber,
           lockerGrade: row.lockerGrade.trim() || null,
+          monthlyFee,
           lockerStatus: row.lockerStatus,
           memo: row.memo.trim() || null,
         };
@@ -139,8 +144,8 @@ export function useLockerPrototypeState(selectedMemberId?: number | null) {
         return false;
       }
 
-      const result = useMockMutations
-        ? await import("../../../api/mockData").then(
+        const result = useMockMutations
+          ? await import("../../../api/mockData").then(
             ({ createMockLockerSlots }) =>
               createMockLockerSlots(normalizedItems),
           )

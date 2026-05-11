@@ -184,7 +184,7 @@ class MembershipTransferServiceTest {
                 new BigDecimal("100000"),
                 validityDays,
                 10,
-                true, 30, 1, false, true, "ACTIVE",
+                true, 30, 1, false, true, null, null, "ACTIVE",
                 "Test product",
                 now, 1L, now, 1L
         );

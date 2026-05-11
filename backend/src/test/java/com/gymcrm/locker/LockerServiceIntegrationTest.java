@@ -40,6 +40,7 @@ class LockerServiceIntegrationTest {
                 "GENERAL",
                 1,
                 "STANDARD",
+                new BigDecimal("30000"),
                 "AVAILABLE",
                 null
         ));
@@ -72,6 +73,7 @@ class LockerServiceIntegrationTest {
                 .findFirst()
                 .orElseThrow();
         assertEquals("AVAILABLE", refreshed.lockerStatus());
+        assertEquals(new BigDecimal("30000"), refreshed.monthlyFee());
     }
 
     @Test
@@ -81,6 +83,7 @@ class LockerServiceIntegrationTest {
                 "GENERAL",
                 2,
                 "STANDARD",
+                new BigDecimal("30000"),
                 "AVAILABLE",
                 null
         ));
@@ -113,6 +116,7 @@ class LockerServiceIntegrationTest {
                 "GENERAL",
                 3,
                 "STANDARD",
+                new BigDecimal("30000"),
                 "AVAILABLE",
                 null
         ));
@@ -120,6 +124,7 @@ class LockerServiceIntegrationTest {
                 "GENERAL",
                 4,
                 "STANDARD",
+                new BigDecimal("30000"),
                 "AVAILABLE",
                 null
         ));
@@ -151,15 +156,17 @@ class LockerServiceIntegrationTest {
         String zoneTwo = "qb-" + UUID.randomUUID().toString().substring(0, 8);
 
         var slots = lockerService.createSlots(List.of(
-                new LockerService.CreateSlotRequest(zoneOne, 11, "STANDARD", "AVAILABLE", "first"),
-                new LockerService.CreateSlotRequest(zoneTwo, 2, "PREMIUM", null, null)
+                new LockerService.CreateSlotRequest(zoneOne, 11, "STANDARD", new BigDecimal("30000"), "AVAILABLE", "first"),
+                new LockerService.CreateSlotRequest(zoneTwo, 2, "PREMIUM", new BigDecimal("50000"), null, null)
         ));
 
         assertEquals(2, slots.size());
         assertEquals(zoneOne.toUpperCase() + "-11", slots.get(0).lockerCode());
         assertEquals(zoneOne.toUpperCase(), slots.get(0).lockerZone());
+        assertEquals(new BigDecimal("30000"), slots.get(0).monthlyFee());
         assertEquals(zoneTwo.toUpperCase() + "-02", slots.get(1).lockerCode());
         assertEquals("AVAILABLE", slots.get(1).lockerStatus());
+        assertEquals(new BigDecimal("50000"), slots.get(1).monthlyFee());
     }
 
     @Test
@@ -168,8 +175,8 @@ class LockerServiceIntegrationTest {
         int beforeCount = lockerService.listSlots(null, null).size();
 
         assertThrows(ApiException.class, () -> lockerService.createSlots(List.of(
-                new LockerService.CreateSlotRequest("general", 10, "STANDARD", "AVAILABLE", null),
-                new LockerService.CreateSlotRequest("", 11, "STANDARD", "AVAILABLE", null)
+                new LockerService.CreateSlotRequest("general", 10, "STANDARD", new BigDecimal("30000"), "AVAILABLE", null),
+                new LockerService.CreateSlotRequest("", 11, "STANDARD", new BigDecimal("30000"), "AVAILABLE", null)
         )));
 
         assertEquals(beforeCount, lockerService.listSlots(null, null).size());

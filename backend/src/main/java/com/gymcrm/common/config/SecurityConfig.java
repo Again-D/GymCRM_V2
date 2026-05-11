@@ -63,6 +63,7 @@ public class SecurityConfig {
                         "/swagger-ui.html"
                 ).permitAll()
                 .requestMatchers("/actuator/prometheus").hasAnyRole("SUPER_ADMIN", "MANAGER")
+                .requestMatchers("/uploads/**").authenticated()
                 .requestMatchers("/api/v1/**").authenticated()
                 .anyRequest().permitAll()
         );

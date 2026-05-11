@@ -140,4 +140,31 @@ describe("useCrmPrototypeState", () => {
     );
     expect(result.current.crmPanelMessage).toBe("CRM 장기 미방문 메시지 이벤트가 큐에 적재되었습니다.");
   });
+
+  it("resets template governance state with the workspace", async () => {
+    const queryClient = createTestQueryClient();
+    const { result } = renderHook(() => useCrmPrototypeState(), {
+      wrapper: ({ children }) => <TestWrapper client={queryClient}>{children}</TestWrapper>,
+    });
+
+    act(() => {
+      result.current.setCrmTemplateFilters({
+        channelType: "KAKAO",
+        activeOnly: true,
+        limit: "20",
+      });
+      result.current.setCrmSelectedTemplateId(998);
+    });
+
+    act(() => {
+      result.current.resetCrmWorkspace();
+    });
+
+    expect(result.current.crmTemplateFilters).toEqual({
+      channelType: "",
+      activeOnly: false,
+      limit: "50",
+    });
+    expect(result.current.crmSelectedTemplateId).toBeNull();
+  });
 });

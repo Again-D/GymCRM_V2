@@ -9,6 +9,7 @@ public record CrmMessageEvent(
         Long membershipId,
         String eventType,
         String channelType,
+        String deliveryMode,
         String dedupeKey,
         String payloadJson,
         String sendStatus,

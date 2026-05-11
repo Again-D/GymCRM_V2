@@ -13,6 +13,11 @@ describe("useSettlementPrototypeState", () => {
         paymentMethod: "CARD",
         productKeyword: "PT"
       }));
+      result.current.setSettlementReceivablesFilters((prev) => ({
+        ...prev,
+        baseDate: "2026-03-15",
+        limit: 25
+      }));
       result.current.setSettlementPanelMessage("ok");
       result.current.setSettlementPanelError("bad");
     });
@@ -23,6 +28,8 @@ describe("useSettlementPrototypeState", () => {
 
     expect(result.current.settlementFilters.paymentMethod).toBe("");
     expect(result.current.settlementFilters.productKeyword).toBe("");
+    expect(result.current.settlementReceivablesFilters.baseDate).not.toBe("2026-03-15");
+    expect(result.current.settlementReceivablesFilters.limit).toBe(10);
     expect(result.current.settlementPanelMessage).toBeNull();
     expect(result.current.settlementPanelError).toBeNull();
   });

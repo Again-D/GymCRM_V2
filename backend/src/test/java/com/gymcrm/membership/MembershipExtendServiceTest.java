@@ -132,7 +132,7 @@ class MembershipExtendServiceTest {
                 new BigDecimal("100000"),
                 validityDays,
                 null,
-                true, 30, 1, false, true, "ACTIVE",
+                true, 30, 1, false, true, null, null, "ACTIVE",
                 "기간제",
                 now, 1L, now, 1L
         );
@@ -145,7 +145,7 @@ class MembershipExtendServiceTest {
                 new BigDecimal("500000"),
                 null,
                 10,
-                true, 30, 1, false, true, "ACTIVE",
+                true, 30, 1, false, true, 41L, null, "ACTIVE",
                 "횟수제",
                 now, 1L, now, 1L
         );

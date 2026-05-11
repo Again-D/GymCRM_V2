@@ -162,6 +162,14 @@ export default function LockersPage() {
 			render: (lockerGrade) => lockerGrade ?? "-",
 		},
 		{
+			title: "월 이용료",
+			dataIndex: "monthlyFee",
+			key: "monthlyFee",
+			render: (monthlyFee) => (
+				<Text strong>{new Intl.NumberFormat("ko-KR").format(monthlyFee)}원</Text>
+			),
+		},
+		{
 			title: "상태",
 			dataIndex: "lockerStatus",
 			key: "lockerStatus",
@@ -331,6 +339,29 @@ export default function LockersPage() {
 						updateLockerCreateRow(index, (prev) => ({
 							...prev,
 							memo: event.target.value,
+						}))
+					}
+				/>
+			),
+		},
+		{
+			title: "요금",
+			key: "monthlyFee",
+			width: 140,
+			render: (_, row, index) => (
+				<InputNumber
+					min={0}
+					precision={0}
+					style={{ width: "100%" }}
+					value={row.monthlyFee ?? undefined}
+					placeholder="0"
+					onChange={(value) =>
+						updateLockerCreateRow(index, (prev) => ({
+							...prev,
+							monthlyFee:
+								typeof value === "number" && Number.isFinite(value)
+									? value
+									: null,
 						}))
 					}
 				/>

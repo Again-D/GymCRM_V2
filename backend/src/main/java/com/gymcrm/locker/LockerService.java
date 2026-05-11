@@ -63,12 +63,13 @@ public class LockerService {
             return normalizedRequests.stream()
                     .map(request -> lockerSlotRepository.insert(new LockerSlotRepository.InsertCommand(
                             centerId,
-                            request.lockerCode(),
-                            request.lockerZone(),
-                            request.lockerGrade(),
-                            request.lockerStatus(),
-                            request.memo(),
-                            actorUserId
+                    request.lockerCode(),
+                    request.lockerZone(),
+                    request.lockerGrade(),
+                    request.monthlyFee(),
+                    request.lockerStatus(),
+                    request.memo(),
+                    actorUserId
                     )))
                     .toList();
         } catch (DataAccessException ex) {
@@ -170,6 +171,7 @@ public class LockerService {
                 lockerCode,
                 lockerZone,
                 normalizeNullable(request.lockerGrade()),
+                normalizeMonthlyFee(request.monthlyFee()),
                 normalizeSlotStatus(request.lockerStatus()),
                 request.memo()
         );
@@ -223,6 +225,16 @@ public class LockerService {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
+    private BigDecimal normalizeMonthlyFee(BigDecimal monthlyFee) {
+        if (monthlyFee == null) {
+            return BigDecimal.ZERO;
+        }
+        if (monthlyFee.compareTo(BigDecimal.ZERO) < 0) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "monthlyFee must be >= 0");
+        }
+        return monthlyFee;
+    }
+
     private ApiException mapSlotWriteError(DataAccessException ex) {
         String message = ex.getMostSpecificCause() != null ? ex.getMostSpecificCause().getMessage() : ex.getMessage();
         if (message != null && message.contains("uk_locker_slots_center_code_active")) {
@@ -246,6 +258,7 @@ public class LockerService {
             String lockerZone,
             Integer lockerNumber,
             String lockerGrade,
+            BigDecimal monthlyFee,
             String lockerStatus,
             String memo
     ) {
@@ -255,6 +268,7 @@ public class LockerService {
             String lockerCode,
             String lockerZone,
             String lockerGrade,
+            BigDecimal monthlyFee,
             String lockerStatus,
             String memo
     ) {

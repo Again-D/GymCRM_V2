@@ -60,6 +60,7 @@ class LockerApiIntegrationTest {
                                       "lockerZone": "%s",
                                       "lockerNumber": 11,
                                       "lockerGrade": "STANDARD",
+                                      "monthlyFee": 30000,
                                       "lockerStatus": "AVAILABLE",
                                       "memo": "root path create"
                                     },
@@ -67,6 +68,7 @@ class LockerApiIntegrationTest {
                                       "lockerZone": "%s",
                                       "lockerNumber": 2,
                                       "lockerGrade": "PREMIUM",
+                                      "monthlyFee": 50000,
                                       "lockerStatus": "AVAILABLE",
                                       "memo": "second slot"
                                     }
@@ -76,15 +78,18 @@ class LockerApiIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].lockerCode").value(lockerZoneOne.toUpperCase() + "-11"))
                 .andExpect(jsonPath("$.data[0].lockerZone").value(lockerZoneOne.toUpperCase()))
+                .andExpect(jsonPath("$.data[0].monthlyFee").value(30000))
                 .andExpect(jsonPath("$.data[1].lockerCode").value(lockerZoneTwo.toUpperCase() + "-02"))
-                .andExpect(jsonPath("$.data[1].lockerZone").value(lockerZoneTwo.toUpperCase()));
+                .andExpect(jsonPath("$.data[1].lockerZone").value(lockerZoneTwo.toUpperCase()))
+                .andExpect(jsonPath("$.data[1].monthlyFee").value(50000));
 
         mockMvc.perform(get("/api/v1/lockers")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
                         .param("lockerZone", lockerZoneOne))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].lockerCode").value(lockerZoneOne.toUpperCase() + "-11"))
-                .andExpect(jsonPath("$.data[0].lockerZone").value(lockerZoneOne.toUpperCase()));
+                .andExpect(jsonPath("$.data[0].lockerZone").value(lockerZoneOne.toUpperCase()))
+                .andExpect(jsonPath("$.data[0].monthlyFee").value(30000));
     }
 
     @Test
@@ -115,6 +120,7 @@ class LockerApiIntegrationTest {
                                   "lockerZone": "qa",
                                   "lockerNumber": 1,
                                   "lockerGrade": "STANDARD",
+                                  "monthlyFee": 30000,
                                   "lockerStatus": "AVAILABLE",
                                   "memo": "manager should be denied"
                                 }
