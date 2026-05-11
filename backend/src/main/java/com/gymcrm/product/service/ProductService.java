@@ -127,11 +127,11 @@ public class ProductService {
                 request.allowTransfer() == null ? current.allowTransfer() : request.allowTransfer(),
                 resolveAssignedTrainerId(current, request),
                 request.promotion(),
-                current.promotion(),
+                Boolean.TRUE.equals(request.clearPromotion()) ? null : current.promotion(),
                 request.productStatus() == null ? current.productStatus() : request.productStatus(),
                 request.description() == null ? current.description() : request.description()
         );
-        if (request.assignedTrainerId() != null) {
+        if (input.assignedTrainerId() != null) {
             requireActiveTrainer(input.assignedTrainerId());
         }
 
@@ -405,6 +405,7 @@ public class ProductService {
             Boolean allowTransfer,
             Long assignedTrainerId,
             ProductPromotionRequest promotion,
+            Boolean clearPromotion,
             String productStatus,
             String description
     ) {}

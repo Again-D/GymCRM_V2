@@ -39,6 +39,7 @@ public class SalesReceivablesService {
 
         BigDecimal totalOutstandingAmount = rows.stream()
                 .map(SalesReceivablesRepository.SalesReceivableRow::outstandingAmount)
+                .map(a -> a == null ? BigDecimal.ZERO : a)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         long reminderEligibleCount = rows.stream().filter(SalesReceivablesRepository.SalesReceivableRow::reminderEligible).count();
 

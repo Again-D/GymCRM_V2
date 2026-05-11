@@ -97,6 +97,7 @@ public class ProductController {
                 request.allowTransfer(),
                 request.assignedTrainerId(),
                 request.promotion(),
+                request.clearPromotion(),
                 request.productStatus(),
                 request.description()
         ));

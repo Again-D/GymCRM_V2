@@ -430,7 +430,12 @@ public class CrmMessageService {
     }
 
     private SendAttempt sendWithFallback(CrmMessageEvent event) {
-        CrmMessageSender.SendResult primaryResult = messageSender.send(event);
+        CrmMessageSender.SendResult primaryResult;
+        try {
+            primaryResult = messageSender.send(event);
+        } catch (Exception ex) {
+            primaryResult = new SendResult(false, null, "primary sender threw: " + ex.getMessage());
+        }
         if (primaryResult.success() || !shouldTrySmsFallback(event)) {
             return new SendAttempt(primaryResult, "PRIMARY");
         }
@@ -456,7 +461,12 @@ public class CrmMessageService {
                 event.createdAt(),
                 event.updatedAt()
         );
-        CrmMessageSender.SendResult fallbackResult = messageSender.send(smsFallbackEvent);
+        CrmMessageSender.SendResult fallbackResult;
+        try {
+            fallbackResult = messageSender.send(smsFallbackEvent);
+        } catch (Exception ex) {
+            fallbackResult = new SendResult(false, null, "sms fallback sender threw: " + ex.getMessage());
+        }
         if (fallbackResult.success()) {
             return new SendAttempt(fallbackResult, "SMS_FALLBACK");
         }

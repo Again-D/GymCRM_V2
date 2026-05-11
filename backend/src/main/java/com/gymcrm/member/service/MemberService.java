@@ -261,7 +261,15 @@ public class MemberService {
             throw new ApiException(ErrorCode.INTERNAL_ERROR, "회원 사진 저장에 실패했습니다.");
         }
 
-        memberRepository.updatePhotoUrl(memberId, relativeUrl, currentUserProvider.currentUserId());
+        try {
+            memberRepository.updatePhotoUrl(memberId, relativeUrl, currentUserProvider.currentUserId());
+        } catch (Exception ex) {
+            try {
+                Files.deleteIfExists(target);
+            } catch (IOException ignored) {
+            }
+            throw ex;
+        }
         return relativeUrl;
     }
 

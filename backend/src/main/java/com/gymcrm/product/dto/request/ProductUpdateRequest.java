@@ -24,6 +24,7 @@ public record ProductUpdateRequest(
             Boolean allowTransfer,
             Long assignedTrainerId,
             ProductPromotionRequest promotion,
+            Boolean clearPromotion,
             @Pattern(regexp = "^(?i)(ACTIVE|INACTIVE)?$", message = "productStatus must be ACTIVE or INACTIVE")
             String productStatus,
             String description
