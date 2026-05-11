@@ -49,6 +49,7 @@ services:
       APP_SECURITY_MODE: ${APP_SECURITY_MODE:-jwt}
       APP_PROTOTYPE_NO_AUTH_ENABLED: ${APP_PROTOTYPE_NO_AUTH_ENABLED:-false}
       APP_PROTOTYPE_ALLOWED_ORIGINS: ${APP_PROTOTYPE_ALLOWED_ORIGINS:-https://localhost,https://127.0.0.1}
+      SPRING_FLYWAY_VALIDATE_ON_MIGRATE: "false"
     depends_on:
       postgres:
         condition: service_healthy
