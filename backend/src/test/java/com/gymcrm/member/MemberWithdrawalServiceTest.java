@@ -189,6 +189,7 @@ class MemberWithdrawalServiceTest {
                 false,
                 null,
                 null,
+                null,
                 now,
                 1L,
                 now,

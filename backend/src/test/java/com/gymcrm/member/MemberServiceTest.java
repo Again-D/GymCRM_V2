@@ -49,7 +49,8 @@ class MemberServiceTest {
             currentUserProvider,
             piiEncryptionService,
             memberPiiRotationService,
-            memberWithdrawalService
+            memberWithdrawalService,
+            "uploads"
     );
 
     @Test
@@ -268,6 +269,7 @@ class MemberServiceTest {
                 activeMember.consentSms(),
                 activeMember.consentMarketing(),
                 activeMember.memo(),
+                activeMember.photoUrl(),
                 activeMember.withdrawnAt(),
                 activeMember.createdAt(),
                 activeMember.createdBy(),
@@ -301,6 +303,7 @@ class MemberServiceTest {
                 LocalDate.of(2026, 2, 23),
                 false,
                 false,
+                null,
                 null,
                 null,
                 now,
