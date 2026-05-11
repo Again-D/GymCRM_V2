@@ -127,6 +127,30 @@ export default function AccessPage() {
 
 	const accessAlertsRefreshLoading =
 		accessPresenceLoading || accessEventsLoading || accessAlertsLoading;
+	const accessAlertStatus = useMemo(() => {
+		if (!accessAlerts) {
+			return null;
+		}
+
+		if (accessAlerts.requiresImmediateAttention) {
+			return {
+				color: "error",
+				label: "주의 필요",
+			} as const;
+		}
+
+		if (accessAlerts.totalDeniedCount > 0) {
+			return {
+				color: "warning",
+				label: "관찰 필요",
+			} as const;
+		}
+
+		return {
+			color: "success",
+			label: "이상 없음",
+		} as const;
+	}, [accessAlerts]);
 
 	const kpiData = useMemo(() => KPI_CONFIG.map((kpi) => {
 		switch (kpi.label) {
@@ -310,14 +334,8 @@ export default function AccessPage() {
 							거부 사유, 반복 거부 회원, 최근 거부 이벤트를 한곳에서 확인합니다.
 						</Paragraph>
 					</Space>
-					{accessAlerts ? (
-						<Tag color={accessAlerts.requiresImmediateAttention ? "error" : accessAlerts.totalDeniedCount > 0 ? "warning" : "success"}>
-							{accessAlerts.requiresImmediateAttention
-								? "주의 필요"
-								: accessAlerts.totalDeniedCount > 0
-									? "관찰 필요"
-									: "안정"}
-						</Tag>
+					{accessAlertStatus ? (
+						<Tag color={accessAlertStatus.color}>{accessAlertStatus.label}</Tag>
 					) : null}
 				</Flex>
 
@@ -336,6 +354,15 @@ export default function AccessPage() {
 					<Skeleton active paragraph={{ rows: 3 }} />
 				) : accessAlerts ? (
 					<Space direction="vertical" size={20} style={{ width: "100%" }}>
+						{accessAlerts.totalDeniedCount === 0 ? (
+							<Alert
+								type="success"
+								showIcon
+								message="현재 즉시 조치가 필요한 이상 출입이 없습니다"
+								description="조회된 시간대에는 거부된 출입이 없어 운영자가 별도 대응할 항목이 없습니다."
+							/>
+						) : null}
+
 						<Row gutter={[16, 16]}>
 							<Col xs={24} sm={8}>
 								<Statistic

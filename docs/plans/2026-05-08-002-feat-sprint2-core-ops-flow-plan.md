@@ -1,7 +1,7 @@
 ---
 title: feat: Sprint 2 Core Ops Flow Alignment
 type: feat
-status: active
+status: completed
 date: 2026-05-08
 origin: docs/notes/2026-05-08-requirements-gap-tracker.md
 ---
@@ -15,7 +15,7 @@ Sprint 2 closes the day-to-day operating loop that sits on top of the security a
 Execution companion:
 - `docs/plans/2026-05-08-005-feat-sprint2-core-ops-flow-execution-plan.md`
 
-The remaining work is centered on three user flows:
+The completed work centered on three user flows:
 - member registration completeness
 - member-facing QR display and QR-related access handling
 - reservation policy alignment for PT/GX, including waitlist, cancellation, deduction timing, and reminders
@@ -28,7 +28,7 @@ The plan keeps the work inside the existing admin portal and Spring Boot / React
 
 The current implementation already has strong skeletons for member management, QR issuance/verification, access monitoring, and reservation operations.
 
-What is still missing is the end-to-end behavior that the requirements document expects:
+What was missing was the end-to-end behavior that the requirements document expected:
 - member registration still lacks the required emergency-contact capture in the core user flow
 - the QR feature exposes a member-facing mobile display path, but the registration response and refresh lifecycle still need to stay aligned with the requirements document
 - access monitoring exposes presence/events, but abnormal access needs to be surfaced as an operator-readable workflow, not just a backend count
@@ -234,7 +234,7 @@ flowchart LR
 - A member can open the QR view on a mobile-sized screen, see a valid QR, and refresh it before expiry.
 - Expired tokens are never presented as valid after the refresh cycle.
 
-- [ ] U3. **Access Monitoring and Alerts**
+- [x] U3. **Access Monitoring and Alerts**
 
 **Goal:** Surface the existing access presence and denial signals as a readable operator workflow so abnormal access is actionable, not just logged.
 
@@ -270,7 +270,7 @@ flowchart LR
 - Operators can see at a glance when abnormal access needs attention and which members are repeatedly denied.
 - The access screen still works when alert data is empty or temporarily unavailable.
 
-- [ ] U4. **Reservation Policy Engine**
+- [x] U4. **Reservation Policy Engine**
 
 **Goal:** Close the reservation policy gaps for PT/GX by making waitlist promotion, cancellation cutoff, deduction timing, and reminder dispatch explicit server-side behavior.
 
@@ -319,7 +319,7 @@ flowchart LR
 - PT deduction timing matches the selected policy for the center.
 - GX waitlist promotion, cancellation handling, and reminder dispatch behave consistently across API, service, and UI expectations.
 
-- [ ] U5. **Reservation Workspace UX Alignment**
+- [x] U5. **Reservation Workspace UX Alignment**
 
 **Goal:** Make the reservation workspace reflect the new policy behavior so operators can see deduction timing, waitlist state, cancellation cutoff, and reminder outcomes in the UI.
 

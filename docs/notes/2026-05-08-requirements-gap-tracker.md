@@ -1,7 +1,7 @@
 ---
 title: GymCRM_V2 Requirements Gap Tracker
 type: note
-status: draft
+status: completed
 date: 2026-05-08
 source: docs/01_요구사항_분석서.md
 ---
@@ -25,10 +25,10 @@ source: docs/01_요구사항_분석서.md
 
 | ID | 구분 | 현재 상태 | 남은 갭 | 추적 근거 |
 |---|---|---|---|---|
-| FR-MBR-001 | 회원 | 부분 구현 | 회원 등록 시 사진, 비상연락처 등 요구 입력 항목을 저장/조회 경로까지 일치시켜야 한다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/member/dto/request/MemberCreateRequest.java` |
+| FR-MBR-001 | 회원 | 완료 | 회원 등록 입력 항목과 비상연락처 저장/조회 경로를 기존 등록 플로우에 맞게 반영했다. 사진 업로드는 Sprint 3로 이관한다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/member/dto/request/MemberCreateRequest.java` |
 | FR-MBR-003 | 회원 | 완료 | `POST /api/v1/members/{memberId}/withdraw`가 잔여 회원권 조회, `HOLDING` 재개 후 환불, 최종 `WITHDRAWN` 전환, `withdrawnAt` 기록, 성공 감사 로그까지 포함하는 원자적 워크플로우로 구현됐다. 응답은 처리 요약(`memberId`, `withdrawn`, `refundedMembershipCount`, `resumedHoldingCount`, `refundAmount`)을 반환한다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/member/service/MemberWithdrawalService.java`, `backend/src/main/java/com/gymcrm/member/service/MemberService.java`, `backend/src/main/java/com/gymcrm/member/controller/MemberController.java` |
-| FR-RSV-004/005/006/009 | 예약 | 부분 구현 | GX 대기열, 자동 전환, 취소 정책, PT 차감 시점, 예약 확정/리마인드 큐 등록은 backend 구현으로 닫혔고, 예약 workspace UI 노출도 반영되었다. 남은 갭은 운영 화면 정리다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/reservation/service/ReservationService.java`, `backend/src/main/java/com/gymcrm/reservation/service/ReservationWaitlistService.java`, `backend/src/main/java/com/gymcrm/reservation/service/ReservationLifecyclePolicyService.java`, `frontend/src/pages/reservations/ReservationsPage.tsx` |
-| FR-ACC-001 | 출입 | 부분 구현 | 회원이 모바일 웹에서 자기 QR을 직접 확인하고 Dynamic QR로 주기 갱신되는 흐름을 완성해야 한다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/access/QrCodeService.java`, `frontend/src/app/routes.ts` |
+| FR-RSV-004/005/006/009 | 예약 | 완료 | GX 대기열, 자동 전환, 취소 정책, PT 차감 시점, 예약 확정/리마인드 큐 등록, 그리고 예약 workspace UI 노출을 Sprint 2에서 반영했다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/reservation/service/ReservationService.java`, `backend/src/main/java/com/gymcrm/reservation/service/ReservationWaitlistService.java`, `backend/src/main/java/com/gymcrm/reservation/service/ReservationLifecyclePolicyService.java`, `frontend/src/pages/reservations/ReservationsPage.tsx` |
+| FR-ACC-001 | 출입 | 완료 | 회원이 모바일 웹에서 자기 QR을 직접 확인하고 Dynamic QR로 주기 갱신되는 흐름을 Sprint 2에서 반영했다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/access/QrCodeService.java`, `frontend/src/app/routes.ts` |
 | FR-LKR-001 | 라커 | 미구현 | 라커 시각적 맵/UI가 없다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/locker/LockerService.java` |
 | FR-LKR-004 | 라커 | 미구현 | 만료 자동 안내 및 자동 반납 처리가 없다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/locker/LockerService.java` |
 | FR-LKR-005 | 라커 | 미구현 | 키 분실 처리 플로우가 없다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/locker/LockerService.java` |
@@ -106,15 +106,18 @@ source: docs/01_요구사항_분석서.md
 - [2026-05-08-002-feat-sprint2-core-ops-flow-plan.md](/Users/abc/projects/GymCRM_V2/docs/plans/2026-05-08-002-feat-sprint2-core-ops-flow-plan.md)
 
 **포함 항목**
-- `FR-ACC-001` 회원 모바일 QR 표시 + Dynamic QR 갱신
-- `FR-ACC-005` 비정상 출입 알림 운영 정리
-- `FR-RSV-004/005/006/009` GX 대기열, 자동 전환, 취소 정책, 차감 시점, 알림 정책
-- `FR-MBR-001` 회원 등록 입력 항목 보강
+- ✅ `FR-ACC-001` 회원 모바일 QR 표시 + Dynamic QR 갱신
+- ✅ `FR-ACC-005` 비정상 출입 알림 운영 정리
+- ✅ `FR-RSV-004/005/006/009` GX 대기열, 자동 전환, 취소 정책, 차감 시점, 알림 정책
+- ✅ `FR-MBR-001` 회원 등록 입력 항목 보강
 
 **완료 기준**
 - 출입/예약/회원등록의 핵심 정책이 문서와 구현에서 일치한다.
 - 운영자가 차감, 거부, 알림 시점을 일관되게 설명할 수 있다.
 - 회원 QR 흐름이 운영자 전용이 아니라 회원 플로우로도 정리된다.
+
+**완료 상태**
+- Sprint 2의 핵심 운영 흐름은 구현과 검증이 끝났고, 관련 요구사항은 완료로 재분류했다.
 
 **진입 기준**
 - Sprint 1의 보안/개인정보 정책이 먼저 확정된다.
