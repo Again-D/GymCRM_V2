@@ -130,6 +130,7 @@ class MembershipPurchaseServiceTest {
                 false,
                 null,
                 null,
+                null,
                 OffsetDateTime.now(),
                 1L,
                 OffsetDateTime.now(),

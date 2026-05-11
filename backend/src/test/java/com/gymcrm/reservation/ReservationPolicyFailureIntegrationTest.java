@@ -215,6 +215,8 @@ class ReservationPolicyFailureIntegrationTest {
                 null,
                 false,
                 false,
+                null,
+                null,
                 "ACTIVE",
                 "policy-failure-test"
         ));

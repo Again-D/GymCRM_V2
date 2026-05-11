@@ -191,6 +191,7 @@ describe("CrmPage", () => {
     );
 
     expect(await screen.findByRole("heading", { name: "CRM 운영" })).toBeTruthy();
+    expect((await screen.findAllByText("생일 혜택")).length).toBeGreaterThan(0);
 
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: /장기 미방문 적재/ }));
@@ -258,7 +259,7 @@ describe("CrmPage", () => {
     );
 
     expect((await screen.findAllByText("SMS 폴백")).length).toBeGreaterThan(0);
-    expect(screen.getByText("실패 사유는 운영 로그 확인")).toBeTruthy();
+    expect(screen.getByText("실패 사유 확인")).toBeTruthy();
   });
 
   it("triggers long-term inactive campaign using the selected sendable template", async () => {
