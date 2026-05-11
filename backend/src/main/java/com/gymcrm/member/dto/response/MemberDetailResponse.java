@@ -18,6 +18,7 @@ public record MemberDetailResponse(
         boolean consentSms,
         boolean consentMarketing,
         String memo,
+        String photoUrl,
         String emergencyContactName,
         String emergencyContactPhone,
         String emergencyContactRelationship
@@ -37,6 +38,7 @@ public record MemberDetailResponse(
                 member.consentSms(),
                 member.consentMarketing(),
                 member.memo(),
+                member.photoUrl(),
                 member.emergencyContactName(),
                 member.emergencyContactPhone(),
                 member.emergencyContactRelationship()

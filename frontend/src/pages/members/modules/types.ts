@@ -23,6 +23,7 @@ export type MemberDetail = {
   consentSms: boolean;
   consentMarketing: boolean;
   memo: string | null;
+  photoUrl?: string | null;
   emergencyContactName: string | null;
   emergencyContactPhone: string | null;
   emergencyContactRelationship: string | null;

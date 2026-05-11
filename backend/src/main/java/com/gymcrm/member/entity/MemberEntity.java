@@ -65,6 +65,9 @@ public class MemberEntity {
     @Column(name = "memo")
     private String memo;
 
+    @Column(name = "photo_url")
+    private String photoUrl;
+
     @Column(name = "emergency_contact_name")
     private String emergencyContactName;
 
@@ -219,6 +222,14 @@ public class MemberEntity {
 
     public void setMemo(String memo) {
         this.memo = memo;
+    }
+
+    public String getPhotoUrl() {
+        return photoUrl;
+    }
+
+    public void setPhotoUrl(String photoUrl) {
+        this.photoUrl = photoUrl;
     }
 
     public String getEmergencyContactName() {

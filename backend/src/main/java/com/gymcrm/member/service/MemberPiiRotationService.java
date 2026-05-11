@@ -116,6 +116,7 @@ public class MemberPiiRotationService {
                 source.consentSms(),
                 source.consentMarketing(),
                 source.memo(),
+                source.photoUrl(),
                 source.emergencyContactName(),
                 source.emergencyContactPhone(),
                 source.emergencyContactRelationship(),

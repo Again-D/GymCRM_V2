@@ -67,6 +67,8 @@ springdoc:
   paths-to-exclude: /actuator/**, /api/internal/**
 
 app:
+  upload:
+    dir: ${APP_UPLOAD_DIR:uploads}
   access:
     qr:
       ttl-seconds: ${APP_ACCESS_QR_TTL_SECONDS:30}

@@ -1,6 +1,12 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { apiDelete, apiPatch, apiPost, isMockApiMode } from "../../../api/client";
+import {
+	apiDelete,
+	apiPatch,
+	apiPost,
+	apiPostFormData,
+	isMockApiMode,
+} from "../../../api/client";
 import { useAuthState } from "../../../app/auth";
 import { queryKeys } from "../../../app/queryHelpers";
 import { hasAnyRole } from "../../../app/roles";
@@ -323,6 +329,50 @@ export function useMemberManagementState({
 		}
 	}
 
+	async function uploadMemberPhoto(memberId: number, file: File) {
+		clearMemberFeedback();
+		if (!canManageMembers) {
+			setMemberFormError("회원 사진을 변경할 권한이 없습니다.");
+			return null;
+		}
+
+		setMemberFormSubmitting(true);
+		try {
+			let nextMember: MemberDetail | null = null;
+			if (useMockMutations) {
+				const { updateMockMember } = await import("../../../api/mockData");
+				const extension = file.name.includes(".")
+					? file.name.slice(file.name.lastIndexOf(".")).toLowerCase()
+					: ".jpg";
+				nextMember = updateMockMember(memberId, (current) => ({
+					...current,
+					photoUrl: `/uploads/members/${memberId}${extension}`,
+				}));
+				if (!nextMember) {
+					setMemberFormError("사진을 업로드할 회원을 찾을 수 없습니다.");
+					return null;
+				}
+				setMemberFormMessage("회원 사진을 업로드했습니다.");
+			} else {
+				const formData = new FormData();
+				formData.append("photo", file);
+				const response = await apiPostFormData<string>(
+					`/api/v1/members/${memberId}/photo`,
+					formData,
+				);
+				setMemberFormMessage(response.message);
+				await selectMember(memberId);
+				return null;
+			}
+
+			queryClient.invalidateQueries({ queryKey: queryKeys.members.all });
+			await selectMember(memberId);
+			return nextMember;
+		} finally {
+			setMemberFormSubmitting(false);
+		}
+	}
+
 	return {
 		modalState,
 		memberForm,
@@ -342,5 +392,6 @@ export function useMemberManagementState({
 		submitMemberForm,
 		deactivateMember,
 		deleteMember,
+		uploadMemberPhoto,
 	} as const;
 }
