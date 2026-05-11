@@ -128,6 +128,9 @@ Goal:
 - Backend validation tests for invalid promotion combinations.
 - Frontend tests for promotion display and edit behavior.
 
+**Status**
+- 완료: 상품 프로모션 메타데이터를 모델, DTO, 화면, 테스트까지 반영했다.
+
 ## Ticket 6: Add Locker Zone and Grade Commercial Settings
 
 **Related items**
@@ -150,6 +153,9 @@ Goal:
 - Locker integration tests for create/list/assign/return with commercial metadata present.
 - Frontend tests for locker settings rendering and form validation.
 
+**Status**
+- 완료: 라커 슬롯에 `monthlyFee`를 추가하고 목록/등록/배정 흐름과 문서를 현재 구현 기준으로 동기화했다.
+
 ## Ticket 7: Add a Settlement Receivables Slice
 
 **Related items**
@@ -171,6 +177,9 @@ Goal:
 **Validation**
 - Integration tests for receivables queries and empty-state behavior.
 - Frontend tests confirming receivables rendering alongside current settlement sections.
+
+**Status**
+- 완료: 정산 워크스페이스에 미수금 / 후불 후보 카드와 조회 API를 추가하고, CRM 적재 후보와 REVIEW 대상을 함께 노출했다.
 
 ## Ticket 8: Add Member Photo Upload and Display
 

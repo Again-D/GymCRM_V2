@@ -398,6 +398,7 @@ X-RateLimit-Reset: 1740001860
 | 13 | `POST` | `/api/v1/members/{memberId}/memberships/{membershipId}/refund` | 회원권 환불 | O | ADMIN, MANAGER, DESK |
 | 14 | `GET` | `/api/v1/members/{memberId}/access-logs` | 회원 출입 이력 조회 | O | ALL |
 | 15 | `GET` | `/api/v1/members/{memberId}/payments` | 회원 결제 내역 조회 | O | ADMIN, MANAGER, DESK |
+| 16 | `POST` | `/api/v1/members/{memberId}/photo` | 회원 사진 업로드 (multipart/form-data) | O | ADMIN, MANAGER, DESK |
 
 ### 3.3 상품 관리 API (`/api/v1/products`)
 
@@ -415,6 +416,10 @@ X-RateLimit-Reset: 1740001860
 - `POST /api/v1/products`, `PATCH /api/v1/products/{productId}`, `GET /api/v1/products`, `GET /api/v1/products/{productId}` 응답에는 홀딩 정책 필드 `allowHold`, `maxHoldDays`, `maxHoldCount`, `allowHoldBypass`가 포함된다.
 - `allowHoldBypass`는 관리자 권한자가 홀딩 기본 제한을 우회할 수 있는지 나타내는 Boolean 필드다.
 - `allowHold=false`인 상품은 저장 시 `allowHoldBypass=false`로 정규화된다.
+- `PT` 상품은 `assignedTrainerId`가 필수이며, 다른 카테고리 상품은 해당 필드를 허용하지 않는다.
+- `promotion`은 선택 사항이며, 제공할 경우 `promotionDiscountType`, `promotionDiscountValue`, `promotionStartDate`, `promotionEndDate`를 함께 보내야 한다.
+- `promotionDiscountType`은 `PERCENT` 또는 `AMOUNT`만 허용하고, `PERCENT` 할인은 `promotionDiscountValue <= 100`이어야 한다.
+- `promotionEndDate`는 `promotionStartDate`보다 빠를 수 없다.
 
 **상품 등록/수정 Request 예시**
 
@@ -431,6 +436,13 @@ X-RateLimit-Reset: 1740001860
   "maxHoldCount": 1,
   "allowHoldBypass": true,
   "allowTransfer": false,
+  "assignedTrainerId": 41,
+  "promotion": {
+    "promotionDiscountType": "PERCENT",
+    "promotionDiscountValue": 15,
+    "promotionStartDate": "2026-04-01",
+    "promotionEndDate": "2026-04-30"
+  },
   "productStatus": "ACTIVE",
   "description": "관리자 승인 시 제한 우회 홀딩 가능"
 }
@@ -455,6 +467,13 @@ X-RateLimit-Reset: 1740001860
     "maxHoldCount": 1,
     "allowHoldBypass": true,
     "allowTransfer": false,
+    "assignedTrainerId": 41,
+    "promotion": {
+      "promotionDiscountType": "PERCENT",
+      "promotionDiscountValue": 15,
+      "promotionStartDate": "2026-04-01",
+      "promotionEndDate": "2026-04-30"
+    },
     "productStatus": "ACTIVE",
     "description": "관리자 승인 시 제한 우회 홀딩 가능"
   },
@@ -511,6 +530,8 @@ X-RateLimit-Reset: 1740001860
 - `POST /api/v1/lockers/batch`는 다건 라커 등록을 처리한다.
 - 등록 요청에서 `lockerCode`는 클라이언트가 보내지 않으며, 서버가 `lockerZone` + `lockerNumber`를 결합해 `ZONE-NN` 형식으로 자동 생성한다.
 - `lockerZone`은 대문자 정규화 후 저장되고, `lockerNumber`는 1 이상의 정수여야 한다.
+- 등록/일괄 등록 요청은 `monthlyFee`를 포함할 수 있으며, 서버는 음수 값을 거부하고 비어 있으면 0원으로 저장한다.
+- 목록/상세 응답은 `lockerZone`, `lockerGrade`, `monthlyFee`를 함께 반환해 구역/등급/요금 조합을 운영자가 확인할 수 있게 한다.
 - batch 등록은 모든 행이 유효해야 성공한다. 하나라도 실패하면 전체 등록이 취소된다.
 
 ### 3.7 매출/정산 API (`/api/v1/settlements`)
@@ -530,6 +551,7 @@ X-RateLimit-Reset: 1740001860
 | 11 | `POST` | `/api/v1/settlements` | 지정 월의 트레이너 정산 DRAFT 생성 또는 월 단위 기존 DRAFT 재사용 | O | ADMIN, MANAGER |
 | 12 | `POST` | `/api/v1/settlements/{settlementId}/confirm` | 생성된 월 기반 정산 배치를 확정 | O | ADMIN, MANAGER |
 | 13 | `GET` | `/api/v1/settlements/{settlementId}/trainers/{trainerId}/document` | canonical 정산 배치의 개별 트레이너 PDF 정산서 다운로드 | O | ADMIN, MANAGER, DESK |
+| 14 | `GET` | `/api/v1/settlements/receivables` | 미수금 / 후불 후보 조회 | O | ADMIN, MANAGER, DESK |
 
 ### 3.8 CRM 메시지 API (`/api/v1/messages`)
 
@@ -565,6 +587,23 @@ X-RateLimit-Reset: 1740001860
 **비즈니스 규칙:**
 - 템플릿의 발송 가능 여부는 운영 상태와 활성 여부를 함께 반영한다.
 - 비활성 템플릿은 거버넌스/이력 조회에는 노출되지만 발송 가능 상태로 간주하지 않는다.
+
+### 3.8.2 CRM 메시지 이력 API (`/api/v1/crm/messages`)
+
+| # | Method | URL | 설명 | 인증 | 권한 |
+|---|--------|-----|------|------|------|
+| 1 | `GET` | `/api/v1/crm/messages` | CRM 메시지 발송 이력 조회 | O | ADMIN, MANAGER, DESK |
+| 2 | `POST` | `/api/v1/crm/messages/triggers/long-term-inactive` | 장기 미방문 회원 재방문 유도 메시지 적재 | O | ADMIN, MANAGER, DESK |
+
+**응답 필드:**
+- `deliveryMode`: 실제 발송 경로. `PRIMARY`는 원래 채널 발송, `SMS_FALLBACK`은 SMS 폴백 발송을 의미한다.
+- `sendStatus`: `PENDING`, `RETRY_WAIT`, `SENT`, `DEAD`
+- `lastErrorMessage`: 최종 실패 사유. 폴백이 실패하면 운영자가 후속 확인할 수 있도록 남긴다.
+
+**요청 필드:**
+- `templateId`: 발송에 사용할 sendable 템플릿 ID
+- `inactiveDays`: 마지막 출입일로부터 경과해야 하는 일수
+- `scheduledAt`: 예약 발송 시각. 미지정 시 즉시 적재된다.
 
 ### 3.9 대시보드 API (`/api/v1/dashboard`)
 
@@ -1901,6 +1940,68 @@ GET /api/v1/reports/revenue?periodType=MONTHLY&startDate=2026-01-01&endDate=2026
 
 ---
 
+### 4.9.2.1 미수금 / 후불 후보 API
+
+| 항목 | 내용 |
+|------|------|
+| **URL** | `GET /api/v1/settlements/receivables` |
+| **설명** | 회원권 미수금과 후불/분할납부 후속 후보를 운영자가 확인할 수 있도록 조회한다. |
+| **인증** | 필요 |
+| **권한** | ADMIN, MANAGER, DESK |
+
+**Query Parameters:**
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `baseDate` | String | X | 기준일 (`yyyy-MM-dd`). 미전달 시 오늘(Asia/Seoul) 기준 |
+| `limit` | Integer | X | 조회 건수 (1~50, 기본값 10) |
+
+**Response Body (성공 - 200):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "baseDate": "2026-04-03",
+    "limit": 10,
+    "totalOutstandingAmount": 80000,
+    "receivableCount": 2,
+    "reminderEligibleCount": 1,
+    "rows": [
+      {
+        "membershipId": 9001,
+        "memberId": 101,
+        "memberName": "김민수",
+        "productName": "PT 10회권",
+        "productCategory": "PT",
+        "membershipStatus": "ACTIVE",
+        "contractAmount": 550000,
+        "paymentId": 31001,
+        "paymentMethod": "TRANSFER",
+        "paidAmount": 500000,
+        "paidDate": "2026-04-01",
+        "followUpDate": "2026-04-04",
+        "outstandingAmount": 50000,
+        "reminderEligible": true,
+        "reminderChannel": "CRM"
+      }
+    ]
+  },
+  "message": "미수금 조회 성공",
+  "timestamp": "2026-04-03T15:20:00+09:00"
+}
+```
+
+**비즈니스 규칙:**
+- 대상은 최신 완료 구매 결제가 존재하고, 계약 금액이 실제 결제 금액보다 큰 회원권이다.
+- 조회 대상 회원권은 `ACTIVE` 또는 `HOLDING` 상태만 포함한다.
+- `followUpDate`는 결제일의 3일 뒤이며, `baseDate`가 `followUpDate` 이상이면 `reminderEligible=true`다.
+- `reminderChannel`은 `reminderEligible=true`일 때 `CRM`, 그렇지 않을 때 `REVIEW`다.
+- 결과는 reminder eligible 우선, 미수금 큰 순, 결제일 빠른 순으로 정렬한다.
+- 이 API는 기존 매출 대시보드/리포트 응답에 영향을 주지 않는 별도 조회 경로다.
+
+---
+
 ### 4.9.3 최근 환불 목록 API
 
 | 항목 | 내용 |
@@ -3015,6 +3116,10 @@ X-Cache: HIT
 
 | 버전 | 날짜 | 변경 내용 | 작성자 |
 |------|------|-----------|--------|
+| v1.23.0 | 2026-05-11 | `POST /api/v1/members/{memberId}/photo` (multipart/form-data) 회원 사진 업로드 엔드포인트를 추가하고, 3.2 회원 관리 API 목록에 반영 | Sisyphus |
+| v1.22.0 | 2026-05-11 | `GET /api/v1/settlements/receivables` 미수금 / 후불 후보 조회 API를 추가하고, 정산 워크스페이스에서 outstanding amount, reminder eligibility, reminder channel을 현재 구현 기준으로 동기화 | Codex |
+| v1.21.0 | 2026-05-11 | 라커 등록/일괄 등록 계약에 `monthlyFee`를 추가하고, 목록/상세 응답에 구역/등급/월 이용료를 포함하도록 locker 계약을 현재 구현 기준으로 동기화 | Codex |
+| v1.20.0 | 2026-05-11 | `POST /api/v1/products`와 `PATCH /api/v1/products/{productId}`에 nested `promotion` payload를 추가하고, `GET /api/v1/products`/`GET /api/v1/products/{productId}` 응답에 프로모션 메타데이터를 포함하도록 상품 계약을 현재 구현 기준으로 동기화 | Codex |
 | v1.19.2 | 2026-05-08 | `POST /api/v1/members` 신규 등록 계약에 `emergencyContactName`, `emergencyContactPhone`, `emergencyContactRelationship` 필드를 추가하고 응답 payload를 현재 구현에 맞게 동기화 | Sisyphus |
 | v1.19.1 | 2026-05-08 | `POST /api/v1/members/{memberId}/withdraw` 응답에 `memberStatus` 필드를 추가하고, 요약 payload(`memberId`, `memberStatus`, `withdrawn`, `refundedMembershipCount`, `resumedHoldingCount`, `refundAmount`) 기준으로 동기화 | Sisyphus |
 | v1.19.0 | 2026-05-08 | `POST /api/v1/members/{memberId}/withdraw`를 잔여 회원권 조회·홀딩 해제·환불·최종 탈퇴를 포함한 워크플로우 계약으로 승격하고, 응답을 요약 payload(`memberId`, `withdrawn`, `refundedMembershipCount`, `resumedHoldingCount`, `refundAmount`) 기준으로 동기화 | Sisyphus |

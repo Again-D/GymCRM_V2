@@ -31,6 +31,8 @@ import type {
   SalesDashboard,
   SettlementRecentAdjustment,
   SettlementPaymentMethod,
+  SettlementReceivableRow,
+  SettlementReceivables,
   SettlementReport,
   SettlementTrendGranularity,
   TrainerMonthlyPtSummary,
@@ -614,6 +616,7 @@ const initialLockerSlots: LockerSlot[] = [
     lockerCode: "A-01",
     lockerZone: "A",
     lockerGrade: "STANDARD",
+    monthlyFee: 30000,
     lockerStatus: "ASSIGNED",
     memo: null,
     createdAt: "2026-01-01T09:00:00Z",
@@ -625,6 +628,7 @@ const initialLockerSlots: LockerSlot[] = [
     lockerCode: "A-02",
     lockerZone: "A",
     lockerGrade: "STANDARD",
+    monthlyFee: 30000,
     lockerStatus: "AVAILABLE",
     memo: null,
     createdAt: "2026-01-01T09:00:00Z",
@@ -636,6 +640,7 @@ const initialLockerSlots: LockerSlot[] = [
     lockerCode: "B-01",
     lockerZone: "B",
     lockerGrade: "PREMIUM",
+    monthlyFee: 50000,
     lockerStatus: "MAINTENANCE",
     memo: "도어 점검 중",
     createdAt: "2026-01-01T09:00:00Z",
@@ -679,6 +684,13 @@ const initialProducts: ProductRecord[] = [
     maxHoldCount: 1,
     allowHoldBypass: true,
     allowTransfer: false,
+    assignedTrainerId: null,
+    promotion: {
+      promotionDiscountType: "PERCENT",
+      promotionDiscountValue: 15,
+      promotionStartDate: "2026-03-01",
+      promotionEndDate: "2026-03-31",
+    },
     productStatus: "ACTIVE",
     description: "기본 헬스 이용권",
   },
@@ -696,6 +708,8 @@ const initialProducts: ProductRecord[] = [
     maxHoldCount: null,
     allowHoldBypass: false,
     allowTransfer: false,
+    assignedTrainerId: 41,
+    promotion: null,
     productStatus: "ACTIVE",
     description: "퍼스널 트레이닝 10회",
   },
@@ -713,6 +727,8 @@ const initialProducts: ProductRecord[] = [
     maxHoldCount: null,
     allowHoldBypass: false,
     allowTransfer: false,
+    assignedTrainerId: null,
+    promotion: null,
     productStatus: "INACTIVE",
     description: "그룹 수업 12회",
   },
@@ -725,6 +741,7 @@ const initialCrmHistoryRows: CrmHistoryRow[] = [
     membershipId: 9001,
     eventType: "MEMBERSHIP_EXPIRY_REMINDER",
     channelType: "SMS",
+    deliveryMode: "PRIMARY",
     sendStatus: "PENDING",
     attemptCount: 0,
     lastAttemptedAt: null,
@@ -740,7 +757,8 @@ const initialCrmHistoryRows: CrmHistoryRow[] = [
     memberId: 102,
     membershipId: 9011,
     eventType: "MEMBERSHIP_EXPIRY_REMINDER",
-    channelType: "SMS",
+    channelType: "KAKAO",
+    deliveryMode: "SMS_FALLBACK",
     sendStatus: "SENT",
     attemptCount: 1,
     lastAttemptedAt: "2026-03-12T11:00:00+09:00",
@@ -757,6 +775,7 @@ const initialCrmHistoryRows: CrmHistoryRow[] = [
     membershipId: 9002,
     eventType: "MEMBERSHIP_HOLD_NOTICE",
     channelType: "SMS",
+    deliveryMode: "PRIMARY",
     sendStatus: "RETRY_WAIT",
     attemptCount: 2,
     lastAttemptedAt: "2026-03-12T12:15:00+09:00",
@@ -1026,6 +1045,7 @@ type MockLockerCreateInput = {
   lockerZone: string;
   lockerNumber: number;
   lockerGrade: string | null;
+  monthlyFee: number;
   lockerStatus: LockerSlot["lockerStatus"];
   memo: string | null;
 };
@@ -1039,6 +1059,7 @@ function createMockLockerSlotRecord(input: MockLockerCreateInput) {
     lockerCode,
     lockerZone: input.lockerZone.trim().toUpperCase(),
     lockerGrade: input.lockerGrade,
+    monthlyFee: input.monthlyFee,
     lockerStatus: input.lockerStatus,
     memo: input.memo,
     createdAt: now,
@@ -1595,6 +1616,74 @@ function filterSettlementRecentAdjustments(url: URL): SettlementRecentAdjustment
       return right.paymentId - left.paymentId;
     })
     .slice(0, limit);
+}
+
+const initialSettlementReceivables: SettlementReceivableRow[] = [
+  {
+    membershipId: 9001,
+    memberId: 101,
+    memberName: "김민수",
+    productName: "PT 10회권",
+    productCategory: "PT",
+    membershipStatus: "ACTIVE",
+    contractAmount: 550000,
+    paymentId: 31001,
+    paymentMethod: "TRANSFER",
+    paidAmount: 500000,
+    paidDate: "2026-03-06",
+    followUpDate: "2026-03-09",
+    outstandingAmount: 50000,
+    reminderEligible: true,
+    reminderChannel: "CRM" as const
+  },
+  {
+    membershipId: 9011,
+    memberId: 102,
+    memberName: "박서연",
+    productName: "PT 20회권",
+    productCategory: "PT",
+    membershipStatus: "HOLDING",
+    contractAmount: 550000,
+    paymentId: 31002,
+    paymentMethod: "CARD",
+    paidAmount: 520000,
+    paidDate: "2026-03-12",
+    followUpDate: "2026-03-15",
+    outstandingAmount: 30000,
+    reminderEligible: false,
+    reminderChannel: "REVIEW" as const
+  }
+];
+
+function filterSettlementReceivables(url: URL): SettlementReceivables {
+  const baseDate = url.searchParams.get("baseDate")?.trim() ?? todayText();
+  const limit = Number.parseInt(url.searchParams.get("limit") ?? "10", 10) || 10;
+  const rows = initialSettlementReceivables
+    .filter((row) => row.outstandingAmount > 0)
+    .sort((left, right) => {
+      if (left.reminderEligible !== right.reminderEligible) {
+        return left.reminderEligible ? -1 : 1;
+      }
+      if (right.outstandingAmount !== left.outstandingAmount) {
+        return right.outstandingAmount - left.outstandingAmount;
+      }
+      return left.memberName.localeCompare(right.memberName, "ko");
+    })
+    .slice(0, limit)
+    .map((row) => ({
+      ...row,
+      reminderEligible: row.followUpDate <= baseDate,
+      reminderChannel: (row.followUpDate <= baseDate ? "CRM" : "REVIEW") as "CRM" | "REVIEW"
+    }));
+
+  return {
+    baseDate,
+    limit,
+    totalOutstandingAmount: rows.reduce((sum, row) => sum + row.outstandingAmount, 0),
+    receivableCount: rows.length,
+    reminderEligibleCount: rows.filter((row) => row.reminderEligible).length,
+    rows
+  };
 }
 
 function buildTrainerPayrollReport(settlementMonth: string, sessionUnitPrice: number): TrainerPayrollReport {
@@ -2796,6 +2885,7 @@ export function createMockLockerSlots(input: MockLockerCreateInput[]) {
       lockerZone,
       lockerNumber: row.lockerNumber,
       lockerGrade: row.lockerGrade ? row.lockerGrade.trim() || null : null,
+      monthlyFee: Number.isFinite(row.monthlyFee) ? row.monthlyFee : 0,
       lockerStatus: row.lockerStatus,
       memo: row.memo ? row.memo.trim() || null : null,
     });
@@ -2907,6 +2997,7 @@ export function triggerMockCrmExpiryReminder(daysAhead: number) {
     membershipId: targetMembership?.membershipId ?? null,
     eventType: "MEMBERSHIP_EXPIRY_REMINDER",
     channelType: "SMS",
+    deliveryMode: "PRIMARY",
     sendStatus: "PENDING",
     attemptCount: 0,
     lastAttemptedAt: null,
@@ -2928,12 +3019,59 @@ export function triggerMockCrmExpiryReminder(daysAhead: number) {
   };
 }
 
+export function triggerMockCrmLongTermInactiveCampaign(input: {
+  templateId: number;
+  inactiveDays: number;
+  scheduledAt: string | null;
+}) {
+  const template = mockCrmTemplateRows.find((row) => row.templateId === input.templateId);
+  if (!template) {
+    return { ok: false as const, message: "템플릿을 찾을 수 없습니다." };
+  }
+  if (!template.sendable) {
+    return { ok: false as const, message: "템플릿은 발송 가능한 상태가 아닙니다." };
+  }
+
+  crmMessageEventIdSeed += 1;
+  const now = new Date().toISOString();
+  const nextAttemptAt = input.scheduledAt || now;
+  const nextRow: CrmHistoryRow = {
+    crmMessageEventId: crmMessageEventIdSeed,
+    memberId: 101,
+    membershipId: null,
+    eventType: "LONG_TERM_INACTIVE_CAMPAIGN",
+    channelType: template.channelType,
+    deliveryMode: "PRIMARY",
+    sendStatus: "PENDING",
+    attemptCount: 0,
+    lastAttemptedAt: null,
+    nextAttemptAt,
+    sentAt: null,
+    failedAt: null,
+    lastErrorMessage: null,
+    traceId: `crm-trace-${crmMessageEventIdSeed}`,
+    createdAt: now,
+  };
+
+  mockCrmHistoryRows = [nextRow, ...mockCrmHistoryRows];
+  bumpMockDataVersion();
+
+  return {
+    ok: true as const,
+    message: `${input.inactiveDays}일 기준 장기 미방문 메시지 ${1}건을 큐에 적재했습니다.`,
+    createdCount: 1,
+  };
+}
+
 export function processMockCrmQueue() {
   const now = new Date().toISOString();
+  const nowTime = Date.parse(now);
   let processedCount = 0;
 
   mockCrmHistoryRows = mockCrmHistoryRows.map((row) => {
-    if (row.sendStatus === "PENDING" && processedCount < 1) {
+    const isDue = !row.nextAttemptAt || Date.parse(row.nextAttemptAt) <= nowTime;
+
+    if (row.sendStatus === "PENDING" && processedCount < 1 && isDue) {
       processedCount += 1;
       return {
         ...row,
@@ -2946,7 +3084,7 @@ export function processMockCrmQueue() {
       };
     }
 
-    if (row.sendStatus === "RETRY_WAIT" && processedCount < 2) {
+    if (row.sendStatus === "RETRY_WAIT" && processedCount < 2 && isDue) {
       processedCount += 1;
       return {
         ...row,
@@ -3993,6 +4131,10 @@ export function getMockResponse(
 
   if (url.pathname === "/api/v1/settlements/sales-report/recent-adjustments") {
     return envelope(filterSettlementRecentAdjustments(url));
+  }
+
+  if (url.pathname === "/api/v1/settlements/receivables") {
+    return envelope(filterSettlementReceivables(url));
   }
 
   if (url.pathname === "/api/v1/settlements/trainer-payroll") {

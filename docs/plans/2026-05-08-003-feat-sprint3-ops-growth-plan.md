@@ -193,7 +193,7 @@ flowchart LR
 - Operators can see template status without leaving the CRM workspace.
 - Existing CRM send behavior still works when template governance data is present.
 
-- [ ] U2. **CRM Campaign Coverage**
+- [x] U2. **CRM Campaign Coverage**
 
 **Goal:** Add the long-term inactive and scheduled-send campaign behavior on top of the existing CRM queue and dispatch model.
 
@@ -237,7 +237,7 @@ flowchart LR
 - CRM campaign operations can be triggered and replayed without duplicate dispatches.
 - Scheduled sends stay visible in the same history model as other CRM messages.
 
-- [ ] U3. **Product Catalog Extensions**
+- [x] U3. **Product Catalog Extensions**
 
 **Goal:** Add trainer-linked products and promotional pricing support to the product catalog while keeping the existing product CRUD and list behavior intact.
 
@@ -282,7 +282,7 @@ flowchart LR
 **Verification:**
 - The catalog can represent trainer-specific PT products and promotional pricing without breaking existing product management.
 
-- [ ] U4. **Locker Commercial Settings**
+- [x] U4. **Locker Commercial Settings**
 
 **Goal:** Add locker zone/grade-based commercial settings to the locker workspace and keep slot assignment/return behavior intact.
 
@@ -326,7 +326,7 @@ flowchart LR
 **Verification:**
 - Operators can see and edit locker commercial settings without losing the current locker lifecycle behavior.
 
-- [ ] U5. **Settlement Receivables View**
+- [x] U5. **Settlement Receivables View**
 
 **Goal:** Add a focused unpaid-balance / receivables view and CRM-backed reminder eligibility hook to the settlement workspace without turning the module into a full accounting ledger.
 
@@ -374,7 +374,7 @@ flowchart LR
 **Verification:**
 - Operators can identify unpaid balances and reminder candidates from the settlements workspace without losing the current reporting flow.
 
-- [ ] U6. **Member Photo Upload and Display**
+- [x] U6. **Member Photo Upload and Display**
 
 **Goal:** Add the member photo upload/manage path required by the member requirements and surface the current photo state in the member workspace.
 

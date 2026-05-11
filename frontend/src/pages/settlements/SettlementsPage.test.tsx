@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { FoundationProviders } from "../../app/providers";
 import SettlementsPage from "./SettlementsPage";
-import type { SettlementReport, SettlementReportFilters, TrainerSettlementPreviewFilters, TrainerSettlementPreviewReport, TrainerSettlementWorkspace } from "./modules/types";
+import type { SettlementReceivables, SettlementReport, SettlementReportFilters, TrainerSettlementPreviewFilters, TrainerSettlementPreviewReport, TrainerSettlementWorkspace } from "./modules/types";
 
 const clientMocks = vi.hoisted(() => ({
   apiDownload: vi.fn(),
@@ -95,6 +95,50 @@ let mockSettlementReport: SettlementReport = {
   ]
 };
 
+let mockSettlementReceivables: SettlementReceivables = {
+  baseDate: "2026-03-31",
+  limit: 10,
+  totalOutstandingAmount: 80000,
+  receivableCount: 2,
+  reminderEligibleCount: 1,
+  rows: [
+    {
+      membershipId: 9001,
+      memberId: 101,
+      memberName: "김민수",
+      productName: "PT 10회권",
+      productCategory: "PT",
+      membershipStatus: "ACTIVE",
+      contractAmount: 550000,
+      paymentId: 31001,
+      paymentMethod: "TRANSFER",
+      paidAmount: 500000,
+      paidDate: "2026-03-06",
+      followUpDate: "2026-03-09",
+      outstandingAmount: 50000,
+      reminderEligible: true,
+      reminderChannel: "CRM"
+    },
+    {
+      membershipId: 9011,
+      memberId: 102,
+      memberName: "박서연",
+      productName: "PT 20회권",
+      productCategory: "PT",
+      membershipStatus: "HOLDING",
+      contractAmount: 550000,
+      paymentId: 31002,
+      paymentMethod: "CARD",
+      paidAmount: 520000,
+      paidDate: "2026-03-12",
+      followUpDate: "2026-03-15",
+      outstandingAmount: 30000,
+      reminderEligible: false,
+      reminderChannel: "REVIEW"
+    }
+  ]
+};
+
 let mockTrainerSettlementFilters: TrainerSettlementPreviewFilters = {
   trainerId: "ALL",
   settlementMonth: "2026-03"
@@ -163,6 +207,11 @@ vi.mock("./modules/useSettlementPrototypeState", () => ({
   useSettlementPrototypeState: () => ({
     settlementFilters: mockSettlementFilters,
     setSettlementFilters,
+    settlementReceivablesFilters: {
+      baseDate: "2026-03-31",
+      limit: 10
+    },
+    setSettlementReceivablesFilters: vi.fn(),
     settlementPanelMessage: null,
     setSettlementPanelMessage,
     settlementPanelError: null,
@@ -215,6 +264,16 @@ vi.mock("./modules/useSettlementRecentAdjustmentsQuery", () => ({
     recentAdjustmentsLoading: false,
     recentAdjustmentsError: null,
     refetchRecentAdjustments: vi.fn()
+  })
+}));
+
+vi.mock("./modules/useSettlementReceivablesQuery", () => ({
+  useSettlementReceivablesQuery: () => ({
+    settlementReceivables: mockSettlementReceivables,
+    settlementReceivablesLoading: false,
+    settlementReceivablesError: null,
+    settlementReceivablesMessage: null,
+    refetchSettlementReceivables: vi.fn()
   })
 }));
 
@@ -359,6 +418,49 @@ describe("SettlementsPage", () => {
         }
       ]
     };
+    mockSettlementReceivables = {
+      baseDate: "2026-03-31",
+      limit: 10,
+      totalOutstandingAmount: 80000,
+      receivableCount: 2,
+      reminderEligibleCount: 1,
+      rows: [
+        {
+          membershipId: 9001,
+          memberId: 101,
+          memberName: "김민수",
+          productName: "PT 10회권",
+          productCategory: "PT",
+          membershipStatus: "ACTIVE",
+          contractAmount: 550000,
+          paymentId: 31001,
+          paymentMethod: "TRANSFER",
+          paidAmount: 500000,
+          paidDate: "2026-03-06",
+          followUpDate: "2026-03-09",
+          outstandingAmount: 50000,
+          reminderEligible: true,
+          reminderChannel: "CRM"
+        },
+        {
+          membershipId: 9011,
+          memberId: 102,
+          memberName: "박서연",
+          productName: "PT 20회권",
+          productCategory: "PT",
+          membershipStatus: "HOLDING",
+          contractAmount: 550000,
+          paymentId: 31002,
+          paymentMethod: "CARD",
+          paidAmount: 520000,
+          paidDate: "2026-03-12",
+          followUpDate: "2026-03-15",
+          outstandingAmount: 30000,
+          reminderEligible: false,
+          reminderChannel: "REVIEW"
+        }
+      ]
+    };
     authStateMock.authUser = {
       userId: 1,
       roleCode: "ROLE_MANAGER",
@@ -411,11 +513,14 @@ describe("SettlementsPage", () => {
     expect(screen.getByText("기간 기준 preview와 정산 작업을 분리해 관리합니다.")).toBeTruthy();
     expect(screen.getByText("현재 운영 요약")).toBeTruthy();
     expect(screen.getByText("오늘 실매출")).toBeTruthy();
+    expect(screen.getByText("미수금 / 후불 후보")).toBeTruthy();
+    expect(screen.getAllByText("CRM 후보").length).toBeGreaterThan(0);
     expect(screen.getByRole("heading", { name: /기간 추이 기준/ })).toBeTruthy();
     expect(screen.getByRole("heading", { name: /기간 추이 증빙/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: "운영 리포트 Excel 다운로드" })).toBeTruthy();
     expect(screen.getByText("최근 환불 증빙")).toBeTruthy();
     expect(screen.getByText("3개월 PT")).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "CRM로 이동" }).length).toBeGreaterThan(0);
 
     mockSettlementFilters = {
       ...mockSettlementFilters,

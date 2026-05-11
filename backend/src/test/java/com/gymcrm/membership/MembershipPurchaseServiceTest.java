@@ -100,6 +100,8 @@ class MembershipPurchaseServiceTest {
                 1,
                 false,
                 false,
+                null,
+                null,
                 status,
                 null,
                 OffsetDateTime.now(),

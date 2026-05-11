@@ -142,7 +142,11 @@ async function request<T>(
   }
 
   const headers = new Headers(init?.headers);
-  if (init?.body != null && !headers.has("Content-Type")) {
+  if (
+    init?.body != null &&
+    !(init.body instanceof FormData) &&
+    !headers.has("Content-Type")
+  ) {
     headers.set("Content-Type", "application/json");
   }
 
@@ -289,6 +293,16 @@ export function apiPost<T>(
   return request<T>(path, {
     method: "POST",
     body: body === undefined ? undefined : JSON.stringify(body),
+  });
+}
+
+export function apiPostFormData<T>(
+  path: string,
+  formData: FormData,
+): Promise<ApiEnvelope<T>> {
+  return request<T>(path, {
+    method: "POST",
+    body: formData,
   });
 }
 

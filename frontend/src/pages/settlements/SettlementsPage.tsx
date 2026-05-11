@@ -9,6 +9,7 @@ import {
   Flex,
   Form,
   Input,
+  InputNumber,
   Row,
   Select,
   Space,
@@ -45,6 +46,7 @@ import { buildSettlementSalesTrendChartData } from "./modules/buildSettlementSal
 import { useSalesDashboardQuery } from "./modules/useSalesDashboardQuery";
 import { useSettlementPrototypeState } from "./modules/useSettlementPrototypeState";
 import { useSettlementRecentAdjustmentsQuery } from "./modules/useSettlementRecentAdjustmentsQuery";
+import { useSettlementReceivablesQuery } from "./modules/useSettlementReceivablesQuery";
 import { useSettlementReportQuery } from "./modules/useSettlementReportQuery";
 import { useTrainerSettlementPreviewQuery } from "./modules/useTrainerSettlementPreviewQuery";
 import { useTrainerSettlementWorkspaceState } from "./modules/useTrainerSettlementWorkspaceState";
@@ -57,6 +59,7 @@ import type {
   SettlementReportFilters,
   SettlementTabKey,
   SettlementTrendPoint,
+  SettlementReceivableRow,
   TrainerSettlementPreviewRow,
   TrainerSettlementScope,
   TrainerSettlementWorkspace
@@ -386,6 +389,8 @@ function SettlementsManagerView() {
   const {
     settlementFilters,
     setSettlementFilters,
+    settlementReceivablesFilters,
+    setSettlementReceivablesFilters,
     settlementPanelMessage,
     setSettlementPanelMessage,
     settlementPanelError,
@@ -418,6 +423,12 @@ function SettlementsManagerView() {
     recentAdjustmentsError,
     refetchRecentAdjustments
   } = useSettlementRecentAdjustmentsQuery(settlementFilters, 5);
+  const {
+    settlementReceivables,
+    settlementReceivablesLoading,
+    settlementReceivablesError,
+    refetchSettlementReceivables
+  } = useSettlementReceivablesQuery(settlementReceivablesFilters);
   const trainerSettlementBaseDate = settlementFilters.endDate || todayLocalDate();
   const {
     trainerSettlementFilters,
@@ -486,6 +497,7 @@ function SettlementsManagerView() {
       refetchSalesDashboard(),
       refetchSettlementReport(),
       refetchRecentAdjustments(),
+      refetchSettlementReceivables(),
       submittedTrainerSettlementQuery ? refetchTrainerSettlementPreview() : Promise.resolve()
     ]);
   }, [
@@ -494,6 +506,7 @@ function SettlementsManagerView() {
     refetchRecentAdjustments,
     refetchSalesDashboard,
     refetchSettlementReport,
+    refetchSettlementReceivables,
     refetchTrainerSettlementPreview,
     submittedTrainerSettlementQuery
   ]);
@@ -501,6 +514,7 @@ function SettlementsManagerView() {
   const reportRows = settlementReport?.rows ?? [];
   const totalTransactionCount = reportRows.reduce((acc, row) => acc + row.transactionCount, 0);
   const trendPoints = settlementReport?.trend ?? [];
+  const receivableRows = settlementReceivables?.rows ?? [];
   const settlementSalesTrendChartData = useMemo(
     () => buildSettlementSalesTrendChartData(trendPoints),
     [trendPoints]
@@ -588,6 +602,65 @@ function SettlementsManagerView() {
       dataIndex: "paidAt",
       key: "paidAt",
       render: (paidAt: string) => <Text type="secondary">{formatCompactDateTime(paidAt)}</Text>
+    }
+  ];
+
+  const receivableColumns: ColumnsType<SettlementReceivableRow> = [
+    {
+      title: "회원 / 상품",
+      key: "memberProduct",
+      render: (_, row) => (
+        <Space direction="vertical" size={2}>
+          <Text strong>{row.memberName}</Text>
+          <Text type="secondary" style={{ fontSize: "0.78rem" }}>
+            {row.productName} · {row.productCategory}
+          </Text>
+        </Space>
+      )
+    },
+    {
+      title: "잔액",
+      dataIndex: "outstandingAmount",
+      key: "outstandingAmount",
+      align: "right",
+      render: (outstandingAmount: number) => (
+        <Text strong style={{ color: token.colorError }}>
+          {formatCurrency(outstandingAmount)}
+        </Text>
+      )
+    },
+    {
+      title: "후속일",
+      dataIndex: "followUpDate",
+      key: "followUpDate",
+      render: (followUpDate: string, row) => (
+        <Space direction="vertical" size={2}>
+          <Text>{followUpDate}</Text>
+          <Text type="secondary" style={{ fontSize: "0.75rem" }}>
+            결제일 {row.paidDate}
+          </Text>
+        </Space>
+      )
+    },
+    {
+      title: "후속 상태",
+      key: "reminderEligible",
+      render: (_, row) =>
+        row.reminderEligible ? (
+          <Tag color="volcano">CRM 후보</Tag>
+        ) : (
+          <Tag color="gold">후속 예정</Tag>
+        )
+    },
+    {
+      title: "액션",
+      key: "actions",
+      align: "right",
+      render: () => (
+        <Button size="small" onClick={() => navigate("/crm")}>
+          CRM로 이동
+        </Button>
+      )
     }
   ];
 
@@ -1139,6 +1212,118 @@ function SettlementsManagerView() {
                     : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="최근 환불 증빙이 없습니다." />
                 }}
               />
+            </Card>
+
+            <Card
+              style={{ marginTop: 24 }}
+              title={
+                <Space direction="vertical" size={2}>
+                  <Title level={5} style={{ margin: 0 }}>미수금 / 후불 후보</Title>
+                  <Text type="secondary" style={{ fontSize: "0.84rem" }}>
+                    완납 대비 부족 금액만 추려서 CRM 후속 확인 후보로 보여줍니다.
+                  </Text>
+                </Space>
+              }
+              extra={<Tag color="volcano">FR-SAL-007</Tag>}
+            >
+              <Flex vertical gap={16}>
+                <Row gutter={[12, 12]}>
+                  <Col xs={12} md={6} xl={12}>
+                    <Card size="small">
+                      <Statistic
+                        title="미수금 합계"
+                        value={settlementReceivables?.totalOutstandingAmount != null
+                          ? formatCurrency(settlementReceivables.totalOutstandingAmount)
+                          : formatCurrency(0)}
+                        valueStyle={{ fontSize: "1rem", fontWeight: 700, color: token.colorError }}
+                      />
+                    </Card>
+                  </Col>
+                  <Col xs={12} md={6} xl={12}>
+                    <Card size="small">
+                      <Statistic
+                        title="대상 건수"
+                        value={settlementReceivables?.receivableCount ?? 0}
+                        valueStyle={{ fontSize: "1rem", fontWeight: 700 }}
+                      />
+                    </Card>
+                  </Col>
+                  <Col xs={12} md={6} xl={12}>
+                    <Card size="small">
+                      <Statistic
+                        title="CRM 후보"
+                        value={settlementReceivables?.reminderEligibleCount ?? 0}
+                        valueStyle={{ fontSize: "1rem", fontWeight: 700, color: token.colorWarning }}
+                      />
+                    </Card>
+                  </Col>
+                  <Col xs={12} md={6} xl={12}>
+                    <Card size="small">
+                      <Statistic
+                        title="기준일"
+                        value={settlementReceivables?.baseDate ?? settlementReceivablesFilters.baseDate}
+                        valueStyle={{ fontSize: "0.92rem", fontWeight: 700 }}
+                      />
+                    </Card>
+                  </Col>
+                </Row>
+
+                <Row gutter={12}>
+                  <Col span={12}>
+                    <Form.Item label="기준일" style={{ marginBottom: 0 }}>
+                      <DatePicker
+                        className={styles.fullWidth}
+                        value={dayjs(settlementReceivablesFilters.baseDate)}
+                        onChange={(date) =>
+                          setSettlementReceivablesFilters((prev) => ({
+                            ...prev,
+                            baseDate: date ? date.format("YYYY-MM-DD") : todayLocalDate()
+                          }))
+                        }
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item label="표시 개수" style={{ marginBottom: 0 }}>
+                      <InputNumber
+                        className={styles.fullWidth}
+                        min={1}
+                        max={50}
+                        value={settlementReceivablesFilters.limit}
+                        onChange={(value) =>
+                          setSettlementReceivablesFilters((prev) => ({
+                            ...prev,
+                            limit: typeof value === "number" && Number.isFinite(value) ? value : prev.limit
+                          }))
+                        }
+                      />
+                    </Form.Item>
+                  </Col>
+                </Row>
+
+                <Alert
+                  type="info"
+                  showIcon
+                  message="실제 발송은 기존 CRM 워크스페이스에서 처리합니다."
+                  description="이 카드에서는 미지급 후보만 추려서 운영자가 CRM으로 넘길 수 있게 돕습니다."
+                />
+                {settlementReceivablesError && <Alert type="error" showIcon message={settlementReceivablesError} />}
+
+                <Table
+                  rowKey={(row) => String(row.paymentId)}
+                  loading={settlementReceivablesLoading}
+                  pagination={false}
+                  size="small"
+                  columns={receivableColumns}
+                  dataSource={receivableRows}
+                  locale={{
+                    emptyText: settlementReceivablesLoading
+                      ? "미수금 후보를 불러오는 중입니다..."
+                      : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="현재 표시할 미수금 후보가 없습니다." />
+                  }}
+                  scroll={{ x: 620 }}
+                />
+              </Flex>
             </Card>
           </Col>
         </Row>

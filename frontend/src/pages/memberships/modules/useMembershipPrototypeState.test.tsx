@@ -31,6 +31,8 @@ const availableProducts: ProductRecord[] = [
     maxHoldCount: 1,
     allowHoldBypass: false,
     allowTransfer: false,
+    assignedTrainerId: null,
+    promotion: null,
     productStatus: "ACTIVE",
     description: null
   },
@@ -48,6 +50,8 @@ const availableProducts: ProductRecord[] = [
     maxHoldCount: 1,
     allowHoldBypass: false,
     allowTransfer: false,
+    assignedTrainerId: 41,
+    promotion: null,
     productStatus: "ACTIVE",
     description: null
   }

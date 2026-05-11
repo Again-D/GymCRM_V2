@@ -25,7 +25,7 @@ source: docs/01_요구사항_분석서.md
 
 | ID | 구분 | 현재 상태 | 남은 갭 | 추적 근거 |
 |---|---|---|---|---|
-| FR-MBR-001 | 회원 | 부분 구현 | 회원 등록 시 사진, 비상연락처 등 요구 입력 항목을 저장/조회 경로까지 일치시켜야 한다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/member/dto/request/MemberCreateRequest.java` |
+| FR-MBR-001 | 회원 | 완료 | 비상연락처(v1.19.2)와 회원 사진(V52 + `POST /api/v1/members/{memberId}/photo`) 저장/조회 경로가 모두 구현됐다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/member/controller/MemberController.java`, `backend/src/main/resources/db/migration/V52__add_member_photo_url.sql` |
 | FR-MBR-003 | 회원 | 완료 | `POST /api/v1/members/{memberId}/withdraw`가 잔여 회원권 조회, `HOLDING` 재개 후 환불, 최종 `WITHDRAWN` 전환, `withdrawnAt` 기록, 성공 감사 로그까지 포함하는 원자적 워크플로우로 구현됐다. 응답은 처리 요약(`memberId`, `withdrawn`, `refundedMembershipCount`, `resumedHoldingCount`, `refundAmount`)을 반환한다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/member/service/MemberWithdrawalService.java`, `backend/src/main/java/com/gymcrm/member/service/MemberService.java`, `backend/src/main/java/com/gymcrm/member/controller/MemberController.java` |
 | FR-RSV-004/005/006/009 | 예약 | 부분 구현 | GX 대기열, 자동 전환, 취소 정책, 예약 알림, 차감 시점 선택을 요구사항 수준으로 정리해야 한다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/reservation/service/ReservationService.java` |
 | FR-ACC-001 | 출입 | 부분 구현 | 회원이 모바일 웹에서 자기 QR을 직접 확인하고 Dynamic QR로 주기 갱신되는 흐름을 완성해야 한다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/access/QrCodeService.java`, `frontend/src/app/routes.ts` |
@@ -33,7 +33,7 @@ source: docs/01_요구사항_분석서.md
 | FR-LKR-004 | 라커 | 미구현 | 만료 자동 안내 및 자동 반납 처리가 없다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/locker/LockerService.java` |
 | FR-LKR-005 | 라커 | 미구현 | 키 분실 처리 플로우가 없다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/locker/LockerService.java` |
 | FR-CRM-004 | CRM | 완료 | CRM 템플릿 목록/상세에 심사 상태, 운영 상태, 발송 가능 여부가 노출된다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/crm/controller/CrmMessageTemplateController.java`, `backend/src/main/java/com/gymcrm/crm/service/CrmMessageTemplateService.java`, `frontend/src/pages/crm/CrmPage.tsx` |
-| FR-CRM-006 | CRM | 부분 구현 | 알림 실패 시 SMS 폴백 경로를 요구사항 수준으로 고정해야 한다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/crm/service/CrmMessageService.java` |
+| FR-CRM-006 | CRM | 완료 | 알림 실패 시 SMS 폴백 경로를 요구사항 수준으로 고정하고, 이력에서 `PRIMARY`/`SMS_FALLBACK` 경로를 확인할 수 있게 했다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/crm/service/CrmMessageService.java`, `backend/src/main/java/com/gymcrm/crm/dto/response/HistoryRowResponse.java`, `frontend/src/pages/crm/CrmPage.tsx` |
 | NFR-012 | 보안 | 인프라 확인 필요 | `docs/ops/tls-enforcement.md` 정책 문서 완료. 실제 배포 계층(Nginx/ALB) 설정은 인프라 확인 필요. | `docs/ops/tls-enforcement.md` |
 | NFR-013 | 보안 | 완료 | `passwordChangedAt` 필드 추가(V44), 90일 변경 권고 soft 정책 구현, `docs/ops/password-policy.md` 작성. | `docs/ops/password-policy.md`, `backend/src/main/java/com/gymcrm/common/auth/service/AuthService.java` |
 | NFR-015 | 보안 | 완료 | `AuditLogRetentionScheduler` 배치 + `AuditLogRetentionSchedulerActorGuard` 구현 완료. `app.audit.retention.enabled` opt-in으로 배포 시 활성화. | `backend/src/main/java/com/gymcrm/audit/AuditLogRetentionScheduler.java` |
@@ -43,13 +43,12 @@ source: docs/01_요구사항_분석서.md
 
 | ID | 구분 | 현재 상태 | 남은 갭 | 추적 근거 |
 |---|---|---|---|---|
-| FR-PRD-006 | 상품 | 미구현 | PT 트레이너 연결 상품 정책이 없다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/product/service/ProductService.java` |
-| FR-PRD-007 | 상품 | 미구현 | 상품 할인/프로모션 모델이 없다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/product/service/ProductService.java` |
-| FR-LKR-006 | 라커 | 부분 구현 | 구역/등급 기반 요금 및 운영 정책이 부족하다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/locker/LockerService.java` |
-| FR-SAL-007 | 정산 | 미구현 | 미수금 관리와 후불/분할납부 추적이 없다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/settlement/controller/SalesDashboardController.java` |
-| FR-CRM-007 | CRM | 미구현 | 장기 미방문 대상 발송 운영이 없다. | `docs/01_요구사항_분석서.md`, `frontend/src/pages/crm/CrmPage.tsx` |
-| FR-CRM-008 | CRM | 미구현 | 예약 발송 운영 화면/API가 부족하다. | `docs/01_요구사항_분석서.md`, `frontend/src/pages/crm/CrmPage.tsx` |
-| FR-MBR-009 | 회원 | 미구현 | 회원 사진 업로드/저장 경로가 없다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/member/dto/request/MemberCreateRequest.java` |
+| FR-PRD-006 | 상품 | 완료 | PT 상품에 `assignedTrainerId`를 저장/검증하고, 목록/상세/편집 화면에서 담당 트레이너를 표시한다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/product/service/ProductService.java`, `frontend/src/pages/products/ProductsPage.tsx` |
+| FR-PRD-007 | 상품 | 완료 | 상품에 프로모션 메타데이터를 저장/검증하고, 목록/상세/편집 화면에서 프로모션 상태를 표시한다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/product/service/ProductService.java`, `frontend/src/pages/products/ProductsPage.tsx` |
+| FR-SAL-007 | 정산 | 완료 | `GET /api/v1/settlements/receivables`로 미수금과 후불/분할납부 후속 후보를 조회하고, CRM 적재 후보와 REVIEW 대상을 함께 노출한다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/settlement/controller/SalesReceivablesController.java`, `frontend/src/pages/settlements/SettlementsPage.tsx` |
+| FR-CRM-007 | CRM | 완료 | 장기 미방문 회원 재방문 유도 캠페인을 `POST /api/v1/crm/messages/triggers/long-term-inactive`로 적재하고, 템플릿 거버넌스와 이력 모델을 재사용하도록 구현했다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/crm/controller/CrmMessageController.java`, `backend/src/main/java/com/gymcrm/crm/service/CrmMessageService.java`, `frontend/src/pages/crm/CrmPage.tsx` |
+| FR-CRM-008 | CRM | 완료 | CRM 캠페인 적재 화면에 예약 발송 시각 입력을 추가하고, `scheduledAt`이 미래일 때 이벤트가 같은 큐/이력 경로에서 대기 상태로 유지되도록 구현했다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/crm/controller/CrmMessageController.java`, `backend/src/main/java/com/gymcrm/crm/service/CrmMessageService.java`, `frontend/src/pages/crm/CrmPage.tsx` |
+| FR-MBR-009 | 회원 | 완료 | `POST /api/v1/members/{memberId}/photo`(multipart/form-data)로 회원 사진을 업로드하고, `member_photo_url` 컬럼(V52)에 경로를 저장한다. 회원 목록 화면에서 아바타 썸네일과 업로드 버튼이 표시된다. | `docs/01_요구사항_분석서.md`, `backend/src/main/java/com/gymcrm/member/controller/MemberController.java`, `backend/src/main/resources/db/migration/V52__add_member_photo_url.sql`, `frontend/src/pages/members/components/MemberListSection.tsx` |
 
 ## Future
 
@@ -65,6 +64,7 @@ source: docs/01_요구사항_분석서.md
 - `NFR-010` 인증 및 인가, `NFR-011` 개인정보 암호화, `NFR-014` QR 코드 보안, `FR-ACC-005` 비정상 출입 알림은 현재 구현이 확인되어 본 추적 문서에서 제외했다.
 - 보안 항목은 코드 구현만으로 확정할 수 없는 경우가 있어, `NFR-012`는 배포/프록시 설정까지 함께 확인해야 한다.
 - 감사 로그와 개인정보 파기 항목은 운영 정책과 스케줄러가 같이 있어야 하므로, 기능 구현과 운영 검증을 한 묶음으로 관리하는 것이 좋다.
+- `FR-LKR-006` 라커 구역/등급 요금은 Ticket 6에서 `monthlyFee` 기반으로 완료되었다.
 
 ## Sprint Plan
 
@@ -147,7 +147,7 @@ source: docs/01_요구사항_분석서.md
 
 **범위 메모**
 - CRM 발송은 `sendable` 상태 템플릿만 사용 가능하며, rejected/inactive 템플릿은 거버넌스/이력용으로만 남긴다.
-- `FR-SAL-007`의 reminder hook은 별도 정산 알림 엔진이 아니라 기존 CRM 큐를 재사용하는 operator action 또는 eligibility marker로 제한한다.
+- `FR-SAL-007`은 별도 정산 알림 엔진을 만들지 않고, CRM 적재 후보와 REVIEW 후보를 기존 CRM 워크스페이스로 연결하는 운영 slice로 구현했다.
 - `FR-MBR-009` 구현 시 업로드 가드레일(MIME, 파일 크기, 교체 정책, 접근 권한)을 함께 정의한다.
 
 **완료 기준**
