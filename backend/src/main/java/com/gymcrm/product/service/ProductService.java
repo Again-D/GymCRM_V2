@@ -2,8 +2,12 @@ package com.gymcrm.product.service;
 
 import com.gymcrm.common.error.ApiException;
 import com.gymcrm.common.error.ErrorCode;
+import com.gymcrm.common.auth.entity.AuthUser;
+import com.gymcrm.common.auth.repository.AuthUserRepository;
 import com.gymcrm.common.security.CurrentUserProvider;
+import com.gymcrm.product.dto.request.ProductPromotionRequest;
 import com.gymcrm.product.entity.Product;
+import com.gymcrm.product.entity.ProductPromotion;
 import com.gymcrm.product.repository.ProductRepository;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
@@ -19,12 +23,19 @@ public class ProductService {
     private static final Set<String> CATEGORIES = Set.of("MEMBERSHIP", "PT", "GX", "ETC");
     private static final Set<String> TYPES = Set.of("DURATION", "COUNT");
     private static final Set<String> STATUSES = Set.of("ACTIVE", "INACTIVE");
+    private static final String PT_CATEGORY = "PT";
 
     private final ProductRepository productRepository;
+    private final AuthUserRepository authUserRepository;
     private final CurrentUserProvider currentUserProvider;
 
-    public ProductService(ProductRepository productRepository, CurrentUserProvider currentUserProvider) {
+    public ProductService(
+            ProductRepository productRepository,
+            AuthUserRepository authUserRepository,
+            CurrentUserProvider currentUserProvider
+    ) {
         this.productRepository = productRepository;
+        this.authUserRepository = authUserRepository;
         this.currentUserProvider = currentUserProvider;
     }
 
@@ -42,9 +53,15 @@ public class ProductService {
                 request.maxHoldCount(),
                 request.allowHoldBypass(),
                 request.allowTransfer(),
+                request.assignedTrainerId(),
+                request.promotion(),
+                null,
                 request.productStatus(),
                 request.description()
         );
+        if (input.assignedTrainerId() != null) {
+            requireActiveTrainer(input.assignedTrainerId());
+        }
 
         try {
             return productRepository.insert(new ProductRepository.ProductCreateCommand(
@@ -60,6 +77,11 @@ public class ProductService {
                     input.maxHoldCount(),
                     input.allowHoldBypass(),
                     input.allowTransfer(),
+                    input.assignedTrainerId(),
+                    input.promotionDiscountType(),
+                    input.promotionDiscountValue(),
+                    input.promotionStartDate(),
+                    input.promotionEndDate(),
                     input.productStatus(),
                     input.description(),
                     currentUserProvider.currentUserId()
@@ -103,9 +125,15 @@ public class ProductService {
                 request.maxHoldCount() == null ? current.maxHoldCount() : request.maxHoldCount(),
                 request.allowHoldBypass() == null ? current.allowHoldBypass() : request.allowHoldBypass(),
                 request.allowTransfer() == null ? current.allowTransfer() : request.allowTransfer(),
+                resolveAssignedTrainerId(current, request),
+                request.promotion(),
+                current.promotion(),
                 request.productStatus() == null ? current.productStatus() : request.productStatus(),
                 request.description() == null ? current.description() : request.description()
         );
+        if (request.assignedTrainerId() != null) {
+            requireActiveTrainer(input.assignedTrainerId());
+        }
 
         try {
             return productRepository.update(new ProductRepository.ProductUpdateCommand(
@@ -121,6 +149,11 @@ public class ProductService {
                     input.maxHoldCount(),
                     input.allowHoldBypass(),
                     input.allowTransfer(),
+                    input.assignedTrainerId(),
+                    input.promotionDiscountType(),
+                    input.promotionDiscountValue(),
+                    input.promotionStartDate(),
+                    input.promotionEndDate(),
                     input.productStatus(),
                     input.description(),
                     currentUserProvider.currentUserId()
@@ -156,6 +189,9 @@ public class ProductService {
             Integer maxHoldCount,
             Boolean allowHoldBypass,
             Boolean allowTransfer,
+            Long assignedTrainerId,
+            ProductPromotionRequest promotion,
+            ProductPromotion currentPromotion,
             String productStatus,
             String description
     ) {
@@ -178,6 +214,11 @@ public class ProductService {
         }
         if (priceAmount == null || priceAmount.compareTo(BigDecimal.ZERO) < 0) {
             throw new ApiException(ErrorCode.VALIDATION_ERROR, "priceAmount must be >= 0");
+        }
+        Long normalizedAssignedTrainerId = normalizeAssignedTrainerLinkage(category, assignedTrainerId);
+        ProductPromotion normalizedPromotion = normalizePromotion(promotion);
+        if (normalizedPromotion == null) {
+            normalizedPromotion = currentPromotion;
         }
         if (Boolean.TRUE.equals(allowHold)) {
             if (maxHoldDays != null && maxHoldDays < 0) {
@@ -214,8 +255,94 @@ public class ProductService {
                 maxHoldCount,
                 allowHold != null && allowHold && allowHoldBypass != null && allowHoldBypass,
                 allowTransfer != null && allowTransfer,
+                normalizedAssignedTrainerId,
+                normalizedPromotion == null ? null : normalizedPromotion.promotionDiscountType(),
+                normalizedPromotion == null ? null : normalizedPromotion.promotionDiscountValue(),
+                normalizedPromotion == null ? null : normalizedPromotion.promotionStartDate(),
+                normalizedPromotion == null ? null : normalizedPromotion.promotionEndDate(),
                 status,
                 trimToNull(description)
+        );
+    }
+
+    private Long resolveAssignedTrainerId(Product current, ProductUpdateRequest request) {
+        String requestedCategory = request.productCategory() == null ? current.productCategory() : request.productCategory();
+        if (request.assignedTrainerId() != null) {
+            return request.assignedTrainerId();
+        }
+        if (PT_CATEGORY.equals(upper(requestedCategory))) {
+            return current.assignedTrainerId();
+        }
+        return null;
+    }
+
+    private Long normalizeAssignedTrainerLinkage(String productCategory, Long assignedTrainerId) {
+        if (PT_CATEGORY.equals(productCategory)) {
+            if (assignedTrainerId == null) {
+                throw new ApiException(ErrorCode.VALIDATION_ERROR, "PT product requires assignedTrainerId");
+            }
+            if (assignedTrainerId <= 0) {
+                throw new ApiException(ErrorCode.VALIDATION_ERROR, "assignedTrainerId must be a positive number");
+            }
+            return assignedTrainerId;
+        }
+        if (assignedTrainerId != null) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "assignedTrainerId is only allowed for PT products");
+        }
+        return null;
+    }
+
+    private Long requireActiveTrainer(Long trainerUserId) {
+        if (trainerUserId == null || trainerUserId <= 0) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "assignedTrainerId must be a positive number");
+        }
+        AuthUser trainer = authUserRepository.findActiveByCenterAndUserId(DEFAULT_CENTER_ID, trainerUserId)
+                .filter(AuthUser::isActive)
+                .orElseThrow(() -> new ApiException(ErrorCode.VALIDATION_ERROR, "assignedTrainerId is invalid"));
+        if (!"ROLE_TRAINER".equals(trainer.roleCode())) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "assignedTrainerId must reference an active trainer");
+        }
+        return trainer.userId();
+    }
+
+    private ProductPromotion normalizePromotion(ProductPromotionRequest promotion) {
+        if (promotion == null) {
+            return null;
+        }
+        boolean hasAnyValue =
+                promotion.promotionDiscountType() != null
+                        || promotion.promotionDiscountValue() != null
+                        || promotion.promotionStartDate() != null
+                        || promotion.promotionEndDate() != null;
+        if (!hasAnyValue) {
+            return null;
+        }
+        if (promotion.promotionDiscountType() == null
+                || promotion.promotionDiscountValue() == null
+                || promotion.promotionStartDate() == null
+                || promotion.promotionEndDate() == null) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "promotion fields must be provided together");
+        }
+
+        String discountType = upper(promotion.promotionDiscountType());
+        if (!Set.of("PERCENT", "AMOUNT").contains(discountType)) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "promotionDiscountType must be PERCENT or AMOUNT");
+        }
+        if (promotion.promotionDiscountValue().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "promotionDiscountValue must be > 0");
+        }
+        if ("PERCENT".equals(discountType) && promotion.promotionDiscountValue().compareTo(new BigDecimal("100")) > 0) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "promotionDiscountValue must be <= 100 for PERCENT");
+        }
+        if (promotion.promotionEndDate().isBefore(promotion.promotionStartDate())) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "promotionEndDate must be on or after promotionStartDate");
+        }
+
+        return new ProductPromotion(
+                discountType,
+                promotion.promotionDiscountValue(),
+                promotion.promotionStartDate(),
+                promotion.promotionEndDate()
         );
     }
 
@@ -258,6 +385,8 @@ public class ProductService {
             Integer maxHoldCount,
             Boolean allowHoldBypass,
             Boolean allowTransfer,
+            Long assignedTrainerId,
+            ProductPromotionRequest promotion,
             String productStatus,
             String description
     ) {}
@@ -274,6 +403,8 @@ public class ProductService {
             Integer maxHoldCount,
             Boolean allowHoldBypass,
             Boolean allowTransfer,
+            Long assignedTrainerId,
+            ProductPromotionRequest promotion,
             String productStatus,
             String description
     ) {}
@@ -290,7 +421,13 @@ public class ProductService {
             Integer maxHoldCount,
             boolean allowHoldBypass,
             boolean allowTransfer,
+            Long assignedTrainerId,
+            String promotionDiscountType,
+            BigDecimal promotionDiscountValue,
+            java.time.LocalDate promotionStartDate,
+            java.time.LocalDate promotionEndDate,
             String productStatus,
             String description
     ) {}
+
 }

@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
 @Entity
@@ -28,6 +29,9 @@ public class LockerSlotEntity {
 
     @Column(name = "locker_grade")
     private String lockerGrade;
+
+    @Column(name = "monthly_fee")
+    private BigDecimal monthlyFee;
 
     @Column(name = "locker_status", nullable = false)
     private String lockerStatus;
@@ -93,6 +97,14 @@ public class LockerSlotEntity {
 
     public void setLockerGrade(String lockerGrade) {
         this.lockerGrade = lockerGrade;
+    }
+
+    public BigDecimal getMonthlyFee() {
+        return monthlyFee;
+    }
+
+    public void setMonthlyFee(BigDecimal monthlyFee) {
+        this.monthlyFee = monthlyFee;
     }
 
     public String getLockerStatus() {

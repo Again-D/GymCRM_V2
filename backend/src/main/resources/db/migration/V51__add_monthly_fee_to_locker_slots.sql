@@ -1,0 +1,2 @@
+ALTER TABLE locker_slots
+    ADD COLUMN IF NOT EXISTS monthly_fee NUMERIC(12, 0) NOT NULL DEFAULT 0;

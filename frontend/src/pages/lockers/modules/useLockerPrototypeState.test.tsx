@@ -82,6 +82,7 @@ describe("useLockerPrototypeState", () => {
             lockerCode: "A-01",
             lockerZone: "A",
             lockerGrade: "STANDARD",
+            monthlyFee: 30000,
             lockerStatus: "AVAILABLE",
             memo: null,
             createdAt: "2026-03-13T00:00:00Z",
@@ -106,6 +107,7 @@ describe("useLockerPrototypeState", () => {
           lockerZone: "a",
           lockerNumber: 1,
           lockerGrade: "STANDARD",
+          monthlyFee: 30000,
           lockerStatus: "AVAILABLE",
           memo: "",
         },
@@ -133,8 +135,8 @@ describe("useLockerPrototypeState", () => {
       json: async () => ({
         success: true,
         data: {
-          lockerAssignmentId: 7001
-        },
+            lockerAssignmentId: 7001
+          },
         message: "라커가 배정되었습니다.",
         timestamp: "2026-03-13T00:00:00Z",
         traceId: "trace-locker-assign"
@@ -148,7 +150,7 @@ describe("useLockerPrototypeState", () => {
     });
 
     await act(async () => {
-      result.current.setLockerAssignForm((prev) => ({
+        result.current.setLockerAssignForm((prev) => ({
         ...prev,
         lockerSlotId: "4002"
       }));

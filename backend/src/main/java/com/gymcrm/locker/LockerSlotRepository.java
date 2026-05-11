@@ -2,6 +2,7 @@ package com.gymcrm.locker;
 
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -26,6 +27,7 @@ public class LockerSlotRepository {
         entity.setLockerCode(command.lockerCode());
         entity.setLockerZone(command.lockerZone());
         entity.setLockerGrade(command.lockerGrade());
+        entity.setMonthlyFee(command.monthlyFee());
         entity.setLockerStatus(command.lockerStatus());
         entity.setMemo(command.memo());
         entity.setDeleted(false);
@@ -60,6 +62,7 @@ public class LockerSlotRepository {
                 entity.getLockerCode(),
                 entity.getLockerZone(),
                 entity.getLockerGrade(),
+                entity.getMonthlyFee(),
                 entity.getLockerStatus(),
                 entity.getMemo(),
                 entity.getCreatedAt(),
@@ -72,6 +75,7 @@ public class LockerSlotRepository {
             String lockerCode,
             String lockerZone,
             String lockerGrade,
+            BigDecimal monthlyFee,
             String lockerStatus,
             String memo,
             Long actorUserId

@@ -18,6 +18,8 @@ public record ProductSummaryResponse(
             Integer maxHoldCount,
             boolean allowHoldBypass,
             boolean allowTransfer,
+            Long assignedTrainerId,
+            ProductPromotionResponse promotion,
             String productStatus,
             String description
     ) {
@@ -36,6 +38,8 @@ public record ProductSummaryResponse(
                     product.maxHoldCount(),
                     product.allowHoldBypass(),
                     product.allowTransfer(),
+                    product.assignedTrainerId(),
+                    ProductPromotionResponse.from(product.promotion()),
                     product.productStatus(),
                     product.description()
             );

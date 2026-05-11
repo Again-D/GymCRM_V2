@@ -64,6 +64,7 @@ class ProductApiIntegrationTest {
                                   "maxHoldDays": 7,
                                   "maxHoldCount": 2,
                                   "allowTransfer": false,
+                                  "assignedTrainerId": null,
                                   "productStatus": "ACTIVE",
                                   "description": "phase3 jpa product"
                                 }
@@ -105,6 +106,96 @@ class ProductApiIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].productId").value(productId))
                 .andExpect(jsonPath("$.data[0].productStatus").value("INACTIVE"));
+    }
+
+    @Test
+    void ptProductCarriesAssignedTrainerThroughCreateListAndDetail() throws Exception {
+        String adminToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
+        String productName = "PT상품-" + shortId();
+
+        MvcResult createResult = mockMvc.perform(post("/api/v1/products")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "productName": "%s",
+                                  "productCategory": "PT",
+                                  "productType": "COUNT",
+                                  "priceAmount": 250000,
+                                  "totalCount": 10,
+                                  "allowHold": false,
+                                  "allowTransfer": false,
+                                  "assignedTrainerId": 41,
+                                  "productStatus": "ACTIVE",
+                                  "description": "trainer-linked pt product"
+                                }
+                                """.formatted(productName)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.assignedTrainerId").value(41))
+                .andReturn();
+
+        long productId = jsonLong(createResult, "/data/productId");
+
+        mockMvc.perform(get("/api/v1/products")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .param("category", "PT"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].assignedTrainerId").value(41));
+
+        mockMvc.perform(get("/api/v1/products/{productId}", productId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.assignedTrainerId").value(41));
+    }
+
+    @Test
+    void productPromotionCarriesThroughCreateListAndDetail() throws Exception {
+        String adminToken = loginAndGetAccessToken("center-admin", "dev-admin-1234!");
+        String productName = "프로모션상품-" + shortId();
+
+        MvcResult createResult = mockMvc.perform(post("/api/v1/products")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "productName": "%s",
+                                  "productCategory": "MEMBERSHIP",
+                                  "productType": "DURATION",
+                                  "priceAmount": 180000,
+                                  "validityDays": 30,
+                                  "allowHold": true,
+                                  "maxHoldDays": 7,
+                                  "maxHoldCount": 1,
+                                  "allowTransfer": false,
+                                  "promotion": {
+                                    "promotionDiscountType": "PERCENT",
+                                    "promotionDiscountValue": 15,
+                                    "promotionStartDate": "2026-05-01",
+                                    "promotionEndDate": "2026-05-31"
+                                  },
+                                  "productStatus": "ACTIVE",
+                                  "description": "spring promotion"
+                                }
+                                """.formatted(productName)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.promotion.promotionDiscountType").value("PERCENT"))
+                .andExpect(jsonPath("$.data.promotion.promotionDiscountValue").value(15))
+                .andReturn();
+
+        long productId = jsonLong(createResult, "/data/productId");
+
+        mockMvc.perform(get("/api/v1/products")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .param("category", "MEMBERSHIP"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].productId").value(productId))
+                .andExpect(jsonPath("$.data[0].promotion.promotionDiscountType").value("PERCENT"));
+
+        mockMvc.perform(get("/api/v1/products/{productId}", productId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.promotion.promotionDiscountValue").value(15))
+                .andExpect(jsonPath("$.data.promotion.promotionStartDate").value("2026-05-01"));
     }
 
     @Test

@@ -17,6 +17,8 @@ public record Product(
         Integer maxHoldCount,
         boolean allowHoldBypass,
         boolean allowTransfer,
+        Long assignedTrainerId,
+        ProductPromotion promotion,
         String productStatus,
         String description,
         OffsetDateTime createdAt,

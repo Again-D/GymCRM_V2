@@ -34,6 +34,14 @@ public class ProductQueryRepository {
                         productEntity.maxHoldCount,
                         productEntity.allowHoldBypass,
                         productEntity.allowTransfer,
+                        productEntity.assignedTrainerId,
+                        Projections.constructor(
+                                com.gymcrm.product.entity.ProductPromotion.class,
+                                productEntity.promotionDiscountType,
+                                productEntity.promotionDiscountValue,
+                                productEntity.promotionStartDate,
+                                productEntity.promotionEndDate
+                        ),
                         productEntity.productStatus,
                         productEntity.description,
                         productEntity.createdAt,

@@ -5,6 +5,8 @@ import java.math.BigDecimal;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Pattern;
 
+import com.gymcrm.product.dto.request.ProductPromotionRequest;
+
 public record ProductUpdateRequest(
             String productName,
             @Pattern(regexp = "^(?i)(MEMBERSHIP|PT|GX|ETC)?$", message = "productCategory is invalid")
@@ -20,6 +22,8 @@ public record ProductUpdateRequest(
             Integer maxHoldCount,
             Boolean allowHoldBypass,
             Boolean allowTransfer,
+            Long assignedTrainerId,
+            ProductPromotionRequest promotion,
             @Pattern(regexp = "^(?i)(ACTIVE|INACTIVE)?$", message = "productStatus must be ACTIVE or INACTIVE")
             String productStatus,
             String description

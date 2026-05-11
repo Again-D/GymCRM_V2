@@ -54,6 +54,21 @@ public class ProductEntity {
     @Column(name = "allow_transfer", nullable = false)
     private boolean allowTransfer;
 
+    @Column(name = "assigned_trainer_id")
+    private Long assignedTrainerId;
+
+    @Column(name = "promotion_discount_type")
+    private String promotionDiscountType;
+
+    @Column(name = "promotion_discount_value")
+    private BigDecimal promotionDiscountValue;
+
+    @Column(name = "promotion_start_date")
+    private java.time.LocalDate promotionStartDate;
+
+    @Column(name = "promotion_end_date")
+    private java.time.LocalDate promotionEndDate;
+
     @Column(name = "product_status", nullable = false)
     private String productStatus;
 
@@ -182,6 +197,46 @@ public class ProductEntity {
 
     public void setAllowTransfer(boolean allowTransfer) {
         this.allowTransfer = allowTransfer;
+    }
+
+    public Long getAssignedTrainerId() {
+        return assignedTrainerId;
+    }
+
+    public void setAssignedTrainerId(Long assignedTrainerId) {
+        this.assignedTrainerId = assignedTrainerId;
+    }
+
+    public String getPromotionDiscountType() {
+        return promotionDiscountType;
+    }
+
+    public void setPromotionDiscountType(String promotionDiscountType) {
+        this.promotionDiscountType = promotionDiscountType;
+    }
+
+    public BigDecimal getPromotionDiscountValue() {
+        return promotionDiscountValue;
+    }
+
+    public void setPromotionDiscountValue(BigDecimal promotionDiscountValue) {
+        this.promotionDiscountValue = promotionDiscountValue;
+    }
+
+    public java.time.LocalDate getPromotionStartDate() {
+        return promotionStartDate;
+    }
+
+    public void setPromotionStartDate(java.time.LocalDate promotionStartDate) {
+        this.promotionStartDate = promotionStartDate;
+    }
+
+    public java.time.LocalDate getPromotionEndDate() {
+        return promotionEndDate;
+    }
+
+    public void setPromotionEndDate(java.time.LocalDate promotionEndDate) {
+        this.promotionEndDate = promotionEndDate;
     }
 
     public String getProductStatus() {

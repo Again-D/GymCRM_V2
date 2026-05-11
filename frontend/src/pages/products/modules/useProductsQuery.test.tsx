@@ -76,6 +76,7 @@ describe("useProductsQuery", () => {
             maxHoldDays: 30,
             maxHoldCount: 1,
             allowTransfer: false,
+            assignedTrainerId: 41,
             productStatus: "ACTIVE",
             description: null
           }

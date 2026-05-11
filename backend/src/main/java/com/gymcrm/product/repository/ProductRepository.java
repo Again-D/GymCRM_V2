@@ -2,6 +2,7 @@ package com.gymcrm.product.repository;
 
 import com.gymcrm.product.entity.Product;
 import com.gymcrm.product.entity.ProductEntity;
+import com.gymcrm.product.entity.ProductPromotion;
 import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Repository;
 
@@ -40,6 +41,11 @@ public class ProductRepository {
         entity.setMaxHoldCount(command.maxHoldCount());
         entity.setAllowHoldBypass(Boolean.TRUE.equals(command.allowHoldBypass()));
         entity.setAllowTransfer(Boolean.TRUE.equals(command.allowTransfer()));
+        entity.setAssignedTrainerId(command.assignedTrainerId());
+        entity.setPromotionDiscountType(command.promotionDiscountType());
+        entity.setPromotionDiscountValue(command.promotionDiscountValue());
+        entity.setPromotionStartDate(command.promotionStartDate());
+        entity.setPromotionEndDate(command.promotionEndDate());
         entity.setProductStatus(command.productStatus());
         entity.setDescription(command.description());
         entity.setDeleted(false);
@@ -74,6 +80,11 @@ public class ProductRepository {
         entity.setMaxHoldCount(command.maxHoldCount());
         entity.setAllowHoldBypass(Boolean.TRUE.equals(command.allowHoldBypass()));
         entity.setAllowTransfer(Boolean.TRUE.equals(command.allowTransfer()));
+        entity.setAssignedTrainerId(command.assignedTrainerId());
+        entity.setPromotionDiscountType(command.promotionDiscountType());
+        entity.setPromotionDiscountValue(command.promotionDiscountValue());
+        entity.setPromotionStartDate(command.promotionStartDate());
+        entity.setPromotionEndDate(command.promotionEndDate());
         entity.setProductStatus(command.productStatus());
         entity.setDescription(command.description());
         entity.setUpdatedAt(OffsetDateTime.now());
@@ -109,6 +120,15 @@ public class ProductRepository {
                 entity.getMaxHoldCount(),
                 entity.isAllowHoldBypass(),
                 entity.isAllowTransfer(),
+                entity.getAssignedTrainerId(),
+                entity.getPromotionDiscountType() == null
+                        ? null
+                        : new ProductPromotion(
+                                entity.getPromotionDiscountType(),
+                                entity.getPromotionDiscountValue(),
+                                entity.getPromotionStartDate(),
+                                entity.getPromotionEndDate()
+                        ),
                 entity.getProductStatus(),
                 entity.getDescription(),
                 entity.getCreatedAt(),
@@ -131,6 +151,11 @@ public class ProductRepository {
             Integer maxHoldCount,
             Boolean allowHoldBypass,
             Boolean allowTransfer,
+            Long assignedTrainerId,
+            String promotionDiscountType,
+            java.math.BigDecimal promotionDiscountValue,
+            java.time.LocalDate promotionStartDate,
+            java.time.LocalDate promotionEndDate,
             String productStatus,
             String description,
             Long actorUserId
@@ -149,6 +174,11 @@ public class ProductRepository {
             Integer maxHoldCount,
             Boolean allowHoldBypass,
             Boolean allowTransfer,
+            Long assignedTrainerId,
+            String promotionDiscountType,
+            java.math.BigDecimal promotionDiscountValue,
+            java.time.LocalDate promotionStartDate,
+            java.time.LocalDate promotionEndDate,
             String productStatus,
             String description,
             Long actorUserId

@@ -51,6 +51,8 @@ public class ProductController {
                 request.maxHoldCount(),
                 request.allowHoldBypass(),
                 request.allowTransfer(),
+                request.assignedTrainerId(),
+                request.promotion(),
                 request.productStatus(),
                 request.description()
         ));
@@ -93,6 +95,8 @@ public class ProductController {
                 request.maxHoldCount(),
                 request.allowHoldBypass(),
                 request.allowTransfer(),
+                request.assignedTrainerId(),
+                request.promotion(),
                 request.productStatus(),
                 request.description()
         ));
@@ -109,7 +113,4 @@ public class ProductController {
         return ApiResponse.success(ProductResponse.from(product), "상품 상태가 변경되었습니다.");
     }
 
-
-
-    
 }

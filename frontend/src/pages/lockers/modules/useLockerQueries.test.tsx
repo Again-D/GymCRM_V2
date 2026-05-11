@@ -42,6 +42,7 @@ describe("useLockerQueries", () => {
                 lockerCode: "A-02",
                 lockerZone: "A",
                 lockerGrade: "STANDARD",
+                monthlyFee: 30000,
                 lockerStatus: "AVAILABLE",
                 memo: null,
                 createdAt: "2026-01-01T09:00:00Z",
@@ -103,16 +104,17 @@ describe("useLockerQueries", () => {
         json: async () => ({
           success: true,
           data: [
-            {
-              lockerSlotId: 4002 + callCount,
-              centerId: 1,
-              lockerCode: `A-02-${callCount}`,
-              lockerZone: "A",
-              lockerGrade: "STANDARD",
-              lockerStatus: "AVAILABLE",
-              memo: null,
-              createdAt: "2026-01-01T09:00:00Z",
-              updatedAt: "2026-03-12T09:00:00Z"
+              {
+                lockerSlotId: 4002 + callCount,
+                centerId: 1,
+                lockerCode: `A-02-${callCount}`,
+                lockerZone: "A",
+                lockerGrade: "STANDARD",
+                monthlyFee: 30000,
+                lockerStatus: "AVAILABLE",
+                memo: null,
+                createdAt: "2026-01-01T09:00:00Z",
+                updatedAt: "2026-03-12T09:00:00Z"
             }
           ]
         })
